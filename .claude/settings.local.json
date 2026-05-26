@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__f0e222d4-8c8c-4a14-a0f3-4a480c26f460__get_screenshot",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "WebFetch(domain:www.figma.com)",
+      "WebSearch",
+      "Bash(python -c \"import pypdf; print\\('pypdf ok'\\)\")",
+      "Bash(python -c \"import pdfplumber; print\\('pdfplumber ok'\\)\")",
+      "Bash(python -c \"import pdf2image; print\\('pdf2image ok'\\)\")",
+      "PowerShell(python --version)",
+      "PowerShell(python -c \"import pypdf; print\\('pypdf ok'\\)\" 2>&1)",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)",
+      "Bash(npx shadcn@latest init --help)",
+      "Bash(npx shadcn@latest init -d)",
+      "Bash(npx shadcn@latest add button card badge progress table input select tabs separator avatar scroll-area label)",
+      "Bash(timeout 20 npm run dev)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
