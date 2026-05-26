@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 
 **Date:** 2026-05-26
-**Goal:** Make the app fully responsive (mobile + desktop), replace all hardcoded currency with a global formatter, add an editable portfolio allocation editor on the Investing page, and improve the Budget page with real amounts and adaptive progress bars.
+**Goal:** Make the app fully responsive (mobile + desktop), replace all hardcoded currency with a global formatter backed by real exchange rates fetched on app open, add an editable portfolio allocation editor on the Investing page, and improve the Budget page with real amounts and adaptive progress bars.
 
 ---
 
@@ -14,7 +14,7 @@ Four independent improvements bundled into one release:
 | # | Area | What changes |
 |---|---|---|
 | 1 | Mobile layout | Bottom nav bar on mobile, sidebar on desktop |
-| 2 | Global currency | One formatter used everywhere, reads from `app_settings.currency` |
+| 2 | Global currency | One formatter + live exchange rate fetched on app open, reads from `app_settings.currency` |
 | 3 | Investing — allocation editor | Editable donut + table, persisted as JSONB to Supabase |
 | 4 | Budget — display improvements | Real amounts on category rows, adaptive bar colors |
 
@@ -24,9 +24,9 @@ Four independent improvements bundled into one release:
 
 ### New files
 ```
-src/lib/currency.ts               Global formatCurrency function + useCurrency hook
-src/components/layout/BottomNav.tsx  Mobile bottom navigation bar
-src/components/layout/MoreSheet.tsx  shadcn Sheet with extra nav links for mobile
+src/lib/currency.ts                   formatCurrency, useExchangeRates, useCurrency
+src/components/layout/BottomNav.tsx   Mobile bottom navigation bar
+src/components/layout/MoreSheet.tsx   shadcn Sheet with extra nav links for mobile
 src/components/investing/AllocationEditor.tsx  Donut + table allocation editor
 ```
 
@@ -34,14 +34,15 @@ src/components/investing/AllocationEditor.tsx  Donut + table allocation editor
 ```
 src/components/layout/AppLayout.tsx  Add BottomNav, hide sidebar on mobile
 src/components/layout/Sidebar.tsx    Hide on mobile (lg:flex, hidden)
-src/pages/Dashboard.tsx              Use formatCurrency from hook
-src/pages/Budget.tsx                 Use formatCurrency + amounts on rows + adaptive colors
-src/pages/Transactions.tsx           Use formatCurrency for amounts
-src/pages/Investing.tsx              Add AllocationEditor, use formatCurrency
-src/pages/Estimation.tsx             Use formatCurrency
-src/pages/Reports.tsx                Use formatCurrency
-src/types/index.ts                   Add allocations field to InvestmentConfig
-supabase/migrations/001_add_allocations.sql  ALTER TABLE migration
+src/pages/Dashboard.tsx              Use useCurrency hook
+src/pages/Budget.tsx                 Use useCurrency + amounts on rows + adaptive colors
+src/pages/Transactions.tsx           Use useCurrency for amounts
+src/pages/Investing.tsx              Add AllocationEditor, use useCurrency
+src/pages/Estimation.tsx             Use useCurrency
+src/pages/Reports.tsx                Use useCurrency
+src/types/index.ts                   Add allocations to InvestmentConfig, base_currency to AppSettings
+supabase/migrations/001_add_allocations.sql   ALTER investment_config ADD allocations
+supabase/migrations/002_add_base_currency.sql ALTER app_settings ADD base_currency
 ```
 
 ---
@@ -80,34 +81,102 @@ Active item: icon + label in `text-primary`. Inactive: `text-muted-foreground`.
 
 ### 3.2 Global Currency System
 
-**`src/lib/currency.ts`**
+#### Exchange rate API
+
+**Provider:** [fawazahmed0/currency-api](https://github.com/fawazahmed0/exchange-api) — completely free, no API key, updated daily, served via jsDelivr CDN.
+
+**Request URL:**
+```
+https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{baseCurrency}.json
+```
+Example for IDR base:
+```
+https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/idr.json
+```
+Returns:
+```json
+{ "date": "2026-05-26", "idr": { "usd": 0.0000614, "eur": 0.0000567, "sgd": 0.0000830, ... } }
+```
+
+**Fetch strategy:** TanStack Query with `staleTime: Infinity` — fetched **once per session** (on page load), never auto-refetched. Refreshes only on full page reload. No polling, no websocket.
+
+#### `src/lib/currency.ts`
 
 ```ts
+// Pure formatter — no conversion, just Intl formatting + IDR symbol fix
 export function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
+  const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
     maximumFractionDigits: currency === 'IDR' ? 0 : 2,
     minimumFractionDigits: currency === 'IDR' ? 0 : 2,
   }).format(amount)
+  return formatted.replace('IDR', 'Rp')
 }
-```
 
-For IDR this produces: `IDR 84,250,000`
-For USD: `$84,250.00`
+// Fetches rates for a given base currency (e.g. 'IDR')
+// Returns a map: { usd: 0.0000614, eur: 0.0000567, ... }
+export function useExchangeRates(baseCurrency: string) {
+  return useQuery({
+    queryKey: ['exchange_rates', baseCurrency],
+    queryFn: async () => {
+      if (!baseCurrency) return {}
+      const base = baseCurrency.toLowerCase()
+      const res = await fetch(
+        `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${base}.json`
+      )
+      if (!res.ok) throw new Error('Exchange rate fetch failed')
+      const data = await res.json() as Record<string, unknown>
+      return data[base] as Record<string, number>
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: 2,
+  })
+}
 
-**Override display symbol for IDR:** The `Intl` default for IDR is `IDR` not `Rp`. Add a post-format replace:
-```ts
-return formatted.replace('IDR', 'Rp')
-```
-
-**`useCurrency()` hook** in the same file:
-```ts
+// Main hook used by all pages
+// Reads base + display currency from app_settings, fetches rate, returns formatter
 export function useCurrency() {
   const { data: settings } = useAppSettings()
-  const currency = settings?.currency ?? 'IDR'
-  return (amount: number) => formatCurrency(amount, currency)
+  const baseCurrency = settings?.base_currency ?? 'IDR'
+  const displayCurrency = settings?.currency ?? 'IDR'
+  const { data: rates = {} } = useExchangeRates(baseCurrency)
+
+  return (amount: number) => {
+    if (baseCurrency === displayCurrency) {
+      return formatCurrency(amount, displayCurrency)
+    }
+    const rate = rates[displayCurrency.toLowerCase()] ?? 1
+    return formatCurrency(amount * rate, displayCurrency)
+  }
 }
+```
+
+#### Supabase — add `base_currency` to `app_settings`
+
+```sql
+-- supabase/migrations/002_add_base_currency.sql
+ALTER TABLE app_settings
+ADD COLUMN IF NOT EXISTS base_currency text NOT NULL DEFAULT 'IDR';
+```
+
+`base_currency` = the currency that all stored transaction amounts are in (set once, rarely changed). `currency` = the display currency the user wants to see.
+
+#### Type update (`src/types/index.ts`)
+
+```ts
+export interface AppSettings {
+  // ... existing fields ...
+  base_currency: string  // storage currency, e.g. 'IDR'
+  // currency field already exists — this is the display currency
+}
+```
+
+#### Seed update
+
+```sql
+UPDATE app_settings SET base_currency = 'IDR' WHERE true;
 ```
 
 **Usage in pages:**
@@ -117,9 +186,11 @@ const fmt = useCurrency()
 <StatCard value={fmt(balance)} />
 ```
 
-**Applied to:** Dashboard, Budget, Transactions, Investing, Estimation, Reports. Every page that currently calls `formatWholeCurrency`, `formatIdrCompact`, `formatIdrInput`, or any other hardcoded formatter replaces it with `fmt(amount)`.
+**Applied to:** Dashboard, Budget, Transactions, Investing, Estimation, Reports.
 
-**Changing currency:** Settings page → Preferences → Currency select. Already wired to `app_settings`. TanStack Query cache invalidation causes all pages to re-render immediately.
+**Changing display currency:** Settings → Preferences → Currency. TanStack Query cache invalidation re-renders all pages instantly. The rate for the new currency is already in the fetched rates map — no extra fetch needed.
+
+**Error fallback:** If the rate fetch fails (no internet), `rates` defaults to `{}`, the rate falls back to `1`, and amounts display in the base currency unchanged. A small "rates unavailable" note could appear — but it's not blocking.
 
 ---
 
@@ -245,8 +316,13 @@ All amounts (`yearly_allocated`, `spent`, stat card totals) formatted via `useCu
 ## 4. Data Flow
 
 ```
-app_settings.currency
-  └─ useCurrency() hook
+app open
+  └─ useExchangeRates(base_currency)
+       └─ fetches ONCE from cdn.jsdelivr.net (staleTime: Infinity)
+            └─ returns rate map: { usd: 0.0000614, eur: 0.0000567, ... }
+
+app_settings.base_currency + app_settings.currency
+  └─ useCurrency() hook  (amount × rate → formatCurrency)
        ├─ Dashboard  (balance, spent, invested)
        ├─ Budget     (allocated, remaining, spent per category)
        ├─ Transactions (amount column)
@@ -265,15 +341,16 @@ investment_config.allocations (jsonb)
 
 ## 5. Error Handling
 
-- `useCurrency()` defaults to `'IDR'` if `app_settings` hasn't loaded yet — no flash of wrong currency on fast connections
+- `useCurrency()` defaults to `'IDR'` base + `'IDR'` display if `app_settings` hasn't loaded yet — no flash of wrong format
+- Exchange rate fetch failure (no internet): `rates` defaults to `{}`, rate falls back to `1`, amounts show in base currency unchanged — not blocking
 - `AllocationEditor` save button disabled when total ≠ 100% — prevents saving invalid state
-- If Supabase migration hasn't been run, `allocations` returns `null` — default allocation is used as fallback
+- If Supabase `allocations` migration hasn't been run, `allocations` returns `null` — `DEFAULT_ALLOCATION` is used as fallback
 
 ---
 
 ## 6. Out of Scope
 
 - Editing budget category `yearly_allocated` amounts inline (stays in Settings)
-- Currency conversion between currencies (amounts stay in one currency)
-- Per-category currency (one global currency only)
+- Real-time / live-streaming exchange rates (fetch once on load is sufficient)
+- Per-category currency (one global display currency only)
 - Animated transitions on the donut chart
