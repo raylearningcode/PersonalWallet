@@ -6,7 +6,7 @@ const CIRCUMFERENCE = 2 * Math.PI * 28  // r = 28 → ≈ 175.93
 
 function AllocationDonut({ items }: { items: AllocationItem[] }) {
   const valid = items.filter(item => item.pct > 0)
-  const total = valid.reduce((sum, item) => sum + item.pct, 0)
+  const total = items.reduce((sum, item) => sum + item.pct, 0)
   let cumulativePct = 0
 
   return (
