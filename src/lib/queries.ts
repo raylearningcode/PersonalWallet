@@ -31,6 +31,18 @@ export function useDeleteTransaction() {
   })
 }
 
+export function useAddTransaction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
+      const { data, error } = await supabase.from('transactions').insert(transaction).select().single()
+      if (error) throw error
+      return data as Transaction
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['transactions'] }),
+  })
+}
+
 export function useMarkReviewed() {
   const qc = useQueryClient()
   return useMutation({
@@ -77,6 +89,20 @@ export function useDeleteBudgetCategory() {
   })
 }
 
+export function useUpdateBudgetCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, yearly_allocated, color }: Pick<BudgetCategory, 'id' | 'yearly_allocated' | 'color'>) => {
+      const { error } = await supabase
+        .from('budget_categories')
+        .update({ yearly_allocated, color })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['budget_categories'] }),
+  })
+}
+
 // ── Budget Rules ──────────────────────────────────────────────
 export function useBudgetRules() {
   return useQuery({
@@ -94,9 +120,9 @@ export function useInvestmentConfig() {
   return useQuery({
     queryKey: ['investment_config'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('investment_config').select('*').limit(1).single()
+      const { data, error } = await supabase.from('investment_config').select('*').limit(1).maybeSingle()
       if (error) throw error
-      return data as InvestmentConfig
+      return data as InvestmentConfig | null
     },
   })
 }
@@ -107,6 +133,21 @@ export function useUpdateInvestmentConfig() {
     mutationFn: async ({ id, ...rest }: Partial<Omit<InvestmentConfig, 'created_at'>> & { id: string }) => {
       const { error } = await supabase.from('investment_config').update(rest).eq('id', id)
       if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['investment_config'] }),
+  })
+}
+
+export function useSaveInvestmentConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (config: Partial<Omit<InvestmentConfig, 'created_at'>>) => {
+      const { id, ...payload } = config
+      const { data, error } = id
+        ? await supabase.from('investment_config').update(payload).eq('id', id).select().single()
+        : await supabase.from('investment_config').insert(payload).select().single()
+      if (error) throw error
+      return data as InvestmentConfig
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['investment_config'] }),
   })
@@ -145,9 +186,9 @@ export function useAppSettings() {
   return useQuery({
     queryKey: ['app_settings'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('app_settings').select('*').limit(1).single()
+      const { data, error } = await supabase.from('app_settings').select('*').limit(1).maybeSingle()
       if (error) throw error
-      return data as AppSettings
+      return data as AppSettings | null
     },
   })
 }
@@ -160,5 +201,65 @@ export function useUpdateAppSettings() {
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['app_settings'] }),
+  })
+}
+
+export function useSaveAppSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (settings: Partial<Omit<AppSettings, 'created_at'>>) => {
+      const { id, ...payload } = settings
+      const { error } = id
+        ? await supabase.from('app_settings').update(payload).eq('id', id)
+        : await supabase.from('app_settings').insert(payload)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['app_settings'] }),
+  })
+}
+
+export function useAuthSession() {
+  return useQuery({
+    queryKey: ['auth_session'],
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.getSession()
+      if (error) throw error
+      return data.session
+    },
+  })
+}
+
+export function useSignIn() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auth_session'] }),
+  })
+}
+
+export function useSignUp() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auth_session'] }),
+  })
+}
+
+export function useSignOut() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auth_session'] }),
   })
 }
