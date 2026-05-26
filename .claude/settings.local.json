@@ -28,7 +28,11 @@
       "Bash(npx tsc *)",
       "Bash(node -e \"const v = require\\('./node_modules/typescript/package.json'\\); console.log\\('TypeScript installed:', v.version\\);\")",
       "Bash(node -e ' *)",
-      "Read(//c/Users/ACER/OneDLine/Desktop/**)"
+      "Read(//c/Users/ACER/OneDLine/Desktop/**)",
+      "Bash(node -e \"const r = 7/100/12; const n = 7*12; const result = 430 * \\(\\(Math.pow\\(1+r,n\\)-1\\)/r\\); console.log\\('result:', result\\);\")",
+      "Bash(git commit *)",
+      "PowerShell(cd \"C:\\\\Users\\\\ACER\\\\OneDrive\\\\Desktop\\\\PersonalWallet\"; npx tsc --noEmit; $exitCode = $LASTEXITCODE; Write-Host \"Exit code: $exitCode\")",
+      "Bash(npm run *)"
     ]
   }
 }
