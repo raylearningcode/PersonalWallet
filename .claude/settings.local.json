@@ -18,7 +18,17 @@
       "Bash(npx shadcn@latest add button card badge progress table input select tabs separator avatar scroll-area label)",
       "Bash(timeout 20 npm run dev)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(node -e \"const pkg = require\\('./package.json'\\); console.log\\('React:', pkg.dependencies.react\\); console.log\\('Vite:', pkg.dependencies.vite\\); console.log\\('Vitest:', pkg.devDependencies.vitest\\); console.log\\('Tailwind:', pkg.devDependencies.tailwindcss\\); console.log\\('@vitejs/plugin-react:', pkg.dependencies['@vitejs/plugin-react']\\);\")",
+      "Bash(node -e \"try { const v = require\\('./node_modules/vitest/package.json'\\); console.log\\('vitest installed:', v.version\\) } catch\\(e\\) { console.log\\('vitest not installed'\\) }; try { const v = require\\('./node_modules/vite/package.json'\\); console.log\\('vite installed:', v.version\\) } catch\\(e\\) { console.log\\('vite not installed'\\) };\")",
+      "Bash(node -e \"try { const v = require\\('./node_modules/@vitejs/plugin-react/package.json'\\); console.log\\('@vitejs/plugin-react installed:', v.version\\) } catch\\(e\\) { console.log\\('not installed:', e.message\\) }; try { const v = require\\('./node_modules/@testing-library/jest-dom/package.json'\\); console.log\\('@testing-library/jest-dom:', v.version\\) } catch\\(e\\) { console.log\\('@testing-library/jest-dom not found'\\) };\")",
+      "Bash(node -e \"try { const v = require\\('./node_modules/jsdom/package.json'\\); console.log\\('jsdom installed:', v.version\\) } catch\\(e\\) { console.log\\('jsdom not found:', e.message\\) };\")",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)",
+      "Bash(node -e \"const v = require\\('./node_modules/typescript/package.json'\\); console.log\\('TypeScript installed:', v.version\\);\")",
+      "Bash(node -e ' *)",
+      "Read(//c/Users/ACER/OneDLine/Desktop/**)"
     ]
   }
 }
