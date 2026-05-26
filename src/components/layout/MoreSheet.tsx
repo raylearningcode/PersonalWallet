@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Calculator, Settings, X } from 'lucide-react'
+import { BarChart2, Calculator, Settings } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useAppSettings } from '@/lib/queries'
 
@@ -30,9 +30,6 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
       <SheetContent side="bottom" className="rounded-t-2xl border-border bg-background pb-8">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-foreground">More</h2>
-          <button onClick={onClose} className="text-muted-foreground">
-            <X className="h-5 w-5" />
-          </button>
         </div>
         <div className="mb-6 flex flex-col gap-2">
           {MORE_NAV.map(({ to, label, Icon }) => (
@@ -47,7 +44,7 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
           ))}
         </div>
         <div className="rounded-2xl border border-border bg-card px-5 py-5">
-          <p className="text-xs text-muted-foreground">2026 goal</p>
+          <p className="text-xs text-muted-foreground">{new Date().getFullYear()} goal</p>
           <p className="mt-2 text-xl font-extrabold text-foreground">{goalLabel}</p>
           <p className="mt-1 text-sm text-primary">{goalPct}% completed</p>
           <div className="mt-3 h-2 rounded-full bg-muted">

@@ -21,16 +21,12 @@ export function BottomNav({ onMoreClick, moreActive }: BottomNavProps) {
           key={to}
           to={to}
           end={to === '/'}
-          className={({ isActive }) =>
-            `flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold transition-colors ${
-              isActive ? 'text-primary' : 'text-muted-foreground'
-            }`
-          }
+          className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold transition-colors"
         >
           {({ isActive }) => (
             <>
               <Icon className={`h-5 w-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-              {label}
+              <span className={isActive ? 'text-primary' : 'text-muted-foreground'}>{label}</span>
             </>
           )}
         </NavLink>
