@@ -26,12 +26,19 @@ export interface BudgetRule {
   created_at?: string
 }
 
+export interface AllocationItem {
+  name: string
+  pct: number
+  color: string
+}
+
 export interface InvestmentConfig {
   id: string
   monthly_contribution: number
   return_rate: number
   duration_years: number
   current_value: number
+  allocations: AllocationItem[]
   created_at?: string
 }
 
@@ -53,6 +60,7 @@ export interface AppSettings {
   email: string
   theme: string
   currency: string
+  base_currency: string
   year_start: string
   default_view: string
   notifications: string
