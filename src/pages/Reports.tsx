@@ -3,12 +3,13 @@ import { useTransactions } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency } from '@/lib/currency'
 import { calculateSavingsRate } from '@/lib/stats'
+import { useCurrency } from '@/lib/currency'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function Reports() {
+  const fmt = useCurrency()
   const { data: transactions = [] } = useTransactions()
   const [openInsight, setOpenInsight] = useState<string | null>(null)
 
@@ -43,7 +44,7 @@ export function Reports() {
       id: 'monthly',
       title: 'Monthly summary',
       badge: hasData ? `${yearTx.length} transactions` : 'No data yet',
-      detail: hasData ? `Total spending this year is ${formatCurrency(totalExpenses, 'IDR')}.` : 'Add transactions to generate a monthly summary.',
+      detail: hasData ? `Total spending this year is ${fmt(totalExpenses)}.` : 'Add transactions to generate a monthly summary.',
     },
     {
       id: 'category',
@@ -65,12 +66,12 @@ export function Reports() {
         title="Reports"
         subtitle="Understand patterns with annual summaries, exportable charts, and personal insights."
       />
-      <div className="mb-11 grid grid-cols-3 gap-6">
+      <div className="mb-11 grid grid-cols-1 gap-6 sm:grid-cols-3">
         <StatCard label="Savings rate" value={`${savingsRate}%`} sub={hasData ? 'Based on current year' : 'No data yet'} badgeVariant="success" />
-        <StatCard label="Avg. spend" value={formatCurrency(avgMonthlySpend, 'IDR')} sub="Monthly average" />
+        <StatCard label="Avg. spend" value={fmt(avgMonthlySpend)} sub="Monthly average" />
         <StatCard label="Top category" value={topCategory || 'Empty'} sub={hasData ? 'Highest expense category' : 'No spending yet'} badgeVariant="warning" />
       </div>
-      <div className="grid grid-cols-[1.45fr_0.8fr] gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.45fr_0.8fr]">
         <Card>
           <CardHeader><CardTitle className="text-xl">Annual spending trend</CardTitle></CardHeader>
           <CardContent className="flex h-[332px] items-end gap-8 px-9 pb-11">
@@ -79,7 +80,7 @@ export function Reports() {
                 key={month.name}
                 className={`w-5 rounded-full ${index === new Date().getMonth() ? 'bg-[#93C5FD]' : 'bg-muted'}`}
                 style={{ height: `${hasData ? Math.max(22, (month.amount / maxMonthlySpend) * 100) : 22}%` }}
-                title={`${month.name}: ${formatCurrency(month.amount, 'IDR')}`}
+                title={`${month.name}: ${fmt(month.amount)}`}
               />
             ))}
           </CardContent>
