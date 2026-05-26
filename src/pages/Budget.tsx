@@ -97,25 +97,41 @@ export function Budget() {
 
   const saveEdit = async () => {
     if (!editingId) return
-    await updateCategory.mutateAsync({ id: editingId, ...editDraft })
-    setEditingId(null)
-    toast.success('Category updated')
+    if (editDraft.yearly_allocated <= 0) {
+      toast.error('Budget must be greater than zero')
+      return
+    }
+    try {
+      await updateCategory.mutateAsync({ id: editingId, ...editDraft })
+      setEditingId(null)
+      toast.success('Category updated')
+    } catch {
+      toast.error('Failed to update category')
+    }
   }
 
   const handleAdd = async () => {
     const amount = Number(addAmount.replace(/[^\d.]/g, ''))
     if (!addName.trim() || !Number.isFinite(amount) || amount <= 0) return
-    await addCategory.mutateAsync({ name: addName.trim(), yearly_allocated: amount, color: addColor })
-    setAddName('')
-    setAddAmount('')
-    setAddColor('#6c63ff')
-    setShowAdd(false)
-    toast.success('Category added')
+    try {
+      await addCategory.mutateAsync({ name: addName.trim(), yearly_allocated: amount, color: addColor })
+      setAddName('')
+      setAddAmount('')
+      setAddColor('#6c63ff')
+      setShowAdd(false)
+      toast.success('Category added')
+    } catch {
+      toast.error('Failed to add category')
+    }
   }
 
   const handleDelete = async (id: string) => {
-    await deleteCategory.mutateAsync(id)
-    toast.success('Category removed')
+    try {
+      await deleteCategory.mutateAsync(id)
+      toast.success('Category removed')
+    } catch {
+      toast.error('Failed to remove category')
+    }
   }
 
   return (
@@ -127,7 +143,7 @@ export function Budget() {
       <div className="mb-11 grid grid-cols-1 gap-6 sm:grid-cols-3">
         <StatCard label="Yearly budget" value={fmt(totalAllocated)} sub="Allocated across categories" />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub="Safe to spend this year" badgeVariant="success" />
-        <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData ? 'Based on current spending' : 'No categories yet'} badgeVariant={riskVariant[risk]} />
+        <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData ? 'Based on current spending' : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.45fr_0.8fr]">
@@ -204,7 +220,8 @@ export function Budget() {
                       </button>
                       <button
                         onClick={() => handleDelete(cat.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-destructive hover:text-red-300"
+                        disabled={deleteCategory.isPending}
+                        className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
                         aria-label={`Delete ${cat.name}`}
                       >
                         ×
