@@ -1,28 +1,127 @@
-import { useState } from 'react'
-import { useInvestmentConfig } from '@/lib/queries'
-import { StatCard } from '@/components/shared/StatCard'
+import { useEffect, useMemo, useState } from 'react'
+import { useInvestmentConfig, useSaveInvestmentConfig } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, Legend,
-} from 'recharts'
-import { calculateProjectedValue, generateGrowthData } from '@/lib/investing'
-import { formatCurrency } from '@/lib/stats'
+import { calculateInvestmentPlan, generateGrowthData } from '@/lib/investing'
+import { useCurrency } from '@/lib/currency'
+import { AllocationEditor } from '@/components/investing/AllocationEditor'
+import { toast } from 'sonner'
+import type { AllocationItem } from '@/types'
+
+type SimulatorValues = {
+  monthlyContribution: number
+  annualReturnRate: number
+  durationYears: number
+  initialCapital: number
+}
+
+const DEFAULT_ALLOCATION: AllocationItem[] = [
+  { name: 'ETF', pct: 60, color: '#6c63ff' },
+  { name: 'Bonds', pct: 20, color: '#22c55e' },
+  { name: 'Cash', pct: 10, color: '#f59e0b' },
+  { name: 'Learning', pct: 10, color: '#60a5fa' },
+]
+
+const parseRate = (value: string) => {
+  const parsed = Number(value.replace(/[^\d.,]/g, '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const parseMoney = (value: string) => {
+  const parsed = Number(value.replace(/[^\d]/g, ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
 
 export function Investing() {
-  useInvestmentConfig()
+  const fmt = useCurrency()
+  const { data: investConfig } = useInvestmentConfig()
+  const saveInvestmentConfig = useSaveInvestmentConfig()
 
-  const [monthly, setMonthly] = useState(430)
-  const [rate, setRate] = useState(7)
-  const [years, setYears] = useState(7)
+  const emptySimulator: SimulatorValues = useMemo(() => ({
+    monthlyContribution: investConfig?.monthly_contribution ?? 0,
+    annualReturnRate: investConfig?.return_rate ?? 0,
+    durationYears: investConfig?.duration_years ?? 0,
+    initialCapital: investConfig?.current_value ?? 0,
+  }), [investConfig])
 
-  const projected = calculateProjectedValue(monthly, rate, years)
-  const contributed = monthly * years * 12
-  const gain = projected - contributed
-  const growthData = generateGrowthData(monthly, rate, years)
+  const [draft, setDraft] = useState<SimulatorValues>({
+    monthlyContribution: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
+  })
+  const [simulator, setSimulator] = useState<SimulatorValues>({
+    monthlyContribution: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
+  })
+  const [allocation, setAllocation] = useState<AllocationItem[]>(DEFAULT_ALLOCATION)
+
+  useEffect(() => {
+    setDraft(emptySimulator)
+    setSimulator(emptySimulator)
+  }, [emptySimulator])
+
+  useEffect(() => {
+    if (investConfig?.allocations && investConfig.allocations.length > 0) {
+      setAllocation(investConfig.allocations)
+    }
+  }, [investConfig])
+
+  const plan = useMemo(() => calculateInvestmentPlan(simulator), [simulator])
+  const growthData = useMemo(
+    () => generateGrowthData(
+      simulator.monthlyContribution,
+      simulator.annualReturnRate,
+      Math.max(0, simulator.durationYears)
+    ).map(point => ({
+      ...point,
+      value: point.value + simulator.initialCapital * Math.pow(1 + simulator.annualReturnRate / 100 / 12, point.year * 12),
+    })),
+    [simulator]
+  )
+  const maxValue = Math.max(...growthData.map(row => row.value), 1)
+
+  const updateDraft = (key: keyof SimulatorValues, value: string) => {
+    const parser = key === 'annualReturnRate' ? parseRate : parseMoney
+    setDraft(current => ({ ...current, [key]: parser(value) }))
+  }
+
+  const setDuration = (durationYears: number) => {
+    setDraft(current => ({ ...current, durationYears }))
+    setSimulator(current => ({ ...current, durationYears }))
+  }
+
+  const saveSimulator = async () => {
+    try {
+      await saveInvestmentConfig.mutateAsync({
+        id: investConfig?.id,
+        monthly_contribution: draft.monthlyContribution,
+        return_rate: draft.annualReturnRate,
+        duration_years: draft.durationYears,
+        current_value: draft.initialCapital,
+        allocations: allocation,
+      })
+      setSimulator(draft)
+      toast.success('Investment simulator saved')
+    } catch {
+      toast.error('Failed to save simulator')
+    }
+  }
+
+  const saveAllocation = async () => {
+    try {
+      await saveInvestmentConfig.mutateAsync({
+        id: investConfig?.id,
+        monthly_contribution: simulator.monthlyContribution,
+        return_rate: simulator.annualReturnRate,
+        duration_years: simulator.durationYears,
+        current_value: simulator.initialCapital,
+        allocations: allocation,
+      })
+      toast.success('Allocation saved')
+    } catch {
+      toast.error('Failed to save allocation')
+    }
+  }
 
   return (
     <div>
@@ -30,81 +129,96 @@ export function Investing() {
         title="Investing"
         subtitle="Simulate monthly contributions, expected returns, and long-term compound growth."
       />
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <StatCard
-          label="Projected portfolio"
-          value={formatCurrency(Math.round(projected))}
-          sub={`Estimated in ${years} years`}
-          badgeVariant="success"
-        />
-        <StatCard
-          label="Total contributed"
-          value={formatCurrency(contributed)}
-          sub={`${formatCurrency(monthly)}/month × ${years * 12} months`}
-        />
-        <StatCard
-          label="Total gain"
-          value={formatCurrency(Math.round(gain))}
-          badge={`${rate}% annual return`}
-          badgeVariant={gain > 0 ? 'success' : 'default'}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-6">
+      <Card className="mb-6">
+        <CardContent className="flex min-h-[146px] flex-col gap-6 px-8 py-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-extrabold text-primary">
+              Purpose: track real investments and simulate expected ROI before committing money.
+            </p>
+            <p className="mt-3 text-xs font-bold text-primary">Projected portfolio</p>
+            <p className="mt-2 text-[2.25rem] font-extrabold leading-none text-foreground">
+              {fmt(plan.projectedPortfolio)}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Estimated in {simulator.durationYears} years with {fmt(simulator.monthlyContribution)}/month and {simulator.annualReturnRate}% annual return.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              className="px-9"
+              onClick={event => { setSimulator(draft); event.currentTarget.blur() }}
+            >
+              Run ROI sim
+            </Button>
+            <Button variant="secondary" className="px-8" onClick={saveSimulator} disabled={saveInvestmentConfig.isPending}>
+              Save simulator
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
         <Card>
-          <CardHeader><CardTitle className="text-base">Growth simulation</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={growthData} margin={{ top: 5, right: 10, left: -5, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3A" />
-                <XAxis
-                  dataKey="year"
-                  tick={{ fontSize: 11, fill: '#64748B' }}
-                  label={{ value: 'Years', position: 'insideBottomRight', offset: -5, fill: '#64748B', fontSize: 11 }}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#64748B' }}
-                  tickFormatter={v => `$${(v / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  contentStyle={{ background: '#131929', border: '1px solid #1E2A3A', borderRadius: 8 }}
-                  formatter={(v: number, name: string) => [
-                    formatCurrency(v),
-                    name === 'value' ? 'Portfolio value' : 'Contributed',
-                  ]}
-                />
-                <Legend formatter={v => v === 'value' ? 'Portfolio value' : 'Contributed'} wrapperStyle={{ fontSize: 12, color: '#64748B' }} />
-                <Line type="monotone" dataKey="value" stroke="#6C63FF" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="contributed" stroke="#22C55E" strokeWidth={2} dot={false} strokeDasharray="5 5" />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardHeader><CardTitle className="text-xl">Growth simulation</CardTitle></CardHeader>
+          <CardContent className="flex h-[266px] items-end justify-center gap-12 px-8 pb-8">
+            {growthData.map((point) => (
+              <button
+                key={point.year}
+                className={`w-5 rounded-full transition-colors ${point.year === simulator.durationYears ? 'bg-primary' : 'bg-muted'}`}
+                style={{ height: `${Math.max(32, (point.value / maxValue) * 230)}px` }}
+                onClick={() => setDuration(point.year)}
+                aria-label={`Use ${point.year} year duration`}
+              />
+            ))}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Investment ROI simulator</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {[
-              { label: 'Monthly contribution ($)', value: monthly, setter: setMonthly },
-              { label: 'Annual return rate (%)', value: rate, setter: setRate },
-              { label: 'Duration (years)', value: years, setter: setYears },
-            ].map(({ label, value, setter }) => (
-              <div key={label}>
-                <Label className="text-sm text-muted-foreground">{label}</Label>
+
+        <Card className="relative z-10">
+          <CardHeader className="p-6 pb-2">
+            <CardTitle className="text-xl">Investment ROI simulator</CardTitle>
+            <p className="text-xs leading-4 text-muted-foreground">
+              Try different monthly contribution, return rate, and duration.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2.5 px-6 pb-5">
+            <div className="rounded-2xl bg-[#164629] p-3">
+              <p className="text-xs font-bold text-primary">Projected portfolio</p>
+              <p className="mt-1 text-2xl font-extrabold text-primary">{fmt(plan.projectedPortfolio)}</p>
+              <p className="mt-1 text-xs text-primary/80">
+                Gain: {fmt(plan.projectedGain)} · Invested: {fmt(plan.totalInvested)}
+              </p>
+            </div>
+            {([
+              ['Monthly contribution', 'monthlyContribution', String(draft.monthlyContribution)],
+              ['Expected return / year', 'annualReturnRate', String(draft.annualReturnRate)],
+              ['Duration (years)', 'durationYears', String(draft.durationYears)],
+              ['Initial capital', 'initialCapital', String(draft.initialCapital)],
+            ] as [string, keyof SimulatorValues, string][]).map(([label, key, value]) => (
+              <div key={key}>
+                <Label className="text-[11px] text-muted-foreground">{label}</Label>
                 <Input
-                  type="number"
+                  aria-label={label}
+                  className="mt-1 h-8 rounded-xl bg-secondary text-sm font-extrabold"
                   value={value}
-                  onChange={e => setter(Number(e.target.value))}
-                  className="mt-1 bg-background border-border"
-                  min={0}
+                  onChange={event => updateDraft(key, event.target.value)}
                 />
               </div>
             ))}
-            <div className="p-3 bg-background rounded-lg border border-border mt-2">
-              <p className="text-xs text-muted-foreground mb-1">Final portfolio value</p>
-              <p className="text-2xl font-bold text-primary">{formatCurrency(Math.round(projected))}</p>
-            </div>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-xl">Portfolio allocation</CardTitle></CardHeader>
+        <CardContent className="px-8 pb-6">
+          <AllocationEditor
+            value={allocation}
+            onChange={setAllocation}
+            onSave={saveAllocation}
+            isSaving={saveInvestmentConfig.isPending}
+          />
+        </CardContent>
+      </Card>
     </div>
   )
 }
