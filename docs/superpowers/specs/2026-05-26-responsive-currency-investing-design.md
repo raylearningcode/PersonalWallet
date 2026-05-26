@@ -17,6 +17,7 @@ Four independent improvements bundled into one release:
 | 2 | Global currency | One formatter + live exchange rate fetched on app open, reads from `app_settings.currency` |
 | 3 | Investing — allocation editor | Editable donut + table, persisted as JSONB to Supabase |
 | 4 | Budget — display improvements | Real amounts on category rows, adaptive bar colors |
+| 5 | Budget — inline editing | Edit yearly_allocated + color per row, add new categories directly on page |
 
 ---
 
@@ -43,6 +44,7 @@ src/pages/Reports.tsx                Use useCurrency
 src/types/index.ts                   Add allocations to InvestmentConfig, base_currency to AppSettings
 supabase/migrations/001_add_allocations.sql   ALTER investment_config ADD allocations
 supabase/migrations/002_add_base_currency.sql ALTER app_settings ADD base_currency
+src/lib/queries.ts                            Add useUpdateBudgetCategory mutation
 ```
 
 ---
@@ -310,6 +312,68 @@ The category's assigned color is used normally when under 70%. At 70–90% it sh
 #### Currency
 
 All amounts (`yearly_allocated`, `spent`, stat card totals) formatted via `useCurrency()`.
+
+---
+
+### 3.5 Budget — Inline Editing
+
+#### Category row — normal state
+
+Each row shows:
+- Left: bold category name + `Rp X,XXX,XXX spent of Rp X,XXX,XXX allocated` in muted text
+- Right: `XX%` label (colored red/amber/normal per adaptive rule) + ✏ pencil button (`h-6 w-6`, `bg-secondary`, `rounded-md`)
+- Progress bar below
+
+#### Category row — edit state
+
+Clicking ✏ expands the row inline (no modal). The row becomes a small form card (`bg-card border border-primary/30 rounded-xl p-3`):
+
+```
+[Category name — read-only label]          [✓ Save] [✗ Cancel]
+Yearly budget:  [Rp | 24,000,000 input    ]
+Color:          [■ color swatch input]   Spent: Rp 6,200,000 (read-only)
+```
+
+- **Yearly budget input:** number input pre-filled with current `yearly_allocated`. Currency prefix shown as muted label.
+- **Color input:** `<input type="color">` styled as a 28×28 rounded swatch.
+- **Spent:** read-only muted label — shows current year spend for context.
+- **✓ Save:** calls `useUpdateBudgetCategory({ id, yearly_allocated, color })` → invalidates `budget_categories` cache → row collapses back to normal state.
+- **✗ Cancel:** resets draft state, collapses row without saving.
+- Only one row can be in edit mode at a time — opening a new row closes any open one.
+
+#### Add category — inline form
+
+A `+ Add category` button sits below the last row (`w-full`, dashed border, `rounded-xl`). Clicking it expands an inline form directly in the card:
+
+```
+[Category name input          ]
+[Yearly amount input    ] [■ color]
+[         Add category         ]
+```
+
+- Name: text input, required.
+- Yearly amount: number input, required.
+- Color: `<input type="color">`, default `#6c63ff`.
+- **Add category** button: calls existing `useAddBudgetCategory` → invalidates cache → form resets and collapses.
+- Form collapses if user clicks `+ Add category` again (toggle).
+
+#### New query — `useUpdateBudgetCategory` (`src/lib/queries.ts`)
+
+```ts
+export function useUpdateBudgetCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...rest }: Pick<BudgetCategory, 'id' | 'yearly_allocated' | 'color'>) => {
+      const { error } = await supabase
+        .from('budget_categories')
+        .update(rest)
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['budget_categories'] }),
+  })
+}
+```
 
 ---
 
