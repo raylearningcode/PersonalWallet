@@ -8,6 +8,10 @@ const mockSupabase = vi.hoisted(() => {
   const builders: any[] = []
   const maybeSingleResponses: any[] = []
   const singleResponses: any[] = []
+  const getSession = vi.fn(() => Promise.resolve({
+    data: { session: { user: { id: 'user-1', email: 'ray@example.com' } } },
+    error: null,
+  }))
 
   function makeBuilder() {
     const builder = {
@@ -27,6 +31,7 @@ const mockSupabase = vi.hoisted(() => {
   return {
     builders,
     from: vi.fn(() => makeBuilder()),
+    getSession,
     maybeSingleResponses,
     singleResponses,
     reset() {
@@ -34,6 +39,7 @@ const mockSupabase = vi.hoisted(() => {
       maybeSingleResponses.length = 0
       singleResponses.length = 0
       this.from.mockClear()
+      this.getSession.mockClear()
     },
   }
 })
@@ -42,7 +48,7 @@ vi.mock('./supabase', () => ({
   supabase: {
     from: mockSupabase.from,
     auth: {
-      getSession: vi.fn(),
+      getSession: mockSupabase.getSession,
       signInWithPassword: vi.fn(),
       signUp: vi.fn(),
       signOut: vi.fn(),
@@ -81,6 +87,7 @@ describe('settings queries', () => {
     const { result } = renderHook(() => useAppSettings(), { wrapper: createWrapper(queryClient) })
 
     await waitFor(() => expect(result.current.data).toEqual(settings))
+    expect(mockSupabase.builders[0].eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(mockSupabase.builders[0].order).toHaveBeenCalledWith('created_at', { ascending: true })
   })
 
@@ -120,6 +127,7 @@ describe('settings queries', () => {
     })
 
     expect(mockSupabase.builders[0].select).toHaveBeenCalledWith('id')
+    expect(mockSupabase.builders[0].eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(mockSupabase.builders[1].update).toHaveBeenCalledWith(expect.objectContaining({
       base_currency: 'IDR',
       currency: 'TWD',

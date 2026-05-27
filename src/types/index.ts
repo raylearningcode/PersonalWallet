@@ -1,5 +1,6 @@
 export interface Transaction {
   id: string
+  user_id?: string | null
   description: string
   amount: number
   original_amount: number
@@ -15,6 +16,7 @@ export interface Transaction {
 
 export interface Wallet {
   id: string
+  user_id?: string | null
   name: string
   type: 'cash' | 'bank' | 'card' | 'e_wallet' | 'investment' | 'other'
   balance: number
@@ -24,6 +26,7 @@ export interface Wallet {
 
 export interface BudgetCategory {
   id: string
+  user_id?: string | null
   name: string
   yearly_allocated: number
   budget_period: 'monthly' | 'yearly'
@@ -33,6 +36,7 @@ export interface BudgetCategory {
 
 export interface BudgetRule {
   id: string
+  user_id?: string | null
   name: string
   category: string
   rule_type: 'cap' | 'minimum' | 'flexible' | 'emergency_months'
@@ -48,6 +52,7 @@ export interface AllocationItem {
 
 export interface InvestmentConfig {
   id: string
+  user_id?: string | null
   monthly_contribution: number
   contribution_currency?: string
   target_portfolio?: number
@@ -61,6 +66,7 @@ export interface InvestmentConfig {
 
 export interface EstimationPlan {
   id: string
+  user_id?: string | null
   month: number
   year: number
   estimated_income: number
@@ -73,6 +79,7 @@ export interface EstimationPlan {
 
 export interface AppSettings {
   id: string
+  user_id?: string | null
   user_name: string
   email: string
   theme: string

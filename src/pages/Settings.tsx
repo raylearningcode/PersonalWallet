@@ -40,7 +40,6 @@ export function Settings() {
 
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')
-  const [profileEmail, setProfileEmail] = useState('')
   const [baseCurrency, setBaseCurrency] = useState('IDR')
   const [currency, setCurrency] = useState('IDR')
   const [authEmail, setAuthEmail] = useState('')
@@ -70,7 +69,6 @@ export function Settings() {
 
   useEffect(() => {
     setName(settings?.user_name ?? '')
-    setProfileEmail(settings?.email ?? session?.user.email ?? '')
     setBaseCurrency(settings?.base_currency || 'IDR')
     setCurrency(settings?.currency || 'IDR')
     setGoalLabel(settings?.annual_goal_label ?? '')
@@ -80,7 +78,7 @@ export function Settings() {
   const baseSettings = {
     id: settings?.id,
     user_name: name,
-    email: profileEmail || session?.user.email || '',
+    email: session?.user.email || '',
     theme: settings?.theme ?? 'dark',
     base_currency: baseCurrency,
     currency,
@@ -177,7 +175,7 @@ export function Settings() {
             </div>
             <div>
               <p className="break-words text-2xl font-extrabold leading-none text-foreground sm:text-[1.7rem]">{name || 'Empty profile'}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{profileEmail || session?.user.email || 'No email set'}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{session?.user.email || 'No account connected'}</p>
             </div>
           </div>
           <Button className="px-9" onClick={() => setEditMode(!editMode)}>
@@ -187,14 +185,10 @@ export function Settings() {
       </Card>
       {editMode && (
         <Card className="mb-8">
-          <CardContent className="grid grid-cols-1 items-end gap-4 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <CardContent className="grid grid-cols-1 items-end gap-4 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto]">
             <div>
               <Label className="text-sm text-muted-foreground">Name</Label>
               <Input aria-label="Profile name" value={name} onChange={event => setName(event.target.value)} className="mt-2 bg-secondary" />
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">Email</Label>
-              <Input aria-label="Profile email" value={profileEmail} onChange={event => setProfileEmail(event.target.value)} className="mt-2 bg-secondary" />
             </div>
             <Button onClick={saveProfile} disabled={saveSettings.isPending}>Save</Button>
           </CardContent>
