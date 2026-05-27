@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   useTransactions,
   useDeleteTransaction,
@@ -6,6 +6,11 @@ import {
   useUpdateTransaction,
   useBudgetCategories,
   useWallets,
+  useRecurringRules,
+  useAddRecurringRule,
+  useUpdateRecurringRule,
+  useDeleteRecurringRule,
+  useRunDueRecurringRules,
 } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -19,10 +24,12 @@ import { Trash2, Pencil, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
-import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
-import type { Transaction } from '@/types'
+import { getMerchantSuggestion } from '@/lib/financeOs'
+import { addRecurringInterval } from '@/lib/recurring'
+import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 
 type Filter = 'all' | 'income' | 'expense' | 'transfer'
+type EntryType = 'income' | 'expense' | 'transfer'
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 
 export function Transactions() {
@@ -32,6 +39,7 @@ export function Transactions() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
+  const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
@@ -39,13 +47,23 @@ export function Transactions() {
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
   const [transferWalletId, setTransferWalletId] = useState('')
-  const [type, setType] = useState<Transaction['type']>('expense')
+  const [type, setType] = useState<EntryType>('expense')
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
+  const [installmentTotal, setInstallmentTotal] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const generatedDueRef = useRef(false)
   const { data: transactions = [] } = useTransactions(filter)
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
+  const { data: recurringRules = [] } = useRecurringRules()
   const addTransaction = useAddTransaction()
   const updateTransaction = useUpdateTransaction()
   const del = useDeleteTransaction()
+  const addRecurringRule = useAddRecurringRule()
+  const updateRecurringRule = useUpdateRecurringRule()
+  const deleteRecurringRule = useDeleteRecurringRule()
+  const runDueRecurringRules = useRunDueRecurringRules()
 
   useEffect(() => {
     if (!category && categories.length > 0) setCategory(categories[0].name)
@@ -59,6 +77,18 @@ export function Transactions() {
   useEffect(() => {
     setInputCurrency(current => current || money.displayCurrency)
   }, [money.displayCurrency])
+
+  useEffect(() => {
+    if (generatedDueRef.current || recurringRules.length === 0) return
+    const today = new Date().toISOString().slice(0, 10)
+    if (!recurringRules.some(rule => rule.active && rule.next_due_date <= today)) return
+    generatedDueRef.current = true
+    runDueRecurringRules.mutate(undefined, {
+      onSuccess: count => {
+        if (count > 0) toast.success(`${count} recurring payment${count === 1 ? '' : 's'} added`)
+      },
+    })
+  }, [recurringRules, runDueRecurringRules])
 
   const moneyIn = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const moneyOut = transactions.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0)
@@ -100,9 +130,9 @@ export function Transactions() {
     () => getMerchantSuggestion(description, transactions),
     [description, transactions]
   )
-  const recurringCandidates = useMemo(
-    () => getRecurringCandidates(transactions).slice(0, 4),
-    [transactions]
+  const upcomingRecurringRules = useMemo(
+    () => [...recurringRules].sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 6),
+    [recurringRules]
   )
 
   const resetForm = () => {
@@ -113,6 +143,10 @@ export function Transactions() {
     setDate(new Date().toISOString().slice(0, 10))
     setType('expense')
     setCategory(categories[0]?.name ?? '')
+    setIsRecurring(false)
+    setFrequency('monthly')
+    setInstallmentTotal('')
+    setEndDate('')
     if (wallets[0]) setWalletId(wallets[0].id)
     if (wallets[1]) setTransferWalletId(wallets[1].id)
   }
@@ -131,7 +165,8 @@ export function Transactions() {
     setCategory(transaction.category)
     setWalletId(transaction.wallet_id ?? wallets[0]?.id ?? '')
     setTransferWalletId(transaction.transfer_wallet_id ?? wallets.find(wallet => wallet.id !== transaction.wallet_id)?.id ?? '')
-    setType(transaction.type)
+    setType(transaction.type === 'income' || transaction.type === 'transfer' ? transaction.type : 'expense')
+    setIsRecurring(false)
     setIsFormOpen(true)
   }
 
@@ -142,6 +177,7 @@ export function Transactions() {
     const selectedCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
     if (type !== 'transfer' && (!selectedCategory || !walletId)) return
     const baseAmount = money.toBase(parsedAmount, inputCurrency)
+    const parsedInstallments = parseInt(installmentTotal.replace(/[^\d]/g, ''), 10)
     const payload = {
       description: description.trim(),
       amount: baseAmount,
@@ -151,6 +187,8 @@ export function Transactions() {
       category: type === 'transfer' ? 'Transfer' : selectedCategory,
       wallet_id: walletId || null,
       transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
+      recurring_rule_id: editingTransaction?.recurring_rule_id ?? null,
+      recurring_due_date: editingTransaction?.recurring_due_date ?? null,
       date,
       needs_review: false,
     }
@@ -160,6 +198,26 @@ export function Transactions() {
       toast.success('Transaction updated')
     } else {
       await addTransaction.mutateAsync(payload)
+      if (isRecurring) {
+        const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
+        await addRecurringRule.mutateAsync({
+          description: description.trim(),
+          amount: baseAmount,
+          original_amount: parsedAmount,
+          original_currency: inputCurrency,
+          type,
+          category: type === 'transfer' ? 'Transfer' : selectedCategory,
+          wallet_id: walletId || null,
+          transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
+          start_date: date,
+          next_due_date: addRecurringInterval(date, frequency),
+          frequency,
+          end_date: endDate || null,
+          installment_total: Number.isFinite(parsedInstallments) ? parsedInstallments : null,
+          installment_paid: Number.isFinite(parsedInstallments) ? 1 : 0,
+          active: !completedAtStart,
+        })
+      }
       toast.success('Transaction added')
     }
     setIsFormOpen(false)
@@ -175,6 +233,23 @@ export function Transactions() {
     del.mutate(deleteTarget.id)
     toast.success('Transaction deleted')
     setDeleteTarget(null)
+  }
+
+  const handleGenerateDue = () => {
+    runDueRecurringRules.mutate(undefined, {
+      onSuccess: count => toast.success(count > 0 ? `${count} recurring payment${count === 1 ? '' : 's'} added` : 'No recurring payment is due yet'),
+    })
+  }
+
+  const handleToggleRule = (rule: RecurringRule) => {
+    updateRecurringRule.mutate({ id: rule.id, active: !rule.active })
+  }
+
+  const confirmDeleteRule = () => {
+    if (!deleteRuleTarget) return
+    deleteRecurringRule.mutate(deleteRuleTarget.id)
+    toast.success('Recurring rule removed')
+    setDeleteRuleTarget(null)
   }
 
   return (
@@ -265,7 +340,7 @@ export function Transactions() {
                   onClick={() => {
                     setCategory(merchantSuggestion.category)
                     if (merchantSuggestion.wallet_id) setWalletId(merchantSuggestion.wallet_id)
-                    setType(merchantSuggestion.type)
+                    setType(merchantSuggestion.type === 'income' || merchantSuggestion.type === 'transfer' ? merchantSuggestion.type : 'expense')
                   }}
                 >
                   Use suggestion: {merchantSuggestion.category}
@@ -316,6 +391,44 @@ export function Transactions() {
                 </div>
               </div>
             )}
+            {!editingTransaction && (
+              <div className="rounded-[1.25rem] border border-border bg-card p-4">
+                <label className="flex items-center justify-between gap-4">
+                  <span>
+                    <span className="block text-sm font-extrabold text-foreground">Recurring / Cicilan</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">Use this for rent, subscriptions, salary, or installment payments.</span>
+                  </span>
+                  <input
+                    aria-label="Recurring / Cicilan"
+                    type="checkbox"
+                    className="h-5 w-5 accent-primary"
+                    checked={isRecurring}
+                    onChange={event => setIsRecurring(event.target.checked)}
+                  />
+                </label>
+                {isRecurring && (
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground">Repeat</Label>
+                      <select aria-label="Recurring frequency" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={frequency} onChange={event => setFrequency(event.target.value as RecurringFrequency)}>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground">Installments</Label>
+                      <Input aria-label="Installment count" className="mt-2 bg-secondary" inputMode="numeric" value={installmentTotal} onChange={event => setInstallmentTotal(formatNumberInput(event.target.value))} placeholder="Empty = no limit" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label className="text-xs font-bold text-muted-foreground">End date</Label>
+                      <Input aria-label="Recurring end date" className="mt-2 bg-secondary" type="date" value={endDate} onChange={event => setEndDate(event.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
               {editingTransaction ? 'Save transaction' : 'Add transaction'}
             </Button>
@@ -346,20 +459,34 @@ export function Transactions() {
         </div>
       )}
 
-      {recurringCandidates.length > 0 && (
+      {upcomingRecurringRules.length > 0 && (
         <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-extrabold text-foreground">Possible recurring payments</h2>
-            <p className="text-xs font-bold text-muted-foreground">Review before adding duplicates</p>
+            <div>
+              <h2 className="text-lg font-extrabold text-foreground">Recurring / cicilan</h2>
+              <p className="mt-1 text-xs font-bold text-muted-foreground">Auto-generates due payments without duplicates.</p>
+            </div>
+            <Button size="sm" variant="secondary" onClick={handleGenerateDue} disabled={runDueRecurringRules.isPending}>Generate due</Button>
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {recurringCandidates.map(candidate => (
-              <div key={candidate.description} className="rounded-2xl bg-secondary p-4">
+            {upcomingRecurringRules.map(rule => (
+              <div key={rule.id} className={`rounded-2xl border p-4 ${rule.active ? 'border-border bg-secondary' : 'border-border/60 bg-secondary/50 opacity-70'}`}>
                 <div className="flex items-center justify-between gap-3">
-                  <p className="min-w-0 truncate font-extrabold text-foreground">{candidate.description}</p>
-                  <p className="shrink-0 text-sm font-bold text-primary">{candidate.count}x</p>
+                  <p className="min-w-0 truncate font-extrabold text-foreground">{rule.description}</p>
+                  <p className="shrink-0 text-sm font-bold text-primary">{rule.frequency}</p>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">{candidate.category} around {money.formatDisplay(candidate.amount)}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{rule.category} - next {rule.next_due_date}</p>
+                <p className="mt-1 text-sm font-bold text-foreground">
+                  {money.format(rule.original_amount, rule.original_currency)}
+                  {rule.original_currency !== money.baseCurrency && <span className="ml-2 text-xs text-muted-foreground">~ {money.formatBase(rule.amount)}</span>}
+                </p>
+                {rule.installment_total && (
+                  <p className="mt-1 text-xs font-bold text-muted-foreground">{rule.installment_paid}/{rule.installment_total} paid</p>
+                )}
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => handleToggleRule(rule)}>{rule.active ? 'Pause' : 'Resume'}</Button>
+                  <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => setDeleteRuleTarget(rule)}>Delete</Button>
+                </div>
               </div>
             ))}
           </div>
@@ -434,6 +561,13 @@ export function Transactions() {
         description="This removes the transaction from your history and wallet calculations."
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDeleteTransaction}
+      />
+      <ConfirmDialog
+        open={Boolean(deleteRuleTarget)}
+        title={deleteRuleTarget ? `Delete recurring rule for ${deleteRuleTarget.description}?` : ''}
+        description="Existing generated transactions stay in history. Only future automatic payments stop."
+        onCancel={() => setDeleteRuleTarget(null)}
+        onConfirm={confirmDeleteRule}
       />
     </div>
   )

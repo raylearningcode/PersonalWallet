@@ -19,10 +19,37 @@ create table transactions (
   category text not null,
   wallet_id uuid references wallets(id) on delete set null,
   transfer_wallet_id uuid references wallets(id) on delete set null,
+  recurring_rule_id uuid,
+  recurring_due_date date,
   date date not null default current_date,
   needs_review boolean not null default false,
   created_at timestamptz default now()
 );
+
+create table recurring_rules (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  description text not null,
+  amount numeric not null check (amount >= 0),
+  original_amount numeric not null default 0 check (original_amount >= 0),
+  original_currency text not null default 'IDR' check (original_currency in ('USD', 'IDR', 'TWD', 'EUR', 'JPY')),
+  type text not null check (type in ('income', 'expense', 'transfer')),
+  category text not null,
+  wallet_id uuid references wallets(id) on delete set null,
+  transfer_wallet_id uuid references wallets(id) on delete set null,
+  start_date date not null default current_date,
+  next_due_date date not null default current_date,
+  frequency text not null default 'monthly' check (frequency in ('daily', 'weekly', 'monthly', 'yearly')),
+  end_date date,
+  installment_total integer check (installment_total is null or installment_total > 0),
+  installment_paid integer not null default 0 check (installment_paid >= 0),
+  active boolean not null default true,
+  created_at timestamptz default now()
+);
+
+alter table transactions
+  add constraint transactions_recurring_rule_id_fkey
+    foreign key (recurring_rule_id) references recurring_rules(id) on delete set null;
 
 create table budget_categories (
   id uuid primary key default gen_random_uuid(),
@@ -49,6 +76,7 @@ create unique index budget_categories_user_name_key on budget_categories(user_id
 create unique index investment_config_user_key on investment_config(user_id);
 create unique index app_settings_user_key on app_settings(user_id);
 create unique index estimation_plans_user_month_year_key on estimation_plans(user_id, month, year);
+create unique index transactions_recurring_due_unique on transactions(user_id, recurring_rule_id, recurring_due_date);
 
 create table investment_config (
   id uuid primary key default gen_random_uuid(),

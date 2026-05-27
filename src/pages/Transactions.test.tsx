@@ -1,10 +1,14 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Transactions } from './Transactions'
 
 const addTransaction = vi.fn()
 const updateTransaction = vi.fn()
 const deleteTransaction = vi.fn()
+const addRecurringRule = vi.fn()
+const updateRecurringRule = vi.fn()
+const deleteRecurringRule = vi.fn()
+const runDueRecurringRules = vi.fn()
 const mockWallets = [
   { id: 'cash', name: 'Cash', type: 'cash' as const, balance: 0, currency: 'IDR' },
   { id: 'card', name: 'Debit card', type: 'card' as const, balance: 0, currency: 'IDR' },
@@ -56,6 +60,11 @@ vi.mock('@/lib/queries', () => ({
   useWallets: () => ({ data: mockWallets }),
   useAddWallet: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteWallet: () => ({ mutate: vi.fn(), isPending: false }),
+  useRecurringRules: () => ({ data: [] }),
+  useAddRecurringRule: () => ({ mutateAsync: addRecurringRule, isPending: false }),
+  useUpdateRecurringRule: () => ({ mutate: updateRecurringRule, isPending: false }),
+  useDeleteRecurringRule: () => ({ mutate: deleteRecurringRule, isPending: false }),
+  useRunDueRecurringRules: () => ({ mutate: runDueRecurringRules, isPending: false }),
   useBudgetCategories: () => ({ data: [
     { id: 'food', name: 'Food', yearly_allocated: 1200000, budget_period: 'monthly', color: '#A9F5C7' },
     { id: 'transport', name: 'Transport', yearly_allocated: 400000, budget_period: 'monthly', color: '#93C5FD' },
@@ -83,6 +92,10 @@ describe('Transactions', () => {
     addTransaction.mockClear()
     updateTransaction.mockClear()
     deleteTransaction.mockClear()
+    addRecurringRule.mockClear()
+    updateRecurringRule.mockClear()
+    deleteRecurringRule.mockClear()
+    runDueRecurringRules.mockClear()
   })
 
   it('adds a transaction from the input form', () => {
@@ -151,6 +164,31 @@ describe('Transactions', () => {
       wallet_id: 'cash',
       transfer_wallet_id: 'card',
     }))
+  })
+
+  it('creates a recurring installment rule from the transaction form', async () => {
+    render(<Transactions />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Laptop cicilan' } })
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-27' } })
+    fireEvent.click(screen.getByLabelText('Recurring / Cicilan'))
+    fireEvent.change(screen.getByLabelText('Recurring frequency'), { target: { value: 'monthly' } })
+    fireEvent.change(screen.getByLabelText('Installment count'), { target: { value: '12' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }))
+
+    await waitFor(() => expect(addRecurringRule).toHaveBeenCalledWith(expect.objectContaining({
+      description: 'Laptop cicilan',
+      original_amount: 1000,
+      original_currency: 'TWD',
+      frequency: 'monthly',
+      start_date: '2026-05-27',
+      next_due_date: '2026-06-27',
+      installment_total: 12,
+      installment_paid: 1,
+      active: true,
+    })))
   })
 
   it('asks with an in-app dialog before deleting a transaction', () => {

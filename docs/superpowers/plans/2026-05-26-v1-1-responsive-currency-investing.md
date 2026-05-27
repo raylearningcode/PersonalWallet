@@ -1875,6 +1875,24 @@ Then resize browser to < 1024px:
 - Add report exports once week/month/year review is stable.
 - Add budget pacing guidance, for example "you can spend about X per day for the rest of this month."
 
+## 2026-05-28 Follow-Up: Real Recurring Payments / Cicilan
+
+**Status:** Implemented in this pass.
+
+- [x] Replaced the fuzzy "possible recurring payments" concept with saved recurring rules for subscriptions, salary repeats, transfers, and installment payments.
+- [x] Added `recurring_rules` in Supabase with owner-scoped RLS, validation checks, due-date indexes, and duplicate-proof generated transactions.
+- [x] Added recurring metadata to transactions so generated payments can be traced back to a rule and not generated twice for the same due date.
+- [x] Added recurring controls to the transaction sheet: repeat frequency, optional installment count, and optional end date.
+- [x] Transactions now shows an upcoming Recurring / cicilan panel with next due date, original currency, base conversion, progress, pause/resume, delete, and "Generate due" actions.
+- [x] The Transactions page automatically generates due recurring payments once when opened, guarded by the database uniqueness constraint.
+- [x] Added recurring date-helper tests covering monthly date clamping, due occurrence generation, end dates, and completed installment rules.
+
+**Daily-user notes for next passes:**
+
+- Add a dedicated recurring manager page if the panel becomes crowded.
+- Add notification-style reminders before large upcoming cicilan payments.
+- Add "skip this month" and "pay early" actions for flexible recurring bills.
+
 - [ ] **Step 4: Final commit**
 
 ```bash

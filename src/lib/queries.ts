@@ -6,12 +6,15 @@ import type {
   BudgetRule,
   EstimationPlan,
   InvestmentConfig,
+  RecurringRule,
   Transaction,
   Wallet,
 } from '../types'
+import { getDueRecurringOccurrences, getNextRecurringState } from './recurring'
 
 const accountQueryKeys = [
   ['transactions'],
+  ['recurring_rules'],
   ['wallets'],
   ['budget_categories'],
   ['budget_rules'],
@@ -52,6 +55,7 @@ async function claimLegacyAccountData(userId: string) {
     'budget_rules',
     'investment_config',
     'estimation_plans',
+    'recurring_rules',
     'transactions',
   ]
   for (const table of tables) {
@@ -129,6 +133,137 @@ export function useMarkReviewed() {
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['transactions'] }),
+  })
+}
+
+export function useRecurringRules() {
+  return useQuery({
+    queryKey: ['recurring_rules'],
+    queryFn: async () => {
+      const userId = await getCurrentUserId()
+      if (!userId) return []
+      const { data, error } = await supabase
+        .from('recurring_rules')
+        .select('*')
+        .eq('user_id', userId)
+        .order('active', { ascending: false })
+        .order('next_due_date', { ascending: true })
+      if (error) throw error
+      return data as RecurringRule[]
+    },
+  })
+}
+
+export function useAddRecurringRule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (rule: Omit<RecurringRule, 'id' | 'created_at'>) => {
+      const userId = await requireUserId('adding recurring rules')
+      const { data, error } = await supabase.from('recurring_rules').insert({ ...rule, user_id: userId }).select().single()
+      if (error) throw error
+      return data as RecurringRule
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring_rules'] }),
+  })
+}
+
+export function useUpdateRecurringRule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...rule }: Partial<Omit<RecurringRule, 'created_at'>> & { id: string }) => {
+      const userId = await requireUserId('editing recurring rules')
+      const { data, error } = await supabase
+        .from('recurring_rules')
+        .update(rule)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single()
+      if (error) throw error
+      return data as RecurringRule
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring_rules'] }),
+  })
+}
+
+export function useDeleteRecurringRule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const userId = await requireUserId('deleting recurring rules')
+      const { error } = await supabase.from('recurring_rules').delete().eq('id', id).eq('user_id', userId)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring_rules'] }),
+  })
+}
+
+export function useRunDueRecurringRules() {
+  const qc = useQueryClient()
+  return useMutation<number, Error, string | undefined>({
+    mutationFn: async today => {
+      const runDate = today ?? new Date().toISOString().slice(0, 10)
+      const userId = await requireUserId('generating recurring payments')
+      const { data: rules, error } = await supabase
+        .from('recurring_rules')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('active', true)
+        .lte('next_due_date', runDate)
+      if (error) throw error
+
+      const generatedTransactions: Array<Omit<Transaction, 'id' | 'created_at'>> = []
+      const ruleUpdates: Array<Partial<RecurringRule> & { id: string }> = []
+
+      for (const rule of (rules ?? []) as RecurringRule[]) {
+        const occurrences = getDueRecurringOccurrences(rule, runDate)
+        occurrences.forEach(dueDate => {
+          generatedTransactions.push({
+            user_id: userId,
+            description: rule.description,
+            amount: rule.amount,
+            original_amount: rule.original_amount,
+            original_currency: rule.original_currency,
+            type: rule.type,
+            category: rule.category,
+            wallet_id: rule.wallet_id ?? null,
+            transfer_wallet_id: rule.transfer_wallet_id ?? null,
+            recurring_rule_id: rule.id,
+            recurring_due_date: dueDate,
+            date: dueDate,
+            needs_review: false,
+          })
+        })
+        if (occurrences.length > 0) {
+          ruleUpdates.push({ id: rule.id, ...getNextRecurringState(rule, occurrences.length) })
+        }
+      }
+
+      if (generatedTransactions.length > 0) {
+        const { error: insertError } = await supabase
+          .from('transactions')
+          .upsert(generatedTransactions, {
+            onConflict: 'user_id,recurring_rule_id,recurring_due_date',
+            ignoreDuplicates: true,
+          })
+        if (insertError) throw insertError
+      }
+
+      for (const { id, ...update } of ruleUpdates) {
+        const { error: updateError } = await supabase
+          .from('recurring_rules')
+          .update(update)
+          .eq('id', id)
+          .eq('user_id', userId)
+        if (updateError) throw updateError
+      }
+
+      return generatedTransactions.length
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['recurring_rules'] })
+    },
   })
 }
 
@@ -464,6 +599,7 @@ export function useSignOut() {
     onSuccess: () => {
       qc.setQueryData(['auth_session'], null)
       qc.setQueryData(['transactions'], [])
+      qc.setQueryData(['recurring_rules'], [])
       qc.setQueryData(['wallets'], [])
       qc.setQueryData(['budget_categories'], [])
       qc.setQueryData(['budget_rules'], [])

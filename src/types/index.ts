@@ -9,8 +9,33 @@ export interface Transaction {
   category: string
   wallet_id?: string | null
   transfer_wallet_id?: string | null
+  recurring_rule_id?: string | null
+  recurring_due_date?: string | null
   date: string
   needs_review: boolean
+  created_at?: string
+}
+
+export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
+
+export interface RecurringRule {
+  id: string
+  user_id?: string | null
+  description: string
+  amount: number
+  original_amount: number
+  original_currency: string
+  type: 'income' | 'expense' | 'transfer'
+  category: string
+  wallet_id?: string | null
+  transfer_wallet_id?: string | null
+  start_date: string
+  next_due_date: string
+  frequency: RecurringFrequency
+  end_date?: string | null
+  installment_total?: number | null
+  installment_paid: number
+  active: boolean
   created_at?: string
 }
 
