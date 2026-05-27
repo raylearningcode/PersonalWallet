@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory,
+  useBudgetRules, useAddBudgetRule,
   useAuthSession, useSignIn, useSignUp, useSignOut,
   useWallets, useAddWallet, useDeleteWallet,
-  useTransactions,
+  useTransactions, useAddTransaction,
+  useInvestmentConfig, useSaveInvestmentConfig,
+  useEstimationPlans, useUpsertEstimationPlan,
 } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,8 +38,15 @@ export function Settings() {
   const deleteCategory = useDeleteBudgetCategory()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
+  const { data: budgetRules = [] } = useBudgetRules()
+  const { data: investmentConfig } = useInvestmentConfig()
+  const { data: estimationPlans = [] } = useEstimationPlans()
   const addWallet = useAddWallet()
   const deleteWallet = useDeleteWallet()
+  const addTransaction = useAddTransaction()
+  const addBudgetRule = useAddBudgetRule()
+  const saveInvestmentConfig = useSaveInvestmentConfig()
+  const upsertEstimationPlan = useUpsertEstimationPlan()
 
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')
@@ -49,6 +59,7 @@ export function Settings() {
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
   const [goalLabel, setGoalLabel] = useState('')
   const [goalPct, setGoalPct] = useState('')
+  const [backupText, setBackupText] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
     id: string
@@ -159,6 +170,43 @@ export function Settings() {
       toast.success('Wallet removed')
     }
     setConfirmDelete(null)
+  }
+
+  const buildBackup = () => ({
+    exported_at: new Date().toISOString(),
+    app: 'FinPath',
+    version: 1,
+    settings,
+    wallets,
+    budget_categories: categories,
+    budget_rules: budgetRules,
+    investment_config: investmentConfig,
+    estimation_plans: estimationPlans,
+    transactions,
+  })
+
+  const handleExportBackup = () => {
+    const text = JSON.stringify(buildBackup(), null, 2)
+    setBackupText(text)
+    navigator.clipboard?.writeText(text).catch(() => undefined)
+    toast.success('Backup prepared')
+  }
+
+  const stripSystemFields = <T extends Record<string, unknown>>(row: T) => {
+    const { id, user_id, created_at, ...payload } = row
+    return payload
+  }
+
+  const handleImportBackup = async () => {
+    if (!backupText.trim()) return
+    const data = JSON.parse(backupText)
+    for (const wallet of data.wallets ?? []) await addWallet.mutateAsync(stripSystemFields(wallet) as Parameters<typeof addWallet.mutateAsync>[0])
+    for (const category of data.budget_categories ?? []) await addCategory.mutateAsync(stripSystemFields(category) as Parameters<typeof addCategory.mutateAsync>[0])
+    for (const rule of data.budget_rules ?? []) await addBudgetRule.mutateAsync(stripSystemFields(rule) as Parameters<typeof addBudgetRule.mutateAsync>[0])
+    if (data.investment_config) await saveInvestmentConfig.mutateAsync(stripSystemFields(data.investment_config))
+    for (const plan of data.estimation_plans ?? []) await upsertEstimationPlan.mutateAsync(stripSystemFields(plan) as Parameters<typeof upsertEstimationPlan.mutateAsync>[0])
+    for (const tx of data.transactions ?? []) await addTransaction.mutateAsync(stripSystemFields(tx) as Parameters<typeof addTransaction.mutateAsync>[0])
+    toast.success('Backup imported')
   }
 
   return (
@@ -377,6 +425,25 @@ export function Settings() {
           </CardContent>
         </Card>
       </div>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-xl">Backup and restore</CardTitle>
+          <p className="text-sm text-muted-foreground">Export your FinPath data as JSON, or paste a previous backup to restore it into this account.</p>
+        </CardHeader>
+        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button onClick={handleExportBackup}>Export backup</Button>
+            <Button variant="secondary" onClick={handleImportBackup}>Import backup</Button>
+          </div>
+          <textarea
+            aria-label="Backup JSON"
+            className="min-h-44 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none"
+            value={backupText}
+            onChange={event => setBackupText(event.target.value)}
+            placeholder="Backup JSON appears here, or paste one to import"
+          />
+        </CardContent>
+      </Card>
       <ConfirmDialog
         open={Boolean(confirmDelete)}
         title={confirmDelete ? `Delete ${confirmDelete.name} ${confirmDelete.kind}?` : ''}

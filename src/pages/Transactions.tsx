@@ -19,6 +19,7 @@ import { Trash2, Pencil, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import type { Transaction } from '@/types'
 
 type Filter = 'all' | 'income' | 'expense' | 'transfer'
@@ -95,6 +96,14 @@ export function Transactions() {
   const selectedCategoryUsedPct = selectedCategoryBudget > 0
     ? Math.round((selectedCategoryTotal / selectedCategoryBudget) * 100)
     : 0
+  const merchantSuggestion = useMemo(
+    () => getMerchantSuggestion(description, transactions),
+    [description, transactions]
+  )
+  const recurringCandidates = useMemo(
+    () => getRecurringCandidates(transactions).slice(0, 4),
+    [transactions]
+  )
 
   const resetForm = () => {
     setEditingTransaction(null)
@@ -249,6 +258,19 @@ export function Transactions() {
             <div>
               <Label className="text-sm font-bold text-foreground">Merchant name</Label>
               <Input aria-label="Description" className="mt-2 bg-secondary" value={description} onChange={event => setDescription(event.target.value)} placeholder="Enter a merchant name" />
+              {merchantSuggestion && !editingTransaction && (
+                <button
+                  type="button"
+                  className="mt-2 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-primary"
+                  onClick={() => {
+                    setCategory(merchantSuggestion.category)
+                    if (merchantSuggestion.wallet_id) setWalletId(merchantSuggestion.wallet_id)
+                    setType(merchantSuggestion.type)
+                  }}
+                >
+                  Use suggestion: {merchantSuggestion.category}
+                </button>
+              )}
             </div>
             {type !== 'transfer' ? (
               <>
@@ -319,6 +341,26 @@ export function Transactions() {
                 <span className="min-w-0 truncate font-extrabold text-foreground">{name}</span>
                 <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{value.count} item{value.count === 1 ? '' : 's'}</span>
               </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {recurringCandidates.length > 0 && (
+        <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-extrabold text-foreground">Possible recurring payments</h2>
+            <p className="text-xs font-bold text-muted-foreground">Review before adding duplicates</p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {recurringCandidates.map(candidate => (
+              <div key={candidate.description} className="rounded-2xl bg-secondary p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="min-w-0 truncate font-extrabold text-foreground">{candidate.description}</p>
+                  <p className="shrink-0 text-sm font-bold text-primary">{candidate.count}x</p>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{candidate.category} around {money.formatDisplay(candidate.amount)}</p>
+              </div>
             ))}
           </div>
         </div>

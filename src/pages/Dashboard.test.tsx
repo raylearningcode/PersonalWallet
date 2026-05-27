@@ -14,6 +14,7 @@ vi.mock('@/lib/queries', () => ({
     { id: 'learning', name: 'Learning', yearly_allocated: 0, budget_period: 'monthly', color: '#93C5FD' },
   ] }),
   useAppSettings: () => ({ data: { user_name: '', email: '', currency: 'IDR', base_currency: 'IDR' } }),
+  useWallets: () => ({ data: [] }),
 }))
 
 vi.mock('@/lib/currency', () => ({

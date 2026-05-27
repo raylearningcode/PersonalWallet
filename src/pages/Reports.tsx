@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { useTransactions } from '@/lib/queries'
+import { useBudgetCategories, useTransactions } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
+import { getCategoryInsights } from '@/lib/financeOs'
 
 type ReportRange = 'week' | 'month' | 'year'
 type ReportMode = 'expense' | 'income'
@@ -55,6 +56,7 @@ function formatPeriodLabel(range: ReportRange, date: Date) {
 export function Reports() {
   const money = useMoney()
   const { data: transactions = [] } = useTransactions()
+  const { data: categories = [] } = useBudgetCategories()
   const [range, setRange] = useState<ReportRange>('month')
   const [periodDate, setPeriodDate] = useState(() => new Date())
   const [mode, setMode] = useState<ReportMode>('expense')
@@ -83,6 +85,7 @@ export function Reports() {
   }, [activeTx])
   const activeTotal = categoryTotals.reduce((sum, [, amount]) => sum + amount, 0)
   const topCategory = categoryTotals[0]?.[0] ?? 'Empty'
+  const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
 
   return (
     <div>
@@ -181,6 +184,19 @@ export function Reports() {
           </CardContent>
         </Card>
       </div>
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-xl">Reporter notes</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 gap-3 px-5 pb-6 sm:px-8 md:grid-cols-2">
+          {insights.length > 0 ? insights.map(insight => (
+            <div key={insight.category} className="rounded-2xl border border-border bg-secondary p-4">
+              <p className="font-extrabold text-foreground">{insight.category}</p>
+              <p className="mt-2 text-sm leading-5 text-muted-foreground">{insight.message}</p>
+            </div>
+          )) : (
+            <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">No budget insight for this period yet.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

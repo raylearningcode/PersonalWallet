@@ -9,6 +9,10 @@ const addCategory = vi.fn()
 const deleteCategory = vi.fn()
 const addWallet = vi.fn()
 const deleteWallet = vi.fn()
+const addTransaction = vi.fn()
+const addBudgetRule = vi.fn()
+const saveInvestmentConfig = vi.fn()
+const upsertEstimationPlan = vi.fn()
 
 vi.mock('@/lib/queries', () => ({
   useAppSettings: () => ({ data: undefined }),
@@ -22,12 +26,19 @@ vi.mock('@/lib/queries', () => ({
   useAddBudgetCategory: () => ({ mutateAsync: addCategory, isPending: false }),
   useDeleteBudgetCategory: () => ({ mutate: deleteCategory }),
   useWallets: () => ({ data: [{ id: 'cash', name: 'Cash', type: 'cash', balance: 0, currency: 'IDR' }] }),
+  useBudgetRules: () => ({ data: [] }),
+  useInvestmentConfig: () => ({ data: null }),
+  useEstimationPlans: () => ({ data: [] }),
   useTransactions: () => ({ data: [
     { id: 'tx-1', description: 'Salary', amount: 2200000, original_amount: 4000, original_currency: 'TWD', type: 'income', category: 'Wage', wallet_id: 'cash', transfer_wallet_id: null, date: '2026-05-20', needs_review: false },
     { id: 'tx-2', description: 'Food', amount: 550000, original_amount: 1000, original_currency: 'TWD', type: 'expense', category: 'Food', wallet_id: 'cash', transfer_wallet_id: null, date: '2026-05-21', needs_review: false },
   ] }),
   useAddWallet: () => ({ mutateAsync: addWallet, isPending: false }),
   useDeleteWallet: () => ({ mutate: deleteWallet }),
+  useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
+  useAddBudgetRule: () => ({ mutateAsync: addBudgetRule, isPending: false }),
+  useSaveInvestmentConfig: () => ({ mutateAsync: saveInvestmentConfig, isPending: false }),
+  useUpsertEstimationPlan: () => ({ mutateAsync: upsertEstimationPlan, isPending: false }),
   useAuthSession: () => ({ data: null }),
   useSignIn: () => ({ mutateAsync: signIn, isPending: false }),
   useSignUp: () => ({ mutateAsync: signUp, isPending: false }),

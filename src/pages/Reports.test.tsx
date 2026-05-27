@@ -8,6 +8,10 @@ vi.mock('@/lib/queries', () => ({
     { id: 'tx-2', description: 'Course', amount: 1100000, original_amount: 2000, original_currency: 'TWD', type: 'expense', category: 'Learning', wallet_id: 'cash', transfer_wallet_id: null, date: '2026-05-18', needs_review: false },
     { id: 'tx-3', description: 'Salary', amount: 2200000, original_amount: 4000, original_currency: 'TWD', type: 'income', category: 'Wage', wallet_id: 'cash', transfer_wallet_id: null, date: '2026-05-01', needs_review: false },
   ] }),
+  useBudgetCategories: () => ({ data: [
+    { id: 'food', name: 'Food', yearly_allocated: 1000000, budget_period: 'monthly', color: '#A9F5C7' },
+    { id: 'learning', name: 'Learning', yearly_allocated: 1000000, budget_period: 'monthly', color: '#93C5FD' },
+  ] }),
   useAppSettings: () => ({ data: undefined }),
 }))
 
