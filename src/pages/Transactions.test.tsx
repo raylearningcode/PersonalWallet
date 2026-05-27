@@ -1,0 +1,215 @@
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { Transactions } from './Transactions'
+
+const addTransaction = vi.fn()
+const updateTransaction = vi.fn()
+const deleteTransaction = vi.fn()
+const mockWallets = [
+  { id: 'cash', name: 'Cash', type: 'cash' as const, balance: 0, currency: 'IDR' },
+  { id: 'card', name: 'Debit card', type: 'card' as const, balance: 0, currency: 'IDR' },
+]
+const mockTransactions = [{
+  id: 'tx-1',
+  description: 'Old lunch',
+  amount: 55000,
+  original_amount: 100,
+  original_currency: 'TWD',
+  type: 'expense' as const,
+  category: 'Food',
+  wallet_id: 'cash',
+  transfer_wallet_id: null,
+  date: '2026-05-20',
+  needs_review: false,
+}, {
+  id: 'tx-3',
+  description: 'Bus',
+  amount: 11000,
+  original_amount: 20,
+  original_currency: 'TWD',
+  type: 'expense' as const,
+  category: 'Transport',
+  wallet_id: 'cash',
+  transfer_wallet_id: null,
+  date: '2026-05-20',
+  needs_review: false,
+}, {
+  id: 'tx-2',
+  description: 'Salary',
+  amount: 2200000,
+  original_amount: 4000,
+  original_currency: 'TWD',
+  type: 'income' as const,
+  category: 'Wage',
+  wallet_id: 'cash',
+  transfer_wallet_id: null,
+  date: '2026-05-21',
+  needs_review: false,
+}]
+
+vi.mock('@/lib/queries', () => ({
+  useTransactions: () => ({ data: mockTransactions }),
+  useDeleteTransaction: () => ({ mutate: deleteTransaction }),
+  useMarkReviewed: () => ({ mutate: vi.fn() }),
+  useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
+  useUpdateTransaction: () => ({ mutateAsync: updateTransaction, isPending: false }),
+  useWallets: () => ({ data: mockWallets }),
+  useAddWallet: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWallet: () => ({ mutate: vi.fn(), isPending: false }),
+  useBudgetCategories: () => ({ data: [
+    { id: 'food', name: 'Food', yearly_allocated: 1200000, budget_period: 'monthly', color: '#A9F5C7' },
+    { id: 'transport', name: 'Transport', yearly_allocated: 400000, budget_period: 'monthly', color: '#93C5FD' },
+  ] }),
+  useAppSettings: () => ({ data: undefined }),
+}))
+
+vi.mock('@/lib/currency', () => ({
+  CURRENCIES: ['USD', 'IDR', 'TWD', 'EUR', 'JPY'],
+  useMoney: () => ({
+    baseCurrency: 'IDR',
+    displayCurrency: 'TWD',
+    toBase: (amount: number, currency: string) => currency === 'TWD' ? amount * 550 : amount,
+    format: (amount: number, currency: string) => `${currency} ${new Intl.NumberFormat('en-US').format(amount)}`,
+    formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
+    formatDisplay: (amount: number) => `NT$${new Intl.NumberFormat('en-US').format(Math.round(amount / 550))}`,
+  }),
+  formatCurrency: (amount: number) =>
+    `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
+  useExchangeRates: () => ({ data: {} }),
+}))
+
+describe('Transactions', () => {
+  beforeEach(() => {
+    addTransaction.mockClear()
+    updateTransaction.mockClear()
+    deleteTransaction.mockClear()
+  })
+
+  it('adds a transaction from the input form', () => {
+    render(<Transactions />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Lunch' } })
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '120000' } })
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-10' } })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Category' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Food' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }))
+
+    expect(addTransaction).toHaveBeenCalledWith(expect.objectContaining({
+      description: 'Lunch',
+      amount: 66000000,
+      original_amount: 120000,
+      original_currency: 'TWD',
+      category: 'Food',
+      wallet_id: 'cash',
+      transfer_wallet_id: null,
+      date: '2026-05-10',
+      type: 'expense',
+      needs_review: false,
+    }))
+  })
+
+  it('edits an existing transaction from history', () => {
+    render(<Transactions />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Old lunch' }))
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Updated lunch' } })
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '200' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save transaction' }))
+
+    expect(updateTransaction).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'tx-1',
+      description: 'Updated lunch',
+      amount: 110000,
+      original_amount: 200,
+      original_currency: 'TWD',
+      category: 'Food',
+      wallet_id: 'cash',
+      transfer_wallet_id: null,
+      date: '2026-05-20',
+      type: 'expense',
+    }))
+  })
+
+  it('adds a transfer between wallets', () => {
+    render(<Transactions />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Move to card' } })
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '300' } })
+    fireEvent.change(screen.getByLabelText('From wallet'), { target: { value: 'cash' } })
+    fireEvent.change(screen.getByLabelText('To wallet'), { target: { value: 'card' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }))
+
+    expect(addTransaction).toHaveBeenCalledWith(expect.objectContaining({
+      description: 'Move to card',
+      amount: 165000,
+      type: 'transfer',
+      category: 'Transfer',
+      wallet_id: 'cash',
+      transfer_wallet_id: 'card',
+    }))
+  })
+
+  it('asks with an in-app dialog before deleting a transaction', () => {
+    render(<Transactions />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Old lunch' }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Delete Old lunch?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(deleteTransaction).toHaveBeenCalledWith('tx-1')
+  })
+
+  it('keeps category management out of the transaction form', () => {
+    render(<Transactions />)
+
+    expect(screen.queryByRole('button', { name: 'Add category option' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Transaction history' })).toBeInTheDocument()
+  })
+
+  it('groups history by date and shows note/category/price columns', () => {
+    render(<Transactions />)
+
+    expect(screen.getByRole('heading', { name: '2026-05-21' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '2026-05-20' })).toBeInTheDocument()
+    expect(screen.getAllByText('Item name').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Note').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Price').length).toBeGreaterThan(0)
+  })
+
+  it('uses income categories when adding income and hides recurring and needs review filters', () => {
+    render(<Transactions />)
+
+    expect(screen.queryByRole('tab', { name: /recurring/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /needs review/i })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Income' }))
+
+    expect(screen.getByRole('option', { name: 'Wage' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Food' })).not.toBeInTheDocument()
+  })
+
+  it('filters history when an expense category is selected', () => {
+    render(<Transactions />)
+
+    fireEvent.click(screen.getByRole('button', { name: /View Food category/i }))
+
+    expect(screen.getByRole('heading', { name: 'Food' })).toBeInTheDocument()
+    expect(screen.getByText('Old lunch')).toBeInTheDocument()
+    expect(screen.queryByText('Bus')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Show all transactions/i })).toBeInTheDocument()
+  })
+
+  it('keeps the expense category box compact and scrollable', () => {
+    render(<Transactions />)
+
+    const categoryList = screen.getByTestId('expense-category-list')
+    expect(categoryList).toHaveClass('max-h-[220px]')
+    expect(screen.getByTestId('expense-category-list')).toHaveClass('overflow-y-auto')
+    expect(within(categoryList).queryByText('NT$100')).not.toBeInTheDocument()
+  })
+})

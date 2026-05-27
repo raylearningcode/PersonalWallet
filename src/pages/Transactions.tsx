@@ -1,0 +1,398 @@
+import { useEffect, useMemo, useState } from 'react'
+import {
+  useTransactions,
+  useDeleteTransaction,
+  useAddTransaction,
+  useUpdateTransaction,
+  useBudgetCategories,
+  useWallets,
+} from '@/lib/queries'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { Trash2, Pencil, Plus } from 'lucide-react'
+import { toast } from 'sonner'
+import { CURRENCIES, useMoney } from '@/lib/currency'
+import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import type { Transaction } from '@/types'
+
+type Filter = 'all' | 'income' | 'expense' | 'transfer'
+const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
+
+export function Transactions() {
+  const money = useMoney()
+  const [filter, setFilter] = useState<Filter>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
+  const [description, setDescription] = useState('')
+  const [amount, setAmount] = useState('')
+  const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [category, setCategory] = useState('')
+  const [walletId, setWalletId] = useState('')
+  const [transferWalletId, setTransferWalletId] = useState('')
+  const [type, setType] = useState<Transaction['type']>('expense')
+  const { data: transactions = [] } = useTransactions(filter)
+  const { data: categories = [] } = useBudgetCategories()
+  const { data: wallets = [] } = useWallets()
+  const addTransaction = useAddTransaction()
+  const updateTransaction = useUpdateTransaction()
+  const del = useDeleteTransaction()
+
+  useEffect(() => {
+    if (!category && categories.length > 0) setCategory(categories[0].name)
+  }, [categories, category])
+
+  useEffect(() => {
+    if (!walletId && wallets.length > 0) setWalletId(wallets[0].id)
+    if (!transferWalletId && wallets.length > 1) setTransferWalletId(wallets[1].id)
+  }, [walletId, transferWalletId, wallets])
+
+  useEffect(() => {
+    setInputCurrency(current => current || money.displayCurrency)
+  }, [money.displayCurrency])
+
+  const moneyIn = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+  const moneyOut = transactions.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0)
+  const cannotSaveTransfer = type === 'transfer' && (wallets.length < 2 || !walletId || !transferWalletId || walletId === transferWalletId)
+  const sortedTransactions = useMemo(
+    () => {
+      const visibleTransactions = selectedCategory
+        ? transactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
+        : transactions
+      return [...visibleTransactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`))
+    },
+    [selectedCategory, transactions]
+  )
+  const expenseCategoryTotals = useMemo(() => {
+    const map = new Map<string, { total: number; count: number }>()
+    transactions.filter(tx => tx.type !== 'income' && tx.type !== 'transfer').forEach(tx => {
+      const current = map.get(tx.category) ?? { total: 0, count: 0 }
+      map.set(tx.category, { total: current.total + tx.amount, count: current.count + 1 })
+    })
+    return [...map.entries()].sort((a, b) => b[1].total - a[1].total)
+  }, [transactions])
+  const groupedTransactions = useMemo(() => {
+    const groups = new Map<string, Transaction[]>()
+    sortedTransactions.forEach(tx => {
+      groups.set(tx.date, [...(groups.get(tx.date) ?? []), tx])
+    })
+    return [...groups.entries()]
+  }, [sortedTransactions])
+  const selectedCategoryTotal = selectedCategory
+    ? expenseCategoryTotals.find(([name]) => name === selectedCategory)?.[1].total ?? 0
+    : 0
+  const selectedCategoryBudget = selectedCategory
+    ? categories.find(item => item.name === selectedCategory)?.yearly_allocated ?? 0
+    : 0
+  const selectedCategoryUsedPct = selectedCategoryBudget > 0
+    ? Math.round((selectedCategoryTotal / selectedCategoryBudget) * 100)
+    : 0
+
+  const resetForm = () => {
+    setEditingTransaction(null)
+    setDescription('')
+    setAmount('')
+    setInputCurrency(money.displayCurrency)
+    setDate(new Date().toISOString().slice(0, 10))
+    setType('expense')
+    setCategory(categories[0]?.name ?? '')
+    if (wallets[0]) setWalletId(wallets[0].id)
+    if (wallets[1]) setTransferWalletId(wallets[1].id)
+  }
+
+  const openAddForm = () => {
+    resetForm()
+    setIsFormOpen(true)
+  }
+
+  const openEditForm = (transaction: Transaction) => {
+    setEditingTransaction(transaction)
+    setDescription(transaction.description)
+    setAmount(String(transaction.original_amount ?? money.fromBase(transaction.amount, transaction.original_currency ?? money.displayCurrency)))
+    setInputCurrency(transaction.original_currency ?? money.displayCurrency)
+    setDate(transaction.date)
+    setCategory(transaction.category)
+    setWalletId(transaction.wallet_id ?? wallets[0]?.id ?? '')
+    setTransferWalletId(transaction.transfer_wallet_id ?? wallets.find(wallet => wallet.id !== transaction.wallet_id)?.id ?? '')
+    setType(transaction.type)
+    setIsFormOpen(true)
+  }
+
+  const handleSaveTransaction = async () => {
+    const parsedAmount = parseNumberInput(amount)
+    if (!description.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return
+    if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) return
+    const selectedCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
+    if (type !== 'transfer' && (!selectedCategory || !walletId)) return
+    const baseAmount = money.toBase(parsedAmount, inputCurrency)
+    const payload = {
+      description: description.trim(),
+      amount: baseAmount,
+      original_amount: parsedAmount,
+      original_currency: inputCurrency,
+      type,
+      category: type === 'transfer' ? 'Transfer' : selectedCategory,
+      wallet_id: walletId || null,
+      transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
+      date,
+      needs_review: false,
+    }
+
+    if (editingTransaction) {
+      await updateTransaction.mutateAsync({ id: editingTransaction.id, ...payload })
+      toast.success('Transaction updated')
+    } else {
+      await addTransaction.mutateAsync(payload)
+      toast.success('Transaction added')
+    }
+    setIsFormOpen(false)
+    resetForm()
+  }
+
+  const handleDeleteTransaction = (tx: Transaction) => {
+    setDeleteTarget(tx)
+  }
+
+  const confirmDeleteTransaction = () => {
+    if (!deleteTarget) return
+    del.mutate(deleteTarget.id)
+    toast.success('Transaction deleted')
+    setDeleteTarget(null)
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Transactions"
+        subtitle="Track every cashflow with clean filters, wallet routing, and category breakdowns."
+        action={(
+          <Button onClick={openAddForm} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New transaction
+          </Button>
+        )}
+      />
+      <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null) }} className="mb-8 overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
+        <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
+          {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
+            <TabsTrigger
+              key={f}
+              value={f}
+              className="h-10 min-w-24 rounded-full border border-border bg-transparent px-4 text-sm font-bold capitalize text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:min-w-28 sm:px-6"
+            >
+              {f.replace('_', ' ')}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      <div className="mb-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+        {[
+          { label: 'Money in', value: money.formatDisplay(moneyIn), dot: 'bg-primary', sub: money.baseCurrency !== money.displayCurrency ? money.formatBase(moneyIn) : 'Income received' },
+          { label: 'Money out', value: money.formatDisplay(moneyOut), dot: 'bg-[#FF8388]', sub: money.baseCurrency !== money.displayCurrency ? money.formatBase(moneyOut) : `Across ${transactions.length} transactions` },
+          { label: 'Categories', value: `${expenseCategoryTotals.length} items`, dot: 'bg-[#FFD276]', sub: 'Expense breakdown below' },
+        ].map(({ label, value, dot, sub }) => (
+          <div key={label} className="relative rounded-[1.4rem] border border-border bg-card px-6 py-5">
+            <span className={`absolute right-7 top-7 h-4 w-4 rounded-full ${dot}`} />
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-4 break-words text-[1.65rem] font-extrabold leading-none text-foreground sm:text-[2rem]">{value}</p>
+            <p className="mt-6 text-sm text-muted-foreground">{sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 sm:max-w-md sm:p-6">
+          <SheetHeader className="mb-6 text-left">
+            <SheetTitle>{editingTransaction ? 'Edit transaction' : 'New transaction'}</SheetTitle>
+            <SheetDescription>Fill the amount in the currency you actually paid or received.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-5">
+            <div className="rounded-[1.25rem] border border-border bg-card p-4 text-center">
+              <div className="mx-auto mb-3 inline-flex rounded-full border border-border bg-secondary p-1">
+                {(['income', 'expense', 'transfer'] as const).map(item => (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-label={item[0].toUpperCase() + item.slice(1)}
+                    className={`rounded-full px-6 py-2 text-sm font-extrabold capitalize transition-colors ${type === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => {
+                      setType(item)
+                      if (item === 'income') setCategory(INCOME_CATEGORIES[0])
+                      if (item === 'expense') setCategory(categories[0]?.name ?? '')
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <select
+                  aria-label="Input currency"
+                  className="h-10 rounded-full border border-border bg-secondary px-3 text-sm font-extrabold text-muted-foreground outline-none"
+                  value={inputCurrency}
+                  onChange={event => setInputCurrency(event.target.value)}
+                >
+                  {CURRENCIES.map(currency => <option key={currency} value={currency}>{currency}</option>)}
+                </select>
+                <Input aria-label="Amount" className="h-14 w-44 border-0 bg-transparent text-center text-4xl font-extrabold" inputMode="decimal" value={amount} onChange={event => setAmount(formatNumberInput(event.target.value))} placeholder="0" />
+              </div>
+              <Input aria-label="Date" className="mx-auto mt-4 max-w-[190px] rounded-full bg-secondary text-center" type="date" value={date} onChange={event => setDate(event.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">Merchant name</Label>
+              <Input aria-label="Description" className="mt-2 bg-secondary" value={description} onChange={event => setDescription(event.target.value)} placeholder="Enter a merchant name" />
+            </div>
+            {type !== 'transfer' ? (
+              <>
+                <div>
+                  <Label className="text-sm font-bold text-foreground">Category</Label>
+                  <select
+                    aria-label="Category"
+                    className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                    value={category}
+                    onChange={event => setCategory(event.target.value)}
+                  >
+                    {type === 'income' ? (
+                      INCOME_CATEGORIES.map(item => <option key={item} value={item}>{item}</option>)
+                    ) : (
+                      <>
+                        {categories.length === 0 && <option value="">Add categories in Settings</option>}
+                        {categories.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
+                      </>
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-sm font-bold text-foreground">Wallet</Label>
+                  <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
+                    {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
+                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                  </select>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label className="text-sm font-bold text-foreground">From wallet</Label>
+                  <select aria-label="From wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
+                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-sm font-bold text-foreground">To wallet</Label>
+                  <select aria-label="To wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={transferWalletId} onChange={event => setTransferWalletId(event.target.value)}>
+                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+            <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
+              {editingTransaction ? 'Save transaction' : 'Add transaction'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {expenseCategoryTotals.length > 0 && (
+        <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-extrabold text-foreground">Expense by category</h2>
+            <p className="text-xs font-bold text-muted-foreground">Tap to filter</p>
+          </div>
+          <div data-testid="expense-category-list" className="grid max-h-[220px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+            {expenseCategoryTotals.map(([name, value]) => (
+              <button
+                key={name}
+                type="button"
+                aria-label={`View ${name} category`}
+                className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selectedCategory === name ? 'border-primary bg-primary/10' : 'border-border bg-secondary hover:bg-muted/50'}`}
+                onClick={() => setSelectedCategory(name)}
+              >
+                <span className="min-w-0 truncate font-extrabold text-foreground">{name}</span>
+                <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{value.count} item{value.count === 1 ? '' : 's'}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6 sm:py-6">
+        {selectedCategory ? (
+          <div className="mb-6 rounded-2xl border border-border bg-secondary p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-extrabold text-foreground">{selectedCategory}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Spent {money.formatDisplay(selectedCategoryTotal)}
+                  {selectedCategoryBudget > 0 && ` / ${money.formatDisplay(selectedCategoryBudget)} (${selectedCategoryUsedPct}%)`}
+                </p>
+                {money.baseCurrency !== money.displayCurrency && <p className="mt-1 text-xs text-muted-foreground">{money.formatBase(selectedCategoryTotal)}</p>}
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => setSelectedCategory(null)}>Show all transactions</Button>
+            </div>
+          </div>
+        ) : (
+          <h2 className="mb-4 text-xl font-extrabold text-foreground">Transaction history</h2>
+        )}
+        {groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
+          <div key={date} className="mb-6 last:mb-0">
+            <h3 className="mb-3 text-sm font-extrabold text-primary">{date}</h3>
+            <div className="overflow-x-auto rounded-2xl border border-border">
+              <Table className="min-w-[820px]">
+                <TableBody>
+                  <TableRow className="border-border bg-secondary/70 hover:bg-secondary/70">
+                    <TableCell className="py-2 text-xs font-bold text-muted-foreground">Item name</TableCell>
+                    <TableCell className="py-2 text-xs font-bold text-muted-foreground">Category</TableCell>
+                    <TableCell className="py-2 text-xs font-bold text-muted-foreground">Note</TableCell>
+                    <TableCell className="py-2 text-right text-xs font-bold text-muted-foreground">Price</TableCell>
+                    <TableCell className="py-2" />
+                  </TableRow>
+                  {rows.map(tx => (
+                    <TableRow key={tx.id} className="border-border hover:bg-muted/10">
+                      <TableCell className="w-1/4 py-3 text-foreground">{tx.description}</TableCell>
+                      <TableCell className="text-muted-foreground">{tx.category}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                        {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
+                      </TableCell>
+                      <TableCell className={`text-right font-bold ${tx.type === 'income' ? 'text-primary' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-[#FF8388]'}`}>
+                        {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}{money.formatDisplay(tx.amount)}
+                      </TableCell>
+                      <TableCell className="w-[92px]">
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                            <Pencil size={14} />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )) : (
+          <p className="py-10 text-center text-muted-foreground">No transactions yet.</p>
+        )}
+      </div>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={deleteTarget ? `Delete ${deleteTarget.description}?` : ''}
+        description="This removes the transaction from your history and wallet calculations."
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteTransaction}
+      />
+    </div>
+  )
+}

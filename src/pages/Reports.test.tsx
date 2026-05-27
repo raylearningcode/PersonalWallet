@@ -1,0 +1,45 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { Reports } from './Reports'
+
+vi.mock('@/lib/queries', () => ({
+  useTransactions: () => ({ data: [
+    { id: 'tx-1', description: 'Lunch', amount: 550000, original_amount: 1000, original_currency: 'TWD', type: 'expense', category: 'Food', wallet_id: 'cash', transfer_wallet_id: null, date: '2026-05-21', needs_review: false },
+    { id: 'tx-2', description: 'Course', amount: 1100000, original_amount: 2000, original_currency: 'TWD', type: 'expense', category: 'Learning', wallet_id: 'cash', transfer_wallet_id: null, date: '2026-05-18', needs_review: false },
+    { id: 'tx-3', description: 'Salary', amount: 2200000, original_amount: 4000, original_currency: 'TWD', type: 'income', category: 'Wage', wallet_id: 'cash', transfer_wallet_id: null, date: '2026-05-01', needs_review: false },
+  ] }),
+  useAppSettings: () => ({ data: undefined }),
+}))
+
+vi.mock('@/lib/currency', () => ({
+  useCurrency: () => (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
+  useMoney: () => ({
+    baseCurrency: 'IDR',
+    displayCurrency: 'IDR',
+    formatDisplay: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
+  }),
+}))
+
+describe('Reports', () => {
+  it('switches report range between week, month, and year', () => {
+    render(<Reports />)
+
+    expect(screen.getByRole('button', { name: 'Week' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Month' }))
+    expect(screen.getByText('Spending by category')).toBeInTheDocument()
+    expect(screen.getByText('Category breakdown')).toBeInTheDocument()
+    expect(screen.getAllByText('Food').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Learning').length).toBeGreaterThan(0)
+  })
+
+  it('moves between specific reporting periods', () => {
+    render(<Reports />)
+
+    expect(screen.getByText('May 2026')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Previous period' }))
+    expect(screen.getByText('April 2026')).toBeInTheDocument()
+    expect(screen.getByText('No expense data in this range.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Next period' }))
+    expect(screen.getByText('May 2026')).toBeInTheDocument()
+  })
+})
