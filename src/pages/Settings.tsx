@@ -249,7 +249,7 @@ export function Settings() {
           </CardContent>
         </Card>
       )}
-      <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,0.7fr)_minmax(0,1.3fr)] xl:gap-7">
+      <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(280px,0.6fr)_minmax(0,1.4fr)] xl:gap-7">
         <Card>
           <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
           <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
@@ -279,50 +279,6 @@ export function Settings() {
             <Button onClick={saveCurrency} disabled={saveSettings.isPending}>Save currency</Button>
           </CardContent>
         </Card>
-      </div>
-      <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)]">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="text-xl">Category manager</CardTitle>
-              <Button variant="secondary" onClick={handleAddStarterCategories} disabled={addCategory.isPending}>
-                Restore starter categories
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {categories.map(category => (
-                <div
-                  key={category.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3"
-                >
-                  <span className="min-w-0 truncate font-bold text-foreground">{category.name}</span>
-                  <button
-                    aria-label={`Delete ${category.name} category`}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
-                    onClick={() => handleDeleteCategory(category.id, category.name)}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            {categories.length === 0 && <p className="text-sm text-muted-foreground">No categories yet.</p>}
-            <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
-              <Input
-                className="bg-secondary"
-                value={newCategory}
-                onChange={event => setNewCategory(event.target.value)}
-                onKeyDown={event => event.key === 'Enter' && handleAddCategory()}
-                placeholder="New category"
-              />
-              <Button onClick={handleAddCategory} disabled={addCategory.isPending}>Add</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:gap-7">
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Wallets</CardTitle>
@@ -382,39 +338,79 @@ export function Settings() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Account access</CardTitle>
-            <p className="text-sm text-muted-foreground">Log in or create an account to keep your budget data available across sessions.</p>
-          </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            {session ? (
-              <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-bold text-foreground">Logged in</p>
-                  <p className="text-sm text-muted-foreground">{session.user.email}</p>
-                </div>
-                <Button variant="secondary" onClick={() => signOut.mutateAsync()}>Log out</Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 items-end gap-4">
-                <div>
-                  <Label className="text-sm text-muted-foreground">Email</Label>
-                  <Input aria-label="Auth email" className="mt-2 bg-secondary" value={authEmail} onChange={event => setAuthEmail(event.target.value)} placeholder="you@example.com" />
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">Password</Label>
-                  <Input aria-label="Auth password" className="mt-2 bg-secondary" type="password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} placeholder="Password" />
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button onClick={handleSignIn} disabled={signIn.isPending}>Log in</Button>
-                  <Button variant="secondary" onClick={handleSignUp} disabled={signUp.isPending}>Sign up</Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
+      <Card className="mb-8">
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-xl">Category manager</CardTitle>
+              <Button variant="secondary" onClick={handleAddStarterCategories} disabled={addCategory.isPending}>
+                Restore starter categories
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {categories.map(category => (
+                <div
+                  key={category.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3"
+                >
+                  <span className="min-w-0 truncate font-bold text-foreground">{category.name}</span>
+                  <button
+                    aria-label={`Delete ${category.name} category`}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
+                    onClick={() => handleDeleteCategory(category.id, category.name)}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {categories.length === 0 && <p className="text-sm text-muted-foreground">No categories yet.</p>}
+            <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
+              <Input
+                className="bg-secondary"
+                value={newCategory}
+                onChange={event => setNewCategory(event.target.value)}
+                onKeyDown={event => event.key === 'Enter' && handleAddCategory()}
+                placeholder="New category"
+              />
+              <Button onClick={handleAddCategory} disabled={addCategory.isPending}>Add</Button>
+            </div>
+          </CardContent>
+      </Card>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-xl">Account access</CardTitle>
+          <p className="text-sm text-muted-foreground">Log in or create an account to keep your budget data available across sessions.</p>
+        </CardHeader>
+        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+          {session ? (
+            <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-bold text-foreground">Logged in</p>
+                <p className="text-sm text-muted-foreground">{session.user.email}</p>
+              </div>
+              <Button variant="secondary" onClick={() => signOut.mutateAsync()}>Log out</Button>
+            </div>
+          ) : (
+            <div className="grid max-w-md grid-cols-1 items-end gap-4">
+              <div>
+                <Label className="text-sm text-muted-foreground">Email</Label>
+                <Input aria-label="Auth email" className="mt-2 bg-secondary" value={authEmail} onChange={event => setAuthEmail(event.target.value)} placeholder="you@example.com" />
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground">Password</Label>
+                <Input aria-label="Auth password" className="mt-2 bg-secondary" type="password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} placeholder="Password" />
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button onClick={handleSignIn} disabled={signIn.isPending}>Log in</Button>
+                <Button variant="secondary" onClick={handleSignUp} disabled={signUp.isPending}>Sign up</Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-xl">Backup and restore</CardTitle>
