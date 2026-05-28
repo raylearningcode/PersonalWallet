@@ -54,16 +54,12 @@ export function Investing() {
   const [draft, setDraft] = useState<SimulatorValues>({
     monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
   })
-  const [simulator, setSimulator] = useState<SimulatorValues>({
-    monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
-  })
   const [contributionCurrency, setContributionCurrency] = useState(savedContributionCurrency)
   const [targetCurrency, setTargetCurrency] = useState(savedTargetCurrency)
   const [allocation, setAllocation] = useState<AllocationItem[]>(DEFAULT_ALLOCATION)
 
   useEffect(() => {
     setDraft(emptySimulator)
-    setSimulator(emptySimulator)
     setContributionCurrency(savedContributionCurrency)
     setTargetCurrency(savedTargetCurrency)
   }, [emptySimulator, savedContributionCurrency, savedTargetCurrency])
@@ -79,27 +75,22 @@ export function Investing() {
     monthlyContribution: money.toBase(draft.monthlyContribution, contributionCurrency),
     targetPortfolio: money.toBase(draft.targetPortfolio, targetCurrency),
   }), [contributionCurrency, draft, money.baseCurrency, money.displayCurrency, money.rates, targetCurrency])
-  const simulatorBase = useMemo(() => ({
-    ...simulator,
-    monthlyContribution: money.toBase(simulator.monthlyContribution, contributionCurrency),
-    targetPortfolio: money.toBase(simulator.targetPortfolio, targetCurrency),
-  }), [contributionCurrency, money.baseCurrency, money.displayCurrency, money.rates, simulator, targetCurrency])
 
-  const plan = useMemo(() => calculateInvestmentPlan(simulatorBase), [simulatorBase])
-  const targetGap = Math.max(0, simulatorBase.targetPortfolio - plan.projectedPortfolio)
-  const targetProgress = simulatorBase.targetPortfolio > 0
-    ? Math.min(100, Math.round((plan.projectedPortfolio / simulatorBase.targetPortfolio) * 100))
+  const plan = useMemo(() => calculateInvestmentPlan(draftBase), [draftBase])
+  const targetGap = Math.max(0, draftBase.targetPortfolio - plan.projectedPortfolio)
+  const targetProgress = draftBase.targetPortfolio > 0
+    ? Math.min(100, Math.round((plan.projectedPortfolio / draftBase.targetPortfolio) * 100))
     : 0
   const growthData = useMemo(
     () => generateGrowthData(
-      simulatorBase.monthlyContribution,
-      simulator.annualReturnRate,
-      Math.max(0, simulator.durationYears)
+      draftBase.monthlyContribution,
+      draft.annualReturnRate,
+      Math.max(draft.durationYears, 10)
     ).map(point => ({
       ...point,
-      value: point.value + simulator.initialCapital * Math.pow(1 + simulator.annualReturnRate / 100 / 12, point.year * 12),
+      value: point.value + draft.initialCapital * Math.pow(1 + draft.annualReturnRate / 100 / 12, point.year * 12),
     })),
-    [simulator, simulatorBase.monthlyContribution]
+    [draft, draftBase.monthlyContribution]
   )
   const maxValue = Math.max(...growthData.map(row => row.value), 1)
 
@@ -110,10 +101,9 @@ export function Investing() {
 
   const setDuration = (durationYears: number) => {
     setDraft(current => ({ ...current, durationYears }))
-    setSimulator(current => ({ ...current, durationYears }))
   }
 
-  const runSimulator = () => setSimulator(draft)
+  const runSimulator = () => {}
 
   const saveSimulator = async () => {
     try {
@@ -128,7 +118,6 @@ export function Investing() {
         current_value: draft.initialCapital,
         allocations: allocation,
       })
-      setSimulator(draft)
       toast.success('Investment simulator saved')
     } catch {
       toast.error('Failed to save simulator')
@@ -139,13 +128,13 @@ export function Investing() {
     try {
       await saveInvestmentConfig.mutateAsync({
         id: investConfig?.id,
-        monthly_contribution: simulatorBase.monthlyContribution,
+        monthly_contribution: draftBase.monthlyContribution,
         contribution_currency: contributionCurrency,
-        target_portfolio: simulatorBase.targetPortfolio,
+        target_portfolio: draftBase.targetPortfolio,
         target_currency: targetCurrency,
-        return_rate: simulator.annualReturnRate,
-        duration_years: simulator.durationYears,
-        current_value: simulator.initialCapital,
+        return_rate: draft.annualReturnRate,
+        duration_years: draft.durationYears,
+        current_value: draft.initialCapital,
         allocations: allocation,
       })
       toast.success('Allocation saved')
@@ -171,13 +160,13 @@ export function Investing() {
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Projected in {money.displayCurrency}</span>
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Base value {money.formatBase(plan.projectedPortfolio)}</span>
-              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">{money.format(simulator.monthlyContribution, contributionCurrency)}/month</span>
-              {simulatorBase.targetPortfolio > 0 && (
+              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">{money.format(draft.monthlyContribution, contributionCurrency)}/month</span>
+              {draftBase.targetPortfolio > 0 && (
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Target gap {money.formatDisplay(targetGap)}</span>
               )}
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
-              Estimated in {simulator.durationYears} years at {simulator.annualReturnRate}% annual return.
+              Estimated in {draft.durationYears} years at {draft.annualReturnRate}% annual return.
             </p>
           </div>
           <div className="relative flex flex-col gap-3 sm:flex-row lg:shrink-0">
@@ -201,7 +190,7 @@ export function Investing() {
             {growthData.map((point) => (
               <button
                 key={point.year}
-                className={`w-5 rounded-full transition-colors ${point.year === simulator.durationYears ? 'bg-primary' : 'bg-muted'}`}
+                className={`w-5 rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted'}`}
                 style={{ height: `${Math.max(32, (point.value / maxValue) * 230)}px` }}
                 onClick={() => setDuration(point.year)}
                 aria-label={`Use ${point.year} year duration`}

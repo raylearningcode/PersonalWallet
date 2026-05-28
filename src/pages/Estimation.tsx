@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useUpsertEstimationPlan } from '@/lib/queries'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEstimationPlans, useUpsertEstimationPlan } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,6 +32,8 @@ type WishlistItem = {
 export function Estimation() {
   const money = useMoney()
   const upsert = useUpsertEstimationPlan()
+  const { data: plans } = useEstimationPlans()
+  const initialized = useRef(false)
 
   const [incomeItems, setIncomeItems] = useState<EstimateItem[]>([])
   const [expenseItems, setExpenseItems] = useState<EstimateItem[]>([])
@@ -48,6 +50,28 @@ export function Estimation() {
   const [wishlistType, setWishlistType] = useState('Want')
   const [wishlistNote, setWishlistNote] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<null | { list: 'income' | 'expense' | 'wishlist'; id: string; name: string }>(null)
+
+  useEffect(() => {
+    if (initialized.current || !plans) return
+    initialized.current = true
+    const now = new Date()
+    const current = plans.find(p => p.month === now.getMonth() + 1 && p.year === now.getFullYear())
+    if (!current?.notes) return
+    try {
+      const parsed = JSON.parse(current.notes) as {
+        text?: string
+        incomeItems?: EstimateItem[]
+        expenseItems?: EstimateItem[]
+        wishlistItems?: WishlistItem[]
+      }
+      if (parsed.text !== undefined) setNotes(parsed.text)
+      if (Array.isArray(parsed.incomeItems)) setIncomeItems(parsed.incomeItems)
+      if (Array.isArray(parsed.expenseItems)) setExpenseItems(parsed.expenseItems)
+      if (Array.isArray(parsed.wishlistItems)) setWishlistItems(parsed.wishlistItems)
+    } catch {
+      setNotes(current.notes)
+    }
+  }, [plans])
 
   const monthlyIncome = useMemo(() => incomeItems.reduce((sum, item) => sum + (item.period === 'monthly' ? item.amount : item.amount / 12), 0), [incomeItems])
   const yearlyIncome = useMemo(() => incomeItems.reduce((sum, item) => sum + (item.period === 'monthly' ? item.amount * 12 : item.amount), 0), [incomeItems])
@@ -97,12 +121,7 @@ export function Estimation() {
       fixed_expenses: monthlyExpenses,
       variable_estimate: 0,
       currency: money.baseCurrency,
-      notes: [
-        notes,
-        incomeItems.length ? `Income: ${incomeItems.map(item => `${item.name} ${money.formatDisplay(item.amount)} ${item.period}`).join(', ')}` : '',
-        expenseItems.length ? `Expenses: ${expenseItems.map(item => `${item.name} ${money.formatDisplay(item.amount)} ${item.period}`).join(', ')}` : '',
-        wishlistItems.length ? `Wishlist: ${wishlistItems.map(item => `${item.name} ${money.formatDisplay(item.amount)} ${item.type}${item.note ? ` - ${item.note}` : ''}`).join(', ')}` : '',
-      ].filter(Boolean).join('\n'),
+      notes: JSON.stringify({ text: notes, incomeItems, expenseItems, wishlistItems }),
     })
     toast.success('Estimation plan saved')
   }
