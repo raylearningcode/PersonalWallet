@@ -26,7 +26,16 @@ export function Dashboard() {
   const year = new Date().getFullYear()
   const now = new Date()
   const hour = now.getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const { greeting, greetingSubtitle } = (() => {
+    if (hour < 5)  return { greeting: 'Still awake?',             greetingSubtitle: 'Quick check before bed — the numbers can wait.' }
+    if (hour < 7)  return { greeting: 'Early start!',             greetingSubtitle: "You're up before the world. Let's make it count." }
+    if (hour < 12) return { greeting: 'Good morning',             greetingSubtitle: 'Your financial health at a glance.' }
+    if (hour < 14) return { greeting: 'Midday check-in',          greetingSubtitle: "Halfway through the day — how's the spending?" }
+    if (hour < 18) return { greeting: 'Good afternoon',           greetingSubtitle: 'Your financial health at a glance.' }
+    if (hour < 21) return { greeting: 'Good evening',             greetingSubtitle: 'See how today went.' }
+    if (hour < 23) return { greeting: 'Winding down?',            greetingSubtitle: 'Good time to review the day before you rest.' }
+    return                { greeting: 'Burning the midnight oil?', greetingSubtitle: "Don't let the budget keep you up." }
+  })()
   const yearTx = transactions.filter(t => t.date.startsWith(String(year)))
 
   const monthlyTx = useMemo(
@@ -143,7 +152,7 @@ export function Dashboard() {
     <div>
       <PageHeader
         title={`${greeting}${settings?.user_name ? `, ${settings.user_name}` : ''}`}
-        subtitle="Your financial health at a glance."
+        subtitle={greetingSubtitle}
       />
 
       {/* Onboarding banner for brand-new users */}

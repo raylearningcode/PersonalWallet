@@ -38,7 +38,7 @@ describe('Dashboard', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { name: /Good (morning|afternoon|evening)/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Good (morning|afternoon|evening)|Still awake|Early start|Midday|Winding down|midnight oil/ })).toBeInTheDocument()
     expect(screen.queryByText(/Rayhan/)).not.toBeInTheDocument()
   })
 
