@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
+import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,6 +25,8 @@ export function Dashboard() {
 
   const year = new Date().getFullYear()
   const now = new Date()
+  const hour = now.getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const yearTx = transactions.filter(t => t.date.startsWith(String(year)))
 
   const monthlyTx = useMemo(
@@ -108,6 +111,13 @@ export function Dashboard() {
 
   const isNewUser = transactions.length === 0 && categories.length === 0 && wallets.length === 0
 
+  const recentTransactions = useMemo(
+    () => [...transactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`)).slice(0, 5),
+    [transactions]
+  )
+
+  const savingsRateVariant = savingsRate >= 20 ? 'success' : savingsRate > 0 ? 'warning' : 'danger'
+
   const topGoals = useMemo(
     () => goals
       .filter(g => g.current_amount < g.target_amount)
@@ -132,7 +142,7 @@ export function Dashboard() {
   return (
     <div>
       <PageHeader
-        title={`Good morning${settings?.user_name ? `, ${settings.user_name}` : ''}`}
+        title={`${greeting}${settings?.user_name ? `, ${settings.user_name}` : ''}`}
         subtitle="Your financial health at a glance."
       />
 
@@ -227,7 +237,7 @@ export function Dashboard() {
           label="Savings rate"
           value={`${savingsRate}%`}
           sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`}
-          badgeVariant="danger"
+          badgeVariant={savingsRateVariant}
         />
       </div>
 
@@ -450,6 +460,32 @@ export function Dashboard() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent activity */}
+      {recentTransactions.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-extrabold text-foreground">Recent activity</h2>
+            <Link to="/transactions" className="text-sm font-bold text-primary hover:underline">View all →</Link>
+          </div>
+          <div className="rounded-2xl border border-border bg-card">
+            {recentTransactions.map((tx, i) => (
+              <div
+                key={tx.id}
+                className={`flex items-center justify-between gap-4 px-5 py-3.5 ${i < recentTransactions.length - 1 ? 'border-b border-border' : ''}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                  <p className="text-xs text-muted-foreground">{tx.category} · {tx.date}</p>
+                </div>
+                <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                  {txAmountSign(tx.amount, tx.type)}{fmt(tx.amount)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

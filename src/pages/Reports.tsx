@@ -108,6 +108,12 @@ export function Reports() {
     return Object.entries(map).sort((a, b) => b[1] - a[1])
   }, [activeTx])
 
+  const categoryCounts = useMemo(() => {
+    const map: Record<string, number> = {}
+    activeTx.forEach(tx => { map[tx.category] = (map[tx.category] || 0) + 1 })
+    return map
+  }, [activeTx])
+
   const filteredTx = useMemo(() => {
     if (!selectedCategory) return []
     return activeTx.filter(tx => tx.category === selectedCategory).sort((a, b) => b.date.localeCompare(a.date))
@@ -270,15 +276,18 @@ export function Reports() {
             {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
               <div key={name} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl text-lg" style={{ backgroundColor: categoryColors[index % categoryColors.length] }}>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold" style={{ backgroundColor: categoryColors[index % categoryColors.length] }}>
                     {name.slice(0, 1)}
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-extrabold text-foreground">{name}</p>
-                    <p className="text-sm text-muted-foreground">{RANGE_LABELS[range]} {mode}</p>
+                    <p className="text-xs text-muted-foreground">{categoryCounts[name] ?? 0} transaction{(categoryCounts[name] ?? 0) !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
-                <p className={`text-right font-extrabold ${txAmountColor(amount, mode)}`}>{txAmountSign(amount, mode)}{money.formatDisplay(amount)}</p>
+                <div className="text-right">
+                  <p className={`font-extrabold ${txAmountColor(amount, mode)}`}>{txAmountSign(amount, mode)}{money.formatDisplay(amount)}</p>
+                  <p className="text-xs text-muted-foreground">{activeTotal > 0 ? Math.round((amount / activeTotal) * 100) : 0}%</p>
+                </div>
               </div>
             )) : (
               <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">No category data yet.</p>

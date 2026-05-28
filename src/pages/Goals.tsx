@@ -306,25 +306,31 @@ export function Goals() {
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <button
-                        className={`rounded-lg p-1.5 transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                        type="button"
+                        className={`rounded-xl p-2 transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                         onClick={() => pinGoal(goal.id)}
                         title={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
+                        aria-label={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
                       >
-                        <Bookmark className="h-3.5 w-3.5" fill={pinnedGoalId === goal.id ? 'currentColor' : 'none'} />
+                        <Bookmark className="h-4 w-4" fill={pinnedGoalId === goal.id ? 'currentColor' : 'none'} />
                       </button>
                       <button
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        type="button"
+                        className="rounded-xl p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
                         onClick={() => startEdit(goal)}
                         title="Edit goal"
+                        aria-label={`Edit ${goal.name}`}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-[#FF8388]"
+                        type="button"
+                        className="rounded-xl p-2 text-muted-foreground hover:bg-secondary hover:text-[#FF8388]"
                         onClick={() => setDeleteTarget(goal)}
                         title="Delete goal"
+                        aria-label={`Delete ${goal.name}`}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

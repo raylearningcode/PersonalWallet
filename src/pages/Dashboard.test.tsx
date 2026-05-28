@@ -26,6 +26,8 @@ vi.mock('@/lib/currency', () => ({
     formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatDisplay: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
   }),
+  txAmountColor: (amount: number, type: string) => amount === 0 ? 'text-foreground' : type === 'income' ? 'text-primary' : 'text-[#FF8388]',
+  txAmountSign: (amount: number, type: string) => amount === 0 ? '' : type === 'income' ? '+' : type === 'transfer' ? '' : '-',
 }))
 
 describe('Dashboard', () => {
@@ -36,7 +38,7 @@ describe('Dashboard', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { name: 'Good morning' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Good (morning|afternoon|evening)/ })).toBeInTheDocument()
     expect(screen.queryByText(/Rayhan/)).not.toBeInTheDocument()
   })
 
