@@ -354,7 +354,7 @@ export function Goals() {
                     <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                       <span>{money.formatDisplay(remaining)} remaining</span>
                       {daysLeft !== null && (
-                        <span className={daysLeft < 30 ? 'text-[#FFCF73]' : ''}>
+                        <span className={daysLeft <= 0 ? 'font-bold text-[#FF8388]' : daysLeft < 14 ? 'font-bold text-[#FFCF73]' : ''}>
                           {daysLeft > 0 ? `${daysLeft}d left` : 'Deadline passed'}
                         </span>
                       )}

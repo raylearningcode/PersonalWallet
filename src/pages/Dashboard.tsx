@@ -183,11 +183,12 @@ export function Dashboard() {
 
       {/* Quick actions */}
       {!isNewUser && (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {[
-            { label: 'Add goal', sub: 'Track a target', to: '/goals', color: '#A9F5C7' },
-            { label: 'Add subscription', sub: 'Recurring payment', to: '/subscriptions', color: '#93C5FD' },
-            { label: 'View budget', sub: 'Check limits', to: '/budget', color: '#FFD276' },
+            { label: 'Add transaction', sub: 'Log income or expense', to: '/transactions', color: '#A9F5C7' },
+            { label: 'Add goal', sub: 'Track a target', to: '/goals', color: '#93C5FD' },
+            { label: 'Add subscription', sub: 'Recurring payment', to: '/subscriptions', color: '#FADBEA' },
+            { label: 'Budget', sub: 'Check limits', to: '/budget', color: '#FFD276' },
             { label: 'Reports', sub: 'See trends', to: '/reports', color: '#C4AEFF' },
           ].map(action => (
             <Link

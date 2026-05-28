@@ -241,12 +241,55 @@ export function Estimation() {
           </div>
         )}
       />
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={`${incomeItems.length} income items`} badgeVariant="success" />
         <StatCard label="Monthly expenses" value={money.formatDisplay(monthlyExpenses)} sub={`${expenseItems.length} expense items`} badgeVariant="warning" />
         <StatCard label="Yearly saving" value={money.formatDisplay(yearlySaving)} sub={`${savingsRate}% monthly saving rate`} />
         <StatCard label="Yearly income" value={money.formatDisplay(yearlyIncome)} sub={`Expenses ${money.formatDisplay(yearlyExpenses)}`} />
       </div>
+
+      {(monthlyIncome > 0 || monthlyExpenses > 0) && (() => {
+        const total = Math.max(monthlyIncome, monthlyExpenses, 1)
+        const incPct = Math.round((monthlyIncome / total) * 100)
+        const expPct = Math.round((monthlyExpenses / total) * 100)
+        const surplus = monthlyIncome - monthlyExpenses
+        return (
+          <div className="mb-8 rounded-2xl border border-border bg-secondary px-5 py-4">
+            <div className="space-y-3">
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-foreground">
+                    <span className="h-2 w-2 rounded-full bg-primary" />Income
+                  </div>
+                  <span className="font-extrabold text-primary">{money.formatDisplay(monthlyIncome)}/mo</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${incPct}%` }} />
+                </div>
+              </div>
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-foreground">
+                    <span className="h-2 w-2 rounded-full bg-[#FF8388]" />Expenses
+                  </div>
+                  <span className="font-extrabold text-[#FF8388]">{money.formatDisplay(monthlyExpenses)}/mo</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-[#FF8388] transition-all" style={{ width: `${expPct}%` }} />
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              {savingsRate}% savings rate ·{' '}
+              <span className={surplus >= 0 ? 'font-bold text-primary' : 'font-bold text-[#FF8388]'}>
+                {surplus >= 0 ? '+' : ''}{money.formatDisplay(surplus)}/mo surplus
+              </span>
+              {' '}· yearly projection {money.formatDisplay(surplus * 12)}
+            </p>
+          </div>
+        )
+      })()}
+
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-7">
         <Card>
           <CardHeader className="pb-0">
@@ -254,7 +297,7 @@ export function Estimation() {
             <p className="text-sm text-muted-foreground">Add where money is expected to come from.</p>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
-            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
+            <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
               <div>
                 <Label className="text-xs text-muted-foreground">Income source</Label>
                 <Input aria-label="Income source" className={`mt-2 bg-secondary transition-colors ${incomeError && !incomeSource.trim() ? 'border-[#FF8388]' : ''}`} value={incomeSource} onChange={event => setIncomeSource(event.target.value)} placeholder="Part-time work" />
@@ -297,7 +340,7 @@ export function Estimation() {
             <p className="text-sm text-muted-foreground">Add rent, bills, subscriptions, food, trips, and other planned costs.</p>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
-            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
+            <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
               <div>
                 <Label className="text-xs text-muted-foreground">Expense detail</Label>
                 <Input aria-label="Expense detail" className={`mt-2 bg-secondary transition-colors ${expenseError && !expenseDetail.trim() ? 'border-[#FF8388]' : ''}`} value={expenseDetail} onChange={event => setExpenseDetail(event.target.value)} placeholder="Apartment rent" />

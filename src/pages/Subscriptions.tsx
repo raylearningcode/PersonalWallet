@@ -184,6 +184,7 @@ export function Subscriptions() {
     const days = daysUntil(rule.next_due_date)
     const lastPaid = lastPaidDate(rule)
     const isExpense = rule.type !== 'income'
+    const walletName = rule.wallet_id ? wallets.find(w => w.id === rule.wallet_id)?.name : null
     return (
       <div className={`rounded-2xl border border-border bg-secondary p-4 transition-opacity ${rule.active ? '' : 'opacity-60'}`}>
         <div className="flex items-start justify-between gap-3">
@@ -194,7 +195,9 @@ export function Subscriptions() {
                 <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">Paused</span>
               )}
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">{rule.category} · {FREQ_LABELS[rule.frequency]}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {rule.category} · {FREQ_LABELS[rule.frequency]}{walletName ? ` · ${walletName}` : ''}
+            </p>
           </div>
           <div className="shrink-0 text-right">
             <p className={`font-extrabold ${isExpense ? 'text-[#FF8388]' : 'text-primary'}`}>

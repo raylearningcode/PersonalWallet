@@ -216,8 +216,9 @@ export function Transactions() {
 
   const handleSaveTransaction = async () => {
     const parsedAmount = parseNumberInput(amount)
-    if (!description.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return
-    if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) return
+    if (!description.trim()) { toast.error('Please enter a merchant name'); return }
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return }
+    if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) { toast.error('Select two different wallets for a transfer'); return }
     const selectedCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
     if (type !== 'transfer' && (!selectedCategory || !walletId)) return
     const baseAmount = money.toBase(parsedAmount, inputCurrency)

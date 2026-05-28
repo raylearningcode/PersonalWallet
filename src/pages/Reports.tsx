@@ -225,9 +225,9 @@ export function Reports() {
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-8 sm:px-8">
-            <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
-              <div className="relative mx-auto h-[240px] w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal) }}>
-                <div className="absolute inset-12 flex flex-col items-center justify-center rounded-full bg-card text-center">
+            <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
+              <div className="relative mx-auto aspect-square w-full max-w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal) }}>
+                <div className="absolute inset-[20%] flex flex-col items-center justify-center rounded-full bg-card text-center">
                   <span className="text-sm text-muted-foreground">Total {mode}</span>
                   <strong className="mt-2 text-xl text-foreground">{money.formatDisplay(activeTotal)}</strong>
                 </div>

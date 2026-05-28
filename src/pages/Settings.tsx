@@ -222,6 +222,15 @@ export function Settings() {
         title="Settings"
         subtitle="Manage your profile, login, currency, and spending categories."
       />
+      {!session && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
+          <span className="mt-0.5 text-base">⚠</span>
+          <div>
+            <p className="font-bold text-[#FFCF73]">Guest mode — data is not saved to the cloud</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">Your budgets, wallets, and transactions are stored in this browser only. Log in to keep your data safe and sync across devices.</p>
+          </div>
+        </div>
+      )}
       <Card className="mb-8">
         <CardContent className="flex min-h-[156px] flex-col items-start gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div className="flex min-w-0 items-center gap-4 sm:gap-6">

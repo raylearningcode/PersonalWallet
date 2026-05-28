@@ -245,13 +245,16 @@ export function Budget() {
                       </div>
                       <div>
                         <p className="mb-1 text-xs text-muted-foreground">Color</p>
-                        <input
-                          type="color"
-                          aria-label="Category color"
-                          className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                          value={editDraft.color}
-                          onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
-                        />
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                          <input
+                            type="color"
+                            aria-label="Category color"
+                            className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                            value={editDraft.color}
+                            onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
+                          />
+                        </div>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -364,13 +367,16 @@ export function Budget() {
                     <option value="monthly">Monthly</option>
                     <option value="yearly">Yearly</option>
                   </select>
-                  <input
-                    type="color"
-                    aria-label="Category color"
-                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                    value={addColor}
-                    onChange={e => setAddColor(e.target.value)}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
+                    <input
+                      type="color"
+                      aria-label="Category color"
+                      className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                      value={addColor}
+                      onChange={e => setAddColor(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button className="h-8 flex-1 text-xs" onClick={handleAdd} disabled={addCategory.isPending}>
