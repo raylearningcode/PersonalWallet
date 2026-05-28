@@ -83,67 +83,88 @@ export function Estimation() {
   const savingsRate = calculateSavingsRate(monthlyIncome, monthlyExpenses)
   const wishlistTotal = useMemo(() => wishlistItems.reduce((sum, item) => sum + item.amount, 0), [wishlistItems])
 
-  const addIncome = () => {
+  const saveToBackend = async (
+    newIncome: EstimateItem[],
+    newExpense: EstimateItem[],
+    newWishlist: WishlistItem[],
+    currentNotes: string,
+  ) => {
+    const mi = newIncome.reduce((s, i) => s + (i.period === 'monthly' ? i.amount : i.amount / 12), 0)
+    const me = newExpense.reduce((s, i) => s + (i.period === 'monthly' ? i.amount : i.amount / 12), 0)
+    await upsert.mutateAsync({
+      month: new Date().getMonth() + 1,
+      year: new Date().getFullYear(),
+      estimated_income: mi,
+      fixed_expenses: me,
+      variable_estimate: 0,
+      currency: money.baseCurrency,
+      notes: JSON.stringify({ text: currentNotes, incomeItems: newIncome, expenseItems: newExpense, wishlistItems: newWishlist }),
+    })
+  }
+
+  const addIncome = async () => {
     const amount = parseNumberInput(incomeAmount)
     if (!incomeSource.trim() || amount <= 0) {
       setIncomeError(true)
       setTimeout(() => setIncomeError(false), 1500)
       return
     }
-    setIncomeItems(current => [...current, { id: crypto.randomUUID(), name: incomeSource.trim(), amount: money.toBase(amount, money.displayCurrency), period: incomePeriod }])
+    const newItems = [...incomeItems, { id: crypto.randomUUID(), name: incomeSource.trim(), amount: money.toBase(amount, money.displayCurrency), period: incomePeriod }]
+    setIncomeItems(newItems)
     setIncomeSource('')
     setIncomeAmount('')
+    await saveToBackend(newItems, expenseItems, wishlistItems, notes)
     toast.success('Income item added')
   }
 
-  const addExpense = () => {
+  const addExpense = async () => {
     const amount = parseNumberInput(expenseAmount)
     if (!expenseDetail.trim() || amount <= 0) {
       setExpenseError(true)
       setTimeout(() => setExpenseError(false), 1500)
       return
     }
-    setExpenseItems(current => [...current, { id: crypto.randomUUID(), name: expenseDetail.trim(), amount: money.toBase(amount, money.displayCurrency), period: expensePeriod }])
+    const newItems = [...expenseItems, { id: crypto.randomUUID(), name: expenseDetail.trim(), amount: money.toBase(amount, money.displayCurrency), period: expensePeriod }]
+    setExpenseItems(newItems)
     setExpenseDetail('')
     setExpenseAmount('')
+    await saveToBackend(incomeItems, newItems, wishlistItems, notes)
     toast.success('Expense item added')
   }
 
-  const addWishlistItem = () => {
+  const addWishlistItem = async () => {
     const amount = parseNumberInput(wishlistAmount)
     if (!wishlistName.trim() || amount <= 0) return
-    setWishlistItems(current => [...current, {
+    const newItems = [...wishlistItems, {
       id: crypto.randomUUID(),
       name: wishlistName.trim(),
       amount: money.toBase(amount, money.displayCurrency),
       type: wishlistType,
       note: wishlistNote.trim(),
-    }])
+    }]
+    setWishlistItems(newItems)
     setWishlistName('')
     setWishlistAmount('')
     setWishlistType('Want')
     setWishlistNote('')
+    await saveToBackend(incomeItems, expenseItems, newItems, notes)
   }
 
   const handleSave = async () => {
-    await upsert.mutateAsync({
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
-      estimated_income: monthlyIncome,
-      fixed_expenses: monthlyExpenses,
-      variable_estimate: 0,
-      currency: money.baseCurrency,
-      notes: JSON.stringify({ text: notes, incomeItems, expenseItems, wishlistItems }),
-    })
+    await saveToBackend(incomeItems, expenseItems, wishlistItems, notes)
     toast.success('Estimation plan saved')
   }
 
-  const confirmDeleteSelected = () => {
+  const confirmDeleteSelected = async () => {
     if (!deleteTarget) return
-    if (deleteTarget.list === 'income') setIncomeItems(current => current.filter(item => item.id !== deleteTarget.id))
-    if (deleteTarget.list === 'expense') setExpenseItems(current => current.filter(item => item.id !== deleteTarget.id))
-    if (deleteTarget.list === 'wishlist') setWishlistItems(current => current.filter(item => item.id !== deleteTarget.id))
+    const newIncome = deleteTarget.list === 'income' ? incomeItems.filter(i => i.id !== deleteTarget.id) : incomeItems
+    const newExpense = deleteTarget.list === 'expense' ? expenseItems.filter(i => i.id !== deleteTarget.id) : expenseItems
+    const newWishlist = deleteTarget.list === 'wishlist' ? wishlistItems.filter(i => i.id !== deleteTarget.id) : wishlistItems
+    setIncomeItems(newIncome)
+    setExpenseItems(newExpense)
+    setWishlistItems(newWishlist)
     setDeleteTarget(null)
+    await saveToBackend(newIncome, newExpense, newWishlist, notes)
   }
 
   return (
