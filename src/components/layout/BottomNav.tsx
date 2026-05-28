@@ -27,7 +27,7 @@ export function BottomNav({
           to={to}
           end={to === '/'}
           className={({ isActive }) =>
-            `flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`
+            `flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`
           }
         >
           <Icon className="h-5 w-5" />
@@ -52,7 +52,7 @@ export function BottomNav({
           to={to}
           end={to === '/'}
           className={({ isActive }) =>
-            `flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`
+            `flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`
           }
         >
           <Icon className="h-5 w-5" />
@@ -63,7 +63,7 @@ export function BottomNav({
       <button
         type="button"
         onClick={onMoreClick}
-        className={`flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-bold ${moreActive ? 'text-primary' : 'text-muted-foreground'}`}
+        className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold ${moreActive ? 'text-primary' : 'text-muted-foreground'}`}
       >
         <MoreHorizontal className="h-5 w-5" />
         More

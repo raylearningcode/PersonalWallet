@@ -274,7 +274,7 @@ export function Budget() {
                       </span>
                       <button
                         onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
-                        className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-muted-foreground hover:text-foreground"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-muted-foreground hover:text-foreground"
                         aria-label={`Edit ${cat.name}`}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -282,7 +282,7 @@ export function Budget() {
                       <button
                         onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
                         disabled={deleteCategory.isPending}
-                        className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
                         aria-label={`Delete ${cat.name}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

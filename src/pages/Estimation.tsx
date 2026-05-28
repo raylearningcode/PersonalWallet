@@ -11,6 +11,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
+import { Check, Pencil, X } from 'lucide-react'
 
 type EstimatePeriod = 'monthly' | 'yearly'
 
@@ -52,6 +53,15 @@ export function Estimation() {
   const [deleteTarget, setDeleteTarget] = useState<null | { list: 'income' | 'expense' | 'wishlist'; id: string; name: string }>(null)
   const [incomeError, setIncomeError] = useState(false)
   const [expenseError, setExpenseError] = useState(false)
+  const [editItem, setEditItem] = useState<{ list: 'income' | 'expense'; id: string } | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editAmount, setEditAmount] = useState('')
+  const [editPeriod, setEditPeriod] = useState<EstimatePeriod>('monthly')
+  const [editWishlistId, setEditWishlistId] = useState<string | null>(null)
+  const [editWishlistName, setEditWishlistName] = useState('')
+  const [editWishlistAmount, setEditWishlistAmount] = useState('')
+  const [editWishlistType, setEditWishlistType] = useState('Want')
+  const [editWishlistNote, setEditWishlistNote] = useState('')
 
   useEffect(() => {
     if (initialized.current || !plans) return
@@ -150,6 +160,56 @@ export function Estimation() {
     await saveToBackend(incomeItems, expenseItems, newItems, notes)
   }
 
+  const startEditItem = (list: 'income' | 'expense', id: string) => {
+    const items = list === 'income' ? incomeItems : expenseItems
+    const item = items.find(i => i.id === id)
+    if (!item) return
+    setEditItem({ list, id })
+    setEditName(item.name)
+    setEditAmount(formatNumberInput(money.fromBase(item.amount, money.displayCurrency)))
+    setEditPeriod(item.period)
+  }
+
+  const saveEditItem = async () => {
+    if (!editItem) return
+    const amount = money.toBase(parseNumberInput(editAmount), money.displayCurrency)
+    if (!editName.trim() || amount <= 0) return
+    let newIncome = incomeItems
+    let newExpense = expenseItems
+    if (editItem.list === 'income') {
+      newIncome = incomeItems.map(i => i.id === editItem.id ? { ...i, name: editName.trim(), amount, period: editPeriod } : i)
+      setIncomeItems(newIncome)
+    } else {
+      newExpense = expenseItems.map(i => i.id === editItem.id ? { ...i, name: editName.trim(), amount, period: editPeriod } : i)
+      setExpenseItems(newExpense)
+    }
+    setEditItem(null)
+    await saveToBackend(newIncome, newExpense, wishlistItems, notes)
+  }
+
+  const startEditWishlist = (id: string) => {
+    const item = wishlistItems.find(i => i.id === id)
+    if (!item) return
+    setEditWishlistId(id)
+    setEditWishlistName(item.name)
+    setEditWishlistAmount(formatNumberInput(money.fromBase(item.amount, money.displayCurrency)))
+    setEditWishlistType(item.type)
+    setEditWishlistNote(item.note)
+  }
+
+  const saveEditWishlist = async () => {
+    if (!editWishlistId) return
+    const amount = money.toBase(parseNumberInput(editWishlistAmount), money.displayCurrency)
+    if (!editWishlistName.trim() || amount <= 0) return
+    const newWishlist = wishlistItems.map(i => i.id === editWishlistId
+      ? { ...i, name: editWishlistName.trim(), amount, type: editWishlistType, note: editWishlistNote.trim() }
+      : i
+    )
+    setWishlistItems(newWishlist)
+    setEditWishlistId(null)
+    await saveToBackend(incomeItems, expenseItems, newWishlist, notes)
+  }
+
   const handleSave = async () => {
     await saveToBackend(incomeItems, expenseItems, wishlistItems, notes)
     toast.success('Estimation plan saved')
@@ -212,7 +272,23 @@ export function Estimation() {
               </div>
               <Button onClick={addIncome}>Add</Button>
             </div>
-            <ItemList items={incomeItems} empty="No income sources yet." fmt={money.formatDisplay} onDelete={(id, name) => setDeleteTarget({ list: 'income', id, name })} />
+            <ItemList
+              items={incomeItems}
+              empty="No income sources yet."
+              fmt={money.formatDisplay}
+              onDelete={(id, name) => setDeleteTarget({ list: 'income', id, name })}
+              editingId={editItem?.list === 'income' ? editItem.id : null}
+              editName={editName}
+              editAmount={editAmount}
+              editPeriod={editPeriod}
+              onEditStart={id => startEditItem('income', id)}
+              onEditNameChange={setEditName}
+              onEditAmountChange={v => setEditAmount(formatNumberInput(v))}
+              onEditPeriodChange={p => setEditPeriod(p as EstimatePeriod)}
+              onEditSave={saveEditItem}
+              onEditCancel={() => setEditItem(null)}
+              displayCurrency={money.displayCurrency}
+            />
           </CardContent>
         </Card>
         <Card>
@@ -239,7 +315,23 @@ export function Estimation() {
               </div>
               <Button onClick={addExpense}>Add</Button>
             </div>
-            <ItemList items={expenseItems} empty="No expected expenses yet." fmt={money.formatDisplay} onDelete={(id, name) => setDeleteTarget({ list: 'expense', id, name })} />
+            <ItemList
+              items={expenseItems}
+              empty="No expected expenses yet."
+              fmt={money.formatDisplay}
+              onDelete={(id, name) => setDeleteTarget({ list: 'expense', id, name })}
+              editingId={editItem?.list === 'expense' ? editItem.id : null}
+              editName={editName}
+              editAmount={editAmount}
+              editPeriod={editPeriod}
+              onEditStart={id => startEditItem('expense', id)}
+              onEditNameChange={setEditName}
+              onEditAmountChange={v => setEditAmount(formatNumberInput(v))}
+              onEditPeriodChange={p => setEditPeriod(p as EstimatePeriod)}
+              onEditSave={saveEditItem}
+              onEditCancel={() => setEditItem(null)}
+              displayCurrency={money.displayCurrency}
+            />
           </CardContent>
         </Card>
       </div>
@@ -283,17 +375,37 @@ export function Estimation() {
             {wishlistItems.length > 0 ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {wishlistItems.map(item => (
+                  editWishlistId === item.id ? (
+                    <div key={item.id} className="space-y-2 rounded-2xl border border-primary/30 bg-secondary p-4">
+                      <Input className="bg-card text-sm" value={editWishlistName} onChange={e => setEditWishlistName(e.target.value)} placeholder="Item name" />
+                      <div className="flex gap-2">
+                        <Input className="bg-card text-sm" inputMode="decimal" value={editWishlistAmount} onChange={e => setEditWishlistAmount(formatNumberInput(e.target.value))} placeholder="Amount" />
+                        <select className="h-10 flex-1 rounded-md border border-input bg-card px-2 text-sm font-bold text-foreground outline-none" value={editWishlistType} onChange={e => setEditWishlistType(e.target.value)}>
+                          {['Want','Need','Work','Travel','Gift'].map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <Input className="bg-card text-sm" value={editWishlistNote} onChange={e => setEditWishlistNote(e.target.value)} placeholder="Note" />
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1 gap-1" onClick={saveEditWishlist}><Check className="h-3.5 w-3.5" />Save</Button>
+                        <Button size="sm" variant="secondary" onClick={() => setEditWishlistId(null)}><X className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </div>
+                  ) : (
                   <div key={item.id} className="rounded-2xl border border-border bg-secondary p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-extrabold text-foreground">{item.name}</p>
                         <p className="mt-1 text-xs text-muted-foreground">{item.type}</p>
                       </div>
-                      <button className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })}>Remove</button>
+                      <div className="flex shrink-0 gap-1">
+                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => startEditWishlist(item.id)} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })} title="Remove"><X className="h-3.5 w-3.5" /></button>
+                      </div>
                     </div>
                     <p className="mt-3 text-lg font-extrabold text-primary">{money.formatDisplay(item.amount)}</p>
                     {item.note && <p className="mt-2 text-sm text-muted-foreground">{item.note}</p>}
                   </div>
+                  )
                 ))}
               </div>
             ) : (
@@ -334,27 +446,55 @@ export function Estimation() {
   )
 }
 
-function ItemList({ items, empty, fmt, onDelete }: {
+function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount, editPeriod, onEditStart, onEditNameChange, onEditAmountChange, onEditPeriodChange, onEditSave, onEditCancel, displayCurrency }: {
   items: { id: string; name: string; amount: number; period: EstimatePeriod }[]
   empty: string
   fmt: (amount: number) => string
   onDelete: (id: string, name: string) => void
+  editingId: string | null
+  editName: string
+  editAmount: string
+  editPeriod: EstimatePeriod
+  onEditStart: (id: string) => void
+  onEditNameChange: (v: string) => void
+  onEditAmountChange: (v: string) => void
+  onEditPeriodChange: (v: string) => void
+  onEditSave: () => void
+  onEditCancel: () => void
+  displayCurrency: string
 }) {
   if (items.length === 0) return <p className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">{empty}</p>
 
   return (
     <div className="space-y-2">
       {items.map(item => (
+        editingId === item.id ? (
+          <div key={item.id} className="space-y-2 rounded-2xl border border-primary/30 bg-secondary px-4 py-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.5fr)_minmax(100px,0.45fr)_auto_auto] items-center gap-2">
+              <Input className="h-8 bg-card text-sm" value={editName} onChange={e => onEditNameChange(e.target.value)} placeholder="Name" />
+              <Input className="h-8 bg-card text-sm" inputMode="decimal" value={editAmount} onChange={e => onEditAmountChange(e.target.value)} placeholder="Amount" />
+              <select className="h-8 rounded-md border border-input bg-card px-2 text-xs font-bold text-foreground outline-none" value={editPeriod} onChange={e => onEditPeriodChange(e.target.value)}>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+              <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={onEditSave} title="Save"><Check className="h-3.5 w-3.5" /></button>
+              <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border" onClick={onEditCancel} title="Cancel"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <p className="text-xs text-muted-foreground">Editing · amounts in {displayCurrency}</p>
+          </div>
+        ) : (
         <div key={item.id} className="flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
           <div>
             <p className="font-bold text-foreground">{item.name}</p>
             <p className="text-xs capitalize text-muted-foreground">{item.period}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="font-extrabold text-foreground">{fmt(item.amount)}</span>
-            <button className="text-sm text-muted-foreground hover:text-foreground" onClick={() => onDelete(item.id, item.name)}>Remove</button>
+            <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => onEditStart(item.id)} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+            <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => onDelete(item.id, item.name)} title="Remove"><X className="h-3.5 w-3.5" /></button>
           </div>
         </div>
+        )
       ))}
     </div>
   )

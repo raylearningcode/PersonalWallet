@@ -180,6 +180,28 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Quick actions */}
+      {!isNewUser && (
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: 'Add goal', sub: 'Track a target', to: '/goals', color: '#A9F5C7' },
+            { label: 'Add subscription', sub: 'Recurring payment', to: '/subscriptions', color: '#93C5FD' },
+            { label: 'View budget', sub: 'Check limits', to: '/budget', color: '#FFD276' },
+            { label: 'Reports', sub: 'See trends', to: '/reports', color: '#C4AEFF' },
+          ].map(action => (
+            <Link
+              key={action.label}
+              to={action.to}
+              className="flex flex-col gap-1 rounded-2xl border border-border bg-secondary px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5"
+            >
+              <span className="h-2 w-6 rounded-full" style={{ backgroundColor: action.color }} />
+              <span className="mt-1 text-sm font-extrabold text-foreground">{action.label}</span>
+              <span className="text-xs text-muted-foreground">{action.sub}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
       {/* Hero stat cards */}
       <div className="mb-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         <StatCard
