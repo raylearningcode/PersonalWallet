@@ -51,11 +51,19 @@ function useIsDesktop() {
 export function Transactions() {
   const money = useMoney()
   const [filter, setFilter] = useState<Filter>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
   const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
+  const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
+  const [ruleDescription, setRuleDescription] = useState('')
+  const [ruleAmount, setRuleAmount] = useState('')
+  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
+  const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
+  const [ruleNextDueDate, setRuleNextDueDate] = useState('')
+  const [ruleEndDate, setRuleEndDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
@@ -113,12 +121,18 @@ export function Transactions() {
   const cannotSaveTransfer = type === 'transfer' && (wallets.length < 2 || !walletId || !transferWalletId || walletId === transferWalletId)
   const sortedTransactions = useMemo(
     () => {
-      const visibleTransactions = selectedCategory
+      let visibleTransactions = selectedCategory
         ? transactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
         : transactions
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        visibleTransactions = visibleTransactions.filter(tx =>
+          tx.description.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q)
+        )
+      }
       return [...visibleTransactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`))
     },
-    [selectedCategory, transactions]
+    [selectedCategory, transactions, searchQuery]
   )
   const expenseCategoryTotals = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>()
@@ -300,6 +314,35 @@ export function Transactions() {
     toast.success('Marked as reviewed')
   }
 
+  const openEditRule = (rule: RecurringRule) => {
+    setEditingRule(rule)
+    setRuleDescription(rule.description)
+    setRuleAmount(String(rule.original_amount))
+    setRuleInputCurrency(rule.original_currency)
+    setRuleFrequency(rule.frequency)
+    setRuleNextDueDate(rule.next_due_date)
+    setRuleEndDate(rule.end_date ?? '')
+  }
+
+  const handleSaveRule = async () => {
+    if (!editingRule) return
+    const parsedAmount = parseNumberInput(ruleAmount)
+    if (!ruleDescription.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return
+    const baseAmount = money.toBase(parsedAmount, ruleInputCurrency)
+    await updateRecurringRule.mutateAsync({
+      id: editingRule.id,
+      description: ruleDescription.trim(),
+      amount: baseAmount,
+      original_amount: parsedAmount,
+      original_currency: ruleInputCurrency,
+      frequency: ruleFrequency,
+      next_due_date: ruleNextDueDate,
+      end_date: ruleEndDate || null,
+    })
+    toast.success('Recurring rule updated')
+    setEditingRule(null)
+  }
+
   const handleAddCandidateAsRule = async (candidate: ReturnType<typeof getRecurringCandidates>[0]) => {
     if (!wallets[0]?.id) { toast.error('Add a wallet first'); return }
     const today = new Date().toISOString().slice(0, 10)
@@ -328,6 +371,8 @@ export function Transactions() {
       <PageHeader
         title="Transactions"
         subtitle="Track every cashflow with clean filters, wallet routing, and category breakdowns."
+        searchValue={searchQuery}
+        onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
         action={(
           <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
             <Plus className="h-4 w-4" />
@@ -335,7 +380,7 @@ export function Transactions() {
           </Button>
         )}
       />
-      <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null) }} className="mb-8 overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
+      <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery('') }} className="mb-8 overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
         <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
           {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
             <TabsTrigger
@@ -507,6 +552,63 @@ export function Transactions() {
         </SheetContent>
       </Sheet>
 
+      <Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
+        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 sm:max-w-md sm:p-6">
+          <SheetHeader className="mb-6 text-left">
+            <SheetTitle>Edit recurring rule</SheetTitle>
+            <SheetDescription>Update the schedule or amount for this recurring payment.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-5">
+            <div>
+              <Label className="text-sm font-bold text-foreground">Description</Label>
+              <Input aria-label="Rule description" className="mt-2 bg-secondary" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} />
+            </div>
+            <div className="flex gap-3">
+              <div className="w-28 shrink-0">
+                <Label className="text-sm font-bold text-foreground">Currency</Label>
+                <select
+                  aria-label="Rule currency"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={ruleInputCurrency}
+                  onChange={e => setRuleInputCurrency(e.target.value)}
+                >
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="flex-1">
+                <Label className="text-sm font-bold text-foreground">Amount</Label>
+                <Input aria-label="Rule amount" className="mt-2 bg-secondary" inputMode="decimal" value={ruleAmount} onChange={e => setRuleAmount(formatNumberInput(e.target.value))} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">Frequency</Label>
+              <select
+                aria-label="Rule frequency"
+                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                value={ruleFrequency}
+                onChange={e => setRuleFrequency(e.target.value as RecurringFrequency)}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">Next due date</Label>
+              <Input aria-label="Rule next due date" className="mt-2 bg-secondary" type="date" value={ruleNextDueDate} onChange={e => setRuleNextDueDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">End date (optional)</Label>
+              <Input aria-label="Rule end date" className="mt-2 bg-secondary" type="date" value={ruleEndDate} onChange={e => setRuleEndDate(e.target.value)} />
+            </div>
+            <Button className="mt-4 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
+              Save rule
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {expenseCategoryTotals.length > 0 && (
         <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -556,6 +658,7 @@ export function Transactions() {
                 )}
                 <div className="mt-3 flex gap-2">
                   <Button size="sm" variant="secondary" onClick={() => handleToggleRule(rule)}>{rule.active ? 'Pause' : 'Resume'}</Button>
+                  <Button size="sm" variant="secondary" onClick={() => openEditRule(rule)}><Pencil size={13} className="mr-1" />Edit</Button>
                   <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => setDeleteRuleTarget(rule)}>Delete</Button>
                 </div>
               </div>

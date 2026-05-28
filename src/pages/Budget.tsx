@@ -1,13 +1,10 @@
 import { useMemo, useState } from 'react'
 import {
   useBudgetCategories,
-  useBudgetRules,
   useTransactions,
   useUpdateBudgetCategory,
   useAddBudgetCategory,
   useDeleteBudgetCategory,
-  useAddBudgetRule,
-  useDeleteBudgetRule,
 } from '@/lib/queries'
 import { Lightbulb } from 'lucide-react'
 import { StatCard } from '@/components/shared/StatCard'
@@ -21,15 +18,7 @@ import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
 import { Check, Pencil, Trash2, X } from 'lucide-react'
-import type { BudgetRule } from '@/types'
 import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
-
-const ruleColors: Record<string, string> = {
-  cap: '#A9F5C7',
-  minimum: '#93C5FD',
-  flexible: '#C4AEFF',
-  emergency_months: '#FFD276',
-}
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
@@ -56,13 +45,10 @@ export function Budget() {
   const money = useMoney()
   const fmt = money.formatDisplay
   const { data: categories = [] } = useBudgetCategories()
-  const { data: rules = [] } = useBudgetRules()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
   const addCategory = useAddBudgetCategory()
   const deleteCategory = useDeleteBudgetCategory()
-  const addRule = useAddBudgetRule()
-  const deleteRule = useDeleteBudgetRule()
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<{ yearly_allocated: number; budget_period: BudgetPeriod; color: string }>({
@@ -77,11 +63,7 @@ export function Budget() {
   const [addPeriod, setAddPeriod] = useState<BudgetPeriod>('monthly')
   const [addColor, setAddColor] = useState('#6c63ff')
 
-  const [ruleName, setRuleName] = useState('')
-  const [ruleCategory, setRuleCategory] = useState('')
-  const [ruleType, setRuleType] = useState<BudgetRule['rule_type']>('cap')
-  const [ruleValue, setRuleValue] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState<null | { kind: 'category' | 'rule'; id: string; name: string }>(null)
+  const [deleteTarget, setDeleteTarget] = useState<null | { id: string; name: string }>(null)
 
   const currentYear = String(new Date().getFullYear())
   const expenseTransactions = transactions.filter(
@@ -183,22 +165,6 @@ export function Budget() {
     }
   }
 
-  const handleAddRule = async () => {
-    const value = parseNumberInput(ruleValue)
-    const category = ruleCategory || categories[0]?.name
-    if (!ruleName.trim() || !category || !Number.isFinite(value) || value <= 0) return
-    try {
-      await addRule.mutateAsync({ name: ruleName.trim(), category, rule_type: ruleType, value })
-      setRuleName('')
-      setRuleCategory('')
-      setRuleType('cap')
-      setRuleValue('')
-      toast.success('Budget rule added')
-    } catch {
-      toast.error('Failed to add budget rule')
-    }
-  }
-
   const handleApplySuggestion = async (name: string, monthlyAvg: number) => {
     try {
       await addCategory.mutateAsync({
@@ -215,11 +181,7 @@ export function Budget() {
 
   const confirmDeleteSelected = async () => {
     if (!deleteTarget) return
-    if (deleteTarget.kind === 'category') await handleDelete(deleteTarget.id)
-    else {
-      deleteRule.mutate(deleteTarget.id)
-      toast.success('Budget rule removed')
-    }
+    await handleDelete(deleteTarget.id)
     setDeleteTarget(null)
   }
 
@@ -235,10 +197,9 @@ export function Budget() {
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData ? 'Based on current period spending' : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.8fr)] lg:gap-8">
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Category allocation</CardTitle></CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+      <Card>
+        <CardHeader><CardTitle className="text-xl">Category allocation</CardTitle></CardHeader>
+        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
             {categoriesWithSpent.length > 0 ? categoriesWithSpent.map(cat => {
               const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
               const barColor = getBarColor(pct, cat.color)
@@ -319,7 +280,7 @@ export function Budget() {
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => setDeleteTarget({ kind: 'category', id: cat.id, name: cat.name })}
+                        onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
                         disabled={deleteCategory.isPending}
                         className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
                         aria-label={`Delete ${cat.name}`}
@@ -428,80 +389,12 @@ export function Budget() {
                 + Add category
               </button>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Budget rules</CardTitle></CardHeader>
-          <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
-            <div className="space-y-3 rounded-2xl border border-border bg-secondary p-4">
-              <Input
-                aria-label="Budget rule name"
-                className="bg-card"
-                value={ruleName}
-                onChange={event => setRuleName(event.target.value)}
-                placeholder="Rule name"
-              />
-              <select
-                aria-label="Budget rule category"
-                className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm font-bold text-foreground outline-none"
-                value={ruleCategory || categories[0]?.name || ''}
-                onChange={event => setRuleCategory(event.target.value)}
-              >
-                {categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
-              </select>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(100px,0.7fr)]">
-                <select
-                  aria-label="Budget rule type"
-                  className="h-10 rounded-md border border-input bg-card px-3 text-sm font-bold text-foreground outline-none"
-                  value={ruleType}
-                  onChange={event => setRuleType(event.target.value as BudgetRule['rule_type'])}
-                >
-                  <option value="cap">Cap</option>
-                  <option value="minimum">Minimum</option>
-                  <option value="flexible">Flexible</option>
-                  <option value="emergency_months">Emergency months</option>
-                </select>
-                <Input
-                  aria-label="Budget rule value"
-                  className="bg-card"
-                  inputMode="decimal"
-                  value={ruleValue}
-                  onChange={event => setRuleValue(formatNumberInput(event.target.value))}
-                  placeholder="Value"
-                />
-              </div>
-              <Button className="w-full" onClick={handleAddRule} disabled={addRule.isPending || categories.length === 0}>
-                Add budget rule
-              </Button>
-            </div>
-            {rules.length > 0 ? rules.map(rule => (
-              <div key={rule.id} className="flex items-center gap-4">
-                <div className="h-10 w-10 shrink-0 rounded-2xl" style={{ backgroundColor: ruleColors[rule.rule_type] ?? '#A9F5C7' }} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-bold text-foreground">{rule.name}</p>
-                  <p className="text-xs text-muted-foreground">{rule.category} - {rule.value}</p>
-                </div>
-                <button
-                  aria-label={`Delete rule ${rule.name}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-destructive hover:text-red-300"
-                  onClick={() => setDeleteTarget({ kind: 'rule', id: rule.id, name: rule.name })}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            )) : (
-              <p className="text-sm text-muted-foreground">No budget rules yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget ? `Delete ${deleteTarget.name}?` : ''}
-        description={deleteTarget?.kind === 'category'
-          ? 'This removes the budget option. Existing transactions will keep their category text.'
-          : 'This removes the budget rule from your planning panel.'}
+        description="This removes the budget category. Existing transactions will keep their category text."
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDeleteSelected}
       />
