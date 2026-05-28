@@ -87,11 +87,15 @@ export function Investing() {
   const [contributionCurrency, setContributionCurrency] = useState(savedContributionCurrency)
   const [targetCurrency, setTargetCurrency] = useState(savedTargetCurrency)
   const [allocation, setAllocation] = useState<AllocationItem[]>(DEFAULT_ALLOCATION)
+  // chartMax tracks the bar range independently — clicking a bar updates draft.durationYears
+  // but NOT chartMax, so the chart scale doesn't collapse when a shorter bar is clicked.
+  const [chartMax, setChartMax] = useState(() => Math.min(30, Math.max(investConfig?.duration_years ?? 0, 10)))
 
   useEffect(() => {
     setDraft(emptySimulator)
     setContributionCurrency(savedContributionCurrency)
     setTargetCurrency(savedTargetCurrency)
+    setChartMax(Math.min(30, Math.max(emptySimulator.durationYears, 10)))
   }, [emptySimulator, savedContributionCurrency, savedTargetCurrency])
 
   useEffect(() => {
@@ -111,27 +115,35 @@ export function Investing() {
   const targetProgress = draftBase.targetPortfolio > 0
     ? Math.min(100, Math.round((plan.projectedPortfolio / draftBase.targetPortfolio) * 100))
     : 0
-  const chartDuration = Math.min(30, Math.max(draft.durationYears, 10))
+  const chartStep = Math.ceil(chartMax / 10)
   const growthData = useMemo(
     () => generateGrowthData(
       draftBase.monthlyContribution,
       draft.annualReturnRate,
-      chartDuration
+      chartMax
     ).map(point => ({
       ...point,
       value: point.value + draft.initialCapital * Math.pow(1 + draft.annualReturnRate / 100 / 12, point.year * 12),
     })),
-    [draft, draftBase.monthlyContribution, chartDuration]
+    [draft.annualReturnRate, draft.initialCapital, draftBase.monthlyContribution, chartMax]
   )
-  const maxValue = Math.max(...growthData.map(row => row.value), 1)
+  const chartData = useMemo(
+    () => growthData.filter(p => p.year % chartStep === 0 || p.year === chartMax),
+    [growthData, chartStep, chartMax]
+  )
+  const maxValue = Math.max(...chartData.map(row => row.value), 1)
 
   const updateDraft = (key: keyof SimulatorValues, value: string) => {
     const parser = key === 'annualReturnRate' ? parseRate : parseMoney
     const parsed = parser(value)
     const clamped = key === 'durationYears' ? Math.min(30, parsed) : parsed
     setDraft(current => ({ ...current, [key]: clamped }))
+    if (key === 'durationYears') {
+      setChartMax(Math.min(30, Math.max(Math.round(clamped), 10)))
+    }
   }
 
+  // Clicking a bar updates the selected duration for ROI but not the chart scale
   const setDuration = (durationYears: number) => {
     setDraft(current => ({ ...current, durationYears }))
   }
@@ -230,28 +242,20 @@ export function Investing() {
             </div>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-center px-6 pb-8 sm:px-8">
-            <div className="overflow-x-auto">
-              <div
-                className={`flex items-end gap-2 ${growthData.length <= 11 ? 'justify-between' : 'min-w-max'}`}
-                style={{ height: '200px' }}
-              >
-                {growthData.map((point) => (
-                  <div
-                    key={point.year}
-                    className={`flex flex-col items-center gap-1.5 ${growthData.length <= 11 ? 'flex-1' : 'w-5'}`}
-                  >
-                    <button
-                      type="button"
-                      className={`w-full max-w-[20px] rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
-                      style={{ height: `${Math.max(8, (point.value / maxValue) * 168)}px` }}
-                      onClick={() => setDuration(point.year)}
-                      aria-label={`Use ${point.year} year duration`}
-                      title={`${point.year} years: ${money.formatDisplay(point.value)}`}
-                    />
-                    <span className={`text-[9px] font-bold leading-none sm:text-[10px] ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}y</span>
-                  </div>
-                ))}
-              </div>
+            <div className="flex items-end justify-between gap-2" style={{ height: '200px' }}>
+              {chartData.map((point) => (
+                <div key={point.year} className="flex flex-1 flex-col items-center gap-1.5">
+                  <button
+                    type="button"
+                    className={`w-full max-w-[20px] rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
+                    style={{ height: `${Math.max(8, (point.value / maxValue) * 168)}px` }}
+                    onClick={() => setDuration(point.year)}
+                    aria-label={`Use ${point.year} year duration`}
+                    title={`${point.year} years: ${money.formatDisplay(point.value)}`}
+                  />
+                  <span className={`text-[9px] font-bold leading-none sm:text-[10px] ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}y</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
