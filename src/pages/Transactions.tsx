@@ -25,13 +25,28 @@ import { Trash2, Pencil, Plus, Copy, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
-import { getMerchantSuggestion } from '@/lib/financeOs'
+import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 
 type Filter = 'all' | 'income' | 'expense' | 'transfer'
 type EntryType = 'income' | 'expense' | 'transfer'
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
+
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return true
+    return window.matchMedia('(min-width: 1024px)').matches
+  })
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isDesktop
+}
 
 export function Transactions() {
   const money = useMoney()
@@ -53,6 +68,7 @@ export function Transactions() {
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [installmentTotal, setInstallmentTotal] = useState('')
   const [endDate, setEndDate] = useState('')
+  const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const { data: transactions = [] } = useTransactions(filter)
   const { data: categories = [] } = useBudgetCategories()
@@ -136,6 +152,13 @@ export function Transactions() {
     () => [...recurringRules].sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 6),
     [recurringRules]
   )
+
+  const recurringCandidates = useMemo(() => {
+    const ruleDescriptions = new Set(recurringRules.map(r => r.description.toLowerCase()))
+    return getRecurringCandidates(transactions).filter(
+      c => !ruleDescriptions.has(c.description.toLowerCase())
+    ).slice(0, 4)
+  }, [transactions, recurringRules])
 
   const resetForm = () => {
     setEditingTransaction(null)
@@ -275,6 +298,29 @@ export function Transactions() {
   const handleMarkReviewed = (id: string) => {
     markReviewed.mutate(id)
     toast.success('Marked as reviewed')
+  }
+
+  const handleAddCandidateAsRule = async (candidate: ReturnType<typeof getRecurringCandidates>[0]) => {
+    if (!wallets[0]?.id) { toast.error('Add a wallet first'); return }
+    const today = new Date().toISOString().slice(0, 10)
+    await addRecurringRule.mutateAsync({
+      description: candidate.description,
+      amount: candidate.amount,
+      original_amount: candidate.amount,
+      original_currency: money.baseCurrency,
+      type: 'expense',
+      category: candidate.category,
+      wallet_id: wallets[0].id,
+      transfer_wallet_id: null,
+      start_date: today,
+      next_due_date: addRecurringInterval(today, 'monthly'),
+      frequency: 'monthly',
+      end_date: null,
+      installment_total: null,
+      installment_paid: 0,
+      active: true,
+    })
+    toast.success(`${candidate.description} added as recurring rule`)
   }
 
   return (
@@ -515,6 +561,27 @@ export function Transactions() {
               </div>
             ))}
           </div>
+          {recurringCandidates.length > 0 && (
+            <div className="mt-6 border-t border-border pt-5">
+              <p className="mb-1 text-sm font-extrabold text-foreground">Detected patterns</p>
+              <p className="mb-4 text-xs text-muted-foreground">These transactions repeat regularly. Set them up as recurring rules.</p>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {recurringCandidates.map(candidate => (
+                  <div key={candidate.description} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-foreground">{candidate.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {candidate.category} · {candidate.count}× · avg {money.formatBase(candidate.amount)}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={() => handleAddCandidateAsRule(candidate)} disabled={addRecurringRule.isPending}>
+                      Set up
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -539,7 +606,54 @@ export function Transactions() {
         {groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
           <div key={date} className="mb-6 last:mb-0">
             <h3 className="mb-3 text-sm font-extrabold text-primary">{date}</h3>
-            <div className="overflow-x-auto rounded-2xl border border-border">
+
+            {/* Mobile card list */}
+            {!isDesktop && <div className="flex flex-col gap-2">
+              {rows.map(tx => (
+                <div
+                  key={tx.id}
+                  className={`rounded-xl border border-border px-4 py-3 ${tx.needs_review ? 'bg-[#FFCF73]/5' : 'bg-secondary'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />}
+                        <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{tx.category}</p>
+                    </div>
+                    <span className={`shrink-0 text-sm font-extrabold ${tx.type === 'income' ? 'text-primary' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-[#FF8388]'}`}>
+                      {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}{money.formatDisplay(tx.amount)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                      {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
+                    </p>
+                    <div className="flex gap-0.5">
+                      {tx.needs_review && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                          <CheckCircle size={14} />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                        <Copy size={14} />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                        <Pencil size={14} />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>}
+
+            {/* Desktop table */}
+            {isDesktop && <div className="overflow-x-auto rounded-2xl border border-border">
               <Table className="min-w-[820px]">
                 <TableBody>
                   <TableRow className="border-border bg-secondary/70 hover:bg-secondary/70">
@@ -587,7 +701,7 @@ export function Transactions() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </div>}
           </div>
         )) : (
           <p className="py-10 text-center text-muted-foreground">No transactions yet.</p>

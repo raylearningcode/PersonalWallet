@@ -9,6 +9,7 @@ import {
   useAddBudgetRule,
   useDeleteBudgetRule,
 } from '@/lib/queries'
+import { Lightbulb } from 'lucide-react'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -104,6 +105,33 @@ export function Budget() {
   const risk = totalAllocated > 0 ? getOverspendRisk(remaining, totalAllocated) : 'Low'
   const hasData = categories.length > 0
 
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const spendingSuggestions = useMemo(() => {
+    const now = new Date()
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+    const recentExpenses = transactions.filter(t => {
+      if (t.type === 'income' || t.type === 'transfer') return false
+      const d = new Date(t.date)
+      return d >= threeMonthsAgo
+    })
+    const catMap: Record<string, number[]> = {}
+    recentExpenses.forEach(t => {
+      if (!catMap[t.category]) catMap[t.category] = []
+      catMap[t.category].push(t.amount)
+    })
+    const existingNames = new Set(categories.map(c => c.name.toLowerCase()))
+    return Object.entries(catMap)
+      .map(([name, amounts]) => ({
+        name,
+        monthlyAvg: Math.round(amounts.reduce((s, a) => s + a, 0) / 3),
+        txCount: amounts.length,
+      }))
+      .filter(s => !existingNames.has(s.name.toLowerCase()) && s.monthlyAvg > 0)
+      .sort((a, b) => b.monthlyAvg - a.monthlyAvg)
+      .slice(0, 6)
+  }, [transactions, categories])
+
   const startEdit = (id: string, yearly_allocated: number, budget_period: BudgetPeriod, color: string) => {
     setEditingId(id)
     setEditDraft({ yearly_allocated: Number(money.fromBase(yearly_allocated, money.displayCurrency).toFixed(2)), budget_period, color })
@@ -168,6 +196,20 @@ export function Budget() {
       toast.success('Budget rule added')
     } catch {
       toast.error('Failed to add budget rule')
+    }
+  }
+
+  const handleApplySuggestion = async (name: string, monthlyAvg: number) => {
+    try {
+      await addCategory.mutateAsync({
+        name,
+        yearly_allocated: money.toBase(money.fromBase(monthlyAvg, money.displayCurrency), money.displayCurrency),
+        budget_period: 'monthly',
+        color: '#6c63ff',
+      })
+      toast.success(`${name} budget created`)
+    } catch {
+      toast.error('Failed to create budget')
     }
   }
 
@@ -291,6 +333,46 @@ export function Budget() {
               )
             }) : (
               <p className="text-sm text-muted-foreground">No budget categories yet.</p>
+            )}
+
+            {spendingSuggestions.length > 0 && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2"
+                  onClick={() => setShowSuggestions(v => !v)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-extrabold text-primary">
+                      {spendingSuggestions.length} budget{spendingSuggestions.length > 1 ? 's' : ''} suggested from history
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-primary">{showSuggestions ? 'Hide' : 'Show'}</span>
+                </button>
+                {showSuggestions && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    {spendingSuggestions.map(s => (
+                      <div key={s.name} className="flex items-center justify-between gap-3 rounded-lg bg-primary/10 px-3 py-2">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            avg {fmt(s.monthlyAvg)}/mo · {s.txCount} recent transactions
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleApplySuggestion(s.name, s.monthlyAvg)}
+                          disabled={addCategory.isPending}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {showAdd ? (
