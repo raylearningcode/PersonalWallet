@@ -11,6 +11,16 @@ import type {
   Wallet,
 } from '../types'
 import { getDueRecurringOccurrences, getNextRecurringState } from './recurring'
+import {
+  localGetTransactions, localAddTransaction, localUpdateTransaction, localDeleteTransaction, localMarkReviewed,
+  localGetWallets, localAddWallet, localDeleteWallet,
+  localGetCategories, localAddCategory, localUpdateCategory, localDeleteCategory,
+  localGetRules, localAddRule, localUpdateRule, localDeleteRule, localRunDueRules,
+  localGetSettings, localSaveSettings,
+  localGetInvestment, localSaveInvestment,
+  localGetPlans, localUpsertPlan,
+  hasGuestData, clearGuestData, getGuestDataForMigration,
+} from './localStore'
 
 const accountQueryKeys = [
   ['transactions'],
@@ -64,12 +74,37 @@ async function claimLegacyAccountData(userId: string) {
   }
 }
 
+async function migrateGuestDataToAccount(userId: string): Promise<number> {
+  const { transactions, wallets, categories, rules, plans, investment } = getGuestDataForMigration()
+  const strip = <T extends { user_id?: string | null; created_at?: string }>(
+    items: T[]
+  ): (Omit<T, 'user_id'> & { user_id: string })[] =>
+    items.map(({ user_id: _uid, ...rest }) => ({ ...rest, user_id: userId } as Omit<T, 'user_id'> & { user_id: string }))
+
+  if (wallets.length) await supabase.from('wallets').insert(strip(wallets))
+  if (categories.length) await supabase.from('budget_categories').insert(strip(categories))
+  if (rules.length) await supabase.from('recurring_rules').insert(strip(rules))
+  if (transactions.length) await supabase.from('transactions').insert(strip(transactions))
+  if (plans.length) await supabase.from('estimation_plans').insert(strip(plans))
+  if (investment) {
+    const { user_id: _uid, id: _id, created_at: _ca, ...inv } = investment
+    await supabase.from('investment_config').insert({ ...inv, user_id: userId })
+  }
+  clearGuestData()
+  return wallets.length + categories.length + rules.length + transactions.length + plans.length + (investment ? 1 : 0)
+}
+
 export function useTransactions(filter = 'all') {
   return useQuery({
     queryKey: ['transactions', filter],
     queryFn: async () => {
       const userId = await getCurrentUserId()
-      if (!userId) return []
+      if (!userId) {
+        let txs = localGetTransactions()
+        if (filter === 'needs_review') txs = txs.filter(t => t.needs_review)
+        else if (filter !== 'all') txs = txs.filter(t => t.type === filter)
+        return txs.sort((a, b) => b.date.localeCompare(a.date))
+      }
       let q = supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false })
       if (filter === 'needs_review') q = q.eq('needs_review', true)
       else if (filter !== 'all') q = q.eq('type', filter)
@@ -84,7 +119,8 @@ export function useDeleteTransaction() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const userId = await requireUserId('deleting transactions')
+      const userId = await getCurrentUserId()
+      if (!userId) { localDeleteTransaction(id); return }
       const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId)
       if (error) throw error
     },
@@ -96,7 +132,8 @@ export function useAddTransaction() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
-      const userId = await requireUserId('adding transactions')
+      const userId = await getCurrentUserId()
+      if (!userId) return localAddTransaction(transaction)
       const { data, error } = await supabase.from('transactions').insert({ ...transaction, user_id: userId }).select().single()
       if (error) throw error
       return data as Transaction
@@ -109,7 +146,8 @@ export function useUpdateTransaction() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...transaction }: Partial<Omit<Transaction, 'created_at'>> & { id: string }) => {
-      const userId = await requireUserId('editing transactions')
+      const userId = await getCurrentUserId()
+      if (!userId) return localUpdateTransaction(id, transaction)
       const { data, error } = await supabase
         .from('transactions')
         .update(transaction)
@@ -128,7 +166,8 @@ export function useMarkReviewed() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const userId = await requireUserId('reviewing transactions')
+      const userId = await getCurrentUserId()
+      if (!userId) { localMarkReviewed(id); return }
       const { error } = await supabase.from('transactions').update({ needs_review: false }).eq('id', id).eq('user_id', userId)
       if (error) throw error
     },
@@ -141,7 +180,7 @@ export function useRecurringRules() {
     queryKey: ['recurring_rules'],
     queryFn: async () => {
       const userId = await getCurrentUserId()
-      if (!userId) return []
+      if (!userId) return [...localGetRules()].sort((a, b) => Number(b.active) - Number(a.active) || a.next_due_date.localeCompare(b.next_due_date))
       const { data, error } = await supabase
         .from('recurring_rules')
         .select('*')
@@ -158,7 +197,8 @@ export function useAddRecurringRule() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (rule: Omit<RecurringRule, 'id' | 'created_at'>) => {
-      const userId = await requireUserId('adding recurring rules')
+      const userId = await getCurrentUserId()
+      if (!userId) return localAddRule(rule)
       const { data, error } = await supabase.from('recurring_rules').insert({ ...rule, user_id: userId }).select().single()
       if (error) throw error
       return data as RecurringRule
@@ -171,7 +211,8 @@ export function useUpdateRecurringRule() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...rule }: Partial<Omit<RecurringRule, 'created_at'>> & { id: string }) => {
-      const userId = await requireUserId('editing recurring rules')
+      const userId = await getCurrentUserId()
+      if (!userId) return localUpdateRule(id, rule)
       const { data, error } = await supabase
         .from('recurring_rules')
         .update(rule)
@@ -190,7 +231,8 @@ export function useDeleteRecurringRule() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const userId = await requireUserId('deleting recurring rules')
+      const userId = await getCurrentUserId()
+      if (!userId) { localDeleteRule(id); return }
       const { error } = await supabase.from('recurring_rules').delete().eq('id', id).eq('user_id', userId)
       if (error) throw error
     },
@@ -203,7 +245,8 @@ export function useRunDueRecurringRules() {
   return useMutation<number, Error, string | undefined>({
     mutationFn: async today => {
       const runDate = today ?? new Date().toISOString().slice(0, 10)
-      const userId = await requireUserId('generating recurring payments')
+      const userId = await getCurrentUserId()
+      if (!userId) return localRunDueRules(runDate)
       const { data: rules, error } = await supabase
         .from('recurring_rules')
         .select('*')
@@ -272,7 +315,7 @@ export function useWallets() {
     queryKey: ['wallets'],
     queryFn: async () => {
       const userId = await getCurrentUserId()
-      if (!userId) return []
+      if (!userId) return localGetWallets()
       const { data, error } = await supabase.from('wallets').select('*').eq('user_id', userId).order('created_at')
       if (error) throw error
       return data as Wallet[]
@@ -284,7 +327,8 @@ export function useAddWallet() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (wallet: Omit<Wallet, 'id' | 'created_at'>) => {
-      const userId = await requireUserId('adding wallets')
+      const userId = await getCurrentUserId()
+      if (!userId) return localAddWallet(wallet)
       const { data, error } = await supabase.from('wallets').insert({ ...wallet, user_id: userId }).select().single()
       if (error) throw error
       return data as Wallet
@@ -297,7 +341,8 @@ export function useDeleteWallet() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const userId = await requireUserId('deleting wallets')
+      const userId = await getCurrentUserId()
+      if (!userId) { localDeleteWallet(id); return }
       const { error } = await supabase.from('wallets').delete().eq('id', id).eq('user_id', userId)
       if (error) throw error
     },
@@ -310,7 +355,7 @@ export function useBudgetCategories() {
     queryKey: ['budget_categories'],
     queryFn: async () => {
       const userId = await getCurrentUserId()
-      if (!userId) return []
+      if (!userId) return [...localGetCategories()].sort((a, b) => a.name.localeCompare(b.name))
       const { data, error } = await supabase.from('budget_categories').select('*').eq('user_id', userId).order('name')
       if (error) throw error
       return data as BudgetCategory[]
@@ -322,7 +367,8 @@ export function useAddBudgetCategory() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (cat: Omit<BudgetCategory, 'id' | 'created_at' | 'budget_period'> & Partial<Pick<BudgetCategory, 'budget_period'>>) => {
-      const userId = await requireUserId('adding categories')
+      const userId = await getCurrentUserId()
+      if (!userId) return localAddCategory(cat)
       const { data, error } = await supabase
         .from('budget_categories')
         .insert({ budget_period: 'monthly', ...cat, user_id: userId })
@@ -339,7 +385,8 @@ export function useDeleteBudgetCategory() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const userId = await requireUserId('deleting categories')
+      const userId = await getCurrentUserId()
+      if (!userId) { localDeleteCategory(id); return }
       const { error } = await supabase.from('budget_categories').delete().eq('id', id).eq('user_id', userId)
       if (error) throw error
     },
@@ -351,7 +398,8 @@ export function useUpdateBudgetCategory() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, yearly_allocated, budget_period, color }: Pick<BudgetCategory, 'id' | 'yearly_allocated' | 'budget_period' | 'color'>) => {
-      const userId = await requireUserId('editing categories')
+      const userId = await getCurrentUserId()
+      if (!userId) { localUpdateCategory(id, { yearly_allocated, budget_period, color }); return }
       const { error } = await supabase
         .from('budget_categories')
         .update({ yearly_allocated, budget_period, color })
@@ -394,7 +442,7 @@ export function useInvestmentConfig() {
     queryKey: ['investment_config'],
     queryFn: async () => {
       const userId = await getCurrentUserId()
-      if (!userId) return null
+      if (!userId) return localGetInvestment()
       const { data, error } = await supabase.from('investment_config').select('*').eq('user_id', userId).limit(1).maybeSingle()
       if (error) throw error
       return data as InvestmentConfig | null
@@ -406,7 +454,8 @@ export function useSaveInvestmentConfig() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (config: Partial<Omit<InvestmentConfig, 'created_at'>>) => {
-      const userId = await requireUserId('saving investing settings')
+      const userId = await getCurrentUserId()
+      if (!userId) return localSaveInvestment(config)
       const { id, ...payload } = config
       const { data, error } = id
         ? await supabase.from('investment_config').update(payload).eq('id', id).eq('user_id', userId).select().single()
@@ -423,7 +472,7 @@ export function useEstimationPlans() {
     queryKey: ['estimation_plans'],
     queryFn: async () => {
       const userId = await getCurrentUserId()
-      if (!userId) return []
+      if (!userId) return [...localGetPlans()].sort((a, b) => b.year - a.year || b.month - a.month)
       const { data, error } = await supabase
         .from('estimation_plans')
         .select('*')
@@ -440,7 +489,8 @@ export function useUpsertEstimationPlan() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (plan: Omit<EstimationPlan, 'id' | 'created_at'>) => {
-      const userId = await requireUserId('saving estimation plans')
+      const userId = await getCurrentUserId()
+      if (!userId) return localUpsertPlan(plan)
       const { data, error } = await supabase
         .from('estimation_plans')
         .upsert({ ...plan, user_id: userId }, { onConflict: 'user_id,month,year' })
@@ -458,7 +508,7 @@ export function useAppSettings() {
     queryKey: ['app_settings'],
     queryFn: async () => {
       const userId = await getCurrentUserId()
-      if (!userId) return null
+      if (!userId) return localGetSettings()
       const { data, error } = await supabase
         .from('app_settings')
         .select('*')
@@ -476,7 +526,8 @@ export function useUpdateAppSettings() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...rest }: Partial<Omit<AppSettings, 'created_at'>> & { id: string }) => {
-      const userId = await requireUserId('saving settings')
+      const userId = await getCurrentUserId()
+      if (!userId) { localSaveSettings(rest); return }
       const { error } = await supabase.from('app_settings').update(rest).eq('id', id).eq('user_id', userId)
       if (error) throw error
     },
@@ -488,7 +539,8 @@ export function useSaveAppSettings() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (settings: Partial<Omit<AppSettings, 'created_at'>>) => {
-      const userId = await requireUserId('saving settings')
+      const userId = await getCurrentUserId()
+      if (!userId) return localSaveSettings(settings)
       const { id, ...payload } = settings
       let targetId = id
 
@@ -536,6 +588,7 @@ export function useSignIn() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       clearSignedOutFlag()
+      if (data.user?.id && hasGuestData()) await migrateGuestDataToAccount(data.user.id)
       return data
     },
     onSuccess: () => {
@@ -554,6 +607,7 @@ export function useSignUp() {
       if (data.user?.id && data.session) {
         await claimLegacyAccountData(data.user.id)
         clearSignedOutFlag()
+        if (hasGuestData()) await migrateGuestDataToAccount(data.user.id)
       }
       return data
     },
