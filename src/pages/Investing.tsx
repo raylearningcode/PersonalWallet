@@ -27,6 +27,36 @@ const DEFAULT_ALLOCATION: AllocationItem[] = [
   { name: 'Learning', pct: 10, color: '#FFD276' },
 ]
 
+const RISK_PROFILES: { label: string; description: string; allocation: AllocationItem[] }[] = [
+  {
+    label: 'Conservative',
+    description: 'Capital preservation — majority in bonds and cash',
+    allocation: [
+      { name: 'Bonds', pct: 60, color: '#93C5FD' },
+      { name: 'ETF', pct: 30, color: '#A9F5C7' },
+      { name: 'Cash', pct: 10, color: '#C4AEFF' },
+    ],
+  },
+  {
+    label: 'Moderate',
+    description: 'Balanced growth with downside protection',
+    allocation: [
+      { name: 'ETF', pct: 60, color: '#A9F5C7' },
+      { name: 'Bonds', pct: 25, color: '#93C5FD' },
+      { name: 'Cash', pct: 15, color: '#C4AEFF' },
+    ],
+  },
+  {
+    label: 'Aggressive',
+    description: 'Maximum growth — higher risk, higher reward',
+    allocation: [
+      { name: 'ETF', pct: 65, color: '#A9F5C7' },
+      { name: 'Crypto', pct: 25, color: '#FFD276' },
+      { name: 'Cash', pct: 10, color: '#C4AEFF' },
+    ],
+  },
+]
+
 const parseRate = (value: string) => {
   const parsed = Number(value.replace(/[^\d.,]/g, '').replace(',', '.'))
   return Number.isFinite(parsed) ? parsed : 0
@@ -270,8 +300,39 @@ export function Investing() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-xl">Portfolio allocation</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-xl">Portfolio allocation</CardTitle>
+          <p className="text-sm text-muted-foreground">Apply a risk profile as a starting point, then customise the percentages below.</p>
+        </CardHeader>
         <CardContent className="px-5 pb-6 sm:px-8">
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {RISK_PROFILES.map(profile => (
+              <button
+                key={profile.label}
+                className="rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                onClick={() => {
+                  setAllocation(profile.allocation)
+                  toast.success(`${profile.label} profile applied`)
+                }}
+              >
+                <p className="font-extrabold text-foreground">{profile.label}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{profile.description}</p>
+                <div className="mt-3 flex gap-1">
+                  {profile.allocation.map(item => (
+                    <div
+                      key={item.name}
+                      className="flex-1 overflow-hidden rounded-full"
+                      style={{ background: item.color, height: 4, minWidth: 0 }}
+                      title={`${item.name} ${item.pct}%`}
+                    />
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {profile.allocation.map(i => `${i.name} ${i.pct}%`).join(' · ')}
+                </p>
+              </button>
+            ))}
+          </div>
           <AllocationEditor
             value={allocation}
             onChange={setAllocation}

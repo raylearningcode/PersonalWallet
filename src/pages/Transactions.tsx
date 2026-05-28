@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -58,6 +58,9 @@ export function Transactions() {
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
   const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
   const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [showDateFilter, setShowDateFilter] = useState(false)
   const [ruleDescription, setRuleDescription] = useState('')
   const [ruleAmount, setRuleAmount] = useState('')
   const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
@@ -130,9 +133,11 @@ export function Transactions() {
           tx.description.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q)
         )
       }
+      if (dateFrom) visibleTransactions = visibleTransactions.filter(tx => tx.date >= dateFrom)
+      if (dateTo) visibleTransactions = visibleTransactions.filter(tx => tx.date <= dateTo)
       return [...visibleTransactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`))
     },
-    [selectedCategory, transactions, searchQuery]
+    [selectedCategory, transactions, searchQuery, dateFrom, dateTo]
   )
   const expenseCategoryTotals = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>()
@@ -374,19 +379,29 @@ export function Transactions() {
         searchValue={searchQuery}
         onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
         action={(
-          <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
-            <Plus className="h-4 w-4" />
-            New transaction
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${showDateFilter || dateFrom || dateTo ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setShowDateFilter(v => !v)}
+              title="Date range filter"
+              aria-label="Toggle date range filter"
+            >
+              <CalendarRange className="h-4 w-4" />
+            </button>
+            <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
+              <Plus className="h-4 w-4" />
+              New transaction
+            </Button>
+          </div>
         )}
       />
-      <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery('') }} className="mb-8 overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
+      <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); setDateFrom(''); setDateTo('') }} className="mb-8 overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
         <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
           {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
             <TabsTrigger
               key={f}
               value={f}
-              className="h-10 min-w-24 rounded-full border border-border bg-transparent px-4 text-sm font-bold capitalize text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:min-w-28 sm:px-6"
+              className="h-11 min-w-24 rounded-full border border-border bg-transparent px-4 text-sm font-bold capitalize text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:min-w-28 sm:px-6"
             >
               {f.replace('_', ' ')}
             </TabsTrigger>
@@ -548,6 +563,9 @@ export function Transactions() {
             <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
               {editingTransaction ? 'Save transaction' : 'Add transaction'}
             </Button>
+            <Button variant="secondary" className="mt-2 w-full lg:hidden" onClick={() => setIsFormOpen(false)}>
+              Close
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -605,9 +623,45 @@ export function Transactions() {
             <Button className="mt-4 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
               Save rule
             </Button>
+            <Button variant="secondary" className="mt-2 w-full lg:hidden" onClick={() => setEditingRule(null)}>
+              Close
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
+
+      {showDateFilter && (
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-border bg-card px-4 py-4 sm:px-6">
+          <span className="text-sm font-bold text-muted-foreground">Date range</span>
+          <Input
+            type="date"
+            aria-label="Date from"
+            className="h-9 w-auto min-w-0 bg-secondary text-sm"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+          />
+          <span className="text-muted-foreground">→</span>
+          <Input
+            type="date"
+            aria-label="Date to"
+            className="h-9 w-auto min-w-0 bg-secondary text-sm"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+            >
+              <X className="h-3 w-3" />
+              Clear
+            </button>
+          )}
+          {(dateFrom || dateTo) && (
+            <span className="text-xs text-primary font-bold">{sortedTransactions.length} result{sortedTransactions.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+      )}
 
       {expenseCategoryTotals.length > 0 && (
         <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
