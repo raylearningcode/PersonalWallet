@@ -111,28 +111,25 @@ export function Investing() {
   const targetProgress = draftBase.targetPortfolio > 0
     ? Math.min(100, Math.round((plan.projectedPortfolio / draftBase.targetPortfolio) * 100))
     : 0
-  const totalDuration = Math.max(draft.durationYears, 10)
-  const chartStep = Math.ceil(totalDuration / 10)
+  const chartDuration = Math.min(30, Math.max(draft.durationYears, 10))
   const growthData = useMemo(
     () => generateGrowthData(
       draftBase.monthlyContribution,
       draft.annualReturnRate,
-      totalDuration
+      chartDuration
     ).map(point => ({
       ...point,
       value: point.value + draft.initialCapital * Math.pow(1 + draft.annualReturnRate / 100 / 12, point.year * 12),
     })),
-    [draft, draftBase.monthlyContribution, totalDuration]
+    [draft, draftBase.monthlyContribution, chartDuration]
   )
-  const chartData = useMemo(
-    () => growthData.filter(p => p.year % chartStep === 0 || p.year === totalDuration),
-    [growthData, chartStep, totalDuration]
-  )
-  const maxValue = Math.max(...chartData.map(row => row.value), 1)
+  const maxValue = Math.max(...growthData.map(row => row.value), 1)
 
   const updateDraft = (key: keyof SimulatorValues, value: string) => {
     const parser = key === 'annualReturnRate' ? parseRate : parseMoney
-    setDraft(current => ({ ...current, [key]: parser(value) }))
+    const parsed = parser(value)
+    const clamped = key === 'durationYears' ? Math.min(30, parsed) : parsed
+    setDraft(current => ({ ...current, [key]: clamped }))
   }
 
   const setDuration = (durationYears: number) => {
@@ -223,30 +220,38 @@ export function Investing() {
       </Card>
 
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
-        <Card>
-          <CardHeader className="pb-2 pt-5">
+        <Card className="flex flex-col">
+          <CardHeader>
             <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-base font-extrabold">Growth simulation</CardTitle>
+              <CardTitle className="text-xl">Growth simulation</CardTitle>
               <span className="text-xs font-bold text-muted-foreground">
-                {draft.durationYears > 0 ? `${draft.durationYears}yr selected` : 'tap bar to set duration'}
+                {draft.durationYears > 0 ? `${draft.durationYears}yr · tap bar to change` : 'tap a bar to set duration'}
               </span>
             </div>
           </CardHeader>
-          <CardContent className="px-5 pb-5 sm:px-6">
-            <div className="flex items-end justify-between gap-1" style={{ height: '140px' }}>
-              {chartData.map((point) => (
-                <div key={point.year} className="flex flex-1 flex-col items-center gap-1">
-                  <button
-                    type="button"
-                    className={`w-full max-w-[18px] rounded-md transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
-                    style={{ height: `${Math.max(6, (point.value / maxValue) * 110)}px` }}
-                    onClick={() => setDuration(point.year)}
-                    aria-label={`Use ${point.year} year duration`}
-                    title={`${point.year}y: ${money.formatDisplay(point.value)}`}
-                  />
-                  <span className={`text-[9px] font-bold leading-none ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}</span>
-                </div>
-              ))}
+          <CardContent className="flex flex-1 flex-col justify-center px-6 pb-8 sm:px-8">
+            <div className="overflow-x-auto">
+              <div
+                className={`flex items-end gap-2 ${growthData.length <= 11 ? 'justify-between' : 'min-w-max'}`}
+                style={{ height: '200px' }}
+              >
+                {growthData.map((point) => (
+                  <div
+                    key={point.year}
+                    className={`flex flex-col items-center gap-1.5 ${growthData.length <= 11 ? 'flex-1' : 'w-5'}`}
+                  >
+                    <button
+                      type="button"
+                      className={`w-full max-w-[20px] rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
+                      style={{ height: `${Math.max(8, (point.value / maxValue) * 168)}px` }}
+                      onClick={() => setDuration(point.year)}
+                      aria-label={`Use ${point.year} year duration`}
+                      title={`${point.year} years: ${money.formatDisplay(point.value)}`}
+                    />
+                    <span className={`text-[9px] font-bold leading-none sm:text-[10px] ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}y</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
