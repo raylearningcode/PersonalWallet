@@ -389,18 +389,6 @@ export function useAddBudgetRule() {
   })
 }
 
-export function useDeleteBudgetRule() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const userId = await requireUserId('deleting budget rules')
-      const { error } = await supabase.from('budget_rules').delete().eq('id', id).eq('user_id', userId)
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['budget_rules'] }),
-  })
-}
-
 export function useInvestmentConfig() {
   return useQuery({
     queryKey: ['investment_config'],
@@ -411,18 +399,6 @@ export function useInvestmentConfig() {
       if (error) throw error
       return data as InvestmentConfig | null
     },
-  })
-}
-
-export function useUpdateInvestmentConfig() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, ...rest }: Partial<Omit<InvestmentConfig, 'created_at'>> & { id: string }) => {
-      const userId = await requireUserId('editing investing settings')
-      const { error } = await supabase.from('investment_config').update(rest).eq('id', id).eq('user_id', userId)
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['investment_config'] }),
   })
 }
 
