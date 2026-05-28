@@ -5,6 +5,10 @@ import { Sidebar } from './Sidebar'
 
 vi.mock('@/lib/queries', () => ({
   useGoals: () => ({ data: [] }),
+  useAuthSession: () => ({ data: null }),
+  useSignIn: () => ({ mutateAsync: async () => {}, isPending: false }),
+  useSignUp: () => ({ mutateAsync: async () => {}, isPending: false }),
+  useSignOut: () => ({ mutateAsync: async () => {}, isPending: false }),
 }))
 
 describe('Sidebar', () => {

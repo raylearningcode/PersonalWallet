@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { useMoney } from '@/lib/currency'
+import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
 import { Plus, Pause, Play, Trash2, RefreshCw, X } from 'lucide-react'
@@ -200,8 +200,8 @@ export function Subscriptions() {
             </p>
           </div>
           <div className="shrink-0 text-right">
-            <p className={`font-extrabold ${isExpense ? 'text-[#FF8388]' : 'text-primary'}`}>
-              {isExpense ? '-' : '+'}{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
+            <p className={`font-extrabold ${txAmountColor(rule.original_amount ?? rule.amount, rule.type)}`}>
+              {txAmountSign(rule.original_amount ?? rule.amount, rule.type)}{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">{FREQ_LABELS[rule.frequency].toLowerCase()}</p>
           </div>

@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { calculateSavingsRate } from '@/lib/stats'
-import { useMoney } from '@/lib/currency'
+import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
 import { Download } from 'lucide-react'
 
@@ -276,7 +276,7 @@ export function Reports() {
                     <p className="text-sm text-muted-foreground">{RANGE_LABELS[range]} {mode}</p>
                   </div>
                 </div>
-                <p className="text-right font-extrabold text-foreground">{mode === 'expense' ? '-' : '+'}{money.formatDisplay(amount)}</p>
+                <p className={`text-right font-extrabold ${txAmountColor(amount, mode)}`}>{txAmountSign(amount, mode)}{money.formatDisplay(amount)}</p>
               </div>
             )) : (
               <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">No category data yet.</p>
@@ -298,8 +298,8 @@ export function Reports() {
                   <p className="truncate font-bold text-foreground">{tx.description}</p>
                   <p className="text-xs text-muted-foreground">{tx.date}</p>
                 </div>
-                <p className={`shrink-0 font-extrabold ${tx.type === 'income' ? 'text-primary' : 'text-[#FF8388]'}`}>
-                  {tx.type === 'income' ? '+' : '-'}{money.formatDisplay(tx.amount)}
+                <p className={`shrink-0 font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                  {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
                 </p>
               </div>
             ))}

@@ -339,10 +339,13 @@ export function Dashboard() {
             <div className="rounded-2xl border border-border bg-secondary p-4">
               <p className="text-xs font-bold text-muted-foreground">Monthly cashflow</p>
               <p className="mt-2 text-2xl font-extrabold text-foreground">
-                {monthlyIncome > monthlySpent
-                  ? <span className="text-primary">+{fmt(monthlyIncome - monthlySpent)}</span>
-                  : <span className="text-[#FF8388]">-{fmt(monthlySpent - monthlyIncome)}</span>
-                }
+                {(() => {
+                  const diff = monthlyIncome - monthlySpent
+                  if (diff === 0) return <span className="text-foreground">{fmt(0)}</span>
+                  return diff > 0
+                    ? <span className="text-primary">+{fmt(diff)}</span>
+                    : <span className="text-[#FF8388]">-{fmt(-diff)}</span>
+                })()}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {fmt(monthlyIncome)} in · {fmt(monthlySpent)} out this month

@@ -388,10 +388,10 @@ export function Settings() {
             </div>
           </CardContent>
       </Card>
-      <Card className="mb-8">
+      <Card className="mb-8 lg:hidden">
         <CardHeader>
           <CardTitle className="text-xl">Account access</CardTitle>
-          <p className="text-sm text-muted-foreground">Log in or create an account to keep your budget data available across sessions.</p>
+          <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. On desktop, use the profile icon in the sidebar.</p>
         </CardHeader>
         <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
           {session ? (

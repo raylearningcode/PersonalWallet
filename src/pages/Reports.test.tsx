@@ -22,6 +22,8 @@ vi.mock('@/lib/currency', () => ({
     displayCurrency: 'IDR',
     formatDisplay: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
   }),
+  txAmountColor: (amount: number, type: string) => amount === 0 ? 'text-foreground' : type === 'income' ? 'text-primary' : 'text-[#FF8388]',
+  txAmountSign: (amount: number, type: string) => amount === 0 ? '' : type === 'income' ? '+' : type === 'transfer' ? '' : '-',
 }))
 
 describe('Reports', () => {

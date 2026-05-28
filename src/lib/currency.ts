@@ -90,3 +90,17 @@ export function useCurrency() {
 
   return money.formatDisplay
 }
+
+export function txAmountColor(amount: number, type: string): string {
+  if (amount === 0) return 'text-foreground'
+  if (type === 'income') return 'text-primary'
+  if (type === 'transfer') return 'text-muted-foreground'
+  return 'text-[#FF8388]'
+}
+
+export function txAmountSign(amount: number, type: string): string {
+  if (amount === 0) return ''
+  if (type === 'income') return '+'
+  if (type === 'transfer') return ''
+  return '-'
+}

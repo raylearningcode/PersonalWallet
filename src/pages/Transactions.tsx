@@ -23,7 +23,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { CURRENCIES, useMoney } from '@/lib/currency'
+import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
@@ -780,8 +780,8 @@ export function Transactions() {
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">{tx.category}</p>
                     </div>
-                    <span className={`shrink-0 text-sm font-extrabold ${tx.type === 'income' ? 'text-primary' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-[#FF8388]'}`}>
-                      {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}{money.formatDisplay(tx.amount)}
+                    <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
                     </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2">
@@ -834,8 +834,8 @@ export function Transactions() {
                         {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
                         {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
                       </TableCell>
-                      <TableCell className={`text-right font-bold ${tx.type === 'income' ? 'text-primary' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-[#FF8388]'}`}>
-                        {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}{money.formatDisplay(tx.amount)}
+                      <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
+                        {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
                       </TableCell>
                       <TableCell className="w-[124px]">
                         <div className="flex justify-end gap-1">
