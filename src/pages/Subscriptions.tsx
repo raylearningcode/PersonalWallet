@@ -183,7 +183,6 @@ export function Subscriptions() {
   const RuleCard = ({ rule }: { rule: RecurringRule }) => {
     const days = daysUntil(rule.next_due_date)
     const lastPaid = lastPaidDate(rule)
-    const isExpense = rule.type !== 'income'
     const walletName = rule.wallet_id ? wallets.find(w => w.id === rule.wallet_id)?.name : null
     return (
       <div className={`rounded-2xl border border-border bg-secondary p-4 transition-opacity ${rule.active ? '' : 'opacity-60'}`}>
