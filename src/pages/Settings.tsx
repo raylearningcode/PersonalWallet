@@ -318,7 +318,7 @@ export function Settings() {
               </select>
               <Button onClick={handleAddWallet} disabled={addWallet.isPending}>Add wallet</Button>
             </div>
-            <div className="space-y-5">
+            <div className="max-h-[320px] overflow-y-auto space-y-5 pr-1">
               {walletGroups.map(group => (
                 <div key={group.type}>
                   <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
