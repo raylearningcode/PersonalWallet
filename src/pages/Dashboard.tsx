@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
@@ -13,6 +13,7 @@ import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWallet
 export function Dashboard() {
   const money = useMoney()
   const fmt = money.formatDisplay
+  const [showDetails, setShowDetails] = useState(false)
   const { data: transactions = [] } = useTransactions()
   const { data: investConfig } = useInvestmentConfig()
   const { data: categories = [] } = useBudgetCategories()
@@ -279,6 +280,20 @@ export function Dashboard() {
         </Card>
       </div>
 
+      {/* Mobile expand toggle */}
+      <div className="mb-4 flex justify-center lg:hidden">
+        <button
+          type="button"
+          onClick={() => setShowDetails(v => !v)}
+          className="rounded-full border border-border bg-secondary px-5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {showDetails ? '▲ Show less' : '▼ Show more details'}
+        </button>
+      </div>
+
+      {/* Secondary cards — always visible on lg, toggle on mobile */}
+      <div className={showDetails ? '' : 'hidden lg:block'}>
+
       {/* Budget health + Smart insights */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-7">
         <Card>
@@ -402,6 +417,8 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      </div>{/* end secondary cards */}
 
       {/* Goals progress widget */}
       {(goals.length > 0) && (

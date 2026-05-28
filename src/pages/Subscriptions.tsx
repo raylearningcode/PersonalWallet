@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useRecurringRules, useAddRecurringRule, useUpdateRecurringRule, useDeleteRecurringRule, useTransactions, useWallets, useBudgetCategories } from '@/lib/queries'
+import { useRecurringRules, useAddRecurringRule, useUpdateRecurringRule, useDeleteRecurringRule, useAddTransaction, useTransactions, useWallets, useBudgetCategories } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,6 +52,7 @@ const emptyAddForm = () => ({
   category: '',
   walletId: '',
   startDate: new Date().toISOString().slice(0, 10),
+  logFirstPayment: true,
 })
 
 export function Subscriptions() {
@@ -61,6 +62,7 @@ export function Subscriptions() {
   const { data: wallets = [] } = useWallets()
   const { data: categories = [] } = useBudgetCategories()
   const addRule = useAddRecurringRule()
+  const addTransaction = useAddTransaction()
   const updateRule = useUpdateRecurringRule()
   const deleteRule = useDeleteRecurringRule()
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
@@ -131,15 +133,16 @@ export function Subscriptions() {
       return
     }
     const startDate = addForm.startDate || new Date().toISOString().slice(0, 10)
+    const category = addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions')
     try {
-      await addRule.mutateAsync({
+      const rule = await addRule.mutateAsync({
         user_id: null,
         description: addForm.description.trim(),
         amount: money.toBase(amount, money.displayCurrency),
         original_amount: amount,
         original_currency: money.displayCurrency,
         type: addForm.type,
-        category: addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions'),
+        category,
         wallet_id: addForm.walletId || null,
         transfer_wallet_id: null,
         start_date: startDate,
@@ -150,7 +153,26 @@ export function Subscriptions() {
         installment_paid: 0,
         active: true,
       })
-      toast.success('Subscription added')
+      if (addForm.logFirstPayment) {
+        await addTransaction.mutateAsync({
+          user_id: null,
+          description: addForm.description.trim(),
+          amount: money.toBase(amount, money.displayCurrency),
+          original_amount: amount,
+          original_currency: money.displayCurrency,
+          type: addForm.type,
+          category,
+          wallet_id: addForm.walletId || null,
+          transfer_wallet_id: null,
+          recurring_rule_id: rule?.id ?? null,
+          recurring_due_date: startDate,
+          date: startDate,
+          needs_review: false,
+        })
+        toast.success('Subscription added and first payment recorded')
+      } else {
+        toast.success('Subscription added')
+      }
       setAddForm(emptyAddForm())
       setShowAddForm(false)
     } catch {
@@ -279,6 +301,9 @@ export function Subscriptions() {
                   <option value="expense">Expense</option>
                   <option value="income">Income</option>
                 </select>
+                {addForm.type === 'income' && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">e.g. rent received, salary retainer, freelance contract, dividends</p>
+                )}
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Frequency</Label>
@@ -325,9 +350,20 @@ export function Subscriptions() {
                 />
               </div>
             </div>
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-input accent-primary"
+                checked={addForm.logFirstPayment}
+                onChange={e => setField('logFirstPayment', e.target.checked)}
+              />
+              <span className="text-sm font-bold text-foreground">
+                Log first {addForm.type === 'income' ? 'payment received' : 'payment'} on {addForm.startDate || 'start date'}
+              </span>
+            </label>
             <div className="flex gap-3">
-              <Button onClick={handleAdd} disabled={addRule.isPending}>
-                {addRule.isPending ? 'Adding…' : 'Add subscription'}
+              <Button onClick={handleAdd} disabled={addRule.isPending || addTransaction.isPending}>
+                {(addRule.isPending || addTransaction.isPending) ? 'Adding…' : 'Add subscription'}
               </Button>
               <Button variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm()) }}>
                 Cancel
