@@ -1,4 +1,4 @@
-import type { AppSettings, BudgetCategory, EstimationPlan, InvestmentConfig, RecurringRule, Transaction, Wallet } from '@/types'
+import type { AppSettings, BudgetCategory, EstimationPlan, Goal, InvestmentConfig, RecurringRule, Transaction, Wallet } from '@/types'
 import { getDueRecurringOccurrences, getNextRecurringState } from './recurring'
 
 const PFX = 'finpath_guest_'
@@ -219,6 +219,28 @@ export function localUpsertPlan(data: Omit<EstimationPlan, 'id' | 'user_id' | 'c
   return plan
 }
 
+// ─── Goals ────────────────────────────────────────────────────────────────────
+
+export function localGetGoals(): Goal[] {
+  return load<Goal[]>('goals', [])
+}
+
+export function localAddGoal(data: Omit<Goal, 'id' | 'user_id' | 'created_at'>): Goal {
+  const goal: Goal = { ...data, id: newId(), user_id: null, created_at: nowIso() }
+  save('goals', [...localGetGoals(), goal])
+  return goal
+}
+
+export function localUpdateGoal(id: string, patch: Partial<Goal>): Goal {
+  const all = localGetGoals().map(g => (g.id === id ? { ...g, ...patch } : g))
+  save('goals', all)
+  return all.find(g => g.id === id)!
+}
+
+export function localDeleteGoal(id: string): void {
+  save('goals', localGetGoals().filter(g => g.id !== id))
+}
+
 // ─── Guest mode helpers ───────────────────────────────────────────────────────
 
 export function hasGuestData(): boolean {
@@ -228,12 +250,13 @@ export function hasGuestData(): boolean {
     localGetCategories().length > 0 ||
     localGetRules().length > 0 ||
     localGetPlans().length > 0 ||
+    localGetGoals().length > 0 ||
     localGetInvestment() !== null
   )
 }
 
 export function clearGuestData(): void {
-  const keys = ['transactions', 'wallets', 'categories', 'rules', 'settings', 'investment', 'plans']
+  const keys = ['transactions', 'wallets', 'categories', 'rules', 'settings', 'investment', 'plans', 'goals']
   keys.forEach(k => {
     if (typeof window !== 'undefined') localStorage.removeItem(PFX + k)
   })
@@ -246,6 +269,7 @@ export function getGuestDataForMigration() {
     categories: localGetCategories(),
     rules: localGetRules(),
     plans: localGetPlans(),
+    goals: localGetGoals(),
     investment: localGetInvestment(),
   }
 }

@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Calculator, Settings, TrendingUp } from 'lucide-react'
+import { BarChart2, Calculator, RefreshCw, Settings, Target, TrendingUp } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useAppSettings } from '@/lib/queries'
 
 const MORE_NAV = [
+  { to: '/goals', label: 'Goals', Icon: Target },
+  { to: '/subscriptions', label: 'Subscriptions', Icon: RefreshCw },
   { to: '/investing', label: 'Investing', Icon: TrendingUp },
   { to: '/estimation', label: 'Planning', Icon: Calculator },
   { to: '/reports', label: 'Reports', Icon: BarChart2 },

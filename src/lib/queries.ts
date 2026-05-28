@@ -5,6 +5,7 @@ import type {
   BudgetCategory,
   BudgetRule,
   EstimationPlan,
+  Goal,
   InvestmentConfig,
   RecurringRule,
   Transaction,
@@ -19,6 +20,7 @@ import {
   localGetSettings, localSaveSettings,
   localGetInvestment, localSaveInvestment,
   localGetPlans, localUpsertPlan,
+  localGetGoals, localAddGoal, localUpdateGoal, localDeleteGoal,
   hasGuestData, clearGuestData, getGuestDataForMigration,
 } from './localStore'
 
@@ -31,6 +33,7 @@ const accountQueryKeys = [
   ['investment_config'],
   ['estimation_plans'],
   ['app_settings'],
+  ['goals'],
 ]
 
 async function getCurrentUserId() {
@@ -75,7 +78,7 @@ async function claimLegacyAccountData(userId: string) {
 }
 
 async function migrateGuestDataToAccount(userId: string): Promise<number> {
-  const { transactions, wallets, categories, rules, plans, investment } = getGuestDataForMigration()
+  const { transactions, wallets, categories, rules, plans, goals, investment } = getGuestDataForMigration()
   const strip = <T extends { user_id?: string | null; created_at?: string }>(
     items: T[]
   ): (Omit<T, 'user_id'> & { user_id: string })[] =>
@@ -86,12 +89,13 @@ async function migrateGuestDataToAccount(userId: string): Promise<number> {
   if (rules.length) await supabase.from('recurring_rules').insert(strip(rules))
   if (transactions.length) await supabase.from('transactions').insert(strip(transactions))
   if (plans.length) await supabase.from('estimation_plans').insert(strip(plans))
+  if (goals.length) await supabase.from('goals').insert(strip(goals))
   if (investment) {
     const { user_id: _uid, id: _id, created_at: _ca, ...inv } = investment
     await supabase.from('investment_config').insert({ ...inv, user_id: userId })
   }
   clearGuestData()
-  return wallets.length + categories.length + rules.length + transactions.length + plans.length + (investment ? 1 : 0)
+  return wallets.length + categories.length + rules.length + transactions.length + plans.length + goals.length + (investment ? 1 : 0)
 }
 
 export function useTransactions(filter = 'all') {
@@ -503,6 +507,60 @@ export function useUpsertEstimationPlan() {
   })
 }
 
+export function useGoals() {
+  return useQuery({
+    queryKey: ['goals'],
+    queryFn: async () => {
+      const userId = await getCurrentUserId()
+      if (!userId) return [...localGetGoals()].sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+      const { data, error } = await supabase.from('goals').select('*').eq('user_id', userId).order('created_at', { ascending: true })
+      if (error) throw error
+      return (data ?? []) as Goal[]
+    },
+  })
+}
+
+export function useAddGoal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: Omit<Goal, 'id' | 'user_id' | 'created_at'>) => {
+      const userId = await getCurrentUserId()
+      if (!userId) return localAddGoal(data)
+      const { data: created, error } = await supabase.from('goals').insert({ ...data, user_id: userId }).select().single()
+      if (error) throw error
+      return created as Goal
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['goals'] }),
+  })
+}
+
+export function useUpdateGoal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<Omit<Goal, 'created_at'>> & { id: string }) => {
+      const userId = await getCurrentUserId()
+      if (!userId) return localUpdateGoal(id, patch)
+      const { data, error } = await supabase.from('goals').update(patch).eq('id', id).eq('user_id', userId).select().single()
+      if (error) throw error
+      return data as Goal
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['goals'] }),
+  })
+}
+
+export function useDeleteGoal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const userId = await getCurrentUserId()
+      if (!userId) { localDeleteGoal(id); return }
+      const { error } = await supabase.from('goals').delete().eq('id', id).eq('user_id', userId)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['goals'] }),
+  })
+}
+
 export function useAppSettings() {
   return useQuery({
     queryKey: ['app_settings'],
@@ -636,6 +694,7 @@ export function useSignOut() {
       qc.setQueryData(['investment_config'], null)
       qc.setQueryData(['estimation_plans'], [])
       qc.setQueryData(['app_settings'], null)
+      qc.setQueryData(['goals'], [])
       invalidateAccountQueries(qc)
     },
   })

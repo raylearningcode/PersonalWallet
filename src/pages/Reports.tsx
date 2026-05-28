@@ -68,6 +68,7 @@ export function Reports() {
   const [range, setRange] = useState<ReportRange>('month')
   const [periodDate, setPeriodDate] = useState(() => new Date())
   const [mode, setMode] = useState<ReportMode>('expense')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate), [periodDate, range])
   const periodLabel = formatPeriodLabel(range, periodDate)
@@ -105,9 +106,17 @@ export function Reports() {
     })
     return Object.entries(map).sort((a, b) => b[1] - a[1])
   }, [activeTx])
+
+  const filteredTx = useMemo(() => {
+    if (!selectedCategory) return []
+    return activeTx.filter(tx => tx.category === selectedCategory).sort((a, b) => b.date.localeCompare(a.date))
+  }, [activeTx, selectedCategory])
   const activeTotal = categoryTotals.reduce((sum, [, amount]) => sum + amount, 0)
   const topCategory = categoryTotals[0]?.[0] ?? 'Empty'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
+
+  const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null) }
+  const handleModeChange = (m: ReportMode) => { setMode(m); setSelectedCategory(null) }
 
   const handleExportCSV = () => {
     const headers = ['Date', 'Description', 'Category', 'Type', 'Amount (display)', 'Amount (base)']
@@ -148,7 +157,7 @@ export function Reports() {
                 <button
                   key={item}
                   className={`rounded-full px-4 py-2 text-sm font-extrabold ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                  onClick={() => setRange(item)}
+                  onClick={() => handleRangeChange(item)}
                 >
                   {RANGE_LABELS[item]}
                 </button>
@@ -207,7 +216,7 @@ export function Reports() {
                   <button
                     key={item}
                     className={`rounded-full px-5 py-2 text-sm font-extrabold capitalize ${mode === item ? 'bg-card text-foreground' : 'text-muted-foreground'}`}
-                    onClick={() => setMode(item)}
+                    onClick={() => handleModeChange(item)}
                   >
                     {item}
                   </button>
@@ -223,15 +232,28 @@ export function Reports() {
                   <strong className="mt-2 text-xl text-foreground">{money.formatDisplay(activeTotal)}</strong>
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
+                {selectedCategory && (
+                  <button
+                    className="mb-2 flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => setSelectedCategory(null)}
+                  >
+                    ✕ Clear filter: {selectedCategory}
+                  </button>
+                )}
                 {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
-                  <div key={name} className="flex items-center justify-between gap-4">
+                  <button
+                    key={name}
+                    className={`flex w-full items-center justify-between gap-4 rounded-xl px-2 py-1.5 transition-colors ${selectedCategory === name ? 'bg-secondary' : 'hover:bg-secondary/60'}`}
+                    onClick={() => setSelectedCategory(selectedCategory === name ? null : name)}
+                    title={`Filter by ${name}`}
+                  >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />
+                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />
                       <span className="truncate font-bold text-foreground">{name}</span>
                     </div>
                     <span className="text-sm font-bold text-muted-foreground">{Math.round((amount / activeTotal) * 100)}%</span>
-                  </div>
+                  </button>
                 )) : (
                   <p className="text-sm text-muted-foreground">No {mode} data in this range.</p>
                 )}
@@ -262,6 +284,28 @@ export function Reports() {
           </CardContent>
         </Card>
       </div>
+
+      {selectedCategory && filteredTx.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">{selectedCategory} — {filteredTx.length} transaction{filteredTx.length === 1 ? '' : 's'}</CardTitle>
+            <p className="text-sm text-muted-foreground">Total: {money.formatDisplay(filteredTx.reduce((s, t) => s + t.amount, 0))}</p>
+          </CardHeader>
+          <CardContent className="space-y-2 px-5 pb-6 sm:px-8">
+            {filteredTx.map(tx => (
+              <div key={tx.id} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-foreground">{tx.description}</p>
+                  <p className="text-xs text-muted-foreground">{tx.date}</p>
+                </div>
+                <p className={`shrink-0 font-extrabold ${tx.type === 'income' ? 'text-primary' : 'text-[#FF8388]'}`}>
+                  {tx.type === 'income' ? '+' : '-'}{money.formatDisplay(tx.amount)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mt-6">
         <CardHeader><CardTitle className="text-xl">Reporter notes</CardTitle></CardHeader>

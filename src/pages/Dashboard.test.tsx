@@ -16,6 +16,7 @@ vi.mock('@/lib/queries', () => ({
   useAppSettings: () => ({ data: { user_name: '', email: '', currency: 'IDR', base_currency: 'IDR' } }),
   useWallets: () => ({ data: [] }),
   useRecurringRules: () => ({ data: [] }),
+  useGoals: () => ({ data: [] }),
 }))
 
 vi.mock('@/lib/currency', () => ({

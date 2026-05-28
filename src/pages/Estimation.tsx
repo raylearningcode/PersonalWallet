@@ -50,6 +50,8 @@ export function Estimation() {
   const [wishlistType, setWishlistType] = useState('Want')
   const [wishlistNote, setWishlistNote] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<null | { list: 'income' | 'expense' | 'wishlist'; id: string; name: string }>(null)
+  const [incomeError, setIncomeError] = useState(false)
+  const [expenseError, setExpenseError] = useState(false)
 
   useEffect(() => {
     if (initialized.current || !plans) return
@@ -83,18 +85,28 @@ export function Estimation() {
 
   const addIncome = () => {
     const amount = parseNumberInput(incomeAmount)
-    if (!incomeSource.trim() || amount <= 0) return
+    if (!incomeSource.trim() || amount <= 0) {
+      setIncomeError(true)
+      setTimeout(() => setIncomeError(false), 1500)
+      return
+    }
     setIncomeItems(current => [...current, { id: crypto.randomUUID(), name: incomeSource.trim(), amount: money.toBase(amount, money.displayCurrency), period: incomePeriod }])
     setIncomeSource('')
     setIncomeAmount('')
+    toast.success('Income item added')
   }
 
   const addExpense = () => {
     const amount = parseNumberInput(expenseAmount)
-    if (!expenseDetail.trim() || amount <= 0) return
+    if (!expenseDetail.trim() || amount <= 0) {
+      setExpenseError(true)
+      setTimeout(() => setExpenseError(false), 1500)
+      return
+    }
     setExpenseItems(current => [...current, { id: crypto.randomUUID(), name: expenseDetail.trim(), amount: money.toBase(amount, money.displayCurrency), period: expensePeriod }])
     setExpenseDetail('')
     setExpenseAmount('')
+    toast.success('Expense item added')
   }
 
   const addWishlistItem = () => {
@@ -137,7 +149,7 @@ export function Estimation() {
   return (
     <div>
       <PageHeader
-        title="Estimation planner"
+        title="Planning"
         subtitle="Plan future months one item at a time: income sources, expected expenses, notes, and wishlist."
         action={(
           <div className="flex h-11 items-center gap-5 rounded-full border border-border bg-secondary px-6 text-sm">
@@ -164,11 +176,11 @@ export function Estimation() {
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
               <div>
                 <Label className="text-xs text-muted-foreground">Income source</Label>
-                <Input aria-label="Income source" className="mt-2 bg-secondary" value={incomeSource} onChange={event => setIncomeSource(event.target.value)} placeholder="Part-time work" />
+                <Input aria-label="Income source" className={`mt-2 bg-secondary transition-colors ${incomeError && !incomeSource.trim() ? 'border-[#FF8388]' : ''}`} value={incomeSource} onChange={event => setIncomeSource(event.target.value)} placeholder="Part-time work" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
-                <Input aria-label="Income amount" className="mt-2 bg-secondary" inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
@@ -191,11 +203,11 @@ export function Estimation() {
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
               <div>
                 <Label className="text-xs text-muted-foreground">Expense detail</Label>
-                <Input aria-label="Expense detail" className="mt-2 bg-secondary" value={expenseDetail} onChange={event => setExpenseDetail(event.target.value)} placeholder="Apartment rent" />
+                <Input aria-label="Expense detail" className={`mt-2 bg-secondary transition-colors ${expenseError && !expenseDetail.trim() ? 'border-[#FF8388]' : ''}`} value={expenseDetail} onChange={event => setExpenseDetail(event.target.value)} placeholder="Apartment rent" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
-                <Input aria-label="Expense amount" className="mt-2 bg-secondary" inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules } from '@/lib/queries'
+import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,6 +19,7 @@ export function Dashboard() {
   const { data: settings } = useAppSettings()
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
+  const { data: goals = [] } = useGoals()
 
   const year = new Date().getFullYear()
   const now = new Date()
@@ -104,6 +105,20 @@ export function Dashboard() {
   const safeToSpend = getSafeToSpend(monthlyBudget, monthlySpent, daysLeft)
   const categoryInsights = getCategoryInsights(transactions, categories).slice(0, 3)
 
+  const isNewUser = transactions.length === 0 && categories.length === 0 && wallets.length === 0
+
+  const topGoals = useMemo(
+    () => goals
+      .filter(g => g.current_amount < g.target_amount)
+      .sort((a, b) => {
+        const pctA = a.target_amount > 0 ? a.current_amount / a.target_amount : 0
+        const pctB = b.target_amount > 0 ? b.current_amount / b.target_amount : 0
+        return pctB - pctA
+      })
+      .slice(0, 3),
+    [goals]
+  )
+
   const upcomingBills = useMemo(
     () =>
       recurringRules
@@ -119,6 +134,36 @@ export function Dashboard() {
         title={`Good morning${settings?.user_name ? `, ${settings.user_name}` : ''}`}
         subtitle="Your financial health at a glance."
       />
+
+      {/* Onboarding banner for brand-new users */}
+      {isNewUser && (
+        <div className="mb-8 rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Getting started</p>
+          <h2 className="mt-2 text-2xl font-extrabold text-foreground">Welcome to FinPath</h2>
+          <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+            Set up your profile in three steps to unlock personalised insights, budget health scores, and investment projections.
+          </p>
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              { step: '1', label: 'Create categories', sub: 'Define spending buckets and budgets', to: '/budget' },
+              { step: '2', label: 'Add a wallet', sub: 'Track where your money sits', to: '/settings' },
+              { step: '3', label: 'Record a transaction', sub: 'Log income or expenses', to: '/transactions' },
+            ].map(item => (
+              <Link
+                key={item.step}
+                to={item.to}
+                className="flex items-start gap-4 rounded-2xl border border-primary/20 bg-background px-4 py-4 transition-colors hover:border-primary/40"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-extrabold text-primary-foreground">{item.step}</span>
+                <div>
+                  <p className="font-extrabold text-foreground">{item.label}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{item.sub}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Review queue banner */}
       {reviewCount > 0 && (
@@ -335,6 +380,36 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Goals progress widget */}
+      {(goals.length > 0) && (
+        <div className="mt-6">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-extrabold text-foreground">Goals in progress</h2>
+            <Link to="/goals" className="text-sm font-bold text-primary hover:underline">View all →</Link>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {topGoals.map(goal => {
+              const pct = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0
+              return (
+                <div key={goal.id} className="relative overflow-hidden rounded-2xl border border-border bg-card p-5">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 w-1 rounded-l-[inherit]" style={{ backgroundColor: goal.color }} />
+                  <p className="truncate font-extrabold text-foreground">{goal.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{goal.category}</p>
+                  <div className="mt-3 flex items-end justify-between gap-2">
+                    <p className="text-lg font-extrabold text-foreground">{fmt(goal.current_amount)}</p>
+                    <p className="text-sm font-bold text-muted-foreground">{pct}%</p>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">Target: {fmt(goal.target_amount)}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
