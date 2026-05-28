@@ -286,6 +286,11 @@ export function Settings() {
               </Select>
             </div>
             <Button onClick={saveCurrency} disabled={saveSettings.isPending}>Save currency</Button>
+            {money.ratesDate && (
+              <p className="text-xs text-muted-foreground">
+                Live rates as of {money.ratesDate}
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card>
