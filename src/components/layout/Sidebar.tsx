@@ -1,5 +1,9 @@
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { BarChart3, Calculator, CreditCard, LayoutDashboard, PieChart, RefreshCw, Settings, Target, TrendingUp } from 'lucide-react'
+import { useGoals } from '@/lib/queries'
+
+export const PINNED_GOAL_KEY = 'finpath_pinned_goal_id'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -13,13 +17,27 @@ const navItems = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-type SidebarProps = {
-  goalLabel?: string
-  goalPct?: number
-}
+export function Sidebar() {
+  const { data: goals = [] } = useGoals()
+  const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
 
-export function Sidebar({ goalLabel = 'No goal set', goalPct = 0 }: SidebarProps) {
-  const pct = Math.max(0, Math.min(100, goalPct))
+  useEffect(() => {
+    const handler = () => setPinnedGoalId(localStorage.getItem(PINNED_GOAL_KEY) ?? '')
+    window.addEventListener('finpath-goal-pinned', handler)
+    return () => window.removeEventListener('finpath-goal-pinned', handler)
+  }, [])
+
+  const displayGoal = useMemo(() => {
+    if (pinnedGoalId) {
+      const found = goals.find(g => g.id === pinnedGoalId)
+      if (found) return found
+    }
+    return goals.find(g => g.current_amount < g.target_amount) ?? goals[0] ?? null
+  }, [goals, pinnedGoalId])
+
+  const pct = displayGoal && displayGoal.target_amount > 0
+    ? Math.min(100, Math.round((displayGoal.current_amount / displayGoal.target_amount) * 100))
+    : 0
 
   return (
     <aside className="relative z-10 mx-4 mt-4 hidden w-[calc(100%-2rem)] flex-col rounded-[1.7rem] border border-border bg-background/78 px-6 py-6 lg:fixed lg:left-10 lg:top-8 lg:m-0 lg:flex lg:h-[calc(100vh-4rem)] lg:w-[250px] lg:py-8">
@@ -61,8 +79,8 @@ export function Sidebar({ goalLabel = 'No goal set', goalPct = 0 }: SidebarProps
       </nav>
 
       <div className="mt-auto rounded-2xl border border-border bg-card px-5 py-5">
-        <p className="text-xs text-muted-foreground">2026 goal</p>
-        <p className="mt-2 break-words text-2xl font-extrabold text-foreground">{goalLabel}</p>
+        <p className="text-xs text-muted-foreground">{new Date().getFullYear()} goal</p>
+        <p className="mt-2 break-words text-2xl font-extrabold text-foreground">{displayGoal?.name ?? 'No goal set'}</p>
         <p className="mt-1 text-sm text-primary">{pct}% completed</p>
         <div className="mt-4 h-2 rounded-full bg-muted">
           <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />

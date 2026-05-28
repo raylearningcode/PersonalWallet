@@ -1,16 +1,17 @@
-import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { useRecurringRules, useUpdateRecurringRule, useDeleteRecurringRule, useTransactions } from '@/lib/queries'
+import { useMemo, useState } from 'react'
+import { useRecurringRules, useAddRecurringRule, useUpdateRecurringRule, useDeleteRecurringRule, useTransactions, useWallets, useBudgetCategories } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { useMoney } from '@/lib/currency'
+import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Plus, Pause, Play, Trash2, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
-import type { RecurringRule } from '@/types'
+import { Plus, Pause, Play, Trash2, RefreshCw, X } from 'lucide-react'
+import type { RecurringRule, RecurringFrequency } from '@/types'
 
 const FREQ_LABELS: Record<string, string> = {
   daily: 'Daily',
@@ -30,13 +31,41 @@ function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000)
 }
 
+function nextDueFrom(startDate: string, frequency: RecurringFrequency): string {
+  const d = new Date(startDate)
+  const now = new Date()
+  if (d >= now) return startDate
+  while (d < now) {
+    if (frequency === 'daily') d.setDate(d.getDate() + 1)
+    else if (frequency === 'weekly') d.setDate(d.getDate() + 7)
+    else if (frequency === 'monthly') d.setMonth(d.getMonth() + 1)
+    else d.setFullYear(d.getFullYear() + 1)
+  }
+  return d.toISOString().slice(0, 10)
+}
+
+const emptyAddForm = () => ({
+  description: '',
+  amount: '',
+  type: 'expense' as 'expense' | 'income',
+  frequency: 'monthly' as RecurringFrequency,
+  category: '',
+  walletId: '',
+  startDate: new Date().toISOString().slice(0, 10),
+})
+
 export function Subscriptions() {
   const money = useMoney()
   const { data: rules = [] } = useRecurringRules()
   const { data: transactions = [] } = useTransactions()
+  const { data: wallets = [] } = useWallets()
+  const { data: categories = [] } = useBudgetCategories()
+  const addRule = useAddRecurringRule()
   const updateRule = useUpdateRecurringRule()
   const deleteRule = useDeleteRecurringRule()
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addForm, setAddForm] = useState(emptyAddForm())
 
   const expenses = useMemo(
     () => rules.filter(r => r.type !== 'income').sort((a, b) => {
@@ -91,6 +120,44 @@ export function Subscriptions() {
     }
   }
 
+  const setField = <K extends keyof ReturnType<typeof emptyAddForm>>(key: K, value: ReturnType<typeof emptyAddForm>[K]) => {
+    setAddForm(f => ({ ...f, [key]: value }))
+  }
+
+  const handleAdd = async () => {
+    const amount = parseNumberInput(addForm.amount)
+    if (!addForm.description.trim() || amount <= 0) {
+      toast.error('Description and amount are required')
+      return
+    }
+    const startDate = addForm.startDate || new Date().toISOString().slice(0, 10)
+    try {
+      await addRule.mutateAsync({
+        user_id: null,
+        description: addForm.description.trim(),
+        amount: money.toBase(amount, money.displayCurrency),
+        original_amount: amount,
+        original_currency: money.displayCurrency,
+        type: addForm.type,
+        category: addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions'),
+        wallet_id: addForm.walletId || null,
+        transfer_wallet_id: null,
+        start_date: startDate,
+        next_due_date: nextDueFrom(startDate, addForm.frequency),
+        frequency: addForm.frequency,
+        end_date: null,
+        installment_total: null,
+        installment_paid: 0,
+        active: true,
+      })
+      toast.success('Subscription added')
+      setAddForm(emptyAddForm())
+      setShowAddForm(false)
+    } catch {
+      toast.error('Failed to add subscription')
+    }
+  }
+
   const RuleCard = ({ rule }: { rule: RecurringRule }) => {
     const days = daysUntil(rule.next_due_date)
     const lastPaid = lastPaidDate(rule)
@@ -117,7 +184,7 @@ export function Subscriptions() {
 
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
           {rule.active ? (
-            <span className={`font-bold ${days <= 3 ? 'text-[#FFCF73]' : days <= 0 ? 'text-[#FF8388]' : 'text-foreground'}`}>
+            <span className={`font-bold ${days <= 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-foreground'}`}>
               Next: {rule.next_due_date} {days === 0 ? '(today)' : days > 0 ? `(${days}d)` : '(overdue)'}
             </span>
           ) : (
@@ -160,11 +227,115 @@ export function Subscriptions() {
         title="Subscriptions"
         subtitle="Monitor recurring payments and income streams, pause or cancel unwanted subscriptions."
         action={
-          <Button asChild className="gap-2">
-            <Link to="/transactions"><Plus className="h-4 w-4" /> Add subscription</Link>
-          </Button>
+          !showAddForm ? (
+            <Button className="gap-2" onClick={() => setShowAddForm(true)}>
+              <Plus className="h-4 w-4" /> Add subscription
+            </Button>
+          ) : undefined
         }
       />
+
+      {showAddForm && (
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl">New subscription</CardTitle>
+              <button
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm()) }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 px-5 pb-6 sm:px-8">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Name *</Label>
+                <Input
+                  className="mt-2 bg-secondary"
+                  value={addForm.description}
+                  onChange={e => setField('description', e.target.value)}
+                  placeholder="Netflix, Salary, Rent…"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency}) *</Label>
+                <Input
+                  className="mt-2 bg-secondary"
+                  inputMode="decimal"
+                  value={addForm.amount}
+                  onChange={e => setField('amount', formatNumberInput(e.target.value))}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Type</Label>
+                <select
+                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={addForm.type}
+                  onChange={e => setField('type', e.target.value as 'expense' | 'income')}
+                >
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Frequency</Label>
+                <select
+                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={addForm.frequency}
+                  onChange={e => setField('frequency', e.target.value as RecurringFrequency)}
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Category</Label>
+                <select
+                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={addForm.category}
+                  onChange={e => setField('category', e.target.value)}
+                >
+                  <option value="">— auto —</option>
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Wallet</Label>
+                <select
+                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={addForm.walletId}
+                  onChange={e => setField('walletId', e.target.value)}
+                >
+                  <option value="">— none —</option>
+                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Start date</Label>
+                <Input
+                  type="date"
+                  className="mt-2 bg-secondary"
+                  value={addForm.startDate}
+                  onChange={e => setField('startDate', e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={handleAdd} disabled={addRule.isPending}>
+                {addRule.isPending ? 'Adding…' : 'Add subscription'}
+              </Button>
+              <Button variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm()) }}>
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={`${expenses.filter(r => r.active).length} active`} badgeVariant="warning" />
@@ -192,8 +363,8 @@ export function Subscriptions() {
             ) : (
               <div className="rounded-2xl border border-border bg-secondary p-6 text-center">
                 <p className="text-sm text-muted-foreground">No recurring expenses yet.</p>
-                <Button asChild size="sm" variant="secondary" className="mt-3 gap-2">
-                  <Link to="/transactions"><Plus className="h-3.5 w-3.5" /> Add one</Link>
+                <Button size="sm" variant="secondary" className="mt-3 gap-2" onClick={() => setShowAddForm(true)}>
+                  <Plus className="h-3.5 w-3.5" /> Add one
                 </Button>
               </div>
             )}
@@ -214,8 +385,8 @@ export function Subscriptions() {
             ) : (
               <div className="rounded-2xl border border-border bg-secondary p-6 text-center">
                 <p className="text-sm text-muted-foreground">No recurring income yet.</p>
-                <Button asChild size="sm" variant="secondary" className="mt-3 gap-2">
-                  <Link to="/transactions"><Plus className="h-3.5 w-3.5" /> Add one</Link>
+                <Button size="sm" variant="secondary" className="mt-3 gap-2" onClick={() => setShowAddForm(true)}>
+                  <Plus className="h-3.5 w-3.5" /> Add one
                 </Button>
               </div>
             )}

@@ -119,23 +119,9 @@ describe('Settings', () => {
     expect(screen.getAllByText('Cash').length).toBeGreaterThan(0)
   })
 
-  it('shows live wallet money from transactions', () => {
+  it('shows live wallet balance from transactions', () => {
     render(<Settings />)
 
-    expect(screen.getByText('Wallet balance')).toBeInTheDocument()
     expect(screen.getByText('Rp 1,650,000')).toBeInTheDocument()
-  })
-
-  it('saves the yearly goal from settings', () => {
-    render(<Settings />)
-
-    fireEvent.change(screen.getByLabelText('Yearly goal label'), { target: { value: '$20k net worth' } })
-    fireEvent.change(screen.getByLabelText('Yearly goal progress'), { target: { value: '68' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save yearly goal' }))
-
-    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({
-      annual_goal_label: '$20k net worth',
-      annual_goal_pct: 68,
-    }))
   })
 })

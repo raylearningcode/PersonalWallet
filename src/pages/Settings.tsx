@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { useMoney } from '@/lib/currency'
-import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { parseNumberInput } from '@/lib/numberInput'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -63,8 +63,6 @@ export function Settings() {
   const [newCategory, setNewCategory] = useState('')
   const [walletName, setWalletName] = useState('')
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
-  const [goalLabel, setGoalLabel] = useState('')
-  const [goalPct, setGoalPct] = useState('')
   const [backupText, setBackupText] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
@@ -98,8 +96,6 @@ export function Settings() {
     setName(settings?.user_name ?? '')
     setBaseCurrency(settings?.base_currency || 'IDR')
     setCurrency(settings?.currency || 'IDR')
-    setGoalLabel(settings?.annual_goal_label ?? '')
-    setGoalPct(formatNumberInput(settings?.annual_goal_pct ?? 0))
   }, [settings, session])
 
   const baseSettings = {
@@ -112,8 +108,8 @@ export function Settings() {
     year_start: settings?.year_start ?? '',
     default_view: settings?.default_view ?? '',
     notifications: settings?.notifications ?? '',
-    annual_goal_label: goalLabel,
-    annual_goal_pct: Math.max(0, Math.min(100, parseNumberInput(goalPct))),
+    annual_goal_label: settings?.annual_goal_label ?? '',
+    annual_goal_pct: settings?.annual_goal_pct ?? 0,
   }
 
   const saveProfile = async () => {
@@ -125,11 +121,6 @@ export function Settings() {
   const saveCurrency = async () => {
     await saveSettings.mutateAsync(baseSettings)
     toast.success('Currency saved')
-  }
-
-  const saveGoal = async () => {
-    await saveSettings.mutateAsync(baseSettings)
-    toast.success('Yearly goal saved')
   }
 
   const handleSignIn = async () => {
@@ -286,28 +277,6 @@ export function Settings() {
               </Select>
             </div>
             <Button onClick={saveCurrency} disabled={saveSettings.isPending}>Save currency</Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Yearly goal</CardTitle></CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            <p className="text-sm text-muted-foreground">This is the goal card shown in the sidebar and mobile More sheet.</p>
-            <div>
-              <Label className="text-sm text-muted-foreground">Goal label</Label>
-              <Input aria-label="Yearly goal label" className="mt-2 bg-secondary" value={goalLabel} onChange={event => setGoalLabel(event.target.value)} placeholder="$20k net worth" />
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">Progress percent</Label>
-              <Input
-                aria-label="Yearly goal progress"
-                className="mt-2 bg-secondary"
-                inputMode="decimal"
-                value={goalPct}
-                onChange={event => setGoalPct(formatNumberInput(event.target.value))}
-                placeholder="0"
-              />
-            </div>
-            <Button onClick={saveGoal} disabled={saveSettings.isPending}>Save yearly goal</Button>
           </CardContent>
         </Card>
       </div>

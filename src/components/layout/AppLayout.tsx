@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
-import { useAppSettings, useAuthSession } from '@/lib/queries'
+import { useAuthSession } from '@/lib/queries'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { MoreSheet } from './MoreSheet'
 import { QuickAddSheet } from './QuickAddSheet'
 
 export function AppLayout() {
-  const { data: settings } = useAppSettings()
   const { data: session } = useAuthSession()
   const [moreOpen, setMoreOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
@@ -15,10 +14,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar
-        goalLabel={settings?.annual_goal_label || 'No goal set'}
-        goalPct={settings?.annual_goal_pct ?? 0}
-      />
+      <Sidebar />
       <main className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-24 sm:px-6 lg:ml-[320px] lg:w-[calc(100vw-360px)] lg:max-w-[1440px] lg:px-0 lg:py-8 lg:pb-8 lg:pr-10">
         {isGuest && (
           <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3">
