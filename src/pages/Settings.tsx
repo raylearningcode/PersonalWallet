@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory,
@@ -24,6 +24,12 @@ import { toast } from 'sonner'
 import type { Wallet } from '@/types'
 
 const CURRENCIES = ['USD', 'IDR', 'TWD', 'EUR', 'JPY']
+
+const WALLET_TYPE_LABELS: Record<string, string> = {
+  cash: 'Cash', bank: 'Bank', card: 'Card',
+  e_wallet: 'E-wallet', investment: 'Investment', other: 'Other',
+}
+const WALLET_TYPE_ORDER = ['cash', 'bank', 'card', 'e_wallet', 'investment', 'other']
 
 export function Settings() {
   const money = useMoney()
@@ -60,11 +66,6 @@ export function Settings() {
   const [goalLabel, setGoalLabel] = useState('')
   const [goalPct, setGoalPct] = useState('')
   const [backupText, setBackupText] = useState('')
-  const [csvRows, setCsvRows] = useState<string[][]>([])
-  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
-  const [csvMap, setCsvMap] = useState<Record<string, string>>({})
-  const [csvImporting, setCsvImporting] = useState(false)
-  const csvFileRef = useRef<HTMLInputElement>(null)
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
     id: string
@@ -82,6 +83,16 @@ export function Settings() {
     })
     return map
   }, [transactions, wallets])
+
+  const walletGroups = useMemo(() => {
+    const groups: Record<string, typeof wallets> = {}
+    for (const wallet of wallets) {
+      const key = wallet.type ?? 'other'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(wallet)
+    }
+    return WALLET_TYPE_ORDER.filter(t => groups[t]?.length > 0).map(t => ({ type: t, wallets: groups[t] }))
+  }, [wallets])
 
   useEffect(() => {
     setName(settings?.user_name ?? '')
@@ -175,73 +186,6 @@ export function Settings() {
       toast.success('Wallet removed')
     }
     setConfirmDelete(null)
-  }
-
-  const handleCsvFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = e => {
-      const text = e.target?.result as string
-      const lines = text.trim().split(/\r?\n/).filter(Boolean)
-      if (lines.length < 2) { toast.error('CSV must have a header row and at least one data row'); return }
-      const parseRow = (line: string) => line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"'))
-      const headers = parseRow(lines[0])
-      const rows = lines.slice(1).map(parseRow)
-      setCsvHeaders(headers)
-      setCsvRows(rows)
-      const lower = headers.map(h => h.toLowerCase())
-      setCsvMap({
-        date: String(lower.findIndex(h => h.includes('date'))),
-        description: String(lower.findIndex(h => h.includes('desc') || h.includes('note') || h.includes('merchant') || h.includes('name'))),
-        amount: String(lower.findIndex(h => h.includes('amount') || h.includes('value') || h.includes('sum'))),
-        type: String(lower.findIndex(h => h.includes('type') || h.includes('kind'))),
-        category: String(lower.findIndex(h => h.includes('categ'))),
-      })
-    }
-    reader.readAsText(file)
-  }
-
-  const handleCsvImport = async () => {
-    if (csvRows.length === 0) return
-    setCsvImporting(true)
-    let imported = 0
-    try {
-      for (const row of csvRows) {
-        const get = (key: string) => {
-          const idx = parseInt(csvMap[key] ?? '-1', 10)
-          return idx >= 0 ? (row[idx] ?? '').trim() : ''
-        }
-        const rawDate = get('date')
-        const rawAmount = parseFloat(get('amount').replace(/[^\d.-]/g, ''))
-        if (!rawDate || isNaN(rawAmount) || rawAmount === 0) continue
-        const type = get('type').toLowerCase().includes('income') ? 'income' : 'expense'
-        await addTransaction.mutateAsync({
-          user_id: null,
-          description: get('description') || 'Imported',
-          amount: Math.abs(rawAmount),
-          original_amount: Math.abs(rawAmount),
-          original_currency: baseCurrency,
-          type,
-          category: get('category') || 'Uncategorised',
-          wallet_id: null,
-          transfer_wallet_id: null,
-          recurring_rule_id: null,
-          recurring_due_date: null,
-          date: rawDate,
-          needs_review: true,
-        })
-        imported++
-      }
-      toast.success(`Imported ${imported} transactions`)
-      setCsvRows([])
-      setCsvHeaders([])
-      if (csvFileRef.current) csvFileRef.current.value = ''
-    } catch {
-      toast.error('Import failed — check the column mapping')
-    } finally {
-      setCsvImporting(false)
-    }
   }
 
   const buildBackup = () => ({
@@ -440,28 +384,33 @@ export function Settings() {
               </select>
               <Button onClick={handleAddWallet} disabled={addWallet.isPending}>Add wallet</Button>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {wallets.map(wallet => (
-                <div key={wallet.id} className="rounded-2xl border border-border bg-secondary px-4 py-3">
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-foreground">{wallet.name}</p>
-                    <p className="text-xs capitalize text-muted-foreground">{wallet.type.replace('_', ' ')}</p>
+            <div className="space-y-5">
+              {walletGroups.map(group => (
+                <div key={group.type}>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {WALLET_TYPE_LABELS[group.type] ?? group.type}
+                  </p>
+                  <div className="space-y-1">
+                    {group.wallets.map(wallet => (
+                      <div key={wallet.id} className="flex items-center justify-between rounded-xl border border-border bg-secondary px-4 py-2.5">
+                        <span className="font-bold text-foreground">{wallet.name}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</span>
+                          <button
+                            aria-label={`Delete ${wallet.name} wallet`}
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
+                            onClick={() => handleDeleteWallet(wallet.id, wallet.name)}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <button
-                    aria-label={`Delete ${wallet.name} wallet`}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
-                    onClick={() => handleDeleteWallet(wallet.id, wallet.name)}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Wallet balance</p>
-                  <p className="mt-1 text-xl font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</p>
                 </div>
               ))}
+              {wallets.length === 0 && <p className="text-sm text-muted-foreground">No wallets yet.</p>}
             </div>
-            {wallets.length === 0 && <p className="text-sm text-muted-foreground">No wallets yet.</p>}
           </CardContent>
         </Card>
         <Card>
@@ -497,64 +446,6 @@ export function Settings() {
           </CardContent>
         </Card>
       </div>
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="text-xl">Import transactions (CSV)</CardTitle>
-          <p className="text-sm text-muted-foreground">Upload a CSV exported from your bank or another app. Imported transactions are flagged for review so you can verify categories.</p>
-        </CardHeader>
-        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-          <div>
-            <Label className="text-sm text-muted-foreground">CSV file</Label>
-            <input
-              ref={csvFileRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="mt-2 block w-full cursor-pointer rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:font-bold file:text-primary-foreground"
-              onChange={handleCsvFile}
-            />
-          </div>
-          {csvHeaders.length > 0 && (
-            <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {(['date', 'description', 'amount', 'type', 'category'] as const).map(field => (
-                  <div key={field}>
-                    <Label className="text-xs capitalize text-muted-foreground">{field} column</Label>
-                    <select
-                      className="mt-1.5 h-9 w-full rounded-xl border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
-                      value={csvMap[field] ?? '-1'}
-                      onChange={e => setCsvMap(m => ({ ...m, [field]: e.target.value }))}
-                    >
-                      <option value="-1">— skip —</option>
-                      {csvHeaders.map((h, i) => <option key={i} value={String(i)}>{h}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
-              <div className="overflow-auto rounded-2xl border border-border">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary">
-                      {csvHeaders.map((h, i) => <th key={i} className="px-3 py-2 text-left font-bold text-muted-foreground">{h}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {csvRows.slice(0, 5).map((row, ri) => (
-                      <tr key={ri} className="border-b border-border last:border-0">
-                        {row.map((cell, ci) => <td key={ci} className="px-3 py-2 text-foreground">{cell}</td>)}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {csvRows.length > 5 && <p className="px-4 py-2 text-xs text-muted-foreground">… and {csvRows.length - 5} more rows</p>}
-              </div>
-              <Button onClick={handleCsvImport} disabled={csvImporting}>
-                {csvImporting ? 'Importing…' : `Import ${csvRows.length} transaction${csvRows.length === 1 ? '' : 's'}`}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-xl">Backup and restore</CardTitle>
