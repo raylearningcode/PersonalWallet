@@ -51,6 +51,7 @@ export function Estimation() {
   const [wishlistType, setWishlistType] = useState('Want')
   const [wishlistNote, setWishlistNote] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<null | { list: 'income' | 'expense' | 'wishlist'; id: string; name: string }>(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [incomeError, setIncomeError] = useState(false)
   const [expenseError, setExpenseError] = useState(false)
   const [editItem, setEditItem] = useState<{ list: 'income' | 'expense'; id: string } | null>(null)
@@ -215,6 +216,16 @@ export function Estimation() {
     toast.success('Estimation plan saved')
   }
 
+  const handleClearAll = async () => {
+    setIncomeItems([])
+    setExpenseItems([])
+    setWishlistItems([])
+    setNotes('')
+    setShowClearConfirm(false)
+    await saveToBackend([], [], [], '')
+    toast.success('Plan data cleared')
+  }
+
   const confirmDeleteSelected = async () => {
     if (!deleteTarget) return
     const newIncome = deleteTarget.list === 'income' ? incomeItems.filter(i => i.id !== deleteTarget.id) : incomeItems
@@ -233,11 +244,18 @@ export function Estimation() {
         title="Planning"
         subtitle="Plan future months one item at a time: income sources, expected expenses, notes, and wishlist."
         action={(
-          <div className="flex h-11 items-center gap-5 rounded-full border border-border bg-secondary px-6 text-sm">
-            <span className="text-muted-foreground">Main currency</span>
-            <span className="min-w-10 text-right font-extrabold text-primary" aria-label="Main currency">
-              {money.baseCurrency}
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 items-center gap-5 rounded-full border border-border bg-secondary px-6 text-sm">
+              <span className="text-muted-foreground">Main currency</span>
+              <span className="min-w-10 text-right font-extrabold text-primary" aria-label="Main currency">
+                {money.baseCurrency}
+              </span>
+            </div>
+            {(incomeItems.length > 0 || expenseItems.length > 0 || wishlistItems.length > 0) && (
+              <Button variant="secondary" size="sm" className="text-[#FF8388] hover:text-red-300" onClick={() => setShowClearConfirm(true)}>
+                Clear all
+              </Button>
+            )}
           </div>
         )}
       />
@@ -484,6 +502,13 @@ export function Estimation() {
         description="This removes the item from this estimate only."
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDeleteSelected}
+      />
+      <ConfirmDialog
+        open={showClearConfirm}
+        title="Clear all plan data?"
+        description="This will remove all income sources, expenses, and wishlist items from this plan. Notes will also be cleared."
+        onCancel={() => setShowClearConfirm(false)}
+        onConfirm={handleClearAll}
       />
     </div>
   )

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { useBudgetCategories, useTransactions } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -138,6 +139,7 @@ export function Reports() {
     a.download = `finpath-${range}-${periodLabel.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`
     a.click()
     URL.revokeObjectURL(url)
+    toast.success('CSV exported successfully')
   }
 
   return (
