@@ -76,8 +76,8 @@ export function localGetCategories(): BudgetCategory[] {
   return load<BudgetCategory[]>('categories', [])
 }
 
-export function localAddCategory(data: Omit<BudgetCategory, 'id' | 'user_id' | 'created_at'> & Partial<Pick<BudgetCategory, 'budget_period'>>): BudgetCategory {
-  const cat: BudgetCategory = { budget_period: 'monthly', ...data, id: newId(), user_id: null, created_at: nowIso() }
+export function localAddCategory(data: Omit<BudgetCategory, 'id' | 'user_id' | 'created_at' | 'budget_period'> & Partial<Pick<BudgetCategory, 'budget_period'>>): BudgetCategory {
+  const cat: BudgetCategory = { ...data, budget_period: data.budget_period ?? 'monthly', id: newId(), user_id: null, created_at: nowIso() }
   save('categories', [...localGetCategories(), cat])
   return cat
 }
