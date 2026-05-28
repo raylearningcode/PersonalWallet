@@ -20,7 +20,18 @@ export function Dashboard() {
   const { data: wallets = [] } = useWallets()
 
   const year = new Date().getFullYear()
+  const now = new Date()
   const yearTx = transactions.filter(t => t.date.startsWith(String(year)))
+
+  const monthlyTx = useMemo(
+    () =>
+      yearTx.filter(t => {
+        const d = new Date(t.date)
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [yearTx]
+  )
 
   const totalIncome = useMemo(
     () => yearTx.filter(t => t.type === 'income').reduce((sum, tx) => sum + tx.amount, 0),
@@ -30,12 +41,21 @@ export function Dashboard() {
     () => yearTx.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((sum, tx) => sum + tx.amount, 0),
     [yearTx]
   )
-  const balance = totalIncome - totalExpenses
+  const monthlyIncome = useMemo(
+    () => monthlyTx.filter(t => t.type === 'income').reduce((sum, tx) => sum + tx.amount, 0),
+    [monthlyTx]
+  )
+  const monthlySpent = useMemo(
+    () => monthlyTx.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((sum, tx) => sum + tx.amount, 0),
+    [monthlyTx]
+  )
+
   const savingsRate = calculateSavingsRate(totalIncome, totalExpenses)
   const invested = investConfig?.current_value ?? 0
   const monthlyContribution = investConfig?.monthly_contribution ?? 0
   const walletBalances = getWalletBalances(wallets, transactions)
   const cashBalance = [...walletBalances.values()].reduce((sum, amount) => sum + amount, 0)
+  const netWorth = cashBalance + invested
 
   const spendingByCategory = useMemo(() => {
     const map: Record<string, number> = {}
@@ -61,9 +81,10 @@ export function Dashboard() {
     ...item,
     pct: totalCategorySpend > 0 ? Math.round((item.amount / totalCategorySpend) * 100) : 0,
   }))
+
   const categoryRows = categories
     .filter(category => category.yearly_allocated > 0)
-    .slice(0, 3)
+    .slice(0, 4)
     .map(category => {
       const spent = yearTx
         .filter(tx => tx.type !== 'income' && tx.type !== 'transfer' && tx.category === category.name && isInBudgetPeriod(tx.date, category.budget_period ?? 'yearly'))
@@ -71,30 +92,50 @@ export function Dashboard() {
       const pct = category.yearly_allocated > 0 ? Math.min(100, Math.round((spent / category.yearly_allocated) * 100)) : 0
       return { ...category, spent, pct }
     })
-  const monthlyBudget = categories.filter(category => category.budget_period === 'monthly').reduce((sum, category) => sum + category.yearly_allocated, 0)
-  const monthlySpent = yearTx
-    .filter(tx => tx.type !== 'income' && tx.type !== 'transfer')
-    .filter(tx => {
-      const date = new Date(tx.date)
-      const now = new Date()
-      return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
-    })
-    .reduce((sum, tx) => sum + tx.amount, 0)
-  const safeToSpend = getSafeToSpend(monthlyBudget, monthlySpent, getDaysRemainingInMonth())
+
+  const monthlyBudget = categories
+    .filter(category => category.budget_period === 'monthly')
+    .reduce((sum, category) => sum + category.yearly_allocated, 0)
+
+  const daysLeft = getDaysRemainingInMonth()
+  const safeToSpend = getSafeToSpend(monthlyBudget, monthlySpent, daysLeft)
   const categoryInsights = getCategoryInsights(transactions, categories).slice(0, 3)
 
   return (
     <div>
       <PageHeader
         title={`Good morning${settings?.user_name ? `, ${settings.user_name}` : ''}`}
-        subtitle="Your yearly spending health, savings momentum, and investment progress."
+        subtitle="Your financial health at a glance."
       />
+
+      {/* Hero stat cards */}
       <div className="mb-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-        <StatCard label="Total balance" value={fmt(balance)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(balance) : `${savingsRate}% savings rate`} badgeVariant="success" />
-        <StatCard label="Spent YTD" value={fmt(totalExpenses)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalExpenses) : `${yearTx.length} transactions`} badgeVariant="warning" />
-        <StatCard label="Saved" value={fmt(balance)} sub={`${savingsRate}% savings rate`} />
-        <StatCard label="Invested" value={fmt(invested)} sub={money.baseCurrency !== money.displayCurrency && invested > 0 ? money.formatBase(invested) : invested > 0 ? 'Investment plan active' : 'No investment value yet'} badgeVariant="danger" />
+        <StatCard
+          label="Net worth"
+          value={fmt(netWorth)}
+          sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'}
+          badgeVariant="success"
+        />
+        <StatCard
+          label="This month"
+          value={fmt(monthlySpent)}
+          sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : `${daysLeft} days remaining`}
+          badgeVariant="warning"
+        />
+        <StatCard
+          label="Safe to spend"
+          value={fmt(safeToSpend)}
+          sub={`Based on budgets · ${daysLeft}d left`}
+        />
+        <StatCard
+          label="Savings rate"
+          value={`${savingsRate}%`}
+          sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`}
+          badgeVariant="danger"
+        />
       </div>
+
+      {/* Investment path + Spending overview */}
       <div className="mb-10 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.8fr)] lg:gap-8">
         <Card>
           <CardHeader className="pb-0">
@@ -115,6 +156,7 @@ export function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Spending overview</CardTitle>
@@ -139,48 +181,77 @@ export function Dashboard() {
             <p className="break-words text-xl font-extrabold leading-none text-foreground sm:text-2xl">
               {topSpending.amount > 0 ? `${fmt(topSpending.amount)} ${topSpending.name}` : fmt(0) + ' category'}
             </p>
-            <p className="text-xs leading-5 text-muted-foreground">
-              Purpose: this is a quick daily check for the category pulling the most money, so you know where to review before opening Reports.
-            </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Budget health + Smart insights */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-7">
         <Card>
-          <CardHeader><CardTitle className="text-xl">Budget categories</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-xl">Budget health</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {categoryRows.length > 0 ? categoryRows.map(category => (
-              <div key={category.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm sm:grid-cols-[minmax(0,1fr)_100px_102px] sm:gap-4">
-                <span className="text-muted-foreground">{category.name}</span>
-                <span className="font-bold text-foreground">{fmt(category.spent)}</span>
-                <span className="col-span-2 h-2 rounded-full bg-muted sm:col-span-1">
-                  <span className="block h-full rounded-full" style={{ width: `${category.pct}%`, backgroundColor: category.color }} />
-                </span>
+              <div key={category.id} className="space-y-2">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="min-w-0 truncate text-muted-foreground">{category.name}</span>
+                  <span className="shrink-0 font-bold text-foreground">{fmt(category.spent)}</span>
+                  <span className={`shrink-0 text-xs font-bold ${category.pct >= 90 ? 'text-[#FF8388]' : category.pct >= 70 ? 'text-[#FFCF73]' : 'text-primary'}`}>
+                    {category.pct}%
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${category.pct}%`,
+                      backgroundColor: category.pct >= 90 ? '#FF8388' : category.pct >= 70 ? '#FFCF73' : category.color,
+                    }}
+                  />
+                </div>
               </div>
             )) : (
               <p className="text-sm text-muted-foreground">No budget categories yet.</p>
             )}
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader><CardTitle className="text-xl">Smart insight</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <p className="max-w-lg text-sm leading-5 text-muted-foreground">
-              {topSpending.amount > 0
-                ? `${topSpending.name} is currently your largest spending category this year.`
-                : 'No spending insight yet. Add transactions to generate one.'}
-            </p>
+          <CardHeader><CardTitle className="text-xl">Smart insights</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {topSpending.amount > 0 && (
+              <div className="rounded-2xl border border-border bg-secondary p-4">
+                <p className="text-xs font-bold text-muted-foreground">Top category</p>
+                <p className="mt-1 text-sm text-foreground">
+                  {topSpending.name} is your largest spending category this year.
+                </p>
+              </div>
+            )}
             <div className="rounded-2xl border border-border bg-secondary p-4">
-              <p className="text-xs font-bold text-muted-foreground">Safe to spend today</p>
-              <p className="mt-2 text-2xl font-extrabold text-foreground">{fmt(safeToSpend)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Based on monthly budgets and days left this month.</p>
+              <p className="text-xs font-bold text-muted-foreground">Monthly cashflow</p>
+              <p className="mt-2 text-2xl font-extrabold text-foreground">
+                {monthlyIncome > monthlySpent
+                  ? <span className="text-primary">+{fmt(monthlyIncome - monthlySpent)}</span>
+                  : <span className="text-[#FF8388]">-{fmt(monthlySpent - monthlyIncome)}</span>
+                }
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {fmt(monthlyIncome)} in · {fmt(monthlySpent)} out this month
+              </p>
             </div>
+            {categoryInsights.filter(i => i.overPace).slice(0, 1).map(insight => (
+              <div key={insight.category} className="rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 p-4">
+                <p className="text-xs font-bold text-[#FFCF73]">Over pace</p>
+                <p className="mt-1 text-sm text-foreground">{insight.message}</p>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
+
+      {/* Net worth breakdown + Budget pace alerts */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-7">
         <Card>
-          <CardHeader><CardTitle className="text-xl">Account health</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-xl">Net worth</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
               <span className="text-sm text-muted-foreground">Wallet cash</span>
@@ -190,12 +261,13 @@ export function Dashboard() {
               <span className="text-sm text-muted-foreground">Invested</span>
               <strong className="text-foreground">{fmt(invested)}</strong>
             </div>
-            <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
-              <span className="text-sm text-muted-foreground">Net worth view</span>
-              <strong className="text-foreground">{fmt(cashBalance + invested)}</strong>
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+              <span className="text-sm font-bold text-foreground">Total</span>
+              <strong className="text-primary">{fmt(netWorth)}</strong>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader><CardTitle className="text-xl">Budget pace alerts</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -203,7 +275,7 @@ export function Dashboard() {
               <div key={insight.category} className="rounded-2xl bg-secondary p-4">
                 <div className="flex items-center justify-between gap-4">
                   <p className="font-extrabold text-foreground">{insight.category}</p>
-                  <p className={insight.overPace ? 'text-sm font-bold text-[#FFD276]' : 'text-sm font-bold text-primary'}>
+                  <p className={insight.overPace ? 'text-sm font-bold text-[#FFCF73]' : 'text-sm font-bold text-primary'}>
                     {insight.usedPct}%
                   </p>
                 </div>

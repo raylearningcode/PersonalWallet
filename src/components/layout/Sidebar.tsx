@@ -5,7 +5,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/transactions', label: 'Transactions', icon: CreditCard },
   { to: '/budget', label: 'Budget', icon: PieChart },
-  { to: '/estimation', label: 'Estimation', icon: Calculator },
+  { to: '/estimation', label: 'Planning', icon: Calculator },
   { to: '/investing', label: 'Investing', icon: TrendingUp },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -31,22 +31,26 @@ export function Sidebar({ goalLabel = 'No goal set', goalPct = 0 }: SidebarProps
         </div>
       </div>
 
-      <nav className="space-y-2">
+      <nav className="space-y-1">
         {navItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-5 py-3 text-sm font-extrabold transition-colors ${
-                isActive ? 'border border-border bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
+              `relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-extrabold transition-colors ${
+                isActive
+                  ? 'bg-secondary text-foreground'
+                  : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <span className={`h-5 w-5 rounded-md ${isActive ? 'bg-primary' : 'bg-muted-foreground'}`} />
-                <Icon className="hidden h-4 w-4" aria-hidden="true" />
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+                )}
+                <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                 {label}
               </>
             )}
