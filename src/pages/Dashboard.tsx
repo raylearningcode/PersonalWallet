@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets } from '@/lib/queries'
+import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +18,7 @@ export function Dashboard() {
   const { data: categories = [] } = useBudgetCategories()
   const { data: settings } = useAppSettings()
   const { data: wallets = [] } = useWallets()
+  const { data: recurringRules = [] } = useRecurringRules()
 
   const year = new Date().getFullYear()
   const now = new Date()
@@ -56,6 +57,8 @@ export function Dashboard() {
   const walletBalances = getWalletBalances(wallets, transactions)
   const cashBalance = [...walletBalances.values()].reduce((sum, amount) => sum + amount, 0)
   const netWorth = cashBalance + invested
+
+  const reviewCount = useMemo(() => transactions.filter(t => t.needs_review).length, [transactions])
 
   const spendingByCategory = useMemo(() => {
     const map: Record<string, number> = {}
@@ -101,12 +104,36 @@ export function Dashboard() {
   const safeToSpend = getSafeToSpend(monthlyBudget, monthlySpent, daysLeft)
   const categoryInsights = getCategoryInsights(transactions, categories).slice(0, 3)
 
+  const upcomingBills = useMemo(
+    () =>
+      recurringRules
+        .filter(r => r.active && r.type !== 'income')
+        .sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))
+        .slice(0, 5),
+    [recurringRules]
+  )
+
   return (
     <div>
       <PageHeader
         title={`Good morning${settings?.user_name ? `, ${settings.user_name}` : ''}`}
         subtitle="Your financial health at a glance."
       />
+
+      {/* Review queue banner */}
+      {reviewCount > 0 && (
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
+          <div>
+            <p className="text-sm font-extrabold text-[#FFCF73]">Needs review</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {reviewCount} transaction{reviewCount === 1 ? '' : 's'} need category confirmation
+            </p>
+          </div>
+          <Button asChild size="sm" variant="secondary">
+            <Link to="/transactions">Review now</Link>
+          </Button>
+        </div>
+      )}
 
       {/* Hero stat cards */}
       <div className="mb-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
@@ -248,8 +275,8 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Net worth breakdown + Budget pace alerts */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-7">
+      {/* Net worth + Budget pace + Upcoming bills */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-7">
         <Card>
           <CardHeader><CardTitle className="text-xl">Net worth</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -283,6 +310,27 @@ export function Dashboard() {
               </div>
             )) : (
               <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">Add budgets and transactions to see pace alerts.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-xl">Upcoming bills</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {upcomingBills.length > 0 ? upcomingBills.map(rule => (
+              <div key={rule.id} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-foreground">{rule.description}</p>
+                  <p className="text-xs text-muted-foreground">{rule.next_due_date}</p>
+                </div>
+                <span className="shrink-0 text-sm font-extrabold text-[#FF8388]">
+                  -{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
+                </span>
+              </div>
+            )) : (
+              <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
+                No upcoming bills. Add recurring rules in Transactions.
+              </p>
             )}
           </CardContent>
         </Card>

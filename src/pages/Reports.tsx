@@ -3,9 +3,11 @@ import { useBudgetCategories, useTransactions } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
+import { Download } from 'lucide-react'
 
 type ReportRange = 'week' | 'month' | 'year'
 type ReportMode = 'expense' | 'income'
@@ -53,6 +55,12 @@ function formatPeriodLabel(range: ReportRange, date: Date) {
   return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${finalDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
 }
 
+function diffLabel(current: number, prev: number) {
+  if (prev === 0) return null
+  const pct = Math.round(((current - prev) / prev) * 100)
+  return { pct, up: pct > 0 }
+}
+
 export function Reports() {
   const money = useMoney()
   const { data: transactions = [] } = useTransactions()
@@ -63,10 +71,19 @@ export function Reports() {
 
   const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate), [periodDate, range])
   const periodLabel = formatPeriodLabel(range, periodDate)
+
   const rangeTx = useMemo(() => transactions.filter(tx => {
     const txDate = new Date(tx.date)
     return txDate >= rangeStart && txDate < rangeEnd
   }), [rangeEnd, rangeStart, transactions])
+
+  const prevDate = useMemo(() => addPeriod(periodDate, range, -1), [periodDate, range])
+  const { start: prevStart, end: prevEnd } = useMemo(() => getRangeBounds(range, prevDate), [prevDate, range])
+  const prevRangeTx = useMemo(() => transactions.filter(tx => {
+    const txDate = new Date(tx.date)
+    return txDate >= prevStart && txDate < prevEnd
+  }), [prevEnd, prevStart, transactions])
+
   const incomeTx = rangeTx.filter(tx => tx.type === 'income')
   const expenseTx = rangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer')
   const activeTx = mode === 'income' ? incomeTx : expenseTx
@@ -75,6 +92,11 @@ export function Reports() {
   const totalExpenses = expenseTx.reduce((sum, tx) => sum + tx.amount, 0)
   const savingsRate = calculateSavingsRate(totalIncome, totalExpenses)
   const avgSpend = range === 'year' ? Math.round(totalExpenses / 12) : range === 'week' ? Math.round(totalExpenses / 7) : totalExpenses
+
+  const prevTotalIncome = prevRangeTx.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
+  const prevTotalExpenses = prevRangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer').reduce((sum, tx) => sum + tx.amount, 0)
+  const incomeDiff = diffLabel(totalIncome, prevTotalIncome)
+  const expenseDiff = diffLabel(totalExpenses, prevTotalExpenses)
 
   const categoryTotals = useMemo(() => {
     const map: Record<string, number> = {}
@@ -86,6 +108,28 @@ export function Reports() {
   const activeTotal = categoryTotals.reduce((sum, [, amount]) => sum + amount, 0)
   const topCategory = categoryTotals[0]?.[0] ?? 'Empty'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
+
+  const handleExportCSV = () => {
+    const headers = ['Date', 'Description', 'Category', 'Type', 'Amount (display)', 'Amount (base)']
+    const rows = rangeTx
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map(tx => [
+        tx.date,
+        `"${tx.description.replace(/"/g, '""')}"`,
+        tx.category,
+        tx.type,
+        money.formatDisplay(tx.amount).replace(/,/g, ''),
+        money.formatBase(tx.amount).replace(/,/g, ''),
+      ])
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `finpath-${range}-${periodLabel.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div>
@@ -110,6 +154,10 @@ export function Reports() {
                 </button>
               ))}
             </div>
+            <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportCSV} disabled={rangeTx.length === 0}>
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
         )}
       />
@@ -118,6 +166,36 @@ export function Reports() {
         <StatCard label={range === 'week' ? 'Daily avg.' : range === 'year' ? 'Monthly avg.' : 'Spent'} value={money.formatDisplay(avgSpend)} sub="Expense pace" />
         <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No spending yet'} badgeVariant="warning" />
       </div>
+
+      {/* Period comparison */}
+      {(incomeDiff || expenseDiff) && (
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card px-5 py-4">
+            <p className="text-xs font-bold text-muted-foreground">Income vs previous {RANGE_LABELS[range].toLowerCase()}</p>
+            <div className="mt-2 flex items-end gap-3">
+              <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalIncome)}</span>
+              {incomeDiff && (
+                <span className={`mb-0.5 text-sm font-bold ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
+                  {incomeDiff.up ? '▲' : '▼'} {Math.abs(incomeDiff.pct)}%
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">prev: {money.formatDisplay(prevTotalIncome)}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-card px-5 py-4">
+            <p className="text-xs font-bold text-muted-foreground">Expenses vs previous {RANGE_LABELS[range].toLowerCase()}</p>
+            <div className="mt-2 flex items-end gap-3">
+              <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalExpenses)}</span>
+              {expenseDiff && (
+                <span className={`mb-0.5 text-sm font-bold ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
+                  {expenseDiff.up ? '▲' : '▼'} {Math.abs(expenseDiff.pct)}%
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">prev: {money.formatDisplay(prevTotalExpenses)}</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] lg:gap-8">
         <Card>
@@ -184,6 +262,7 @@ export function Reports() {
           </CardContent>
         </Card>
       </div>
+
       <Card className="mt-6">
         <CardHeader><CardTitle className="text-xl">Reporter notes</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 px-5 pb-6 sm:px-8 md:grid-cols-2">

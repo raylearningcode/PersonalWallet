@@ -11,6 +11,7 @@ import {
   useUpdateRecurringRule,
   useDeleteRecurringRule,
   useRunDueRecurringRules,
+  useMarkReviewed,
 } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -20,7 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -64,6 +65,7 @@ export function Transactions() {
   const updateRecurringRule = useUpdateRecurringRule()
   const deleteRecurringRule = useDeleteRecurringRule()
   const runDueRecurringRules = useRunDueRecurringRules()
+  const markReviewed = useMarkReviewed()
 
   useEffect(() => {
     if (!category && categories.length > 0) setCategory(categories[0].name)
@@ -252,13 +254,36 @@ export function Transactions() {
     setDeleteRuleTarget(null)
   }
 
+  const handleDuplicateTransaction = async (tx: Transaction) => {
+    await addTransaction.mutateAsync({
+      description: tx.description,
+      amount: tx.amount,
+      original_amount: tx.original_amount ?? tx.amount,
+      original_currency: tx.original_currency ?? money.baseCurrency,
+      type: tx.type,
+      category: tx.category,
+      wallet_id: tx.wallet_id,
+      transfer_wallet_id: tx.transfer_wallet_id,
+      recurring_rule_id: null,
+      recurring_due_date: null,
+      date: new Date().toISOString().slice(0, 10),
+      needs_review: false,
+    })
+    toast.success('Transaction duplicated')
+  }
+
+  const handleMarkReviewed = (id: string) => {
+    markReviewed.mutate(id)
+    toast.success('Marked as reviewed')
+  }
+
   return (
     <div>
       <PageHeader
         title="Transactions"
         subtitle="Track every cashflow with clean filters, wallet routing, and category breakdowns."
         action={(
-          <Button onClick={openAddForm} className="gap-2">
+          <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
             <Plus className="h-4 w-4" />
             New transaction
           </Button>
@@ -525,8 +550,13 @@ export function Transactions() {
                     <TableCell className="py-2" />
                   </TableRow>
                   {rows.map(tx => (
-                    <TableRow key={tx.id} className="border-border hover:bg-muted/10">
-                      <TableCell className="w-1/4 py-3 text-foreground">{tx.description}</TableCell>
+                    <TableRow key={tx.id} className={`border-border hover:bg-muted/10 ${tx.needs_review ? 'bg-[#FFCF73]/5' : ''}`}>
+                      <TableCell className="w-1/4 py-3 text-foreground">
+                        <div className="flex items-center gap-2">
+                          {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />}
+                          {tx.description}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{tx.category}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
@@ -535,8 +565,16 @@ export function Transactions() {
                       <TableCell className={`text-right font-bold ${tx.type === 'income' ? 'text-primary' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-[#FF8388]'}`}>
                         {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}{money.formatDisplay(tx.amount)}
                       </TableCell>
-                      <TableCell className="w-[92px]">
+                      <TableCell className="w-[124px]">
                         <div className="flex justify-end gap-1">
+                          {tx.needs_review && (
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                              <CheckCircle size={14} />
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                            <Copy size={14} />
+                          </Button>
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
                             <Pencil size={14} />
                           </Button>
