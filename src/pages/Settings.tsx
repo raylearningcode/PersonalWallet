@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { useMoney } from '@/lib/currency'
-import { parseNumberInput } from '@/lib/numberInput'
+
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
