@@ -20,9 +20,9 @@ export function cacheAddItem<T extends { id: string }>(key: string, item: T) {
   cacheSet(key, [item, ...list])
 }
 
-export function cacheUpdateItem<T extends { id: string }>(key: string, id: string, patch: Partial<T>) {
-  const list = cacheGet<T[]>(key) ?? []
-  cacheSet(key, list.map(item => item.id === id ? { ...item, ...patch } : item))
+export function cacheUpdateItem(key: string, id: string, patch: Record<string, unknown>) {
+  const list = cacheGet<Array<Record<string, unknown>>>(key) ?? []
+  cacheSet(key, list.map(item => item['id'] === id ? { ...item, ...patch } : item))
 }
 
 export function cacheDeleteItem(key: string, id: string) {
