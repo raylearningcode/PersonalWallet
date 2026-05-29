@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import { Check, Pencil, Trash2, X } from 'lucide-react'
 import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getDaysRemainingInMonth } from '@/lib/financeOs'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
@@ -68,6 +69,10 @@ export function Budget() {
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; name: string }>(null)
 
   const currentYear = String(new Date().getFullYear())
+  const now = new Date()
+  const daysLeft = getDaysRemainingInMonth()
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const monthPct = Math.round((now.getDate() / daysInMonth) * 100)
   const expenseTransactions = transactions.filter(
     t => t.type !== 'income' && t.type !== 'transfer' && t.date.startsWith(currentYear)
   )
@@ -187,17 +192,52 @@ export function Budget() {
     setDeleteTarget(null)
   }
 
+  const activeBudgets = categoriesWithSpent.filter(c => c.yearly_allocated > 0)
+  const noBudget = categoriesWithSpent.filter(c => c.yearly_allocated === 0)
+
+  // Overspend risk explanation
+  const closestToCap = useMemo(() => {
+    if (activeBudgets.length === 0) return null
+    return activeBudgets.reduce((top, c) => {
+      const pct = getCategoryUsedPct(c.spent, c.yearly_allocated)
+      const topPct = getCategoryUsedPct(top.spent, top.yearly_allocated)
+      return pct > topPct ? c : top
+    }, activeBudgets[0])
+  }, [activeBudgets])
+
+  const closestPct = closestToCap ? getCategoryUsedPct(closestToCap.spent, closestToCap.yearly_allocated) : 0
+
   return (
     <div>
       <PageHeader
         title="Budget"
         subtitle="Choose monthly or yearly limits, then track usage in the period that matters."
+        action={
+          !showAdd ? (
+            <Button size="sm" className="gap-2" onClick={() => setShowAdd(true)}>
+              + Add category
+            </Button>
+          ) : undefined
+        }
       />
-      <div className="mb-11 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Planned budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Current category limits'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(hasData ? remaining : 0) : 'Safe inside active periods'} badgeVariant="success" />
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData ? 'Based on current period spending' : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>
+
+      {hasData && (
+        <div className="mb-8 rounded-2xl border border-border bg-secondary px-5 py-4">
+          <p className="text-xs font-bold text-muted-foreground">Overspend risk explanation</p>
+          <p className="mt-1 text-sm text-foreground">
+            {closestToCap && closestPct >= 70
+              ? `${closestToCap.name} is your closest category at ${closestPct}%. Monitor it closely.`
+              : closestToCap
+              ? `${closestToCap.name} is your closest category at ${closestPct}%. At your current pace, you are unlikely to exceed any category this month.`
+              : 'At your current pace, you are unlikely to exceed any category this month.'}
+          </p>
+        </div>
+      )}
 
       <Card>
         <CardHeader><CardTitle className="text-xl">Category allocation</CardTitle></CardHeader>

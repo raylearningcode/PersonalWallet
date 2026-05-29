@@ -427,16 +427,25 @@ export function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-xl">Smart insights</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-xl">Decision insights</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {topSpending.amount > 0 && (
-              <div className="rounded-2xl border border-border bg-secondary p-4">
-                <p className="text-xs font-bold text-muted-foreground">Top category</p>
-                <p className="mt-1 text-sm text-foreground">
-                  {topSpending.name} is your largest spending category this year.
-                </p>
-              </div>
-            )}
+            {topSpending.amount > 0 && (() => {
+              const topPct = totalCategorySpend > 0 ? Math.round((topSpending.amount / totalCategorySpend) * 100) : 0
+              const topCatBudget = categories.find(c => c.name === topSpending.name)
+              const dailyAllowance = (topCatBudget && topCatBudget.yearly_allocated > topSpending.amount && daysLeft > 0)
+                ? (topCatBudget.yearly_allocated - topSpending.amount) / daysLeft
+                : null
+              return (
+                <div className="rounded-2xl border border-border bg-secondary p-4">
+                  <p className="text-xs font-bold text-muted-foreground">Top category</p>
+                  <p className="mt-1 text-sm font-bold text-foreground">{topSpending.name} is your largest spending category this year.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{fmt(topSpending.amount)} spent · {topPct}% of total spending</p>
+                  {dailyAllowance !== null && (
+                    <p className="mt-1 text-xs text-primary">You can spend ~{fmt(dailyAllowance)}/day on {topSpending.name} for the rest of this month</p>
+                  )}
+                </div>
+              )
+            })()}
             <div className="rounded-2xl border border-border bg-secondary p-4">
               <p className="text-xs font-bold text-muted-foreground">Monthly cashflow</p>
               <p className="mt-2 text-2xl font-extrabold text-foreground">
@@ -596,10 +605,28 @@ export function Dashboard() {
         </CardHeader>
         <CardContent className="px-5 pb-6 sm:px-8">
           {!getGeminiKey() ? (
-            <div className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
-              Add your free Gemini API key in{' '}
-              <Link to="/settings" className="font-bold text-primary hover:underline">Settings → AI Features</Link>
-              {' '}to unlock personalised insights.
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-border bg-secondary p-4">
+                <p className="mb-3 text-xs font-bold text-muted-foreground uppercase tracking-wide">Sample insights — locked</p>
+                <div className="space-y-2">
+                  {[
+                    'Detect unusual spending patterns',
+                    'Forecast your goal completion timeline',
+                    'Recommend better budget limits based on your history',
+                    'Generate your monthly financial summary',
+                  ].map(text => (
+                    <div key={text} className="flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2">
+                      <span className="text-sm">🔒</span>
+                      <span className="text-sm text-muted-foreground">{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Set up your free Gemini API key in{' '}
+                <Link to="/settings" className="font-bold text-primary hover:underline">Settings</Link>
+                {' '}to unlock these insights.
+              </p>
             </div>
           ) : loadingInsights ? (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
