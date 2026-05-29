@@ -482,7 +482,7 @@ export function Dashboard() {
                 <Tooltip
                   cursor={{ stroke: 'rgba(169,245,199,0.2)', strokeWidth: 1 }}
                   contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 12, fontSize: 12 }}
-                  formatter={(v: number | undefined) => [fmt(v ?? 0), 'Cash balance']}
+                  formatter={(v) => [fmt(typeof v === 'number' ? v : 0), 'Cash balance']}
                 />
                 <Area type="monotone" dataKey="amount" stroke="#A9F5C7" fill="url(#balGrad)" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#A9F5C7' }} />
               </AreaChart>
