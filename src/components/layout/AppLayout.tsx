@@ -10,6 +10,7 @@ import { BottomNav } from './BottomNav'
 import { MoreSheet } from './MoreSheet'
 import { QuickAddSheet } from './QuickAddSheet'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
+import { NotificationsSheet } from './NotificationsSheet'
 
 export function AppLayout() {
   const qc = useQueryClient()
@@ -84,6 +85,11 @@ export function AppLayout() {
             </Link>
           </div>
         )}
+        <div className="pointer-events-none mb-4 flex items-start justify-end lg:mb-0 lg:absolute lg:right-8 lg:top-6">
+          <div className="pointer-events-auto">
+            <NotificationsSheet />
+          </div>
+        </div>
         <Outlet />
       </main>
       <BottomNav

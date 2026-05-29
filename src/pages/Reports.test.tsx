@@ -13,6 +13,8 @@ vi.mock('@/lib/queries', () => ({
     { id: 'learning', name: 'Learning', yearly_allocated: 1000000, budget_period: 'monthly', color: '#93C5FD' },
   ] }),
   useAppSettings: () => ({ data: undefined }),
+  useWallets: () => ({ data: [{ id: 'w1', name: 'Cash', type: 'cash', balance: 0, currency: 'IDR' }] }),
+  useAddTransaction: () => ({ mutateAsync: async () => {} }),
 }))
 
 vi.mock('@/lib/currency', () => ({

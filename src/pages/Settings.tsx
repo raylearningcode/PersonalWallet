@@ -156,11 +156,21 @@ export function Settings() {
   }
 
   const handleAddCategory = async () => {
+    if (addCategory.isPending) return
     const name = newCategory.trim()
     if (!name) return
-    await addCategory.mutateAsync({ name, yearly_allocated: 0, budget_period: 'monthly', color: '#A9F5C7' })
-    setNewCategory('')
-    toast.success('Category added')
+    const duplicate = categories.some(c => c.name.toLowerCase() === name.toLowerCase())
+    if (duplicate) {
+      toast.error(`"${name}" already exists — category names must be unique`)
+      return
+    }
+    try {
+      await addCategory.mutateAsync({ name, yearly_allocated: 0, budget_period: 'monthly', color: '#A9F5C7' })
+      setNewCategory('')
+      toast.success(`Category "${name}" added`)
+    } catch {
+      toast.error('Failed to add category — please try again')
+    }
   }
 
   const handleAddStarterCategories = async () => {

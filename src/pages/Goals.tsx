@@ -325,8 +325,9 @@ export function Goals() {
                       </button>
                       <button
                         type="button"
-                        className="rounded-xl p-2 text-muted-foreground hover:bg-secondary hover:text-[#FF8388]"
+                        className="rounded-xl p-2 text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-40"
                         onClick={() => setDeleteTarget(goal)}
+                        disabled={deleteGoal.isPending}
                         title="Delete goal"
                         aria-label={`Delete ${goal.name}`}
                       >

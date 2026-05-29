@@ -234,8 +234,9 @@ export function Subscriptions() {
             {rule.active ? 'Pause' : 'Resume'}
           </button>
           <button
-            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-[#FF8388]"
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-[#FF8388] disabled:opacity-40"
             onClick={() => setDeleteTarget(rule)}
+            disabled={deleteRule.isPending}
           >
             <Trash2 className="h-3 w-3" />
             Delete

@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useBudgetCategories, useTransactions } from '@/lib/queries'
+import { useBudgetCategories, useTransactions, useAddTransaction, useWallets } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
-import { Download } from 'lucide-react'
+import { Download, Upload } from 'lucide-react'
 
 type ReportRange = 'week' | 'month' | 'year'
 type ReportMode = 'expense' | 'income'
@@ -66,10 +67,16 @@ export function Reports() {
   const money = useMoney()
   const { data: transactions = [] } = useTransactions()
   const { data: categories = [] } = useBudgetCategories()
+  const { data: wallets = [] } = useWallets()
+  const addTransaction = useAddTransaction()
   const [range, setRange] = useState<ReportRange>('month')
   const [periodDate, setPeriodDate] = useState(() => new Date())
   const [mode, setMode] = useState<ReportMode>('expense')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate), [periodDate, range])
   const periodLabel = formatPeriodLabel(range, periodDate)
@@ -125,6 +132,56 @@ export function Reports() {
   const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null) }
   const handleModeChange = (m: ReportMode) => { setMode(m); setSelectedCategory(null) }
 
+  const handleFileLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setImportText((ev.target?.result as string) ?? '')
+    reader.readAsText(file)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleImportCSV = async () => {
+    const lines = importText.trim().split('\n').filter(Boolean)
+    if (lines.length < 2) { toast.error('CSV must have a header row and at least one data row'); return }
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''))
+    const dateIdx  = header.findIndex(h => h === 'date')
+    const descIdx  = header.findIndex(h => h.startsWith('desc'))
+    const catIdx   = header.findIndex(h => h.startsWith('cat'))
+    const typeIdx  = header.findIndex(h => h === 'type')
+    const amtIdx   = header.findLastIndex(h => h.startsWith('amount') || h === 'amt')
+    if (dateIdx < 0 || descIdx < 0 || amtIdx < 0) {
+      toast.error('CSV must have Date, Description, and Amount columns')
+      return
+    }
+    setImporting(true)
+    let added = 0; let failed = 0
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+      const date = cols[dateIdx]?.slice(0, 10)
+      const description = cols[descIdx] ?? ''
+      const category = catIdx >= 0 ? cols[catIdx] ?? '' : ''
+      const rawType = typeIdx >= 0 ? cols[typeIdx]?.toLowerCase() : ''
+      const type = rawType === 'income' ? 'income' : rawType === 'transfer' ? 'transfer' : 'expense'
+      const amount = parseFloat(cols[amtIdx]?.replace(/[^0-9.]/g, '') ?? '0')
+      if (!date || !description || isNaN(amount) || amount <= 0) { failed++; continue }
+      try {
+        await addTransaction.mutateAsync({
+          user_id: null, description, amount, original_amount: amount,
+          original_currency: money.baseCurrency, type,
+          category: category || 'Other',
+          wallet_id: wallets[0]?.id ?? null,
+          transfer_wallet_id: null, recurring_rule_id: null,
+          recurring_due_date: null, date, needs_review: true,
+        })
+        added++
+      } catch { failed++ }
+    }
+    setImporting(false)
+    toast.success(`Imported ${added} transaction${added !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} skipped)` : ''}`)
+    if (added > 0) { setImportText(''); setImportOpen(false) }
+  }
+
   const handleExportCSV = () => {
     const headers = ['Date', 'Description', 'Category', 'Type', 'Amount (display)', 'Amount (base)']
     const rows = rangeTx
@@ -174,6 +231,10 @@ export function Reports() {
             <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportCSV} disabled={rangeTx.length === 0}>
               <Download className="h-4 w-4" />
               Export CSV
+            </Button>
+            <Button size="sm" variant="secondary" className="gap-2" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Import CSV
             </Button>
           </div>
         )}
@@ -331,6 +392,42 @@ export function Reports() {
           )}
         </CardContent>
       </Card>
+
+      <Sheet open={importOpen} onOpenChange={setImportOpen}>
+        <SheetContent side="right" className="w-full max-w-md">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Import transactions
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
+              <p className="font-bold text-foreground">Accepted CSV columns:</p>
+              <p className="mt-1">Date, Description, Category, Type (income/expense/transfer), Amount</p>
+              <p className="mt-2 text-xs">You can use FinPath's own exported CSV, or any CSV that has at least Date, Description, and Amount. Imported rows are marked "needs review".</p>
+            </div>
+            <div>
+              <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileLoad} />
+              <Button variant="secondary" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4" />
+                Choose CSV file
+              </Button>
+            </div>
+            <p className="text-center text-xs text-muted-foreground">— or paste CSV text below —</p>
+            <textarea
+              aria-label="CSV text to import"
+              className="min-h-48 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none focus:border-primary"
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              placeholder={"Date,Description,Category,Type,Amount\n2026-05-01,Grocery Store,Food,expense,150000"}
+            />
+            <Button onClick={handleImportCSV} disabled={!importText.trim() || importing} className="w-full">
+              {importing ? 'Importing…' : 'Import transactions'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

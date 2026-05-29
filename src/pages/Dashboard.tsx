@@ -11,7 +11,8 @@ import { useMoney } from '@/lib/currency'
 import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
 import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell } from 'lucide-react'
+import { computeStreak } from '@/lib/streak'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X } from 'lucide-react'
 
 export function Dashboard() {
   const money = useMoney()
@@ -122,6 +123,9 @@ export function Dashboard() {
   const categoryInsights = getCategoryInsights(transactions, categories).slice(0, 3)
 
   const isNewUser = !session && transactions.length === 0 && categories.length === 0 && wallets.length === 0
+
+  const streak = useMemo(() => computeStreak(transactions.map(t => t.date)), [transactions])
+  const [aiCardDismissed, setAiCardDismissed] = useState(() => localStorage.getItem('finpath_ai_dismissed') === '1')
 
   const [aiInsights, setAiInsights] = useState<InsightResult[] | null>(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
@@ -297,6 +301,19 @@ export function Dashboard() {
           badgeVariant={savingsRateVariant}
         />
       </div>
+
+      {/* Streak banner */}
+      {streak.current >= 3 && (
+        <div className="mb-8 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3">
+          <Flame className="h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <p className="text-sm font-extrabold text-primary">{streak.current}-day logging streak 🔥</p>
+            <p className="text-xs text-muted-foreground">
+              {streak.current === streak.longest ? 'Personal best!' : `Best: ${streak.longest} days`} · Keep recording daily to stay on track.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Investment path + Spending overview */}
       <div className="mb-10 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.8fr)] lg:gap-8">
@@ -490,6 +507,7 @@ export function Dashboard() {
       </div>
 
       {/* AI Insights */}
+      {(!aiCardDismissed || getGeminiKey() || aiInsights) && (
       <Card className="mt-6">
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
@@ -497,24 +515,38 @@ export function Dashboard() {
               <Sparkles className="h-5 w-5 text-primary" />
               <CardTitle className="text-xl">AI Insights</CardTitle>
             </div>
-            {getGeminiKey() ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleGetInsights}
-                disabled={loadingInsights}
-                className="gap-2"
-              >
-                {loadingInsights ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {aiInsights ? 'Refresh' : 'Generate'}
-              </Button>
-            ) : (
-              <Link to="/settings" className="text-xs font-bold text-primary hover:underline">
-                Configure API key →
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              {getGeminiKey() ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleGetInsights}
+                  disabled={loadingInsights}
+                  className="gap-2"
+                >
+                  {loadingInsights ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {aiInsights ? 'Refresh' : 'Generate'}
+                </Button>
+              ) : (
+                <Link to="/settings" className="text-xs font-bold text-primary hover:underline">
+                  Set up free API key →
+                </Link>
+              )}
+              {!getGeminiKey() && !aiInsights && (
+                <button
+                  type="button"
+                  aria-label="Dismiss AI Insights card"
+                  onClick={() => { localStorage.setItem('finpath_ai_dismissed', '1'); setAiCardDismissed(true) }}
+                  className="rounded-full p-1 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">Personalised spending tips powered by Gemini AI</p>
+          <p className="text-sm text-muted-foreground">
+            FinPath AI analyses your actual spending data — categories, budgets, goals, cashflow — and gives you sharp, personalised advice from a CFP/CFA perspective. Powered by the free Gemini API.
+          </p>
         </CardHeader>
         <CardContent className="px-5 pb-6 sm:px-8">
           {!getGeminiKey() ? (
@@ -560,6 +592,7 @@ export function Dashboard() {
           )}
         </CardContent>
       </Card>
+      )}{/* end AI insights conditional */}
 
       </div>{/* end secondary cards */}
 
