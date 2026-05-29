@@ -149,7 +149,7 @@ export function Reports() {
     const descIdx  = header.findIndex(h => h.startsWith('desc'))
     const catIdx   = header.findIndex(h => h.startsWith('cat'))
     const typeIdx  = header.findIndex(h => h === 'type')
-    const amtIdx   = header.findLastIndex(h => h.startsWith('amount') || h === 'amt')
+    const amtIdx   = header.reduce((last, h, i) => (h.startsWith('amount') || h === 'amt') ? i : last, -1)
     if (dateIdx < 0 || descIdx < 0 || amtIdx < 0) {
       toast.error('CSV must have Date, Description, and Amount columns')
       return
