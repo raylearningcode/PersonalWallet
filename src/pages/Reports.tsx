@@ -330,7 +330,7 @@ export function Reports() {
                 <Tooltip
                   cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                   contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 12, fontSize: 12 }}
-                  formatter={(v: number) => money.formatDisplay(v)}
+                  formatter={(v: number | undefined) => money.formatDisplay(v ?? 0)}
                 />
                 <Bar dataKey="income" name="Income" fill="#A9F5C7" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="expenses" name="Expenses" fill="#FF8388" radius={[4, 4, 0, 0]} />
