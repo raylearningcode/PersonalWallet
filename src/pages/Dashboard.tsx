@@ -10,8 +10,8 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
-import { getAiInsights, getGeminiKey } from '@/lib/gemini'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell } from 'lucide-react'
 
 export function Dashboard() {
   const money = useMoney()
@@ -123,7 +123,7 @@ export function Dashboard() {
 
   const isNewUser = !session && transactions.length === 0 && categories.length === 0 && wallets.length === 0
 
-  const [aiInsights, setAiInsights] = useState<string[] | null>(null)
+  const [aiInsights, setAiInsights] = useState<InsightResult[] | null>(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [insightsError, setInsightsError] = useState<string | null>(null)
 
@@ -131,17 +131,34 @@ export function Dashboard() {
     setLoadingInsights(true)
     setInsightsError(null)
     try {
-      const categoryBreakdown = categories.map(c => ({
+      const cats = categories.map(c => ({
         name: c.name,
-        amount: monthlyTx.filter(t => t.type !== 'income' && t.type !== 'transfer' && t.category === c.name).reduce((s, t) => s + t.amount, 0),
+        spent: monthlyTx.filter(t => t.type !== 'income' && t.type !== 'transfer' && t.category === c.name).reduce((s, t) => s + t.amount, 0),
         budget: c.yearly_allocated,
       }))
+      const overBudget = cats
+        .filter(c => c.budget > 0 && c.spent > c.budget)
+        .map(c => ({ name: c.name, overage: c.spent - c.budget, pct: Math.round(((c.spent - c.budget) / c.budget) * 100) }))
+      const goalsSummary = goals.map(g => ({
+        name: g.name,
+        current: g.current_amount,
+        target: g.target_amount,
+        pct: g.target_amount > 0 ? Math.min(100, Math.round((g.current_amount / g.target_amount) * 100)) : 0,
+      }))
       const insights = await getAiInsights({
-        monthlySpent,
-        monthlyIncome,
-        categoryBreakdown,
-        savingsRate,
         currency: money.baseCurrency,
+        monthlyIncome,
+        monthlySpent,
+        daysLeftInMonth: daysLeft,
+        annualIncome: totalIncome,
+        annualSpent: totalExpenses,
+        savingsRate,
+        netWorth,
+        cashBalance,
+        invested,
+        categories: cats,
+        goals: goalsSummary,
+        overBudget,
       })
       setAiInsights(insights)
     } catch (err) {
@@ -515,12 +532,25 @@ export function Dashboard() {
             <p className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">{insightsError}</p>
           ) : aiInsights ? (
             <div className="space-y-3">
-              {aiInsights.map((tip, i) => (
-                <div key={i} className="flex gap-3 rounded-2xl border border-border bg-secondary p-4">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-extrabold text-primary-foreground">{i + 1}</span>
-                  <p className="text-sm text-foreground">{tip}</p>
-                </div>
-              ))}
+              {aiInsights.map((insight, i) => {
+                const styles = {
+                  warning:     { border: 'border-[#FFCF73]/30',  bg: 'bg-[#FFCF73]/5',   text: 'text-[#FFCF73]',   icon: <AlertTriangle className="h-4 w-4" />, label: 'Warning' },
+                  alert:       { border: 'border-red-500/30',    bg: 'bg-red-500/5',      text: 'text-red-400',     icon: <Bell className="h-4 w-4" />,          label: 'Alert' },
+                  opportunity: { border: 'border-primary/30',    bg: 'bg-primary/5',      text: 'text-primary',     icon: <TrendingUp className="h-4 w-4" />,     label: 'Opportunity' },
+                  tip:         { border: 'border-border',        bg: 'bg-secondary',      text: 'text-muted-foreground', icon: <Lightbulb className="h-4 w-4" />, label: 'Tip' },
+                }
+                const s = styles[insight.type] ?? styles.tip
+                return (
+                  <div key={i} className={`rounded-2xl border p-4 ${s.border} ${s.bg}`}>
+                    <div className={`mb-1.5 flex items-center gap-1.5 text-xs font-bold ${s.text}`}>
+                      {s.icon}
+                      {s.label}
+                    </div>
+                    <p className="font-extrabold text-foreground">{insight.title}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{insight.detail}</p>
+                  </div>
+                )
+              })}
               <p className="text-right text-xs text-muted-foreground/60">Powered by Gemini 2.5 Flash-Lite</p>
             </div>
           ) : (
