@@ -355,20 +355,36 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
             )}
           </div>
 
-          <Button
-            className="mt-2 h-12 w-full text-base font-extrabold"
-            onClick={handleSave}
-            disabled={
-              addTransaction.isPending ||
-              addRecurringRule.isPending ||
-              !amount ||
-              wallets.length === 0 ||
-              cannotSaveTransfer ||
-              (type === 'expense' && categories.length === 0)
-            }
-          >
-            Add transaction
-          </Button>
+          {wallets.length === 0 ? (
+            <Link
+              to="/settings"
+              onClick={onClose}
+              className="mt-2 flex h-12 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+            >
+              Add a wallet to get started →
+            </Link>
+          ) : type === 'expense' && categories.length === 0 ? (
+            <Link
+              to="/budget"
+              onClick={onClose}
+              className="mt-2 flex h-12 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+            >
+              Add a budget category first →
+            </Link>
+          ) : (
+            <Button
+              className="mt-2 h-12 w-full text-base font-extrabold"
+              onClick={handleSave}
+              disabled={
+                addTransaction.isPending ||
+                addRecurringRule.isPending ||
+                !amount ||
+                cannotSaveTransfer
+              }
+            >
+              Add transaction
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>

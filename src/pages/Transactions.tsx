@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -866,7 +866,19 @@ export function Transactions() {
             </div>}
           </div>
         )) : (
-          <p className="py-10 text-center text-muted-foreground">No transactions yet.</p>
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+              <ReceiptText size={28} className="text-muted-foreground/50" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">No transactions yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Add your first income or expense to get started.</p>
+            </div>
+            <Button onClick={openAddForm} className="gap-2">
+              <Plus size={16} />
+              Add transaction
+            </Button>
+          </div>
         )}
       </div>
       <ConfirmDialog
