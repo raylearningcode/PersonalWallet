@@ -521,7 +521,7 @@ export function Dashboard() {
                   <p className="text-sm text-foreground">{tip}</p>
                 </div>
               ))}
-              <p className="text-right text-xs text-muted-foreground/60">Powered by Gemini 1.5 Flash</p>
+              <p className="text-right text-xs text-muted-foreground/60">Powered by Gemini 2.0 Flash Lite</p>
             </div>
           ) : (
             <div className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
