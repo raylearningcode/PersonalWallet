@@ -10,6 +10,8 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
+import { getAiInsights, getGeminiKey } from '@/lib/gemini'
+import { Sparkles, Loader2 } from 'lucide-react'
 
 export function Dashboard() {
   const money = useMoney()
@@ -120,6 +122,34 @@ export function Dashboard() {
   const categoryInsights = getCategoryInsights(transactions, categories).slice(0, 3)
 
   const isNewUser = !session && transactions.length === 0 && categories.length === 0 && wallets.length === 0
+
+  const [aiInsights, setAiInsights] = useState<string[] | null>(null)
+  const [loadingInsights, setLoadingInsights] = useState(false)
+  const [insightsError, setInsightsError] = useState<string | null>(null)
+
+  const handleGetInsights = async () => {
+    setLoadingInsights(true)
+    setInsightsError(null)
+    try {
+      const categoryBreakdown = categories.map(c => ({
+        name: c.name,
+        amount: monthlyTx.filter(t => t.type !== 'income' && t.type !== 'transfer' && t.category === c.name).reduce((s, t) => s + t.amount, 0),
+        budget: c.yearly_allocated,
+      }))
+      const insights = await getAiInsights({
+        monthlySpent,
+        monthlyIncome,
+        categoryBreakdown,
+        savingsRate,
+        currency: money.baseCurrency,
+      })
+      setAiInsights(insights)
+    } catch (err) {
+      setInsightsError(err instanceof Error ? err.message : 'Failed to get insights')
+    } finally {
+      setLoadingInsights(false)
+    }
+  }
 
   const recentTransactions = useMemo(
     () => [...transactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`)).slice(0, 5),
@@ -441,6 +471,65 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Insights */}
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <CardTitle className="text-xl">AI Insights</CardTitle>
+            </div>
+            {getGeminiKey() ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleGetInsights}
+                disabled={loadingInsights}
+                className="gap-2"
+              >
+                {loadingInsights ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {aiInsights ? 'Refresh' : 'Generate'}
+              </Button>
+            ) : (
+              <Link to="/settings" className="text-xs font-bold text-primary hover:underline">
+                Configure API key →
+              </Link>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">Personalised spending tips powered by Gemini AI</p>
+        </CardHeader>
+        <CardContent className="px-5 pb-6 sm:px-8">
+          {!getGeminiKey() ? (
+            <div className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
+              Add your free Gemini API key in{' '}
+              <Link to="/settings" className="font-bold text-primary hover:underline">Settings → AI Features</Link>
+              {' '}to unlock personalised insights.
+            </div>
+          ) : loadingInsights ? (
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              Analysing your finances…
+            </div>
+          ) : insightsError ? (
+            <p className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">{insightsError}</p>
+          ) : aiInsights ? (
+            <div className="space-y-3">
+              {aiInsights.map((tip, i) => (
+                <div key={i} className="flex gap-3 rounded-2xl border border-border bg-secondary p-4">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-extrabold text-primary-foreground">{i + 1}</span>
+                  <p className="text-sm text-foreground">{tip}</p>
+                </div>
+              ))}
+              <p className="text-right text-xs text-muted-foreground/60">Powered by Gemini 1.5 Flash</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
+              Hit <span className="font-bold text-primary">Generate</span> to get personalised insights based on this month's activity.
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       </div>{/* end secondary cards */}
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,8 @@ import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
+import { scanReceipt, getGeminiKey } from '@/lib/gemini'
+import { ScanLine, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { RecurringFrequency } from '@/types'
 
@@ -42,6 +44,8 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [installmentTotal, setInstallmentTotal] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [scanning, setScanning] = useState(false)
+  const receiptInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!walletId && wallets.length > 0) setWalletId(wallets[0].id)
@@ -79,6 +83,38 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
   const handleClose = () => {
     reset()
     onClose()
+  }
+
+  const handleReceiptImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!getGeminiKey()) {
+      toast.error('Add a Gemini API key in Settings → AI Features to use receipt scanning')
+      return
+    }
+    setScanning(true)
+    try {
+      const reader = new FileReader()
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const result = await scanReceipt(base64, file.type)
+      if (result.description) setDescription(result.description)
+      if (result.amount) setAmount(result.amount)
+      if (result.date) setDate(result.date)
+      if (result.category) {
+        const matched = categories.find(c => c.name.toLowerCase() === result.category.toLowerCase())
+        if (matched) setCategory(matched.name)
+      }
+      toast.success('Receipt scanned — review and confirm')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Receipt scan failed')
+    } finally {
+      setScanning(false)
+      if (receiptInputRef.current) receiptInputRef.current.value = ''
+    }
   }
 
   const handleSave = async () => {
@@ -176,6 +212,23 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
               <span className="flex h-14 w-44 items-center justify-center text-4xl font-extrabold">
                 {amount ? formatNumberInput(amount) : <span className="text-muted-foreground/40">0</span>}
               </span>
+              <button
+                type="button"
+                aria-label="Scan receipt"
+                onClick={() => receiptInputRef.current?.click()}
+                disabled={scanning}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
+              >
+                {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+              </button>
+              <input
+                ref={receiptInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleReceiptImage}
+              />
             </div>
             <Input
               aria-label="Date"

@@ -20,9 +20,10 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X } from 'lucide-react'
+import { X, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Wallet } from '@/types'
+import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
 
 const CURRENCIES = ['USD', 'IDR', 'TWD', 'EUR', 'JPY']
 
@@ -67,6 +68,8 @@ export function Settings() {
   const [backupText, setBackupText] = useState('')
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
+  const [geminiKey, setGeminiKey] = useState(() => getGeminiKey() ?? '')
+  const [showGeminiKey, setShowGeminiKey] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
     id: string
@@ -473,6 +476,52 @@ export function Settings() {
               <Button onClick={handleEnablePin} disabled={pinInput.length !== 4}>Enable PIN</Button>
             </div>
           )}
+        </CardContent>
+      </Card>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-xl">AI Features</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Power receipt scanning and spending insights with the free{' '}
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="font-bold text-primary underline-offset-2 hover:underline">
+              Gemini API
+            </a>
+            . Get a free key at aistudio.google.com.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+          <div>
+            <Label className="text-sm text-muted-foreground">Gemini API key</Label>
+            <div className="mt-2 flex items-center gap-2">
+              <div className="relative flex-1">
+                <Input
+                  aria-label="Gemini API key"
+                  className="bg-secondary pr-10 font-mono text-sm"
+                  type={showGeminiKey ? 'text' : 'password'}
+                  value={geminiKey}
+                  onChange={e => setGeminiKey(e.target.value)}
+                  placeholder="AIzaSy…"
+                />
+                <button
+                  type="button"
+                  aria-label={showGeminiKey ? 'Hide key' : 'Show key'}
+                  onClick={() => setShowGeminiKey(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showGeminiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <Button
+                onClick={() => {
+                  saveGeminiKey(geminiKey.trim())
+                  toast.success(geminiKey.trim() ? 'Gemini API key saved' : 'Gemini API key removed')
+                }}
+              >
+                Save
+              </Button>
+            </div>
+            {geminiKey && <p className="mt-2 text-xs text-primary">✓ Key saved — receipt scanning and AI insights are enabled</p>}
+          </div>
         </CardContent>
       </Card>
       <Card className="mb-8">

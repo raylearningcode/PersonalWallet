@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   useBudgetCategories,
   useTransactions,
@@ -296,7 +297,12 @@ export function Budget() {
                 </div>
               )
             }) : (
-              <p className="text-sm text-muted-foreground">No budget categories yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No budget categories yet.{' '}
+                <Link to="/settings" className="font-bold text-primary hover:underline">
+                  Add categories in Settings →
+                </Link>
+              </p>
             )}
 
             {spendingSuggestions.length > 0 && (
