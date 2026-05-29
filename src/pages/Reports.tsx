@@ -10,6 +10,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
 import { Download, Upload } from 'lucide-react'
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 type ReportRange = 'week' | 'month' | 'year'
 type ReportMode = 'expense' | 'income'
@@ -128,6 +129,36 @@ export function Reports() {
   const activeTotal = categoryTotals.reduce((sum, [, amount]) => sum + amount, 0)
   const topCategory = categoryTotals[0]?.[0] ?? '—'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
+
+  const trendData = useMemo(() => {
+    const toStr = (d: Date) => d.toISOString().slice(0, 10)
+    const bucket = (txList: typeof rangeTx) => ({
+      expenses: txList.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0),
+      income: txList.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+    })
+    if (range === 'week') {
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(rangeStart); d.setDate(rangeStart.getDate() + i)
+        const dateStr = toStr(d)
+        return { label: d.toLocaleDateString('en-GB', { weekday: 'short' }), ...bucket(rangeTx.filter(t => t.date === dateStr)) }
+      })
+    }
+    if (range === 'month') {
+      const weeks: { label: string; expenses: number; income: number }[] = []
+      let cursor = new Date(rangeStart); let n = 1
+      while (cursor < rangeEnd) {
+        const wEnd = new Date(cursor); wEnd.setDate(wEnd.getDate() + 7)
+        weeks.push({ label: `W${n}`, ...bucket(rangeTx.filter(t => t.date >= toStr(cursor) && t.date < toStr(wEnd))) })
+        cursor = wEnd; n++
+      }
+      return weeks
+    }
+    return Array.from({ length: 12 }, (_, i) => {
+      const mStart = new Date(rangeStart.getFullYear(), i, 1)
+      const mEnd = new Date(rangeStart.getFullYear(), i + 1, 1)
+      return { label: mStart.toLocaleDateString('en-GB', { month: 'short' }), ...bucket(rangeTx.filter(t => t.date >= toStr(mStart) && t.date < toStr(mEnd))) }
+    })
+  }, [range, rangeStart, rangeEnd, rangeTx])
 
   const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null) }
   const handleModeChange = (m: ReportMode) => { setMode(m); setSelectedCategory(null) }
@@ -274,6 +305,40 @@ export function Reports() {
           </div>
         </div>
       )}
+
+      {/* Spending trend chart */}
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle className="text-xl">Income vs Expenses</CardTitle>
+            <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#A9F5C7]" />Income</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#FF8388]" />Expenses</span>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {range === 'week' ? 'Daily breakdown' : range === 'month' ? 'Weekly breakdown' : 'Monthly breakdown'} for {periodLabel}
+          </p>
+        </CardHeader>
+        <CardContent className="px-2 pb-4 sm:px-6">
+          {rangeTx.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No data for this period.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={trendData} barGap={3} barCategoryGap="28%">
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 12, fontSize: 12 }}
+                  formatter={(v: number) => money.formatDisplay(v)}
+                />
+                <Bar dataKey="income" name="Income" fill="#A9F5C7" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="Expenses" fill="#FF8388" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] lg:gap-8">
         <Card>

@@ -20,6 +20,7 @@ import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
 import { Check, Pencil, Trash2, X } from 'lucide-react'
 import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
@@ -45,7 +46,7 @@ function ColorBar({ value, color }: { value: number; color: string }) {
 export function Budget() {
   const money = useMoney()
   const fmt = money.formatDisplay
-  const { data: categories = [] } = useBudgetCategories()
+  const { data: categories = [], isPending: catPending } = useBudgetCategories()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
   const addCategory = useAddBudgetCategory()
@@ -201,7 +202,17 @@ export function Budget() {
       <Card>
         <CardHeader><CardTitle className="text-xl">Category allocation</CardTitle></CardHeader>
         <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            {categoriesWithSpent.length > 0 ? categoriesWithSpent.map(cat => {
+            {catPending ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              ))
+            ) : categoriesWithSpent.length > 0 ? categoriesWithSpent.map(cat => {
               const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
               const barColor = getBarColor(pct, cat.color)
               const isEditing = editingId === cat.id

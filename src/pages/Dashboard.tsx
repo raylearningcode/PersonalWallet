@@ -13,16 +13,18 @@ import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWallet
 import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
 import { computeStreak } from '@/lib/streak'
 import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X } from 'lucide-react'
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export function Dashboard() {
   const money = useMoney()
   const fmt = money.formatDisplay
   const [showDetails, setShowDetails] = useState(false)
-  const { data: transactions = [] } = useTransactions()
+  const { data: transactions = [], isPending: txPending } = useTransactions()
   const { data: investConfig } = useInvestmentConfig()
-  const { data: categories = [] } = useBudgetCategories()
+  const { data: categories = [], isPending: catPending } = useBudgetCategories()
   const { data: settings } = useAppSettings()
-  const { data: wallets = [] } = useWallets()
+  const { data: wallets = [], isPending: walletPending } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
   const { data: goals = [] } = useGoals()
   const { data: session } = useAuthSession()
@@ -77,6 +79,28 @@ export function Dashboard() {
   const netWorth = cashBalance + invested
 
   const reviewCount = useMemo(() => transactions.filter(t => t.needs_review).length, [transactions])
+
+  const cashBalanceHistory = useMemo(() => {
+    const now = new Date()
+    const walletBase = wallets.reduce((sum, w) => sum + (w.balance ?? 0), 0)
+    return Array.from({ length: 12 }, (_, i) => {
+      const monthOffset = 11 - i
+      const mEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 0)
+      const mEndStr = mEnd.toISOString().slice(0, 10)
+      const balance = walletBase + transactions
+        .filter(t => t.date <= mEndStr)
+        .reduce((sum, t) => {
+          if (t.type === 'income') return sum + t.amount
+          if (t.type !== 'transfer') return sum - t.amount
+          return sum
+        }, 0)
+      return {
+        label: new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)
+          .toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }),
+        amount: balance,
+      }
+    })
+  }, [wallets, transactions])
 
   const spendingByCategory = useMemo(() => {
     const map: Record<string, number> = {}
@@ -277,29 +301,22 @@ export function Dashboard() {
 
       {/* Hero stat cards */}
       <div className="mb-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-        <StatCard
-          label="Net worth"
-          value={fmt(netWorth)}
-          sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'}
-          badgeVariant="success"
-        />
-        <StatCard
-          label="This month"
-          value={fmt(monthlySpent)}
-          sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : `${daysLeft} days remaining`}
-          badgeVariant="warning"
-        />
-        <StatCard
-          label="Safe to spend"
-          value={fmt(safeToSpend)}
-          sub={`Based on budgets · ${daysLeft}d left`}
-        />
-        <StatCard
-          label="Savings rate"
-          value={`${savingsRate}%`}
-          sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`}
-          badgeVariant={savingsRateVariant}
-        />
+        {(txPending || walletPending || catPending) ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+              <Skeleton className="mb-3 h-3 w-20" />
+              <Skeleton className="mb-2 h-7 w-32" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))
+        ) : (
+          <>
+            <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" />
+            <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : `${daysLeft} days remaining`} badgeVariant="warning" />
+            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={`Based on budgets · ${daysLeft}d left`} />
+            <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} />
+          </>
+        )}
       </div>
 
       {/* Streak banner */}
@@ -444,6 +461,35 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Cash balance history chart */}
+      {!txPending && !walletPending && transactions.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Cash balance history</CardTitle>
+            <p className="text-sm text-muted-foreground">12-month rolling view of your wallet cash balance</p>
+          </CardHeader>
+          <CardContent className="px-2 pb-4 sm:px-6">
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={cashBalanceHistory} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#A9F5C7" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#A9F5C7" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  cursor={{ stroke: 'rgba(169,245,199,0.2)', strokeWidth: 1 }}
+                  contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 12, fontSize: 12 }}
+                  formatter={(v: number) => [fmt(v), 'Cash balance']}
+                />
+                <Area type="monotone" dataKey="amount" stroke="#A9F5C7" fill="url(#balGrad)" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#A9F5C7' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Net worth + Budget pace + Upcoming bills */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-7">

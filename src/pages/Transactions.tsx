@@ -29,6 +29,7 @@ import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type Filter = 'all' | 'income' | 'expense' | 'transfer'
 type EntryType = 'income' | 'expense' | 'transfer'
@@ -82,7 +83,7 @@ export function Transactions() {
   const [endDate, setEndDate] = useState('')
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
-  const { data: transactions = [] } = useTransactions(filter)
+  const { data: transactions = [], isPending: txPending } = useTransactions(filter)
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
@@ -765,7 +766,21 @@ export function Transactions() {
         ) : (
           <h2 className="mb-4 text-xl font-extrabold text-foreground">Transaction history</h2>
         )}
-        {groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
+        {txPending ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-secondary px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
           <div key={date} className="mb-6 last:mb-0">
             <h3 className="mb-3 text-sm font-extrabold text-primary">{formatDate(date)}</h3>
 
