@@ -214,8 +214,8 @@ describe('Transactions', () => {
   it('groups history by date and shows note/category/price columns', () => {
     render(<Transactions />)
 
-    expect(screen.getByRole('heading', { name: '2026-05-21' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '2026-05-20' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '21 May 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '20 May 2026' })).toBeInTheDocument()
     expect(screen.getAllByText('Item name').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Note').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Price').length).toBeGreaterThan(0)

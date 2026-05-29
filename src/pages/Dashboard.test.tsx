@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Dashboard } from './Dashboard'
 
 vi.mock('@/lib/queries', () => ({
+  useAuthSession: () => ({ data: null }),
   useTransactions: () => ({ data: [
     { id: 'tx-1', description: 'Lunch', amount: 100000, original_amount: 100000, original_currency: 'IDR', type: 'expense', category: 'Food', date: '2026-05-20', needs_review: false },
     { id: 'tx-2', description: 'Course', amount: 200000, original_amount: 200000, original_currency: 'IDR', type: 'expense', category: 'Learning', date: '2026-05-21', needs_review: false },

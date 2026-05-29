@@ -119,7 +119,7 @@ export function Reports() {
     return activeTx.filter(tx => tx.category === selectedCategory).sort((a, b) => b.date.localeCompare(a.date))
   }, [activeTx, selectedCategory])
   const activeTotal = categoryTotals.reduce((sum, [, amount]) => sum + amount, 0)
-  const topCategory = categoryTotals[0]?.[0] ?? 'Empty'
+  const topCategory = categoryTotals[0]?.[0] ?? '—'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
 
   const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null) }
@@ -181,7 +181,7 @@ export function Reports() {
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Savings rate" value={`${savingsRate}%`} sub={`${RANGE_LABELS[range]} view`} badgeVariant="success" />
         <StatCard label={range === 'week' ? 'Daily avg.' : range === 'year' ? 'Monthly avg.' : 'Spent'} value={money.formatDisplay(avgSpend)} sub="Expense pace" />
-        <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No spending yet'} badgeVariant="warning" />
+        <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 && categoryTotals.length > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No data yet'} badgeVariant="warning" />
       </div>
 
       {/* Period comparison */}

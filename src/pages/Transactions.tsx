@@ -25,6 +25,7 @@ import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X } from 'lucid
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
@@ -396,19 +397,22 @@ export function Transactions() {
           </div>
         )}
       />
-      <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); setDateFrom(''); setDateTo('') }} className="mb-8 overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
-        <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
-          {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
-            <TabsTrigger
-              key={f}
-              value={f}
-              className="h-11 min-w-24 rounded-full border border-border bg-transparent px-4 text-sm font-bold capitalize text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:min-w-28 sm:px-6"
-            >
-              {f.replace('_', ' ')}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="relative mb-8">
+        <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); setDateFrom(''); setDateTo('') }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
+          <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
+            {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
+              <TabsTrigger
+                key={f}
+                value={f}
+                className="h-11 min-w-24 rounded-full border border-border bg-transparent px-4 text-sm font-bold capitalize text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:min-w-28 sm:px-6"
+              >
+                {f.replace('_', ' ')}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-[1.4rem] bg-gradient-to-l from-card to-transparent sm:hidden" />
+      </div>
       <div className="mb-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         {[
           { label: 'Money in', value: money.formatDisplay(moneyIn), dot: 'bg-primary', sub: money.baseCurrency !== money.displayCurrency ? money.formatBase(moneyIn) : 'Income received' },
@@ -763,7 +767,7 @@ export function Transactions() {
         )}
         {groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
           <div key={date} className="mb-6 last:mb-0">
-            <h3 className="mb-3 text-sm font-extrabold text-primary">{date}</h3>
+            <h3 className="mb-3 text-sm font-extrabold text-primary">{formatDate(date)}</h3>
 
             {/* Mobile card list */}
             {!isDesktop && <div className="flex flex-col gap-2">

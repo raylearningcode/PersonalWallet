@@ -5,12 +5,20 @@ import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { MoreSheet } from './MoreSheet'
 import { QuickAddSheet } from './QuickAddSheet'
+import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 
 export function AppLayout() {
   const { data: session } = useAuthSession()
   const [moreOpen, setMoreOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [pinLocked, setPinLocked] = useState(() =>
+    Boolean(localStorage.getItem(PIN_STORAGE_KEY)) && !sessionStorage.getItem(PIN_SESSION_KEY)
+  )
   const isGuest = session === null
+
+  if (pinLocked) {
+    return <PinLockScreen onUnlock={() => setPinLocked(false)} />
+  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { useMoney } from '@/lib/currency'
+import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X } from 'lucide-react'
@@ -64,6 +65,8 @@ export function Settings() {
   const [walletName, setWalletName] = useState('')
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
   const [backupText, setBackupText] = useState('')
+  const [pinInput, setPinInput] = useState('')
+  const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
     id: string
@@ -131,6 +134,22 @@ export function Settings() {
   const handleSignUp = async () => {
     await signUp.mutateAsync({ email: authEmail, password: authPassword })
     toast.success('Signup started. Check your email if confirmation is enabled.')
+  }
+
+  const handleEnablePin = () => {
+    if (pinInput.length !== 4) return
+    localStorage.setItem(PIN_STORAGE_KEY, hashPin(pinInput))
+    sessionStorage.setItem(PIN_SESSION_KEY, '1')
+    setPinInput('')
+    setPinEnabled(true)
+    toast.success('PIN lock enabled')
+  }
+
+  const handleDisablePin = () => {
+    localStorage.removeItem(PIN_STORAGE_KEY)
+    sessionStorage.removeItem(PIN_SESSION_KEY)
+    setPinEnabled(false)
+    toast.success('PIN lock removed')
   }
 
   const handleAddCategory = async () => {
@@ -258,6 +277,38 @@ export function Settings() {
           </CardContent>
         </Card>
       )}
+      <Card className="mb-8 lg:hidden">
+        <CardHeader>
+          <CardTitle className="text-xl">Account access</CardTitle>
+          <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. On desktop, use the profile icon in the sidebar.</p>
+        </CardHeader>
+        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+          {session ? (
+            <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-bold text-foreground">Logged in</p>
+                <p className="text-sm text-muted-foreground">{session.user.email}</p>
+              </div>
+              <Button variant="secondary" onClick={() => signOut.mutateAsync()}>Log out</Button>
+            </div>
+          ) : (
+            <div className="grid max-w-md grid-cols-1 items-end gap-4">
+              <div>
+                <Label className="text-sm text-muted-foreground">Email</Label>
+                <Input aria-label="Auth email" className="mt-2 bg-secondary" value={authEmail} onChange={event => setAuthEmail(event.target.value)} placeholder="you@example.com" />
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground">Password</Label>
+                <Input aria-label="Auth password" className="mt-2 bg-secondary" type="password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} placeholder="Password" />
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button onClick={handleSignIn} disabled={signIn.isPending}>Log in</Button>
+                <Button variant="secondary" onClick={handleSignUp} disabled={signUp.isPending}>Sign up</Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(280px,0.6fr)_minmax(0,1.4fr)] xl:gap-7">
         <Card>
           <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
@@ -393,34 +444,33 @@ export function Settings() {
             </div>
           </CardContent>
       </Card>
-      <Card className="mb-8 lg:hidden">
+      <Card className="mb-8">
         <CardHeader>
-          <CardTitle className="text-xl">Account access</CardTitle>
-          <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. On desktop, use the profile icon in the sidebar.</p>
+          <CardTitle className="text-xl">PIN lock</CardTitle>
+          <p className="text-sm text-muted-foreground">Protect the app with a 4-digit PIN when it opens.</p>
         </CardHeader>
         <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-          {session ? (
+          {pinEnabled ? (
             <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-bold text-foreground">Logged in</p>
-                <p className="text-sm text-muted-foreground">{session.user.email}</p>
-              </div>
-              <Button variant="secondary" onClick={() => signOut.mutateAsync()}>Log out</Button>
+              <p className="font-bold text-foreground">PIN lock is active</p>
+              <Button variant="secondary" onClick={handleDisablePin}>Remove PIN</Button>
             </div>
           ) : (
-            <div className="grid max-w-md grid-cols-1 items-end gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div>
-                <Label className="text-sm text-muted-foreground">Email</Label>
-                <Input aria-label="Auth email" className="mt-2 bg-secondary" value={authEmail} onChange={event => setAuthEmail(event.target.value)} placeholder="you@example.com" />
+                <Label className="text-sm text-muted-foreground">New PIN (4 digits)</Label>
+                <Input
+                  aria-label="New PIN"
+                  className="mt-2 w-32 bg-secondary text-center tracking-[0.5em]"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pinInput}
+                  onChange={event => setPinInput(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="••••"
+                />
               </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">Password</Label>
-                <Input aria-label="Auth password" className="mt-2 bg-secondary" type="password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} placeholder="Password" />
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button onClick={handleSignIn} disabled={signIn.isPending}>Log in</Button>
-                <Button variant="secondary" onClick={handleSignUp} disabled={signUp.isPending}>Sign up</Button>
-              </div>
+              <Button onClick={handleEnablePin} disabled={pinInput.length !== 4}>Enable PIN</Button>
             </div>
           )}
         </CardContent>

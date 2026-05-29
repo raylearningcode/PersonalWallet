@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
+import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals, useAuthSession } from '@/lib/queries'
 import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -22,6 +22,7 @@ export function Dashboard() {
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
   const { data: goals = [] } = useGoals()
+  const { data: session } = useAuthSession()
 
   const year = new Date().getFullYear()
   const now = new Date()
@@ -118,7 +119,7 @@ export function Dashboard() {
   const safeToSpend = getSafeToSpend(monthlyBudget, monthlySpent, daysLeft)
   const categoryInsights = getCategoryInsights(transactions, categories).slice(0, 3)
 
-  const isNewUser = transactions.length === 0 && categories.length === 0 && wallets.length === 0
+  const isNewUser = !session && transactions.length === 0 && categories.length === 0 && wallets.length === 0
 
   const recentTransactions = useMemo(
     () => [...transactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`)).slice(0, 5),

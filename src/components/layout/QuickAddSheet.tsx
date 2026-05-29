@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Numpad } from '@/components/ui/numpad'
 import {
   useAddTransaction,
   useAddRecurringRule,
@@ -171,14 +173,9 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
               >
                 {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <Input
-                aria-label="Amount"
-                className="h-14 w-44 border-0 bg-transparent text-center text-4xl font-extrabold"
-                inputMode="decimal"
-                value={amount}
-                onChange={e => setAmount(formatNumberInput(e.target.value))}
-                placeholder="0"
-              />
+              <span className="flex h-14 w-44 items-center justify-center text-4xl font-extrabold">
+                {amount ? formatNumberInput(amount) : <span className="text-muted-foreground/40">0</span>}
+              </span>
             </div>
             <Input
               aria-label="Date"
@@ -187,6 +184,7 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
               value={date}
               onChange={e => setDate(e.target.value)}
             />
+            <Numpad value={amount} onChange={setAmount} />
           </div>
 
           {/* Merchant name */}
@@ -223,33 +221,50 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
             <>
               <div>
                 <Label className="text-sm font-bold text-foreground">Category</Label>
-                <select
-                  aria-label="Category"
-                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                  value={category}
-                  onChange={e => setCategory(e.target.value)}
-                >
-                  {type === 'income'
-                    ? INCOME_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)
-                    : categories.length === 0
-                      ? <option value="">Add categories in Settings</option>
+                {type !== 'income' && categories.length === 0 ? (
+                  <Link
+                    to="/budget"
+                    onClick={handleClose}
+                    className="mt-2 flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
+                  >
+                    <span>No categories yet</span>
+                    <span>Set up now →</span>
+                  </Link>
+                ) : (
+                  <select
+                    aria-label="Category"
+                    className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                    value={category}
+                    onChange={e => setCategory(e.target.value)}
+                  >
+                    {type === 'income'
+                      ? INCOME_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)
                       : categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
-                  }
-                </select>
+                    }
+                  </select>
+                )}
               </div>
               <div>
                 <Label className="text-sm font-bold text-foreground">Wallet</Label>
-                <select
-                  aria-label="Wallet"
-                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                  value={walletId}
-                  onChange={e => setWalletId(e.target.value)}
-                >
-                  {wallets.length === 0
-                    ? <option value="">Add wallets in Settings</option>
-                    : wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)
-                  }
-                </select>
+                {wallets.length === 0 ? (
+                  <Link
+                    to="/settings"
+                    onClick={handleClose}
+                    className="mt-2 flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
+                  >
+                    <span>No wallets yet</span>
+                    <span>Add one →</span>
+                  </Link>
+                ) : (
+                  <select
+                    aria-label="Wallet"
+                    className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                    value={walletId}
+                    onChange={e => setWalletId(e.target.value)}
+                  >
+                    {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  </select>
+                )}
               </div>
             </>
           ) : (
@@ -281,21 +296,24 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
 
           {/* Recurring */}
           <div className="rounded-[1.25rem] border border-border bg-card p-4">
-            <label className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
               <span>
                 <span className="block text-sm font-extrabold text-foreground">Recurring / Cicilan</span>
                 <span className="mt-1 block text-xs text-muted-foreground">
                   Rent, subscriptions, salary, or installments.
                 </span>
               </span>
-              <input
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isRecurring}
                 aria-label="Recurring / Cicilan"
-                type="checkbox"
-                className="h-5 w-5 accent-primary"
-                checked={isRecurring}
-                onChange={e => setIsRecurring(e.target.checked)}
-              />
-            </label>
+                onClick={() => setIsRecurring(!isRecurring)}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${isRecurring ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${isRecurring ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
             {isRecurring && (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div>
