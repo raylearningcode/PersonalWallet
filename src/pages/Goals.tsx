@@ -295,6 +295,18 @@ export function Goals() {
             const done = goal.current_amount >= goal.target_amount
             const remaining = Math.max(0, goal.target_amount - goal.current_amount)
             const daysLeft = goal.deadline ? Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86_400_000) : null
+
+            // Completion forecast
+            const now = new Date()
+            const monthsSoFar = goal.deadline
+              ? Math.max(1, (new Date(goal.deadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))
+              : 6
+            const monthlyRate = goal.current_amount / Math.max(1, monthsSoFar)
+            const monthsToComplete = monthlyRate > 0 ? Math.ceil(remaining / monthlyRate) : null
+            const requiredMonthly = goal.deadline && daysLeft !== null && daysLeft > 0
+              ? Math.ceil(remaining / Math.max(1, daysLeft / 30))
+              : null
+
             return (
               <Card key={goal.id} className="relative overflow-hidden">
                 <div className="pointer-events-none absolute inset-y-0 left-0 w-1 rounded-l-[inherit]" style={{ backgroundColor: goal.color }} />
@@ -358,14 +370,35 @@ export function Goals() {
                       <p className="text-sm font-bold text-primary">Goal reached!</p>
                     </div>
                   ) : (
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      <span>{money.formatDisplay(remaining)} remaining</span>
-                      {daysLeft !== null && (
-                        <span className={daysLeft <= 0 ? 'font-bold text-[#FF8388]' : daysLeft < 14 ? 'font-bold text-[#FFCF73]' : ''}>
-                          {daysLeft > 0 ? `${daysLeft}d left` : 'Deadline passed'}
-                        </span>
+                    <>
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        <span>{money.formatDisplay(remaining)} remaining</span>
+                        {daysLeft !== null && (
+                          <span className={daysLeft <= 0 ? 'font-bold text-[#FF8388]' : daysLeft < 14 ? 'font-bold text-[#FFCF73]' : ''}>
+                            {daysLeft > 0 ? `${daysLeft}d left` : 'Deadline passed'}
+                          </span>
+                        )}
+                      </div>
+                      {/* Completion forecast */}
+                      {daysLeft !== null && daysLeft <= 0 ? (
+                        <div className="mt-2 space-y-1 rounded-xl border border-[#FF8388]/20 bg-[#FF8388]/5 px-3 py-2">
+                          <p className="text-xs font-bold text-[#FF8388]">Deadline passed — recovery options:</p>
+                          <p className="text-xs text-muted-foreground">Extend deadline by 6 months</p>
+                          {monthlyRate > 0 && (
+                            <p className="text-xs text-muted-foreground">Increase monthly contribution to {money.formatDisplay(Math.ceil(remaining / 6))}/month</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2 space-y-0.5">
+                          {monthsToComplete !== null && (
+                            <p className="text-xs text-muted-foreground">At this pace, goal completes in ~{monthsToComplete} month{monthsToComplete !== 1 ? 's' : ''}</p>
+                          )}
+                          {requiredMonthly !== null && (
+                            <p className="text-xs text-primary">To finish by deadline, save {money.formatDisplay(requiredMonthly)}/month</p>
+                          )}
+                        </div>
                       )}
-                    </div>
+                    </>
                   )}
 
                   {goal.notes && <p className="mt-3 text-xs text-muted-foreground">{goal.notes}</p>}

@@ -23,7 +23,7 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
           <input
             aria-label="Search"
             className="h-11 min-w-0 flex-1 rounded-full border border-border bg-[#111b31] px-5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 sm:flex-none sm:basis-[232px] lg:w-[232px]"
-            placeholder="Search..."
+            placeholder="Search merchant, category, note, amount…"
             value={searchValue ?? ''}
             onChange={e => onSearchChange(e.target.value)}
           />

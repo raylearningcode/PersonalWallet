@@ -55,6 +55,8 @@ const emptyAddForm = () => ({
   logFirstPayment: true,
 })
 
+type ExpenseFilter = 'all' | 'active' | 'paused' | 'due-soon'
+
 export function Subscriptions() {
   const money = useMoney()
   const { data: rules = [] } = useRecurringRules()
@@ -68,6 +70,7 @@ export function Subscriptions() {
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState(emptyAddForm())
+  const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
 
   const expenses = useMemo(
     () => rules.filter(r => r.type !== 'income').sort((a, b) => {
@@ -94,6 +97,14 @@ export function Subscriptions() {
     const upcoming = expenses.filter(r => r.active).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))
     return upcoming[0] ?? null
   }, [expenses])
+
+  const filteredExpenses = useMemo(() => {
+    if (expenseFilter === 'all') return expenses
+    if (expenseFilter === 'active') return expenses.filter(r => r.active)
+    if (expenseFilter === 'paused') return expenses.filter(r => !r.active)
+    if (expenseFilter === 'due-soon') return expenses.filter(r => r.active && daysUntil(r.next_due_date) <= 3)
+    return expenses
+  }, [expenses, expenseFilter])
 
   const lastPaidDate = (rule: RecurringRule) => {
     const related = transactions
@@ -196,6 +207,11 @@ export function Subscriptions() {
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {rule.category} · {FREQ_LABELS[rule.frequency]}{walletName ? ` · ${walletName}` : ''}
+              {rule.frequency !== 'monthly' && (
+                <span className="ml-1 text-muted-foreground/70">
+                  · ≈ {money.formatDisplay(Math.round((rule.original_amount ?? rule.amount) * (FREQ_MONTHS[rule.frequency] ?? 1)))}/month impact
+                </span>
+              )}
             </p>
           </div>
           <div className="shrink-0 text-right">
@@ -397,8 +413,23 @@ export function Subscriptions() {
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
-            {expenses.length > 0 ? (
-              expenses.map(rule => <RuleCard key={rule.id} rule={rule} />)
+            {expenses.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {(['all', 'active', 'paused', 'due-soon'] as ExpenseFilter[]).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setExpenseFilter(f)}
+                    className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${expenseFilter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {f === 'due-soon' ? 'Due Soon' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {filteredExpenses.length > 0 ? (
+              filteredExpenses.map(rule => <RuleCard key={rule.id} rule={rule} />)
+            ) : expenses.length > 0 ? (
+              <p className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">No subscriptions match this filter.</p>
             ) : (
               <div className="rounded-2xl border border-border bg-secondary p-6 text-center">
                 <p className="text-sm text-muted-foreground">No recurring expenses yet.</p>

@@ -252,102 +252,211 @@ export function Budget() {
                   <Skeleton className="h-2 w-full" />
                 </div>
               ))
-            ) : categoriesWithSpent.length > 0 ? categoriesWithSpent.map(cat => {
-              const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
-              const barColor = getBarColor(pct, cat.color)
-              const isEditing = editingId === cat.id
+            ) : categoriesWithSpent.length > 0 ? (
+              <>
+                {activeBudgets.length > 0 && (
+                  <div className="space-y-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
+                    {activeBudgets.map(cat => {
+                      const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
+                      const barColor = getBarColor(pct, cat.color)
+                      const isEditing = editingId === cat.id
+                      const catDailyAllowance = cat.yearly_allocated > cat.spent && daysLeft > 0
+                        ? (cat.yearly_allocated - cat.spent) / daysLeft
+                        : null
+                      const overPace = pct > monthPct
 
-              if (isEditing) {
-                return (
-                  <div key={cat.id} className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-foreground">{cat.name}</span>
-                      <div className="flex gap-2">
-                        <Button size="sm" className="h-7 px-3 text-xs" onClick={saveEdit} disabled={updateCategory.isPending}>
-                          <Check className="mr-1 h-3.5 w-3.5" />
-                          Save
-                        </Button>
-                        <Button size="sm" variant="secondary" className="h-7 px-3 text-xs" onClick={cancelEdit} aria-label="Cancel edit">
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground">Budget amount ({money.displayCurrency})</p>
-                        <Input
-                          aria-label="Budget amount"
-                          inputMode="decimal"
-                          className="h-8 bg-secondary text-sm font-bold"
-                          value={formatNumberInput(editDraft.yearly_allocated)}
-                          onChange={e => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
-                        />
-                      </div>
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground">Period</p>
-                        <select
-                          aria-label="Budget period"
-                          className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                          value={editDraft.budget_period}
-                          onChange={e => setEditDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
-                        >
-                          <option value="monthly">Monthly</option>
-                          <option value="yearly">Yearly</option>
-                        </select>
-                      </div>
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground">Color</p>
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
-                          <input
-                            type="color"
-                            aria-label="Category color"
-                            className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                            value={editDraft.color}
-                            onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
-                          />
+                      if (isEditing) {
+                        return (
+                          <div key={cat.id} className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-foreground">{cat.name}</span>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="h-7 px-3 text-xs" onClick={saveEdit} disabled={updateCategory.isPending}>
+                                  <Check className="mr-1 h-3.5 w-3.5" />
+                                  Save
+                                </Button>
+                                <Button size="sm" variant="secondary" className="h-7 px-3 text-xs" onClick={cancelEdit} aria-label="Cancel edit">
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Budget amount ({money.displayCurrency})</p>
+                                <Input
+                                  aria-label="Budget amount"
+                                  inputMode="decimal"
+                                  className="h-8 bg-secondary text-sm font-bold"
+                                  value={formatNumberInput(editDraft.yearly_allocated)}
+                                  onChange={e => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
+                                />
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Period</p>
+                                <select
+                                  aria-label="Budget period"
+                                  className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                  value={editDraft.budget_period}
+                                  onChange={e => setEditDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
+                                >
+                                  <option value="monthly">Monthly</option>
+                                  <option value="yearly">Yearly</option>
+                                </select>
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Color</p>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <input
+                                    type="color"
+                                    aria-label="Category color"
+                                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                                    value={editDraft.color}
+                                    onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Spent this {editDraft.budget_period}: {fmt(cat.spent)}
+                            </p>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div key={cat.id}>
+                          <div className="mb-2 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                            <span className="font-bold text-foreground">{cat.name}</span>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="text-xs text-muted-foreground">
+                                {fmt(cat.spent)} of {fmt(cat.yearly_allocated)} {cat.budget_period}
+                              </span>
+                              <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                                {pct}%
+                              </span>
+                              <button
+                                onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-muted-foreground hover:text-foreground"
+                                aria-label={`Edit ${cat.name}`}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
+                                disabled={deleteCategory.isPending}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
+                                aria-label={`Delete ${cat.name}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          <ColorBar value={pct} color={barColor} />
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {pct}% used · {monthPct}% of month passed · {overPace ? '⚡ Over pace' : '✓ On track'}
+                            {catDailyAllowance !== null && (
+                              <span className="ml-2 text-primary">· You can spend {fmt(catDailyAllowance)}/day</span>
+                            )}
+                          </p>
                         </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Spent this {editDraft.budget_period}: {fmt(cat.spent)}
-                    </p>
+                      )
+                    })}
                   </div>
-                )
-              }
+                )}
+                {noBudget.length > 0 && (
+                  <div className="space-y-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">No budget set</p>
+                    {noBudget.map(cat => {
+                      const isEditing = editingId === cat.id
 
-              return (
-                <div key={cat.id}>
-                  <div className="mb-2 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <span className="font-bold text-foreground">{cat.name}</span>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs text-muted-foreground">
-                        {fmt(cat.spent)} of {fmt(cat.yearly_allocated)} {cat.budget_period}
-                      </span>
-                      <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
-                        {pct}%
-                      </span>
-                      <button
-                        onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
-                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-muted-foreground hover:text-foreground"
-                        aria-label={`Edit ${cat.name}`}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
-                        disabled={deleteCategory.isPending}
-                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
-                        aria-label={`Delete ${cat.name}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                      if (isEditing) {
+                        return (
+                          <div key={cat.id} className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-foreground">{cat.name}</span>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="h-7 px-3 text-xs" onClick={saveEdit} disabled={updateCategory.isPending}>
+                                  <Check className="mr-1 h-3.5 w-3.5" />
+                                  Save
+                                </Button>
+                                <Button size="sm" variant="secondary" className="h-7 px-3 text-xs" onClick={cancelEdit} aria-label="Cancel edit">
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Budget amount ({money.displayCurrency})</p>
+                                <Input
+                                  aria-label="Budget amount"
+                                  inputMode="decimal"
+                                  className="h-8 bg-secondary text-sm font-bold"
+                                  value={formatNumberInput(editDraft.yearly_allocated)}
+                                  onChange={e => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
+                                />
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Period</p>
+                                <select
+                                  aria-label="Budget period"
+                                  className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                  value={editDraft.budget_period}
+                                  onChange={e => setEditDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
+                                >
+                                  <option value="monthly">Monthly</option>
+                                  <option value="yearly">Yearly</option>
+                                </select>
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Color</p>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <input
+                                    type="color"
+                                    aria-label="Category color"
+                                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                                    value={editDraft.color}
+                                    onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Spent this {editDraft.budget_period}: {fmt(cat.spent)}
+                            </p>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div key={cat.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3">
+                          <span className="font-bold text-foreground">{cat.name}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
+                              className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground hover:text-foreground"
+                              aria-label={`Edit ${cat.name}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
+                              disabled={deleteCategory.isPending}
+                              className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-destructive hover:text-red-300 disabled:opacity-50"
+                              aria-label={`Delete ${cat.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                  <ColorBar value={pct} color={barColor} />
-                </div>
-              )
-            }) : (
+                )}
+              </>
+            ) : (
               <p className="text-sm text-muted-foreground">
                 No budget categories yet.{' '}
                 <Link to="/settings" className="font-bold text-primary hover:underline">

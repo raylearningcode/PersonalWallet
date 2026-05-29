@@ -57,6 +57,7 @@ describe('Settings', () => {
   it('restores missing starter categories without duplicating existing ones', async () => {
     render(<Settings />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Categories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Restore starter categories' }))
 
     await waitFor(() => expect(addCategory).toHaveBeenCalledWith(expect.objectContaining({ name: 'Housing' })))
@@ -67,6 +68,7 @@ describe('Settings', () => {
   it('asks for confirmation before deleting a category', () => {
     render(<Settings />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Categories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete Income category' }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -107,6 +109,7 @@ describe('Settings', () => {
   it('adds wallet and card options', () => {
     render(<Settings />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
     fireEvent.change(screen.getByLabelText('Wallet name'), { target: { value: 'Taiwan card' } })
     fireEvent.change(screen.getByLabelText('Wallet type'), { target: { value: 'card' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }))
@@ -122,6 +125,7 @@ describe('Settings', () => {
   it('shows live wallet balance from transactions', () => {
     render(<Settings />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
     expect(screen.getByText('Rp 1,650,000')).toBeInTheDocument()
   })
 })

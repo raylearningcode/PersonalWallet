@@ -130,6 +130,15 @@ export function Reports() {
   const topCategory = categoryTotals[0]?.[0] ?? '—'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
 
+  const periodSummary = useMemo(() => {
+    const items: string[] = []
+    if (incomeDiff) items.push(`Income ${incomeDiff.up ? 'increased' : 'decreased'} by ${Math.abs(incomeDiff.pct)}% vs previous ${RANGE_LABELS[range].toLowerCase()}`)
+    if (expenseDiff) items.push(`Expenses ${expenseDiff.up ? 'increased' : 'decreased'} by ${Math.abs(expenseDiff.pct)}% vs previous ${RANGE_LABELS[range].toLowerCase()}`)
+    if (savingsRate > 0) items.push(`Savings rate this period: ${savingsRate}%`)
+    if (topCategory !== '—') items.push(`Top spending category: ${topCategory} (${categoryTotals[0] ? Math.round((categoryTotals[0][1] / activeTotal) * 100) : 0}% of total)`)
+    return items
+  }, [incomeDiff, expenseDiff, savingsRate, topCategory, range, categoryTotals, activeTotal])
+
   const trendData = useMemo(() => {
     const toStr = (d: Date) => d.toISOString().slice(0, 10)
     const bucket = (txList: typeof rangeTx) => ({
@@ -457,6 +466,22 @@ export function Reports() {
           )}
         </CardContent>
       </Card>
+
+      {periodSummary.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader><CardTitle className="text-xl">Period summary</CardTitle></CardHeader>
+          <CardContent className="px-5 pb-6 sm:px-8">
+            <ul className="space-y-2">
+              {periodSummary.map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Sheet open={importOpen} onOpenChange={setImportOpen}>
         <SheetContent side="right" className="w-full max-w-md">

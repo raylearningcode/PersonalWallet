@@ -11,7 +11,9 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, X } from 'lucide-react'
+import { Check, Pencil, X, Lightbulb } from 'lucide-react'
+
+const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
 
 type EstimatePeriod = 'monthly' | 'yearly'
 
@@ -63,6 +65,7 @@ export function Estimation() {
   const [editWishlistAmount, setEditWishlistAmount] = useState('')
   const [editWishlistType, setEditWishlistType] = useState('Want')
   const [editWishlistNote, setEditWishlistNote] = useState('')
+  const [planningTipDismissed, setPlanningTipDismissed] = useState(() => localStorage.getItem(PLANNING_TIP_KEY) === '1')
 
   useEffect(() => {
     if (initialized.current || !plans) return
@@ -259,6 +262,26 @@ export function Estimation() {
           </div>
         )}
       />
+      {!planningTipDismissed && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+          <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-foreground">Planning vs Budget</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <strong className="text-foreground">Budget</strong> is for tracking real monthly spending limits against actual transactions.{' '}
+              <strong className="text-foreground">Planning</strong> is for forecasting future income, expenses, and wishlist goals.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { localStorage.setItem(PLANNING_TIP_KEY, '1'); setPlanningTipDismissed(true) }}
+            className="shrink-0 rounded-full px-3 py-1 text-xs font-bold text-primary hover:bg-primary/10"
+          >
+            Got it
+          </button>
+        </div>
+      )}
+
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={`${incomeItems.length} income items`} badgeVariant="success" />
         <StatCard label="Monthly expenses" value={money.formatDisplay(monthlyExpenses)} sub={`${expenseItems.length} expense items`} badgeVariant="warning" />

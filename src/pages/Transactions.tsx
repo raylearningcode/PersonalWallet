@@ -181,6 +181,11 @@ export function Transactions() {
     ).slice(0, 4)
   }, [transactions, recurringRules])
 
+  const nextDueRule = useMemo(
+    () => recurringRules.filter(r => r.active).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))[0] ?? null,
+    [recurringRules]
+  )
+
   const resetForm = () => {
     setEditingTransaction(null)
     setDescription('')
@@ -699,7 +704,15 @@ export function Transactions() {
               <h2 className="text-lg font-extrabold text-foreground">Recurring / cicilan</h2>
               <p className="mt-1 text-xs font-bold text-muted-foreground">Auto-generates due payments without duplicates.</p>
             </div>
-            <Button size="sm" variant="secondary" onClick={handleGenerateDue} disabled={runDueRecurringRules.isPending}>Generate due</Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleGenerateDue}
+              disabled={runDueRecurringRules.isPending}
+              title={nextDueRule ? `Next due: ${nextDueRule.description} on ${nextDueRule.next_due_date}` : 'No upcoming rules'}
+            >
+              Generate due transactions
+            </Button>
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {upcomingRecurringRules.map(rule => (

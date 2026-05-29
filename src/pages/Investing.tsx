@@ -242,21 +242,31 @@ export function Investing() {
             </div>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-center px-6 pb-8 sm:px-8">
-            <div className="flex items-end justify-between gap-2" style={{ height: '200px' }}>
-              {chartData.map((point) => (
-                <div key={point.year} className="flex flex-1 flex-col items-center gap-1.5">
-                  <button
-                    type="button"
-                    className={`w-full max-w-[20px] rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
-                    style={{ height: `${Math.max(8, (point.value / maxValue) * 168)}px` }}
-                    onClick={() => setDuration(point.year)}
-                    aria-label={`Use ${point.year} year duration`}
-                    title={`${point.year} years: ${money.formatDisplay(point.value)}`}
-                  />
-                  <span className={`text-[9px] font-bold leading-none sm:text-[10px] ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}y</span>
-                </div>
-              ))}
-            </div>
+            {draftBase.monthlyContribution <= 0 || draft.durationYears <= 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center" style={{ height: '200px' }}>
+                <p className="font-extrabold text-foreground">No simulation yet</p>
+                <p className="mt-2 text-sm text-muted-foreground">Enter monthly contribution and expected return, then run the simulation.</p>
+              </div>
+            ) : (
+              <div className="flex items-end justify-between gap-2" style={{ height: '200px' }}>
+                {chartData.map((point) => (
+                  <div key={point.year} className="flex flex-1 flex-col items-center gap-1.5">
+                    <button
+                      type="button"
+                      className={`w-full max-w-[20px] rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
+                      style={{ height: `${Math.max(8, (point.value / maxValue) * 168)}px` }}
+                      onClick={() => setDuration(point.year)}
+                      aria-label={`Use ${point.year} year duration`}
+                      title={`${point.year} years: ${money.formatDisplay(point.value)}`}
+                    />
+                    <span className={`text-[9px] font-bold leading-none sm:text-[10px] ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}y</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-4 text-center text-xs text-muted-foreground/70">
+              Projection assumes monthly contributions and annual return compounded monthly. This is an estimate only, not financial advice.
+            </p>
           </CardContent>
         </Card>
 
