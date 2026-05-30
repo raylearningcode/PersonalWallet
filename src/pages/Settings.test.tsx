@@ -25,6 +25,8 @@ vi.mock('@/lib/queries', () => ({
   }),
   useAddBudgetCategory: () => ({ mutateAsync: addCategory, isPending: false }),
   useDeleteBudgetCategory: () => ({ mutate: deleteCategory }),
+  useRenameBudgetCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRenameWallet: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useWallets: () => ({ data: [{ id: 'cash', name: 'Cash', type: 'cash', balance: 0, currency: 'IDR' }] }),
   useBudgetRules: () => ({ data: [] }),
   useInvestmentConfig: () => ({ data: null }),
@@ -57,6 +59,7 @@ describe('Settings', () => {
   it('restores missing starter categories without duplicating existing ones', async () => {
     render(<Settings />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Categories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Restore starter categories' }))
 
     await waitFor(() => expect(addCategory).toHaveBeenCalledWith(expect.objectContaining({ name: 'Housing' })))
@@ -67,6 +70,7 @@ describe('Settings', () => {
   it('asks for confirmation before deleting a category', () => {
     render(<Settings />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Categories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete Income category' }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -107,6 +111,7 @@ describe('Settings', () => {
   it('adds wallet and card options', () => {
     render(<Settings />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
     fireEvent.change(screen.getByLabelText('Wallet name'), { target: { value: 'Taiwan card' } })
     fireEvent.change(screen.getByLabelText('Wallet type'), { target: { value: 'card' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }))
@@ -119,23 +124,10 @@ describe('Settings', () => {
     expect(screen.getAllByText('Cash').length).toBeGreaterThan(0)
   })
 
-  it('shows live wallet money from transactions', () => {
+  it('shows live wallet balance from transactions', () => {
     render(<Settings />)
 
-    expect(screen.getByText('Wallet balance')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
     expect(screen.getByText('Rp 1,650,000')).toBeInTheDocument()
-  })
-
-  it('saves the yearly goal from settings', () => {
-    render(<Settings />)
-
-    fireEvent.change(screen.getByLabelText('Yearly goal label'), { target: { value: '$20k net worth' } })
-    fireEvent.change(screen.getByLabelText('Yearly goal progress'), { target: { value: '68' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save yearly goal' }))
-
-    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({
-      annual_goal_label: '$20k net worth',
-      annual_goal_pct: 68,
-    }))
   })
 })

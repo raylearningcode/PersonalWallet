@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   useTransactions,
   useDeleteTransaction,
@@ -11,6 +12,7 @@ import {
   useUpdateRecurringRule,
   useDeleteRecurringRule,
   useRunDueRecurringRules,
+  useMarkReviewed,
 } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -20,26 +22,55 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
-import { CURRENCIES, useMoney } from '@/lib/currency'
+import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
-import { getMerchantSuggestion } from '@/lib/financeOs'
+import { formatDate } from '@/lib/utils'
+import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type Filter = 'all' | 'income' | 'expense' | 'transfer'
 type EntryType = 'income' | 'expense' | 'transfer'
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return true
+    return window.matchMedia('(min-width: 1024px)').matches
+  })
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isDesktop
+}
+
 export function Transactions() {
   const money = useMoney()
+  const [searchParams] = useSearchParams()
   const [filter, setFilter] = useState<Filter>('all')
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
   const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
+  const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [showDateFilter, setShowDateFilter] = useState(false)
+  const [ruleDescription, setRuleDescription] = useState('')
+  const [ruleAmount, setRuleAmount] = useState('')
+  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
+  const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
+  const [ruleNextDueDate, setRuleNextDueDate] = useState('')
+  const [ruleEndDate, setRuleEndDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
@@ -52,8 +83,9 @@ export function Transactions() {
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [installmentTotal, setInstallmentTotal] = useState('')
   const [endDate, setEndDate] = useState('')
+  const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
-  const { data: transactions = [] } = useTransactions(filter)
+  const { data: transactions = [], isPending: txPending } = useTransactions(filter)
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
@@ -64,6 +96,7 @@ export function Transactions() {
   const updateRecurringRule = useUpdateRecurringRule()
   const deleteRecurringRule = useDeleteRecurringRule()
   const runDueRecurringRules = useRunDueRecurringRules()
+  const markReviewed = useMarkReviewed()
 
   useEffect(() => {
     if (!category && categories.length > 0) setCategory(categories[0].name)
@@ -95,12 +128,20 @@ export function Transactions() {
   const cannotSaveTransfer = type === 'transfer' && (wallets.length < 2 || !walletId || !transferWalletId || walletId === transferWalletId)
   const sortedTransactions = useMemo(
     () => {
-      const visibleTransactions = selectedCategory
+      let visibleTransactions = selectedCategory
         ? transactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
         : transactions
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        visibleTransactions = visibleTransactions.filter(tx =>
+          tx.description.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q)
+        )
+      }
+      if (dateFrom) visibleTransactions = visibleTransactions.filter(tx => tx.date >= dateFrom)
+      if (dateTo) visibleTransactions = visibleTransactions.filter(tx => tx.date <= dateTo)
       return [...visibleTransactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`))
     },
-    [selectedCategory, transactions]
+    [selectedCategory, transactions, searchQuery, dateFrom, dateTo]
   )
   const expenseCategoryTotals = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>()
@@ -132,6 +173,18 @@ export function Transactions() {
   )
   const upcomingRecurringRules = useMemo(
     () => [...recurringRules].sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 6),
+    [recurringRules]
+  )
+
+  const recurringCandidates = useMemo(() => {
+    const ruleDescriptions = new Set(recurringRules.map(r => r.description.toLowerCase()))
+    return getRecurringCandidates(transactions).filter(
+      c => !ruleDescriptions.has(c.description.toLowerCase())
+    ).slice(0, 4)
+  }, [transactions, recurringRules])
+
+  const nextDueRule = useMemo(
+    () => recurringRules.filter(r => r.active).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))[0] ?? null,
     [recurringRules]
   )
 
@@ -172,8 +225,9 @@ export function Transactions() {
 
   const handleSaveTransaction = async () => {
     const parsedAmount = parseNumberInput(amount)
-    if (!description.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return
-    if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) return
+    if (!description.trim()) { toast.error('Please enter a merchant name'); return }
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return }
+    if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) { toast.error('Select two different wallets for a transfer'); return }
     const selectedCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
     if (type !== 'transfer' && (!selectedCategory || !walletId)) return
     const baseAmount = money.toBase(parsedAmount, inputCurrency)
@@ -252,31 +306,121 @@ export function Transactions() {
     setDeleteRuleTarget(null)
   }
 
+  const handleDuplicateTransaction = async (tx: Transaction) => {
+    await addTransaction.mutateAsync({
+      description: tx.description,
+      amount: tx.amount,
+      original_amount: tx.original_amount ?? tx.amount,
+      original_currency: tx.original_currency ?? money.baseCurrency,
+      type: tx.type,
+      category: tx.category,
+      wallet_id: tx.wallet_id,
+      transfer_wallet_id: tx.transfer_wallet_id,
+      recurring_rule_id: null,
+      recurring_due_date: null,
+      date: new Date().toISOString().slice(0, 10),
+      needs_review: false,
+    })
+    toast.success('Transaction duplicated')
+  }
+
+  const handleMarkReviewed = (id: string) => {
+    markReviewed.mutate(id)
+    toast.success('Marked as reviewed')
+  }
+
+  const openEditRule = (rule: RecurringRule) => {
+    setEditingRule(rule)
+    setRuleDescription(rule.description)
+    setRuleAmount(String(rule.original_amount))
+    setRuleInputCurrency(rule.original_currency)
+    setRuleFrequency(rule.frequency)
+    setRuleNextDueDate(rule.next_due_date)
+    setRuleEndDate(rule.end_date ?? '')
+  }
+
+  const handleSaveRule = async () => {
+    if (!editingRule) return
+    const parsedAmount = parseNumberInput(ruleAmount)
+    if (!ruleDescription.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return
+    const baseAmount = money.toBase(parsedAmount, ruleInputCurrency)
+    await updateRecurringRule.mutateAsync({
+      id: editingRule.id,
+      description: ruleDescription.trim(),
+      amount: baseAmount,
+      original_amount: parsedAmount,
+      original_currency: ruleInputCurrency,
+      frequency: ruleFrequency,
+      next_due_date: ruleNextDueDate,
+      end_date: ruleEndDate || null,
+    })
+    toast.success('Recurring rule updated')
+    setEditingRule(null)
+  }
+
+  const handleAddCandidateAsRule = async (candidate: ReturnType<typeof getRecurringCandidates>[0]) => {
+    if (!wallets[0]?.id) { toast.error('Add a wallet first'); return }
+    const today = new Date().toISOString().slice(0, 10)
+    await addRecurringRule.mutateAsync({
+      description: candidate.description,
+      amount: candidate.amount,
+      original_amount: candidate.amount,
+      original_currency: money.baseCurrency,
+      type: 'expense',
+      category: candidate.category,
+      wallet_id: wallets[0].id,
+      transfer_wallet_id: null,
+      start_date: today,
+      next_due_date: addRecurringInterval(today, 'monthly'),
+      frequency: 'monthly',
+      end_date: null,
+      installment_total: null,
+      installment_paid: 0,
+      active: true,
+    })
+    toast.success(`${candidate.description} added as recurring rule`)
+  }
+
   return (
     <div>
       <PageHeader
         title="Transactions"
         subtitle="Track every cashflow with clean filters, wallet routing, and category breakdowns."
+        searchValue={searchQuery}
+        onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
         action={(
-          <Button onClick={openAddForm} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New transaction
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${showDateFilter || dateFrom || dateTo ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setShowDateFilter(v => !v)}
+              title="Date range filter"
+              aria-label="Toggle date range filter"
+            >
+              <CalendarRange className="h-4 w-4" />
+            </button>
+            <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
+              <Plus className="h-4 w-4" />
+              New transaction
+            </Button>
+          </div>
         )}
       />
-      <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null) }} className="mb-8 overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
-        <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
-          {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
-            <TabsTrigger
-              key={f}
-              value={f}
-              className="h-10 min-w-24 rounded-full border border-border bg-transparent px-4 text-sm font-bold capitalize text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:min-w-28 sm:px-6"
-            >
-              {f.replace('_', ' ')}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="relative mb-8">
+        <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); setDateFrom(''); setDateTo('') }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
+          <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
+            {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
+              <TabsTrigger
+                key={f}
+                value={f}
+                className="h-11 min-w-24 rounded-full border border-border bg-transparent px-4 text-sm font-bold capitalize text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:min-w-28 sm:px-6"
+              >
+                {f.replace('_', ' ')}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-[1.4rem] bg-gradient-to-l from-card to-transparent sm:hidden" />
+      </div>
       <div className="mb-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         {[
           { label: 'Money in', value: money.formatDisplay(moneyIn), dot: 'bg-primary', sub: money.baseCurrency !== money.displayCurrency ? money.formatBase(moneyIn) : 'Income received' },
@@ -432,9 +576,105 @@ export function Transactions() {
             <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
               {editingTransaction ? 'Save transaction' : 'Add transaction'}
             </Button>
+            <Button variant="secondary" className="mt-2 w-full lg:hidden" onClick={() => setIsFormOpen(false)}>
+              Close
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
+
+      <Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
+        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 sm:max-w-md sm:p-6">
+          <SheetHeader className="mb-6 text-left">
+            <SheetTitle>Edit recurring rule</SheetTitle>
+            <SheetDescription>Update the schedule or amount for this recurring payment.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-5">
+            <div>
+              <Label className="text-sm font-bold text-foreground">Description</Label>
+              <Input aria-label="Rule description" className="mt-2 bg-secondary" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} />
+            </div>
+            <div className="flex gap-3">
+              <div className="w-28 shrink-0">
+                <Label className="text-sm font-bold text-foreground">Currency</Label>
+                <select
+                  aria-label="Rule currency"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={ruleInputCurrency}
+                  onChange={e => setRuleInputCurrency(e.target.value)}
+                >
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="flex-1">
+                <Label className="text-sm font-bold text-foreground">Amount</Label>
+                <Input aria-label="Rule amount" className="mt-2 bg-secondary" inputMode="decimal" value={ruleAmount} onChange={e => setRuleAmount(formatNumberInput(e.target.value))} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">Frequency</Label>
+              <select
+                aria-label="Rule frequency"
+                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                value={ruleFrequency}
+                onChange={e => setRuleFrequency(e.target.value as RecurringFrequency)}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">Next due date</Label>
+              <Input aria-label="Rule next due date" className="mt-2 bg-secondary" type="date" value={ruleNextDueDate} onChange={e => setRuleNextDueDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">End date (optional)</Label>
+              <Input aria-label="Rule end date" className="mt-2 bg-secondary" type="date" value={ruleEndDate} onChange={e => setRuleEndDate(e.target.value)} />
+            </div>
+            <Button className="mt-4 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
+              Save rule
+            </Button>
+            <Button variant="secondary" className="mt-2 w-full lg:hidden" onClick={() => setEditingRule(null)}>
+              Close
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {showDateFilter && (
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-border bg-card px-4 py-4 sm:px-6">
+          <span className="text-sm font-bold text-muted-foreground">Date range</span>
+          <Input
+            type="date"
+            aria-label="Date from"
+            className="h-9 w-auto min-w-0 bg-secondary text-sm"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+          />
+          <span className="text-muted-foreground">→</span>
+          <Input
+            type="date"
+            aria-label="Date to"
+            className="h-9 w-auto min-w-0 bg-secondary text-sm"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+            >
+              <X className="h-3 w-3" />
+              Clear
+            </button>
+          )}
+          {(dateFrom || dateTo) && (
+            <span className="text-xs text-primary font-bold">{sortedTransactions.length} result{sortedTransactions.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+      )}
 
       {expenseCategoryTotals.length > 0 && (
         <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
@@ -466,7 +706,15 @@ export function Transactions() {
               <h2 className="text-lg font-extrabold text-foreground">Recurring / cicilan</h2>
               <p className="mt-1 text-xs font-bold text-muted-foreground">Auto-generates due payments without duplicates.</p>
             </div>
-            <Button size="sm" variant="secondary" onClick={handleGenerateDue} disabled={runDueRecurringRules.isPending}>Generate due</Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleGenerateDue}
+              disabled={runDueRecurringRules.isPending}
+              title={nextDueRule ? `Next due: ${nextDueRule.description} on ${nextDueRule.next_due_date}` : 'No upcoming rules'}
+            >
+              Generate due transactions
+            </Button>
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {upcomingRecurringRules.map(rule => (
@@ -485,11 +733,33 @@ export function Transactions() {
                 )}
                 <div className="mt-3 flex gap-2">
                   <Button size="sm" variant="secondary" onClick={() => handleToggleRule(rule)}>{rule.active ? 'Pause' : 'Resume'}</Button>
+                  <Button size="sm" variant="secondary" onClick={() => openEditRule(rule)}><Pencil size={13} className="mr-1" />Edit</Button>
                   <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => setDeleteRuleTarget(rule)}>Delete</Button>
                 </div>
               </div>
             ))}
           </div>
+          {recurringCandidates.length > 0 && (
+            <div className="mt-6 border-t border-border pt-5">
+              <p className="mb-1 text-sm font-extrabold text-foreground">Detected patterns</p>
+              <p className="mb-4 text-xs text-muted-foreground">These transactions repeat regularly. Set them up as recurring rules.</p>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {recurringCandidates.map(candidate => (
+                  <div key={candidate.description} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-foreground">{candidate.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {candidate.category} · {candidate.count}× · avg {money.formatBase(candidate.amount)}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={() => handleAddCandidateAsRule(candidate)} disabled={addRecurringRule.isPending}>
+                      Set up
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -511,10 +781,71 @@ export function Transactions() {
         ) : (
           <h2 className="mb-4 text-xl font-extrabold text-foreground">Transaction history</h2>
         )}
-        {groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
+        {txPending ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-secondary px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
           <div key={date} className="mb-6 last:mb-0">
-            <h3 className="mb-3 text-sm font-extrabold text-primary">{date}</h3>
-            <div className="overflow-x-auto rounded-2xl border border-border">
+            <h3 className="mb-3 text-sm font-extrabold text-primary">{formatDate(date)}</h3>
+
+            {/* Mobile card list */}
+            {!isDesktop && <div className="flex flex-col gap-2">
+              {rows.map(tx => (
+                <div
+                  key={tx.id}
+                  className={`rounded-xl border border-border px-4 py-3 ${tx.needs_review ? 'bg-[#FFCF73]/5' : 'bg-secondary'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />}
+                        <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{tx.category}</p>
+                    </div>
+                    <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                      {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
+                    </p>
+                    <div className="flex gap-1">
+                      {tx.needs_review && (
+                        <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                          <CheckCircle size={16} />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                        <Copy size={16} />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                        <Pencil size={16} />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>}
+
+            {/* Desktop table */}
+            {isDesktop && <div className="overflow-x-auto rounded-2xl border border-border">
               <Table className="min-w-[820px]">
                 <TableBody>
                   <TableRow className="border-border bg-secondary/70 hover:bg-secondary/70">
@@ -525,23 +856,36 @@ export function Transactions() {
                     <TableCell className="py-2" />
                   </TableRow>
                   {rows.map(tx => (
-                    <TableRow key={tx.id} className="border-border hover:bg-muted/10">
-                      <TableCell className="w-1/4 py-3 text-foreground">{tx.description}</TableCell>
+                    <TableRow key={tx.id} className={`border-border hover:bg-muted/10 ${tx.needs_review ? 'bg-[#FFCF73]/5' : ''}`}>
+                      <TableCell className="w-1/4 py-3 text-foreground">
+                        <div className="flex items-center gap-2">
+                          {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />}
+                          {tx.description}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{tx.category}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
                         {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
                       </TableCell>
-                      <TableCell className={`text-right font-bold ${tx.type === 'income' ? 'text-primary' : tx.type === 'transfer' ? 'text-muted-foreground' : 'text-[#FF8388]'}`}>
-                        {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}{money.formatDisplay(tx.amount)}
+                      <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
+                        {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
                       </TableCell>
-                      <TableCell className="w-[92px]">
+                      <TableCell className="w-[124px]">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
-                            <Pencil size={14} />
+                          {tx.needs_review && (
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                              <CheckCircle size={15} />
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                            <Copy size={15} />
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
-                            <Trash2 size={14} />
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                            <Pencil size={15} />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                            <Trash2 size={15} />
                           </Button>
                         </div>
                       </TableCell>
@@ -549,10 +893,22 @@ export function Transactions() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </div>}
           </div>
         )) : (
-          <p className="py-10 text-center text-muted-foreground">No transactions yet.</p>
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+              <ReceiptText size={28} className="text-muted-foreground/50" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">No transactions yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Add your first income or expense to get started.</p>
+            </div>
+            <Button onClick={openAddForm} className="gap-2">
+              <Plus size={16} />
+              Add transaction
+            </Button>
+          </div>
         )}
       </div>
       <ConfirmDialog

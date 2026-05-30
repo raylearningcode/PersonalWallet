@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   useAppSettings, useSaveAppSettings,
-  useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory,
+  useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
   useBudgetRules, useAddBudgetRule,
+  useRenameWallet,
   useAuthSession, useSignIn, useSignUp, useSignOut,
   useWallets, useAddWallet, useDeleteWallet,
   useTransactions, useAddTransaction,
@@ -17,13 +18,32 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { useMoney } from '@/lib/currency'
-import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
+
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X } from 'lucide-react'
+import { X, Eye, EyeOff, Shield, Pencil, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Wallet } from '@/types'
+import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
+
+const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
+type SettingsTab = typeof tabs[number]
+const TAB_LABELS: Record<SettingsTab, string> = {
+  profile: 'Profile',
+  wallets: 'Wallets',
+  categories: 'Categories',
+  ai: 'AI Features',
+  security: 'Security',
+  backup: 'Backup & Export',
+}
 
 const CURRENCIES = ['USD', 'IDR', 'TWD', 'EUR', 'JPY']
+
+const WALLET_TYPE_LABELS: Record<string, string> = {
+  cash: 'Cash', bank: 'Bank', card: 'Card',
+  e_wallet: 'E-wallet', investment: 'Investment', other: 'Other',
+}
+const WALLET_TYPE_ORDER = ['cash', 'bank', 'card', 'e_wallet', 'investment', 'other']
 
 export function Settings() {
   const money = useMoney()
@@ -36,6 +56,8 @@ export function Settings() {
   const { data: categories = [] } = useBudgetCategories()
   const addCategory = useAddBudgetCategory()
   const deleteCategory = useDeleteBudgetCategory()
+  const renameCategory = useRenameBudgetCategory()
+  const renameWallet = useRenameWallet()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
   const { data: budgetRules = [] } = useBudgetRules()
@@ -48,6 +70,7 @@ export function Settings() {
   const saveInvestmentConfig = useSaveInvestmentConfig()
   const upsertEstimationPlan = useUpsertEstimationPlan()
 
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')
   const [baseCurrency, setBaseCurrency] = useState('IDR')
@@ -57,9 +80,15 @@ export function Settings() {
   const [newCategory, setNewCategory] = useState('')
   const [walletName, setWalletName] = useState('')
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
-  const [goalLabel, setGoalLabel] = useState('')
-  const [goalPct, setGoalPct] = useState('')
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [editingCategoryName, setEditingCategoryName] = useState('')
+  const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
+  const [editingWalletName, setEditingWalletName] = useState('')
   const [backupText, setBackupText] = useState('')
+  const [pinInput, setPinInput] = useState('')
+  const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
+  const [geminiKey, setGeminiKey] = useState(() => getGeminiKey() ?? '')
+  const [showGeminiKey, setShowGeminiKey] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
     id: string
@@ -78,12 +107,20 @@ export function Settings() {
     return map
   }, [transactions, wallets])
 
+  const walletGroups = useMemo(() => {
+    const groups: Record<string, typeof wallets> = {}
+    for (const wallet of wallets) {
+      const key = wallet.type ?? 'other'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(wallet)
+    }
+    return WALLET_TYPE_ORDER.filter(t => groups[t]?.length > 0).map(t => ({ type: t, wallets: groups[t] }))
+  }, [wallets])
+
   useEffect(() => {
     setName(settings?.user_name ?? '')
     setBaseCurrency(settings?.base_currency || 'IDR')
     setCurrency(settings?.currency || 'IDR')
-    setGoalLabel(settings?.annual_goal_label ?? '')
-    setGoalPct(formatNumberInput(settings?.annual_goal_pct ?? 0))
   }, [settings, session])
 
   const baseSettings = {
@@ -96,8 +133,8 @@ export function Settings() {
     year_start: settings?.year_start ?? '',
     default_view: settings?.default_view ?? '',
     notifications: settings?.notifications ?? '',
-    annual_goal_label: goalLabel,
-    annual_goal_pct: Math.max(0, Math.min(100, parseNumberInput(goalPct))),
+    annual_goal_label: settings?.annual_goal_label ?? '',
+    annual_goal_pct: settings?.annual_goal_pct ?? 0,
   }
 
   const saveProfile = async () => {
@@ -111,11 +148,6 @@ export function Settings() {
     toast.success('Currency saved')
   }
 
-  const saveGoal = async () => {
-    await saveSettings.mutateAsync(baseSettings)
-    toast.success('Yearly goal saved')
-  }
-
   const handleSignIn = async () => {
     await signIn.mutateAsync({ email: authEmail, password: authPassword })
     toast.success('Logged in')
@@ -126,12 +158,38 @@ export function Settings() {
     toast.success('Signup started. Check your email if confirmation is enabled.')
   }
 
+  const handleEnablePin = () => {
+    if (pinInput.length !== 4) return
+    localStorage.setItem(PIN_STORAGE_KEY, hashPin(pinInput))
+    sessionStorage.setItem(PIN_SESSION_KEY, '1')
+    setPinInput('')
+    setPinEnabled(true)
+    toast.success('PIN lock enabled')
+  }
+
+  const handleDisablePin = () => {
+    localStorage.removeItem(PIN_STORAGE_KEY)
+    sessionStorage.removeItem(PIN_SESSION_KEY)
+    setPinEnabled(false)
+    toast.success('PIN lock removed')
+  }
+
   const handleAddCategory = async () => {
+    if (addCategory.isPending) return
     const name = newCategory.trim()
     if (!name) return
-    await addCategory.mutateAsync({ name, yearly_allocated: 0, budget_period: 'monthly', color: '#A9F5C7' })
-    setNewCategory('')
-    toast.success('Category added')
+    const duplicate = categories.some(c => c.name.toLowerCase() === name.toLowerCase())
+    if (duplicate) {
+      toast.error(`"${name}" already exists — category names must be unique`)
+      return
+    }
+    try {
+      await addCategory.mutateAsync({ name, yearly_allocated: 0, budget_period: 'monthly', color: '#A9F5C7' })
+      setNewCategory('')
+      toast.success(`Category "${name}" added`)
+    } catch {
+      toast.error('Failed to add category — please try again')
+    }
   }
 
   const handleAddStarterCategories = async () => {
@@ -141,6 +199,29 @@ export function Settings() {
       await addCategory.mutateAsync(category)
     }
     toast.success(missingCategories.length > 0 ? 'Starter categories restored' : 'Starter categories already complete')
+  }
+
+  const handleStartRename = (id: string, name: string) => {
+    setEditingCategoryId(id)
+    setEditingCategoryName(name)
+  }
+
+  const handleSaveRename = async () => {
+    if (!editingCategoryId) return
+    const trimmed = editingCategoryName.trim()
+    if (!trimmed) return
+    const duplicate = categories.some(c => c.id !== editingCategoryId && c.name.toLowerCase() === trimmed.toLowerCase())
+    if (duplicate) {
+      toast.error(`"${trimmed}" already exists`)
+      return
+    }
+    try {
+      await renameCategory.mutateAsync({ id: editingCategoryId, name: trimmed })
+      setEditingCategoryId(null)
+      toast.success('Category renamed')
+    } catch {
+      toast.error('Failed to rename')
+    }
   }
 
   const handleDeleteCategory = (id: string, name: string) => {
@@ -158,6 +239,19 @@ export function Settings() {
 
   const handleDeleteWallet = (id: string, name: string) => {
     setConfirmDelete({ kind: 'wallet', id, name })
+  }
+
+  const handleSaveWalletRename = async () => {
+    if (!editingWalletId) return
+    const trimmed = editingWalletName.trim()
+    if (!trimmed) return
+    try {
+      await renameWallet.mutateAsync({ id: editingWalletId, name: trimmed })
+      setEditingWalletId(null)
+      toast.success('Wallet renamed')
+    } catch {
+      toast.error('Failed to rename wallet')
+    }
   }
 
   const confirmDeleteSelected = () => {
@@ -215,130 +309,131 @@ export function Settings() {
         title="Settings"
         subtitle="Manage your profile, login, currency, and spending categories."
       />
-      <Card className="mb-8">
-        <CardContent className="flex min-h-[156px] flex-col items-start gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-extrabold text-primary-foreground sm:h-[72px] sm:w-[72px] sm:text-2xl">
-              {(name || session?.user.email || 'F').slice(0, 1).toUpperCase()}
-            </div>
-            <div>
-              <p className="break-words text-2xl font-extrabold leading-none text-foreground sm:text-[1.7rem]">{name || 'Empty profile'}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{session?.user.email || 'No account connected'}</p>
-            </div>
+      {!session && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
+          <span className="mt-0.5 text-base">⚠</span>
+          <div>
+            <p className="font-bold text-[#FFCF73]">Guest mode — data is not saved to the cloud</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">Your budgets, wallets, and transactions are stored in this browser only. Log in to keep your data safe and sync across devices.</p>
           </div>
-          <Button className="px-9" onClick={() => setEditMode(!editMode)}>
-            {editMode ? 'Cancel' : 'Edit profile'}
-          </Button>
-        </CardContent>
-      </Card>
-      {editMode && (
-        <Card className="mb-8">
-          <CardContent className="grid grid-cols-1 items-end gap-4 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <div>
-              <Label className="text-sm text-muted-foreground">Name</Label>
-              <Input aria-label="Profile name" value={name} onChange={event => setName(event.target.value)} className="mt-2 bg-secondary" />
-            </div>
-            <Button onClick={saveProfile} disabled={saveSettings.isPending}>Save</Button>
-          </CardContent>
-        </Card>
+        </div>
       )}
-      <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,0.7fr)_minmax(0,1.3fr)] xl:gap-7">
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            <p className="text-sm text-muted-foreground">Set the currency your amounts are saved in, then choose what FinPath displays.</p>
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Base currency</Label>
-              <Select value={baseCurrency} onValueChange={setBaseCurrency}>
-                <SelectTrigger aria-label="Base currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Display currency</Label>
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger aria-label="Display currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={saveCurrency} disabled={saveSettings.isPending}>Save currency</Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Yearly goal</CardTitle></CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            <p className="text-sm text-muted-foreground">This is the goal card shown in the sidebar and mobile More sheet.</p>
-            <div>
-              <Label className="text-sm text-muted-foreground">Goal label</Label>
-              <Input aria-label="Yearly goal label" className="mt-2 bg-secondary" value={goalLabel} onChange={event => setGoalLabel(event.target.value)} placeholder="$20k net worth" />
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">Progress percent</Label>
-              <Input
-                aria-label="Yearly goal progress"
-                className="mt-2 bg-secondary"
-                inputMode="decimal"
-                value={goalPct}
-                onChange={event => setGoalPct(formatNumberInput(event.target.value))}
-                placeholder="0"
-              />
-            </div>
-            <Button onClick={saveGoal} disabled={saveSettings.isPending}>Save yearly goal</Button>
-          </CardContent>
-        </Card>
+
+      {/* Tab pill bar */}
+      <div className="mb-8 flex flex-wrap gap-2 overflow-x-auto">
+        {tabs.map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${activeTab === tab ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            {TAB_LABELS[tab]}
+          </button>
+        ))}
       </div>
-      <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)]">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="text-xl">Category manager</CardTitle>
-              <Button variant="secondary" onClick={handleAddStarterCategories} disabled={addCategory.isPending}>
-                Restore starter categories
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {categories.map(category => (
-                <div
-                  key={category.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3"
-                >
-                  <span className="min-w-0 truncate font-bold text-foreground">{category.name}</span>
-                  <button
-                    aria-label={`Delete ${category.name} category`}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
-                    onClick={() => handleDeleteCategory(category.id, category.name)}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+
+      {/* Profile tab */}
+      {activeTab === 'profile' && (
+        <>
+          <Card className="mb-8">
+            <CardContent className="flex min-h-[156px] flex-col items-start gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+              <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-extrabold text-primary-foreground sm:h-[72px] sm:w-[72px] sm:text-2xl">
+                  {(name || session?.user.email || 'F').slice(0, 1).toUpperCase()}
                 </div>
-              ))}
-            </div>
-            {categories.length === 0 && <p className="text-sm text-muted-foreground">No categories yet.</p>}
-            <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
-              <Input
-                className="bg-secondary"
-                value={newCategory}
-                onChange={event => setNewCategory(event.target.value)}
-                onKeyDown={event => event.key === 'Enter' && handleAddCategory()}
-                placeholder="New category"
-              />
-              <Button onClick={handleAddCategory} disabled={addCategory.isPending}>Add</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:gap-7">
-        <Card>
+                <div>
+                  <p className="break-words text-2xl font-extrabold leading-none text-foreground sm:text-[1.7rem]">{name || 'Empty profile'}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{session?.user.email || 'No account connected'}</p>
+                </div>
+              </div>
+              <Button className="px-9" onClick={() => setEditMode(!editMode)}>
+                {editMode ? 'Cancel' : 'Edit profile'}
+              </Button>
+            </CardContent>
+          </Card>
+          {editMode && (
+            <Card className="mb-8">
+              <CardContent className="grid grid-cols-1 items-end gap-4 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Name</Label>
+                  <Input aria-label="Profile name" value={name} onChange={event => setName(event.target.value)} className="mt-2 bg-secondary" />
+                </div>
+                <Button onClick={saveProfile} disabled={saveSettings.isPending}>Save</Button>
+              </CardContent>
+            </Card>
+          )}
+          <Card className="mb-8 lg:hidden">
+            <CardHeader>
+              <CardTitle className="text-xl">Account access</CardTitle>
+              <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. On desktop, use the profile icon in the sidebar.</p>
+            </CardHeader>
+            <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+              {session ? (
+                <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-bold text-foreground">Logged in</p>
+                    <p className="text-sm text-muted-foreground">{session.user.email}</p>
+                  </div>
+                  <Button variant="secondary" onClick={() => signOut.mutateAsync()}>Log out</Button>
+                </div>
+              ) : (
+                <div className="grid max-w-md grid-cols-1 items-end gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Email</Label>
+                    <Input aria-label="Auth email" className="mt-2 bg-secondary" value={authEmail} onChange={event => setAuthEmail(event.target.value)} placeholder="you@example.com" />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Password</Label>
+                    <Input aria-label="Auth password" className="mt-2 bg-secondary" type="password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} placeholder="Password" />
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button onClick={handleSignIn} disabled={signIn.isPending}>Log in</Button>
+                    <Button variant="secondary" onClick={handleSignUp} disabled={signUp.isPending}>Sign up</Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="mb-8">
+            <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
+            <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+              <p className="text-sm text-muted-foreground">Set the currency your amounts are saved in, then choose what FinPath displays.</p>
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Base currency</Label>
+                <Select value={baseCurrency} onValueChange={setBaseCurrency}>
+                  <SelectTrigger aria-label="Base currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Display currency</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger aria-label="Display currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={saveCurrency} disabled={saveSettings.isPending}>Save currency</Button>
+              {money.ratesDate && (
+                <p className="text-xs text-muted-foreground">
+                  Live rates as of {money.ratesDate}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Wallets tab */}
+      {activeTab === 'wallets' && (
+        <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Wallets</CardTitle>
             <p className="text-sm text-muted-foreground">Add cash wallets, bank accounts, cards, and e-wallets for transaction tracking.</p>
@@ -368,82 +463,281 @@ export function Settings() {
               </select>
               <Button onClick={handleAddWallet} disabled={addWallet.isPending}>Add wallet</Button>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {wallets.map(wallet => (
-                <div key={wallet.id} className="rounded-2xl border border-border bg-secondary px-4 py-3">
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-foreground">{wallet.name}</p>
-                    <p className="text-xs capitalize text-muted-foreground">{wallet.type.replace('_', ' ')}</p>
+            <div className="max-h-[320px] overflow-y-auto space-y-5 pr-1">
+              {walletGroups.map(group => (
+                <div key={group.type}>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {WALLET_TYPE_LABELS[group.type] ?? group.type}
+                  </p>
+                  <div className="space-y-1">
+                    {group.wallets.map(wallet => (
+                      <div key={wallet.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-secondary px-4 py-2.5">
+                        {editingWalletId === wallet.id ? (
+                          <>
+                            <input
+                              className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
+                              value={editingWalletName}
+                              autoFocus
+                              onChange={e => setEditingWalletName(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSaveWalletRename()
+                                if (e.key === 'Escape') setEditingWalletId(null)
+                              }}
+                            />
+                            <button
+                              aria-label="Save wallet rename"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                              onClick={handleSaveWalletRename}
+                              disabled={renameWallet.isPending}
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                              aria-label="Cancel wallet rename"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
+                              onClick={() => setEditingWalletId(null)}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="min-w-0 flex-1 truncate font-bold text-foreground">{wallet.name}</span>
+                            <span className="shrink-0 font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</span>
+                            <button
+                              aria-label={`Rename ${wallet.name} wallet`}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                              onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name) }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              aria-label={`Delete ${wallet.name} wallet`}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
+                              onClick={() => handleDeleteWallet(wallet.id, wallet.name)}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <button
-                    aria-label={`Delete ${wallet.name} wallet`}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
-                    onClick={() => handleDeleteWallet(wallet.id, wallet.name)}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Wallet balance</p>
-                  <p className="mt-1 text-xl font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</p>
+                </div>
+              ))}
+              {wallets.length === 0 && <p className="text-sm text-muted-foreground">No wallets yet.</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Categories tab */}
+      {activeTab === 'categories' && (
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-xl">Category manager</CardTitle>
+              <Button variant="secondary" onClick={handleAddStarterCategories} disabled={addCategory.isPending}>
+                Restore starter categories
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {categories.map(category => (
+                <div
+                  key={category.id}
+                  className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-secondary px-4 py-3"
+                >
+                  {editingCategoryId === category.id ? (
+                    <>
+                      <input
+                        className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
+                        value={editingCategoryName}
+                        autoFocus
+                        onChange={e => setEditingCategoryName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleSaveRename()
+                          if (e.key === 'Escape') setEditingCategoryId(null)
+                        }}
+                      />
+                      <button
+                        aria-label="Save rename"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                        onClick={handleSaveRename}
+                        disabled={renameCategory.isPending}
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                      <button
+                        aria-label="Cancel rename"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => setEditingCategoryId(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="min-w-0 truncate font-bold text-foreground">{category.name}</span>
+                      <button
+                        aria-label={`Rename ${category.name} category`}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                        onClick={() => handleStartRename(category.id, category.name)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        aria-label={`Delete ${category.name} category`}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
+                        onClick={() => handleDeleteCategory(category.id, category.name)}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
-            {wallets.length === 0 && <p className="text-sm text-muted-foreground">No wallets yet.</p>}
+            {categories.length === 0 && <p className="text-sm text-muted-foreground">No categories yet.</p>}
+            <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
+              <Input
+                className="bg-secondary"
+                value={newCategory}
+                onChange={event => setNewCategory(event.target.value)}
+                onKeyDown={event => event.key === 'Enter' && handleAddCategory()}
+                placeholder="New category"
+              />
+              <Button onClick={handleAddCategory} disabled={addCategory.isPending}>Add</Button>
+            </div>
           </CardContent>
         </Card>
-        <Card>
+      )}
+
+      {/* AI Features tab */}
+      {activeTab === 'ai' && (
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-xl">Account access</CardTitle>
-            <p className="text-sm text-muted-foreground">Log in or create an account to keep your budget data available across sessions.</p>
+            <CardTitle className="text-xl">AI Features</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Power receipt scanning and spending insights with the free{' '}
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="font-bold text-primary underline-offset-2 hover:underline">
+                Gemini API
+              </a>
+              . Get a free key at aistudio.google.com.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            {session ? (
-              <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-bold text-foreground">Logged in</p>
-                  <p className="text-sm text-muted-foreground">{session.user.email}</p>
+            {/* Privacy explanation */}
+            <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+              <Shield className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div className="space-y-2 text-sm">
+                <p className="font-bold text-foreground">What FinPath AI can access:</p>
+                <ul className="space-y-1 text-muted-foreground">
+                  <li>· Your spending categories and amounts</li>
+                  <li>· Budget limits and usage percentages</li>
+                  <li>· Goal names and progress</li>
+                  <li>· Monthly income and expense totals</li>
+                </ul>
+                <p className="font-bold text-foreground">What is NOT shared:</p>
+                <p className="text-muted-foreground">Transaction descriptions, merchant names, wallet details, or any personal account info.</p>
+                <p className="text-xs text-primary">Your API key is stored only in your browser's localStorage. It is never sent to FinPath's servers.</p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground">Gemini API key</Label>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    aria-label="Gemini API key"
+                    className="bg-secondary pr-10 font-mono text-sm"
+                    type={showGeminiKey ? 'text' : 'password'}
+                    value={geminiKey}
+                    onChange={e => setGeminiKey(e.target.value)}
+                    placeholder="AIzaSy…"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showGeminiKey ? 'Hide key' : 'Show key'}
+                    onClick={() => setShowGeminiKey(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showGeminiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
-                <Button variant="secondary" onClick={() => signOut.mutateAsync()}>Log out</Button>
+                <Button
+                  onClick={() => {
+                    saveGeminiKey(geminiKey.trim())
+                    toast.success(geminiKey.trim() ? 'Gemini API key saved' : 'Gemini API key removed')
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+              {geminiKey && <p className="mt-2 text-xs text-primary">✓ Key saved — receipt scanning and AI insights are enabled</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Security tab */}
+      {activeTab === 'security' && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-xl">PIN lock</CardTitle>
+            <p className="text-sm text-muted-foreground">Protect the app with a 4-digit PIN when it opens.</p>
+          </CardHeader>
+          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+            {pinEnabled ? (
+              <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-bold text-foreground">PIN lock is active</p>
+                <Button variant="secondary" onClick={handleDisablePin}>Remove PIN</Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 items-end gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div>
-                  <Label className="text-sm text-muted-foreground">Email</Label>
-                  <Input aria-label="Auth email" className="mt-2 bg-secondary" value={authEmail} onChange={event => setAuthEmail(event.target.value)} placeholder="you@example.com" />
+                  <Label className="text-sm text-muted-foreground">New PIN (4 digits)</Label>
+                  <Input
+                    aria-label="New PIN"
+                    className="mt-2 w-32 bg-secondary text-center tracking-[0.5em]"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={pinInput}
+                    onChange={event => setPinInput(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="••••"
+                  />
                 </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">Password</Label>
-                  <Input aria-label="Auth password" className="mt-2 bg-secondary" type="password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} placeholder="Password" />
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button onClick={handleSignIn} disabled={signIn.isPending}>Log in</Button>
-                  <Button variant="secondary" onClick={handleSignUp} disabled={signUp.isPending}>Sign up</Button>
-                </div>
+                <Button onClick={handleEnablePin} disabled={pinInput.length !== 4}>Enable PIN</Button>
               </div>
             )}
           </CardContent>
         </Card>
-      </div>
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="text-xl">Backup and restore</CardTitle>
-          <p className="text-sm text-muted-foreground">Export your FinPath data as JSON, or paste a previous backup to restore it into this account.</p>
-        </CardHeader>
-        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button onClick={handleExportBackup}>Export backup</Button>
-            <Button variant="secondary" onClick={handleImportBackup}>Import backup</Button>
-          </div>
-          <textarea
-            aria-label="Backup JSON"
-            className="min-h-44 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none"
-            value={backupText}
-            onChange={event => setBackupText(event.target.value)}
-            placeholder="Backup JSON appears here, or paste one to import"
-          />
-        </CardContent>
-      </Card>
+      )}
+
+      {/* Backup & Export tab */}
+      {activeTab === 'backup' && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-xl">Backup and restore</CardTitle>
+            <p className="text-sm text-muted-foreground">Export your FinPath data as JSON, or paste a previous backup to restore it into this account.</p>
+          </CardHeader>
+          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button onClick={handleExportBackup}>Export backup</Button>
+              <Button variant="secondary" onClick={handleImportBackup}>Import backup</Button>
+            </div>
+            <textarea
+              aria-label="Backup JSON"
+              className="min-h-44 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none"
+              value={backupText}
+              onChange={event => setBackupText(event.target.value)}
+              placeholder="Backup JSON appears here, or paste one to import"
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <ConfirmDialog
         open={Boolean(confirmDelete)}
         title={confirmDelete ? `Delete ${confirmDelete.name} ${confirmDelete.kind}?` : ''}

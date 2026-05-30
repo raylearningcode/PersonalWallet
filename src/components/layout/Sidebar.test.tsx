@@ -1,7 +1,15 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Sidebar } from './Sidebar'
+
+vi.mock('@/lib/queries', () => ({
+  useGoals: () => ({ data: [] }),
+  useAuthSession: () => ({ data: null }),
+  useSignIn: () => ({ mutateAsync: async () => {}, isPending: false }),
+  useSignUp: () => ({ mutateAsync: async () => {}, isPending: false }),
+  useSignOut: () => ({ mutateAsync: async () => {}, isPending: false }),
+}))
 
 describe('Sidebar', () => {
   it('renders the FinPath concept shell with active navigation and the yearly goal card', () => {

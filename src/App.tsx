@@ -7,6 +7,8 @@ import { Estimation } from '@/pages/Estimation'
 import { Investing } from '@/pages/Investing'
 import { Reports } from '@/pages/Reports'
 import { Settings } from '@/pages/Settings'
+import { Goals } from '@/pages/Goals'
+import { Subscriptions } from '@/pages/Subscriptions'
 
 export function App() {
   return (
@@ -19,6 +21,8 @@ export function App() {
         <Route path="investing" element={<Investing />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="goals" element={<Goals />} />
+        <Route path="subscriptions" element={<Subscriptions />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

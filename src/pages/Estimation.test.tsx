@@ -6,6 +6,8 @@ vi.mock('@/lib/queries', () => ({
   useEstimationPlans: () => ({ data: [] }),
   useUpsertEstimationPlan: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAppSettings: () => ({ data: { currency: 'USD', base_currency: 'TWD' } }),
+  useTransactions: () => ({ data: [] }),
+  useAddGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/lib/currency', () => ({

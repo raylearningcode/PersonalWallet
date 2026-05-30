@@ -1,31 +1,69 @@
 import { NavLink } from 'react-router-dom'
-import { CreditCard, LayoutDashboard, MoreHorizontal, PieChart, TrendingUp } from 'lucide-react'
+import { CreditCard, LayoutDashboard, MoreHorizontal, Target, Plus } from 'lucide-react'
 
-const navItems = [
+const leftNavItems = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/transactions', label: 'Txns', icon: CreditCard },
-  { to: '/budget', label: 'Budget', icon: PieChart },
-  { to: '/investing', label: 'Invest', icon: TrendingUp },
 ]
 
-export function BottomNav({ onMoreClick, moreActive }: { onMoreClick: () => void; moreActive: boolean }) {
+const rightNavItems = [
+  { to: '/goals', label: 'Goals', icon: Target },
+]
+
+export function BottomNav({
+  onMoreClick,
+  moreActive,
+  onAddClick,
+}: {
+  onMoreClick: () => void
+  moreActive: boolean
+  onAddClick: () => void
+}) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center border-t border-border bg-background/95 backdrop-blur lg:hidden">
-      {navItems.map(({ to, label, icon: Icon }) => (
+      {leftNavItems.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
           end={to === '/'}
-          className={({ isActive }) => `flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
+          className={({ isActive }) =>
+            `flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`
+          }
         >
           <Icon className="h-5 w-5" />
           {label}
         </NavLink>
       ))}
+
+      <div className="flex flex-1 items-center justify-center">
+        <button
+          type="button"
+          onClick={onAddClick}
+          aria-label="Add transaction"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 transition-transform active:scale-95"
+        >
+          <Plus className="h-6 w-6 text-primary-foreground" />
+        </button>
+      </div>
+
+      {rightNavItems.map(({ to, label, icon: Icon }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={to === '/'}
+          className={({ isActive }) =>
+            `flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`
+          }
+        >
+          <Icon className="h-5 w-5" />
+          {label}
+        </NavLink>
+      ))}
+
       <button
         type="button"
         onClick={onMoreClick}
-        className={`flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-bold ${moreActive ? 'text-primary' : 'text-muted-foreground'}`}
+        className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold ${moreActive ? 'text-primary' : 'text-muted-foreground'}`}
       >
         <MoreHorizontal className="h-5 w-5" />
         More

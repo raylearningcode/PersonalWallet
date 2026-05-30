@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Dashboard } from './Dashboard'
 
 vi.mock('@/lib/queries', () => ({
+  useAuthSession: () => ({ data: null }),
   useTransactions: () => ({ data: [
     { id: 'tx-1', description: 'Lunch', amount: 100000, original_amount: 100000, original_currency: 'IDR', type: 'expense', category: 'Food', date: '2026-05-20', needs_review: false },
     { id: 'tx-2', description: 'Course', amount: 200000, original_amount: 200000, original_currency: 'IDR', type: 'expense', category: 'Learning', date: '2026-05-21', needs_review: false },
@@ -15,6 +16,8 @@ vi.mock('@/lib/queries', () => ({
   ] }),
   useAppSettings: () => ({ data: { user_name: '', email: '', currency: 'IDR', base_currency: 'IDR' } }),
   useWallets: () => ({ data: [] }),
+  useRecurringRules: () => ({ data: [] }),
+  useGoals: () => ({ data: [] }),
 }))
 
 vi.mock('@/lib/currency', () => ({
@@ -24,6 +27,8 @@ vi.mock('@/lib/currency', () => ({
     formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatDisplay: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
   }),
+  txAmountColor: (amount: number, type: string) => amount === 0 ? 'text-foreground' : type === 'income' ? 'text-primary' : 'text-[#FF8388]',
+  txAmountSign: (amount: number, type: string) => amount === 0 ? '' : type === 'income' ? '+' : type === 'transfer' ? '' : '-',
 }))
 
 describe('Dashboard', () => {
@@ -34,7 +39,7 @@ describe('Dashboard', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { name: 'Good morning' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Good (morning|afternoon|evening)|Still awake|Early start|Midday|Winding down|midnight oil/ })).toBeInTheDocument()
     expect(screen.queryByText(/Rayhan/)).not.toBeInTheDocument()
   })
 

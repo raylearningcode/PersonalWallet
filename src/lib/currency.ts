@@ -42,8 +42,10 @@ export function convertCurrency(amount: number, fromCurrency: string, toCurrency
   return amount / fromRate * toRate
 }
 
+type RatesResponse = { rates: Rates; date: string | null }
+
 export function useExchangeRates(baseCurrency: string) {
-  return useQuery({
+  return useQuery<RatesResponse>({
     queryKey: ['exchange_rates', baseCurrency],
     queryFn: async () => {
       const base = baseCurrency.toLowerCase()
@@ -52,11 +54,14 @@ export function useExchangeRates(baseCurrency: string) {
       )
       if (!res.ok) throw new Error('Exchange rate fetch failed')
       const data = (await res.json()) as Record<string, unknown>
-      return { ...getFallbackRates(baseCurrency), ...(data[base] as Record<string, number>) }
+      const date = typeof data.date === 'string' ? data.date : null
+      const rates = { ...getFallbackRates(baseCurrency), ...(data[base] as Record<string, number>) }
+      return { rates, date }
     },
-    placeholderData: getFallbackRates(baseCurrency),
-    staleTime: Infinity,
-    gcTime: Infinity,
+    placeholderData: { rates: getFallbackRates(baseCurrency), date: null },
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: true,
     retry: 2,
   })
 }
@@ -65,7 +70,9 @@ export function useMoney() {
   const { data: settings } = useAppSettings()
   const baseCurrency = settings?.base_currency ?? 'IDR'
   const displayCurrency = settings?.currency ?? 'IDR'
-  const { data: rates = getFallbackRates(baseCurrency) } = useExchangeRates(baseCurrency)
+  const { data: ratesData } = useExchangeRates(baseCurrency)
+  const rates = ratesData?.rates ?? getFallbackRates(baseCurrency)
+  const ratesDate = ratesData?.date ?? null
 
   const fromBase = (amount: number, currency = displayCurrency) =>
     convertCurrency(amount, baseCurrency, currency, rates)
@@ -76,6 +83,7 @@ export function useMoney() {
     baseCurrency,
     displayCurrency,
     rates,
+    ratesDate,
     toBase,
     fromBase,
     format: (amount: number, currency = displayCurrency) => formatCurrency(amount, currency),
@@ -89,4 +97,18 @@ export function useCurrency() {
   const money = useMoney()
 
   return money.formatDisplay
+}
+
+export function txAmountColor(amount: number, type: string): string {
+  if (amount === 0) return 'text-foreground'
+  if (type === 'income') return 'text-primary'
+  if (type === 'transfer') return 'text-muted-foreground'
+  return 'text-[#FF8388]'
+}
+
+export function txAmountSign(amount: number, type: string): string {
+  if (amount === 0) return ''
+  if (type === 'income') return '+'
+  if (type === 'transfer') return ''
+  return '-'
 }

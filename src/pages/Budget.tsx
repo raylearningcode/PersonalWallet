@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   useBudgetCategories,
-  useBudgetRules,
   useTransactions,
   useUpdateBudgetCategory,
   useAddBudgetCategory,
   useDeleteBudgetCategory,
-  useAddBudgetRule,
-  useDeleteBudgetRule,
 } from '@/lib/queries'
+import { Lightbulb } from 'lucide-react'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,15 +19,9 @@ import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
 import { Check, Pencil, Trash2, X } from 'lucide-react'
-import type { BudgetRule } from '@/types'
 import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
-
-const ruleColors: Record<string, string> = {
-  cap: '#A9F5C7',
-  minimum: '#93C5FD',
-  flexible: '#C4AEFF',
-  emergency_months: '#FFD276',
-}
+import { Skeleton } from '@/components/ui/skeleton'
+import { getDaysRemainingInMonth } from '@/lib/financeOs'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
@@ -54,14 +47,11 @@ function ColorBar({ value, color }: { value: number; color: string }) {
 export function Budget() {
   const money = useMoney()
   const fmt = money.formatDisplay
-  const { data: categories = [] } = useBudgetCategories()
-  const { data: rules = [] } = useBudgetRules()
+  const { data: categories = [], isPending: catPending } = useBudgetCategories()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
   const addCategory = useAddBudgetCategory()
   const deleteCategory = useDeleteBudgetCategory()
-  const addRule = useAddBudgetRule()
-  const deleteRule = useDeleteBudgetRule()
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<{ yearly_allocated: number; budget_period: BudgetPeriod; color: string }>({
@@ -76,13 +66,13 @@ export function Budget() {
   const [addPeriod, setAddPeriod] = useState<BudgetPeriod>('monthly')
   const [addColor, setAddColor] = useState('#6c63ff')
 
-  const [ruleName, setRuleName] = useState('')
-  const [ruleCategory, setRuleCategory] = useState('')
-  const [ruleType, setRuleType] = useState<BudgetRule['rule_type']>('cap')
-  const [ruleValue, setRuleValue] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState<null | { kind: 'category' | 'rule'; id: string; name: string }>(null)
+  const [deleteTarget, setDeleteTarget] = useState<null | { id: string; name: string }>(null)
 
   const currentYear = String(new Date().getFullYear())
+  const now = new Date()
+  const daysLeft = getDaysRemainingInMonth()
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const monthPct = Math.round((now.getDate() / daysInMonth) * 100)
   const expenseTransactions = transactions.filter(
     t => t.type !== 'income' && t.type !== 'transfer' && t.date.startsWith(currentYear)
   )
@@ -101,8 +91,49 @@ export function Budget() {
   const totalAllocated = useMemo(() => categoriesWithSpent.reduce((s, c) => s + c.yearly_allocated, 0), [categoriesWithSpent])
   const totalSpent = useMemo(() => categoriesWithSpent.reduce((s, c) => s + c.spent, 0), [categoriesWithSpent])
   const remaining = totalAllocated - totalSpent
+
+  const daysElapsed = now.getDate()
+  const forecasts = useMemo(() => categoriesWithSpent
+    .filter(cat => cat.budget_period === 'monthly' && cat.yearly_allocated > 0 && cat.spent > 0 && daysElapsed > 0)
+    .map(cat => {
+      const dailyRate = cat.spent / daysElapsed
+      const projectedMonthEnd = Math.round(dailyRate * daysInMonth)
+      const overspend = projectedMonthEnd - cat.yearly_allocated
+      return { ...cat, projectedMonthEnd, overspend, dailyRate }
+    })
+    .filter(f => f.overspend > 0)
+    .sort((a, b) => b.overspend - a.overspend),
+    [categoriesWithSpent, daysElapsed, daysInMonth]
+  )
   const risk = totalAllocated > 0 ? getOverspendRisk(remaining, totalAllocated) : 'Low'
   const hasData = categories.length > 0
+
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const spendingSuggestions = useMemo(() => {
+    const now = new Date()
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+    const recentExpenses = transactions.filter(t => {
+      if (t.type === 'income' || t.type === 'transfer') return false
+      const d = new Date(t.date)
+      return d >= threeMonthsAgo
+    })
+    const catMap: Record<string, number[]> = {}
+    recentExpenses.forEach(t => {
+      if (!catMap[t.category]) catMap[t.category] = []
+      catMap[t.category].push(t.amount)
+    })
+    const existingNames = new Set(categories.map(c => c.name.toLowerCase()))
+    return Object.entries(catMap)
+      .map(([name, amounts]) => ({
+        name,
+        monthlyAvg: Math.round(amounts.reduce((s, a) => s + a, 0) / 3),
+        txCount: amounts.length,
+      }))
+      .filter(s => !existingNames.has(s.name.toLowerCase()) && s.monthlyAvg > 0)
+      .sort((a, b) => b.monthlyAvg - a.monthlyAvg)
+      .slice(0, 6)
+  }, [transactions, categories])
 
   const startEdit = (id: string, yearly_allocated: number, budget_period: BudgetPeriod, color: string) => {
     setEditingId(id)
@@ -155,142 +186,363 @@ export function Budget() {
     }
   }
 
-  const handleAddRule = async () => {
-    const value = parseNumberInput(ruleValue)
-    const category = ruleCategory || categories[0]?.name
-    if (!ruleName.trim() || !category || !Number.isFinite(value) || value <= 0) return
+  const handleApplySuggestion = async (name: string, monthlyAvg: number) => {
     try {
-      await addRule.mutateAsync({ name: ruleName.trim(), category, rule_type: ruleType, value })
-      setRuleName('')
-      setRuleCategory('')
-      setRuleType('cap')
-      setRuleValue('')
-      toast.success('Budget rule added')
+      await addCategory.mutateAsync({
+        name,
+        yearly_allocated: money.toBase(money.fromBase(monthlyAvg, money.displayCurrency), money.displayCurrency),
+        budget_period: 'monthly',
+        color: '#6c63ff',
+      })
+      toast.success(`${name} budget created`)
     } catch {
-      toast.error('Failed to add budget rule')
+      toast.error('Failed to create budget')
     }
   }
 
   const confirmDeleteSelected = async () => {
     if (!deleteTarget) return
-    if (deleteTarget.kind === 'category') await handleDelete(deleteTarget.id)
-    else {
-      deleteRule.mutate(deleteTarget.id)
-      toast.success('Budget rule removed')
-    }
+    await handleDelete(deleteTarget.id)
     setDeleteTarget(null)
   }
+
+  const activeBudgets = categoriesWithSpent.filter(c => c.yearly_allocated > 0)
+  const noBudget = categoriesWithSpent.filter(c => c.yearly_allocated === 0)
+
+  // Overspend risk explanation
+  const closestToCap = useMemo(() => {
+    if (activeBudgets.length === 0) return null
+    return activeBudgets.reduce((top, c) => {
+      const pct = getCategoryUsedPct(c.spent, c.yearly_allocated)
+      const topPct = getCategoryUsedPct(top.spent, top.yearly_allocated)
+      return pct > topPct ? c : top
+    }, activeBudgets[0])
+  }, [activeBudgets])
+
+  const closestPct = closestToCap ? getCategoryUsedPct(closestToCap.spent, closestToCap.yearly_allocated) : 0
 
   return (
     <div>
       <PageHeader
         title="Budget"
         subtitle="Choose monthly or yearly limits, then track usage in the period that matters."
+        action={
+          !showAdd ? (
+            <Button size="sm" className="gap-2" onClick={() => setShowAdd(true)}>
+              + Add category
+            </Button>
+          ) : undefined
+        }
       />
-      <div className="mb-11 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Planned budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Current category limits'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(hasData ? remaining : 0) : 'Safe inside active periods'} badgeVariant="success" />
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData ? 'Based on current period spending' : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.8fr)] lg:gap-8">
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Category allocation</CardTitle></CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            {categoriesWithSpent.length > 0 ? categoriesWithSpent.map(cat => {
-              const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
-              const barColor = getBarColor(pct, cat.color)
-              const isEditing = editingId === cat.id
+      {hasData && (
+        <div className="mb-8 rounded-2xl border border-border bg-secondary px-5 py-4">
+          <p className="text-xs font-bold text-muted-foreground">Overspend risk explanation</p>
+          <p className="mt-1 text-sm text-foreground">
+            {closestToCap && closestPct >= 70
+              ? `${closestToCap.name} is your closest category at ${closestPct}%. Monitor it closely.`
+              : closestToCap
+              ? `${closestToCap.name} is your closest category at ${closestPct}%. At your current pace, you are unlikely to exceed any category this month.`
+              : 'At your current pace, you are unlikely to exceed any category this month.'}
+          </p>
+        </div>
+      )}
 
-              if (isEditing) {
-                return (
-                  <div key={cat.id} className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-foreground">{cat.name}</span>
-                      <div className="flex gap-2">
-                        <Button size="sm" className="h-7 px-3 text-xs" onClick={saveEdit} disabled={updateCategory.isPending}>
-                          <Check className="mr-1 h-3.5 w-3.5" />
-                          Save
-                        </Button>
-                        <Button size="sm" variant="secondary" className="h-7 px-3 text-xs" onClick={cancelEdit} aria-label="Cancel edit">
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground">Budget amount ({money.displayCurrency})</p>
-                        <Input
-                          aria-label="Budget amount"
-                          inputMode="decimal"
-                          className="h-8 bg-secondary text-sm font-bold"
-                          value={formatNumberInput(editDraft.yearly_allocated)}
-                          onChange={e => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
-                        />
-                      </div>
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground">Period</p>
-                        <select
-                          aria-label="Budget period"
-                          className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                          value={editDraft.budget_period}
-                          onChange={e => setEditDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
-                        >
-                          <option value="monthly">Monthly</option>
-                          <option value="yearly">Yearly</option>
-                        </select>
-                      </div>
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground">Color</p>
-                        <input
-                          type="color"
-                          aria-label="Category color"
-                          className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                          value={editDraft.color}
-                          onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Spent this {editDraft.budget_period}: {fmt(cat.spent)}
-                    </p>
-                  </div>
-                )
-              }
-
-              return (
-                <div key={cat.id}>
-                  <div className="mb-2 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <span className="font-bold text-foreground">{cat.name}</span>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs text-muted-foreground">
-                        {fmt(cat.spent)} of {fmt(cat.yearly_allocated)} {cat.budget_period}
-                      </span>
-                      <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
-                        {pct}%
-                      </span>
-                      <button
-                        onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
-                        className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-muted-foreground hover:text-foreground"
-                        aria-label={`Edit ${cat.name}`}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget({ kind: 'category', id: cat.id, name: cat.name })}
-                        disabled={deleteCategory.isPending}
-                        className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
-                        aria-label={`Delete ${cat.name}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <ColorBar value={pct} color={barColor} />
+      {forecasts.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-xl">Month forecast</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Based on your current daily spend rate ({monthPct}% of month elapsed).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+            {forecasts.map(f => (
+              <div key={f.id} className="flex items-start justify-between gap-4 rounded-2xl border border-[#FF8388]/20 bg-[#FF8388]/5 p-4">
+                <div>
+                  <p className="font-extrabold text-foreground">{f.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Current: {fmt(f.spent)} · Forecast: {fmt(f.projectedMonthEnd)} · Budget: {fmt(f.yearly_allocated)}
+                  </p>
                 </div>
-              )
-            }) : (
-              <p className="text-sm text-muted-foreground">No budget categories yet.</p>
+                <span className="shrink-0 rounded-full bg-[#FF8388]/20 px-3 py-1 text-xs font-extrabold text-[#FF8388]">
+                  +{fmt(f.overspend)} over
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader><CardTitle className="text-xl">Category allocation</CardTitle></CardHeader>
+        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+            {catPending ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              ))
+            ) : categoriesWithSpent.length > 0 ? (
+              <>
+                {activeBudgets.length > 0 && (
+                  <div className="space-y-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
+                    {activeBudgets.map(cat => {
+                      const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
+                      const barColor = getBarColor(pct, cat.color)
+                      const isEditing = editingId === cat.id
+                      const catDailyAllowance = cat.yearly_allocated > cat.spent && daysLeft > 0
+                        ? (cat.yearly_allocated - cat.spent) / daysLeft
+                        : null
+                      const overPace = pct > monthPct
+
+                      if (isEditing) {
+                        return (
+                          <div key={cat.id} className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-foreground">{cat.name}</span>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="h-7 px-3 text-xs" onClick={saveEdit} disabled={updateCategory.isPending}>
+                                  <Check className="mr-1 h-3.5 w-3.5" />
+                                  Save
+                                </Button>
+                                <Button size="sm" variant="secondary" className="h-7 px-3 text-xs" onClick={cancelEdit} aria-label="Cancel edit">
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Budget amount ({money.displayCurrency})</p>
+                                <Input
+                                  aria-label="Budget amount"
+                                  inputMode="decimal"
+                                  className="h-8 bg-secondary text-sm font-bold"
+                                  value={formatNumberInput(editDraft.yearly_allocated)}
+                                  onChange={e => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
+                                />
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Period</p>
+                                <select
+                                  aria-label="Budget period"
+                                  className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                  value={editDraft.budget_period}
+                                  onChange={e => setEditDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
+                                >
+                                  <option value="monthly">Monthly</option>
+                                  <option value="yearly">Yearly</option>
+                                </select>
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Color</p>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <input
+                                    type="color"
+                                    aria-label="Category color"
+                                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                                    value={editDraft.color}
+                                    onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Spent this {editDraft.budget_period}: {fmt(cat.spent)}
+                            </p>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div key={cat.id}>
+                          <div className="mb-2 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                            <span className="font-bold text-foreground">{cat.name}</span>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="text-xs text-muted-foreground">
+                                {fmt(cat.spent)} of {fmt(cat.yearly_allocated)} {cat.budget_period}
+                              </span>
+                              <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                                {pct}%
+                              </span>
+                              <button
+                                onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-muted-foreground hover:text-foreground"
+                                aria-label={`Edit ${cat.name}`}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
+                                disabled={deleteCategory.isPending}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
+                                aria-label={`Delete ${cat.name}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          <ColorBar value={pct} color={barColor} />
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {pct}% used · {monthPct}% of month passed · {overPace ? '⚡ Over pace' : '✓ On track'}
+                            {catDailyAllowance !== null && (
+                              <span className="ml-2 text-primary">· You can spend {fmt(catDailyAllowance)}/day</span>
+                            )}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {noBudget.length > 0 && (
+                  <div className="space-y-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">No budget set</p>
+                    {noBudget.map(cat => {
+                      const isEditing = editingId === cat.id
+
+                      if (isEditing) {
+                        return (
+                          <div key={cat.id} className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-foreground">{cat.name}</span>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="h-7 px-3 text-xs" onClick={saveEdit} disabled={updateCategory.isPending}>
+                                  <Check className="mr-1 h-3.5 w-3.5" />
+                                  Save
+                                </Button>
+                                <Button size="sm" variant="secondary" className="h-7 px-3 text-xs" onClick={cancelEdit} aria-label="Cancel edit">
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Budget amount ({money.displayCurrency})</p>
+                                <Input
+                                  aria-label="Budget amount"
+                                  inputMode="decimal"
+                                  className="h-8 bg-secondary text-sm font-bold"
+                                  value={formatNumberInput(editDraft.yearly_allocated)}
+                                  onChange={e => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
+                                />
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Period</p>
+                                <select
+                                  aria-label="Budget period"
+                                  className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                  value={editDraft.budget_period}
+                                  onChange={e => setEditDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
+                                >
+                                  <option value="monthly">Monthly</option>
+                                  <option value="yearly">Yearly</option>
+                                </select>
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs text-muted-foreground">Color</p>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <input
+                                    type="color"
+                                    aria-label="Category color"
+                                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                                    value={editDraft.color}
+                                    onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Spent this {editDraft.budget_period}: {fmt(cat.spent)}
+                            </p>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div key={cat.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3">
+                          <span className="font-bold text-foreground">{cat.name}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
+                              className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground hover:text-foreground"
+                              aria-label={`Edit ${cat.name}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
+                              disabled={deleteCategory.isPending}
+                              className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-destructive hover:text-red-300 disabled:opacity-50"
+                              aria-label={`Delete ${cat.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No budget categories yet.{' '}
+                <Link to="/settings" className="font-bold text-primary hover:underline">
+                  Add categories in Settings →
+                </Link>
+              </p>
+            )}
+
+            {spendingSuggestions.length > 0 && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2"
+                  onClick={() => setShowSuggestions(v => !v)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-extrabold text-primary">
+                      {spendingSuggestions.length} budget{spendingSuggestions.length > 1 ? 's' : ''} suggested from history
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-primary">{showSuggestions ? 'Hide' : 'Show'}</span>
+                </button>
+                {showSuggestions && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    {spendingSuggestions.map(s => (
+                      <div key={s.name} className="flex items-center justify-between gap-3 rounded-lg bg-primary/10 px-3 py-2">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            avg {fmt(s.monthlyAvg)}/mo · {s.txCount} recent transactions
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleApplySuggestion(s.name, s.monthlyAvg)}
+                          disabled={addCategory.isPending}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {showAdd ? (
@@ -321,13 +573,16 @@ export function Budget() {
                     <option value="monthly">Monthly</option>
                     <option value="yearly">Yearly</option>
                   </select>
-                  <input
-                    type="color"
-                    aria-label="Category color"
-                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                    value={addColor}
-                    onChange={e => setAddColor(e.target.value)}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
+                    <input
+                      type="color"
+                      aria-label="Category color"
+                      className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                      value={addColor}
+                      onChange={e => setAddColor(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button className="h-8 flex-1 text-xs" onClick={handleAdd} disabled={addCategory.isPending}>
@@ -346,80 +601,12 @@ export function Budget() {
                 + Add category
               </button>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Budget rules</CardTitle></CardHeader>
-          <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
-            <div className="space-y-3 rounded-2xl border border-border bg-secondary p-4">
-              <Input
-                aria-label="Budget rule name"
-                className="bg-card"
-                value={ruleName}
-                onChange={event => setRuleName(event.target.value)}
-                placeholder="Rule name"
-              />
-              <select
-                aria-label="Budget rule category"
-                className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm font-bold text-foreground outline-none"
-                value={ruleCategory || categories[0]?.name || ''}
-                onChange={event => setRuleCategory(event.target.value)}
-              >
-                {categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
-              </select>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(100px,0.7fr)]">
-                <select
-                  aria-label="Budget rule type"
-                  className="h-10 rounded-md border border-input bg-card px-3 text-sm font-bold text-foreground outline-none"
-                  value={ruleType}
-                  onChange={event => setRuleType(event.target.value as BudgetRule['rule_type'])}
-                >
-                  <option value="cap">Cap</option>
-                  <option value="minimum">Minimum</option>
-                  <option value="flexible">Flexible</option>
-                  <option value="emergency_months">Emergency months</option>
-                </select>
-                <Input
-                  aria-label="Budget rule value"
-                  className="bg-card"
-                  inputMode="decimal"
-                  value={ruleValue}
-                  onChange={event => setRuleValue(formatNumberInput(event.target.value))}
-                  placeholder="Value"
-                />
-              </div>
-              <Button className="w-full" onClick={handleAddRule} disabled={addRule.isPending || categories.length === 0}>
-                Add budget rule
-              </Button>
-            </div>
-            {rules.length > 0 ? rules.map(rule => (
-              <div key={rule.id} className="flex items-center gap-4">
-                <div className="h-10 w-10 shrink-0 rounded-2xl" style={{ backgroundColor: ruleColors[rule.rule_type] ?? '#A9F5C7' }} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-bold text-foreground">{rule.name}</p>
-                  <p className="text-xs text-muted-foreground">{rule.category} - {rule.value}</p>
-                </div>
-                <button
-                  aria-label={`Delete rule ${rule.name}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-destructive hover:text-red-300"
-                  onClick={() => setDeleteTarget({ kind: 'rule', id: rule.id, name: rule.name })}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            )) : (
-              <p className="text-sm text-muted-foreground">No budget rules yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget ? `Delete ${deleteTarget.name}?` : ''}
-        description={deleteTarget?.kind === 'category'
-          ? 'This removes the budget option. Existing transactions will keep their category text.'
-          : 'This removes the budget rule from your planning panel.'}
+        description="This removes the budget category. Existing transactions will keep their category text."
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDeleteSelected}
       />

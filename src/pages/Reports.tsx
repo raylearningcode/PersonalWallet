@@ -1,11 +1,16 @@
-import { useMemo, useState } from 'react'
-import { useBudgetCategories, useTransactions } from '@/lib/queries'
+import { useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { useBudgetCategories, useTransactions, useAddTransaction, useWallets } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { calculateSavingsRate } from '@/lib/stats'
-import { useMoney } from '@/lib/currency'
+import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
+import { Download, Upload, FileText } from 'lucide-react'
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 type ReportRange = 'week' | 'month' | 'year'
 type ReportMode = 'expense' | 'income'
@@ -53,20 +58,45 @@ function formatPeriodLabel(range: ReportRange, date: Date) {
   return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${finalDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
 }
 
+function diffLabel(current: number, prev: number) {
+  if (prev === 0) return null
+  const pct = Math.round(((current - prev) / prev) * 100)
+  return { pct, up: pct > 0 }
+}
+
 export function Reports() {
   const money = useMoney()
   const { data: transactions = [] } = useTransactions()
   const { data: categories = [] } = useBudgetCategories()
+  const { data: wallets = [] } = useWallets()
+  const addTransaction = useAddTransaction()
   const [range, setRange] = useState<ReportRange>('month')
   const [periodDate, setPeriodDate] = useState(() => new Date())
   const [mode, setMode] = useState<ReportMode>('expense')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('')
+  const [importOpen, setImportOpen] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate), [periodDate, range])
   const periodLabel = formatPeriodLabel(range, periodDate)
+
   const rangeTx = useMemo(() => transactions.filter(tx => {
     const txDate = new Date(tx.date)
-    return txDate >= rangeStart && txDate < rangeEnd
-  }), [rangeEnd, rangeStart, transactions])
+    const inRange = txDate >= rangeStart && txDate < rangeEnd
+    const inWallet = !selectedWalletId || tx.wallet_id === selectedWalletId
+    return inRange && inWallet
+  }), [rangeEnd, rangeStart, transactions, selectedWalletId])
+
+  const prevDate = useMemo(() => addPeriod(periodDate, range, -1), [periodDate, range])
+  const { start: prevStart, end: prevEnd } = useMemo(() => getRangeBounds(range, prevDate), [prevDate, range])
+  const prevRangeTx = useMemo(() => transactions.filter(tx => {
+    const txDate = new Date(tx.date)
+    return txDate >= prevStart && txDate < prevEnd
+  }), [prevEnd, prevStart, transactions])
+
   const incomeTx = rangeTx.filter(tx => tx.type === 'income')
   const expenseTx = rangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer')
   const activeTx = mode === 'income' ? incomeTx : expenseTx
@@ -76,6 +106,11 @@ export function Reports() {
   const savingsRate = calculateSavingsRate(totalIncome, totalExpenses)
   const avgSpend = range === 'year' ? Math.round(totalExpenses / 12) : range === 'week' ? Math.round(totalExpenses / 7) : totalExpenses
 
+  const prevTotalIncome = prevRangeTx.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
+  const prevTotalExpenses = prevRangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer').reduce((sum, tx) => sum + tx.amount, 0)
+  const incomeDiff = diffLabel(totalIncome, prevTotalIncome)
+  const expenseDiff = diffLabel(totalExpenses, prevTotalExpenses)
+
   const categoryTotals = useMemo(() => {
     const map: Record<string, number> = {}
     activeTx.forEach(tx => {
@@ -83,9 +118,135 @@ export function Reports() {
     })
     return Object.entries(map).sort((a, b) => b[1] - a[1])
   }, [activeTx])
+
+  const categoryCounts = useMemo(() => {
+    const map: Record<string, number> = {}
+    activeTx.forEach(tx => { map[tx.category] = (map[tx.category] || 0) + 1 })
+    return map
+  }, [activeTx])
+
+  const filteredTx = useMemo(() => {
+    if (!selectedCategory) return []
+    return activeTx.filter(tx => tx.category === selectedCategory).sort((a, b) => b.date.localeCompare(a.date))
+  }, [activeTx, selectedCategory])
   const activeTotal = categoryTotals.reduce((sum, [, amount]) => sum + amount, 0)
-  const topCategory = categoryTotals[0]?.[0] ?? 'Empty'
+  const topCategory = categoryTotals[0]?.[0] ?? '—'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
+
+  const periodSummary = useMemo(() => {
+    const items: string[] = []
+    if (incomeDiff) items.push(`Income ${incomeDiff.up ? 'increased' : 'decreased'} by ${Math.abs(incomeDiff.pct)}% vs previous ${RANGE_LABELS[range].toLowerCase()}`)
+    if (expenseDiff) items.push(`Expenses ${expenseDiff.up ? 'increased' : 'decreased'} by ${Math.abs(expenseDiff.pct)}% vs previous ${RANGE_LABELS[range].toLowerCase()}`)
+    if (savingsRate > 0) items.push(`Savings rate this period: ${savingsRate}%`)
+    if (topCategory !== '—') items.push(`Top spending category: ${topCategory} (${categoryTotals[0] ? Math.round((categoryTotals[0][1] / activeTotal) * 100) : 0}% of total)`)
+    return items
+  }, [incomeDiff, expenseDiff, savingsRate, topCategory, range, categoryTotals, activeTotal])
+
+  const trendData = useMemo(() => {
+    const toStr = (d: Date) => d.toISOString().slice(0, 10)
+    const bucket = (txList: typeof rangeTx) => ({
+      expenses: txList.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0),
+      income: txList.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+    })
+    if (range === 'week') {
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(rangeStart); d.setDate(rangeStart.getDate() + i)
+        const dateStr = toStr(d)
+        return { label: d.toLocaleDateString('en-GB', { weekday: 'short' }), ...bucket(rangeTx.filter(t => t.date === dateStr)) }
+      })
+    }
+    if (range === 'month') {
+      const weeks: { label: string; expenses: number; income: number }[] = []
+      let cursor = new Date(rangeStart); let n = 1
+      while (cursor < rangeEnd) {
+        const wEnd = new Date(cursor); wEnd.setDate(wEnd.getDate() + 7)
+        weeks.push({ label: `W${n}`, ...bucket(rangeTx.filter(t => t.date >= toStr(cursor) && t.date < toStr(wEnd))) })
+        cursor = wEnd; n++
+      }
+      return weeks
+    }
+    return Array.from({ length: 12 }, (_, i) => {
+      const mStart = new Date(rangeStart.getFullYear(), i, 1)
+      const mEnd = new Date(rangeStart.getFullYear(), i + 1, 1)
+      return { label: mStart.toLocaleDateString('en-GB', { month: 'short' }), ...bucket(rangeTx.filter(t => t.date >= toStr(mStart) && t.date < toStr(mEnd))) }
+    })
+  }, [range, rangeStart, rangeEnd, rangeTx])
+
+  const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null) }
+  const handleModeChange = (m: ReportMode) => { setMode(m); setSelectedCategory(null) }
+
+  const handleFileLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setImportText((ev.target?.result as string) ?? '')
+    reader.readAsText(file)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleImportCSV = async () => {
+    const lines = importText.trim().split('\n').filter(Boolean)
+    if (lines.length < 2) { toast.error('CSV must have a header row and at least one data row'); return }
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''))
+    const dateIdx  = header.findIndex(h => h === 'date')
+    const descIdx  = header.findIndex(h => h.startsWith('desc'))
+    const catIdx   = header.findIndex(h => h.startsWith('cat'))
+    const typeIdx  = header.findIndex(h => h === 'type')
+    const amtIdx   = header.reduce((last, h, i) => (h.startsWith('amount') || h === 'amt') ? i : last, -1)
+    if (dateIdx < 0 || descIdx < 0 || amtIdx < 0) {
+      toast.error('CSV must have Date, Description, and Amount columns')
+      return
+    }
+    setImporting(true)
+    let added = 0; let failed = 0
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+      const date = cols[dateIdx]?.slice(0, 10)
+      const description = cols[descIdx] ?? ''
+      const category = catIdx >= 0 ? cols[catIdx] ?? '' : ''
+      const rawType = typeIdx >= 0 ? cols[typeIdx]?.toLowerCase() : ''
+      const type = rawType === 'income' ? 'income' : rawType === 'transfer' ? 'transfer' : 'expense'
+      const amount = parseFloat(cols[amtIdx]?.replace(/[^0-9.]/g, '') ?? '0')
+      if (!date || !description || isNaN(amount) || amount <= 0) { failed++; continue }
+      try {
+        await addTransaction.mutateAsync({
+          user_id: null, description, amount, original_amount: amount,
+          original_currency: money.baseCurrency, type,
+          category: category || 'Other',
+          wallet_id: wallets[0]?.id ?? null,
+          transfer_wallet_id: null, recurring_rule_id: null,
+          recurring_due_date: null, date, needs_review: true,
+        })
+        added++
+      } catch { failed++ }
+    }
+    setImporting(false)
+    toast.success(`Imported ${added} transaction${added !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} skipped)` : ''}`)
+    if (added > 0) { setImportText(''); setImportOpen(false) }
+  }
+
+  const handleExportCSV = () => {
+    const headers = ['Date', 'Description', 'Category', 'Type', 'Amount (display)', 'Amount (base)']
+    const rows = rangeTx
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map(tx => [
+        tx.date,
+        `"${tx.description.replace(/"/g, '""')}"`,
+        tx.category,
+        tx.type,
+        money.formatDisplay(tx.amount).replace(/,/g, ''),
+        money.formatBase(tx.amount).replace(/,/g, ''),
+      ])
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `finpath-${range}-${periodLabel.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('CSV exported successfully')
+  }
 
   return (
     <div>
@@ -104,20 +265,107 @@ export function Reports() {
                 <button
                   key={item}
                   className={`rounded-full px-4 py-2 text-sm font-extrabold ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                  onClick={() => setRange(item)}
+                  onClick={() => handleRangeChange(item)}
                 >
                   {RANGE_LABELS[item]}
                 </button>
               ))}
             </div>
+            {wallets.length > 0 && (
+              <select
+                aria-label="Filter by wallet"
+                className="h-9 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                value={selectedWalletId}
+                onChange={e => { setSelectedWalletId(e.target.value); setSelectedCategory(null) }}
+              >
+                <option value="">All wallets</option>
+                {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            )}
+            <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportCSV} disabled={rangeTx.length === 0}>
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button size="sm" variant="secondary" className="gap-2" onClick={() => window.print()}>
+              <FileText className="h-4 w-4" />
+              Export PDF
+            </Button>
+            <Button size="sm" variant="secondary" className="gap-2" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Import CSV
+            </Button>
           </div>
         )}
       />
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Savings rate" value={`${savingsRate}%`} sub={`${RANGE_LABELS[range]} view`} badgeVariant="success" />
         <StatCard label={range === 'week' ? 'Daily avg.' : range === 'year' ? 'Monthly avg.' : 'Spent'} value={money.formatDisplay(avgSpend)} sub="Expense pace" />
-        <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No spending yet'} badgeVariant="warning" />
+        <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 && categoryTotals.length > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No data yet'} badgeVariant="warning" />
       </div>
+
+      {/* Period comparison */}
+      {(incomeDiff || expenseDiff) && (
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card px-5 py-4">
+            <p className="text-xs font-bold text-muted-foreground">Income vs previous {RANGE_LABELS[range].toLowerCase()}</p>
+            <div className="mt-2 flex items-end gap-3">
+              <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalIncome)}</span>
+              {incomeDiff && (
+                <span className={`mb-0.5 text-sm font-bold ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
+                  {incomeDiff.up ? '▲' : '▼'} {Math.abs(incomeDiff.pct)}%
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">prev: {money.formatDisplay(prevTotalIncome)}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-card px-5 py-4">
+            <p className="text-xs font-bold text-muted-foreground">Expenses vs previous {RANGE_LABELS[range].toLowerCase()}</p>
+            <div className="mt-2 flex items-end gap-3">
+              <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalExpenses)}</span>
+              {expenseDiff && (
+                <span className={`mb-0.5 text-sm font-bold ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
+                  {expenseDiff.up ? '▲' : '▼'} {Math.abs(expenseDiff.pct)}%
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">prev: {money.formatDisplay(prevTotalExpenses)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Spending trend chart */}
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle className="text-xl">Income vs Expenses</CardTitle>
+            <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#A9F5C7]" />Income</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#FF8388]" />Expenses</span>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {range === 'week' ? 'Daily breakdown' : range === 'month' ? 'Weekly breakdown' : 'Monthly breakdown'} for {periodLabel}
+          </p>
+        </CardHeader>
+        <CardContent className="px-2 pb-4 sm:px-6">
+          {rangeTx.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No data for this period.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={trendData} barGap={3} barCategoryGap="28%">
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 12, fontSize: 12 }}
+                  formatter={(v) => money.formatDisplay(typeof v === 'number' ? v : 0)}
+                />
+                <Bar dataKey="income" name="Income" fill="#A9F5C7" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="Expenses" fill="#FF8388" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] lg:gap-8">
         <Card>
@@ -129,7 +377,7 @@ export function Reports() {
                   <button
                     key={item}
                     className={`rounded-full px-5 py-2 text-sm font-extrabold capitalize ${mode === item ? 'bg-card text-foreground' : 'text-muted-foreground'}`}
-                    onClick={() => setMode(item)}
+                    onClick={() => handleModeChange(item)}
                   >
                     {item}
                   </button>
@@ -138,22 +386,35 @@ export function Reports() {
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-8 sm:px-8">
-            <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
-              <div className="relative mx-auto h-[240px] w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal) }}>
-                <div className="absolute inset-12 flex flex-col items-center justify-center rounded-full bg-card text-center">
+            <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
+              <div className="relative mx-auto aspect-square w-full max-w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal) }}>
+                <div className="absolute inset-[20%] flex flex-col items-center justify-center rounded-full bg-card text-center">
                   <span className="text-sm text-muted-foreground">Total {mode}</span>
                   <strong className="mt-2 text-xl text-foreground">{money.formatDisplay(activeTotal)}</strong>
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
+                {selectedCategory && (
+                  <button
+                    className="mb-2 flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => setSelectedCategory(null)}
+                  >
+                    ✕ Clear filter: {selectedCategory}
+                  </button>
+                )}
                 {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
-                  <div key={name} className="flex items-center justify-between gap-4">
+                  <button
+                    key={name}
+                    className={`flex w-full items-center justify-between gap-4 rounded-xl px-2 py-1.5 transition-colors ${selectedCategory === name ? 'bg-secondary' : 'hover:bg-secondary/60'}`}
+                    onClick={() => setSelectedCategory(selectedCategory === name ? null : name)}
+                    title={`Filter by ${name}`}
+                  >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />
+                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />
                       <span className="truncate font-bold text-foreground">{name}</span>
                     </div>
                     <span className="text-sm font-bold text-muted-foreground">{Math.round((amount / activeTotal) * 100)}%</span>
-                  </div>
+                  </button>
                 )) : (
                   <p className="text-sm text-muted-foreground">No {mode} data in this range.</p>
                 )}
@@ -168,15 +429,18 @@ export function Reports() {
             {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
               <div key={name} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl text-lg" style={{ backgroundColor: categoryColors[index % categoryColors.length] }}>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold" style={{ backgroundColor: categoryColors[index % categoryColors.length] }}>
                     {name.slice(0, 1)}
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-extrabold text-foreground">{name}</p>
-                    <p className="text-sm text-muted-foreground">{RANGE_LABELS[range]} {mode}</p>
+                    <p className="text-xs text-muted-foreground">{categoryCounts[name] ?? 0} transaction{(categoryCounts[name] ?? 0) !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
-                <p className="text-right font-extrabold text-foreground">{mode === 'expense' ? '-' : '+'}{money.formatDisplay(amount)}</p>
+                <div className="text-right">
+                  <p className={`font-extrabold ${txAmountColor(amount, mode)}`}>{txAmountSign(amount, mode)}{money.formatDisplay(amount)}</p>
+                  <p className="text-xs text-muted-foreground">{activeTotal > 0 ? Math.round((amount / activeTotal) * 100) : 0}%</p>
+                </div>
               </div>
             )) : (
               <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">No category data yet.</p>
@@ -184,6 +448,29 @@ export function Reports() {
           </CardContent>
         </Card>
       </div>
+
+      {selectedCategory && filteredTx.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">{selectedCategory} — {filteredTx.length} transaction{filteredTx.length === 1 ? '' : 's'}</CardTitle>
+            <p className="text-sm text-muted-foreground">Total: {money.formatDisplay(filteredTx.reduce((s, t) => s + t.amount, 0))}</p>
+          </CardHeader>
+          <CardContent className="space-y-2 px-5 pb-6 sm:px-8">
+            {filteredTx.map(tx => (
+              <div key={tx.id} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-foreground">{tx.description}</p>
+                  <p className="text-xs text-muted-foreground">{tx.date}</p>
+                </div>
+                <p className={`shrink-0 font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                  {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="mt-6">
         <CardHeader><CardTitle className="text-xl">Reporter notes</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 px-5 pb-6 sm:px-8 md:grid-cols-2">
@@ -197,6 +484,58 @@ export function Reports() {
           )}
         </CardContent>
       </Card>
+
+      {periodSummary.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader><CardTitle className="text-xl">Period summary</CardTitle></CardHeader>
+          <CardContent className="px-5 pb-6 sm:px-8">
+            <ul className="space-y-2">
+              {periodSummary.map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      <Sheet open={importOpen} onOpenChange={setImportOpen}>
+        <SheetContent side="right" className="w-full max-w-md">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Import transactions
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
+              <p className="font-bold text-foreground">Accepted CSV columns:</p>
+              <p className="mt-1">Date, Description, Category, Type (income/expense/transfer), Amount</p>
+              <p className="mt-2 text-xs">You can use FinPath's own exported CSV, or any CSV that has at least Date, Description, and Amount. Imported rows are marked "needs review".</p>
+            </div>
+            <div>
+              <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileLoad} />
+              <Button variant="secondary" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4" />
+                Choose CSV file
+              </Button>
+            </div>
+            <p className="text-center text-xs text-muted-foreground">— or paste CSV text below —</p>
+            <textarea
+              aria-label="CSV text to import"
+              className="min-h-48 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none focus:border-primary"
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              placeholder={"Date,Description,Category,Type,Amount\n2026-05-01,Grocery Store,Food,expense,150000"}
+            />
+            <Button onClick={handleImportCSV} disabled={!importText.trim() || importing} className="w-full">
+              {importing ? 'Importing…' : 'Import transactions'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

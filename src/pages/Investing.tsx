@@ -27,6 +27,52 @@ const DEFAULT_ALLOCATION: AllocationItem[] = [
   { name: 'Learning', pct: 10, color: '#FFD276' },
 ]
 
+const SCENARIO_RETURNS = [5, 8, 12] // annual % for conservative, moderate, aggressive
+
+type ContributionFrequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+const FREQ_TO_MONTHLY: Record<ContributionFrequency, number> = {
+  weekly: 52 / 12,
+  monthly: 1,
+  quarterly: 1 / 3,
+  yearly: 1 / 12,
+}
+const FREQ_LABELS: Record<ContributionFrequency, string> = {
+  weekly: 'week',
+  monthly: 'month',
+  quarterly: 'quarter',
+  yearly: 'year',
+}
+
+const RISK_PROFILES: { label: string; description: string; allocation: AllocationItem[] }[] = [
+  {
+    label: 'Conservative',
+    description: 'Capital preservation — majority in bonds and cash',
+    allocation: [
+      { name: 'Bonds', pct: 60, color: '#93C5FD' },
+      { name: 'ETF', pct: 30, color: '#A9F5C7' },
+      { name: 'Cash', pct: 10, color: '#C4AEFF' },
+    ],
+  },
+  {
+    label: 'Moderate',
+    description: 'Balanced growth with downside protection',
+    allocation: [
+      { name: 'ETF', pct: 60, color: '#A9F5C7' },
+      { name: 'Bonds', pct: 25, color: '#93C5FD' },
+      { name: 'Cash', pct: 15, color: '#C4AEFF' },
+    ],
+  },
+  {
+    label: 'Aggressive',
+    description: 'Maximum growth — higher risk, higher reward',
+    allocation: [
+      { name: 'ETF', pct: 65, color: '#A9F5C7' },
+      { name: 'Crypto', pct: 25, color: '#FFD276' },
+      { name: 'Cash', pct: 10, color: '#C4AEFF' },
+    ],
+  },
+]
+
 const parseRate = (value: string) => {
   const parsed = Number(value.replace(/[^\d.,]/g, '').replace(',', '.'))
   return Number.isFinite(parsed) ? parsed : 0
@@ -54,18 +100,19 @@ export function Investing() {
   const [draft, setDraft] = useState<SimulatorValues>({
     monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
   })
-  const [simulator, setSimulator] = useState<SimulatorValues>({
-    monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
-  })
+  const [contributionFrequency, setContributionFrequency] = useState<ContributionFrequency>('monthly')
   const [contributionCurrency, setContributionCurrency] = useState(savedContributionCurrency)
   const [targetCurrency, setTargetCurrency] = useState(savedTargetCurrency)
   const [allocation, setAllocation] = useState<AllocationItem[]>(DEFAULT_ALLOCATION)
+  // chartMax tracks the bar range independently — clicking a bar updates draft.durationYears
+  // but NOT chartMax, so the chart scale doesn't collapse when a shorter bar is clicked.
+  const [chartMax, setChartMax] = useState(() => Math.min(30, Math.max(investConfig?.duration_years ?? 0, 10)))
 
   useEffect(() => {
     setDraft(emptySimulator)
-    setSimulator(emptySimulator)
     setContributionCurrency(savedContributionCurrency)
     setTargetCurrency(savedTargetCurrency)
+    setChartMax(Math.min(30, Math.max(emptySimulator.durationYears, 10)))
   }, [emptySimulator, savedContributionCurrency, savedTargetCurrency])
 
   useEffect(() => {
@@ -76,44 +123,55 @@ export function Investing() {
 
   const draftBase = useMemo(() => ({
     ...draft,
-    monthlyContribution: money.toBase(draft.monthlyContribution, contributionCurrency),
+    monthlyContribution: money.toBase(draft.monthlyContribution, contributionCurrency) * FREQ_TO_MONTHLY[contributionFrequency],
     targetPortfolio: money.toBase(draft.targetPortfolio, targetCurrency),
-  }), [contributionCurrency, draft, money.baseCurrency, money.displayCurrency, money.rates, targetCurrency])
-  const simulatorBase = useMemo(() => ({
-    ...simulator,
-    monthlyContribution: money.toBase(simulator.monthlyContribution, contributionCurrency),
-    targetPortfolio: money.toBase(simulator.targetPortfolio, targetCurrency),
-  }), [contributionCurrency, money.baseCurrency, money.displayCurrency, money.rates, simulator, targetCurrency])
+  }), [contributionCurrency, contributionFrequency, draft, money.baseCurrency, money.displayCurrency, money.rates, targetCurrency])
 
-  const plan = useMemo(() => calculateInvestmentPlan(simulatorBase), [simulatorBase])
-  const targetGap = Math.max(0, simulatorBase.targetPortfolio - plan.projectedPortfolio)
-  const targetProgress = simulatorBase.targetPortfolio > 0
-    ? Math.min(100, Math.round((plan.projectedPortfolio / simulatorBase.targetPortfolio) * 100))
+  const plan = useMemo(() => calculateInvestmentPlan(draftBase), [draftBase])
+  const targetGap = Math.max(0, draftBase.targetPortfolio - plan.projectedPortfolio)
+  const targetProgress = draftBase.targetPortfolio > 0
+    ? Math.min(100, Math.round((plan.projectedPortfolio / draftBase.targetPortfolio) * 100))
     : 0
+  const chartStep = Math.ceil(chartMax / 10)
   const growthData = useMemo(
     () => generateGrowthData(
-      simulatorBase.monthlyContribution,
-      simulator.annualReturnRate,
-      Math.max(0, simulator.durationYears)
+      draftBase.monthlyContribution,
+      draft.annualReturnRate,
+      chartMax
     ).map(point => ({
       ...point,
-      value: point.value + simulator.initialCapital * Math.pow(1 + simulator.annualReturnRate / 100 / 12, point.year * 12),
+      value: point.value + draft.initialCapital * Math.pow(1 + draft.annualReturnRate / 100 / 12, point.year * 12),
     })),
-    [simulator, simulatorBase.monthlyContribution]
+    [draft.annualReturnRate, draft.initialCapital, draftBase.monthlyContribution, chartMax]
   )
-  const maxValue = Math.max(...growthData.map(row => row.value), 1)
+  const chartData = useMemo(
+    () => growthData.filter(p => p.year % chartStep === 0 || p.year === chartMax),
+    [growthData, chartStep, chartMax]
+  )
+  const maxValue = Math.max(...chartData.map(row => row.value), 1)
 
   const updateDraft = (key: keyof SimulatorValues, value: string) => {
     const parser = key === 'annualReturnRate' ? parseRate : parseMoney
-    setDraft(current => ({ ...current, [key]: parser(value) }))
+    const parsed = parser(value)
+    const clamped = key === 'durationYears' ? Math.min(30, parsed) : parsed
+    setDraft(current => ({ ...current, [key]: clamped }))
+    if (key === 'durationYears') {
+      setChartMax(Math.min(30, Math.max(Math.round(clamped), 10)))
+    }
   }
 
+  // Clicking a bar updates the selected duration for ROI but not the chart scale
   const setDuration = (durationYears: number) => {
     setDraft(current => ({ ...current, durationYears }))
-    setSimulator(current => ({ ...current, durationYears }))
   }
 
-  const runSimulator = () => setSimulator(draft)
+  const runSimulator = () => {
+    if (draft.durationYears <= 0 || draft.monthlyContribution <= 0) {
+      toast.error('Set a monthly contribution and duration to run the simulation')
+      return
+    }
+    toast.success(`${draft.durationYears}yr projection: ${money.formatDisplay(plan.projectedPortfolio)} · gain ${money.formatDisplay(plan.projectedGain)}`)
+  }
 
   const saveSimulator = async () => {
     try {
@@ -128,7 +186,6 @@ export function Investing() {
         current_value: draft.initialCapital,
         allocations: allocation,
       })
-      setSimulator(draft)
       toast.success('Investment simulator saved')
     } catch {
       toast.error('Failed to save simulator')
@@ -139,13 +196,13 @@ export function Investing() {
     try {
       await saveInvestmentConfig.mutateAsync({
         id: investConfig?.id,
-        monthly_contribution: simulatorBase.monthlyContribution,
+        monthly_contribution: draftBase.monthlyContribution,
         contribution_currency: contributionCurrency,
-        target_portfolio: simulatorBase.targetPortfolio,
+        target_portfolio: draftBase.targetPortfolio,
         target_currency: targetCurrency,
-        return_rate: simulator.annualReturnRate,
-        duration_years: simulator.durationYears,
-        current_value: simulator.initialCapital,
+        return_rate: draft.annualReturnRate,
+        duration_years: draft.durationYears,
+        current_value: draft.initialCapital,
         allocations: allocation,
       })
       toast.success('Allocation saved')
@@ -171,13 +228,13 @@ export function Investing() {
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Projected in {money.displayCurrency}</span>
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Base value {money.formatBase(plan.projectedPortfolio)}</span>
-              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">{money.format(simulator.monthlyContribution, contributionCurrency)}/month</span>
-              {simulatorBase.targetPortfolio > 0 && (
+              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">{money.format(draft.monthlyContribution, contributionCurrency)}/{FREQ_LABELS[contributionFrequency]}</span>
+              {draftBase.targetPortfolio > 0 && (
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Target gap {money.formatDisplay(targetGap)}</span>
               )}
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
-              Estimated in {simulator.durationYears} years at {simulator.annualReturnRate}% annual return.
+              Estimated in {draft.durationYears} years at {draft.annualReturnRate}% annual return.
             </p>
           </div>
           <div className="relative flex flex-col gap-3 sm:flex-row lg:shrink-0">
@@ -192,22 +249,41 @@ export function Investing() {
       </Card>
 
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
-            <CardTitle className="text-xl">Growth simulation</CardTitle>
-            <p className="text-sm text-muted-foreground">Tap a bar to change the investment horizon.</p>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-xl">Growth simulation</CardTitle>
+              <span className="text-xs font-bold text-muted-foreground">
+                {draft.durationYears > 0 ? `${draft.durationYears}yr · tap bar to change` : 'tap a bar to set duration'}
+              </span>
+            </div>
           </CardHeader>
-          <CardContent className="flex h-[230px] items-end justify-between gap-4 px-6 pb-8 sm:h-[266px] sm:justify-center sm:gap-10 sm:px-8 lg:gap-12">
-            {growthData.map((point) => (
-              <button
-                key={point.year}
-                className={`w-5 rounded-full transition-colors ${point.year === simulator.durationYears ? 'bg-primary' : 'bg-muted'}`}
-                style={{ height: `${Math.max(32, (point.value / maxValue) * 230)}px` }}
-                onClick={() => setDuration(point.year)}
-                aria-label={`Use ${point.year} year duration`}
-                title={`${point.year} years: ${money.formatDisplay(point.value)}`}
-              />
-            ))}
+          <CardContent className="flex flex-1 flex-col justify-center px-6 pb-8 sm:px-8">
+            {draftBase.monthlyContribution <= 0 || draft.durationYears <= 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center" style={{ height: '200px' }}>
+                <p className="font-extrabold text-foreground">No simulation yet</p>
+                <p className="mt-2 text-sm text-muted-foreground">Enter monthly contribution and expected return, then run the simulation.</p>
+              </div>
+            ) : (
+              <div className="flex items-end justify-between gap-2" style={{ height: '200px' }}>
+                {chartData.map((point) => (
+                  <div key={point.year} className="flex flex-1 flex-col items-center gap-1.5">
+                    <button
+                      type="button"
+                      className={`w-full max-w-[20px] rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
+                      style={{ height: `${Math.max(8, (point.value / maxValue) * 168)}px` }}
+                      onClick={() => setDuration(point.year)}
+                      aria-label={`Use ${point.year} year duration`}
+                      title={`${point.year} years: ${money.formatDisplay(point.value)}`}
+                    />
+                    <span className={`text-[9px] font-bold leading-none sm:text-[10px] ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}y</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-4 text-center text-xs text-muted-foreground/70">
+              Contributions are converted to a monthly equivalent; return is compounded monthly. Estimate only — not financial advice.
+            </p>
           </CardContent>
         </Card>
 
@@ -238,6 +314,20 @@ export function Investing() {
                 {CURRENCIES.map(currency => <option key={currency} value={currency}>{currency}</option>)}
               </select>
             </div>
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Contribution frequency</Label>
+              <select
+                aria-label="Contribution frequency"
+                className="mt-1 h-8 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+                value={contributionFrequency}
+                onChange={event => setContributionFrequency(event.target.value as ContributionFrequency)}
+              >
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
             <div className="rounded-2xl border border-border bg-secondary p-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-bold text-muted-foreground">Target portfolio</p>
@@ -249,7 +339,7 @@ export function Investing() {
               <p className="mt-2 text-xs text-muted-foreground">Target gap {money.formatDisplay(targetGap)}</p>
             </div>
             {([
-              [`Monthly contribution (${contributionCurrency})`, 'monthlyContribution', formatNumberInput(draft.monthlyContribution)],
+              [`Contribution per ${FREQ_LABELS[contributionFrequency]} (${contributionCurrency})`, 'monthlyContribution', formatNumberInput(draft.monthlyContribution)],
               [`Target portfolio (${targetCurrency})`, 'targetPortfolio', formatNumberInput(draft.targetPortfolio)],
               ['Expected return / year', 'annualReturnRate', String(draft.annualReturnRate)],
               ['Duration (years)', 'durationYears', String(draft.durationYears)],
@@ -281,8 +371,39 @@ export function Investing() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-xl">Portfolio allocation</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-xl">Portfolio allocation</CardTitle>
+          <p className="text-sm text-muted-foreground">Apply a risk profile as a starting point, then customise the percentages below.</p>
+        </CardHeader>
         <CardContent className="px-5 pb-6 sm:px-8">
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {RISK_PROFILES.map(profile => (
+              <button
+                key={profile.label}
+                className="rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                onClick={() => {
+                  setAllocation(profile.allocation)
+                  toast.success(`${profile.label} profile applied`)
+                }}
+              >
+                <p className="font-extrabold text-foreground">{profile.label}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{profile.description}</p>
+                <div className="mt-3 flex gap-1">
+                  {profile.allocation.map(item => (
+                    <div
+                      key={item.name}
+                      className="flex-1 overflow-hidden rounded-full"
+                      style={{ background: item.color, height: 4, minWidth: 0 }}
+                      title={`${item.name} ${item.pct}%`}
+                    />
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {profile.allocation.map(i => `${i.name} ${i.pct}%`).join(' · ')}
+                </p>
+              </button>
+            ))}
+          </div>
           <AllocationEditor
             value={allocation}
             onChange={setAllocation}
@@ -291,6 +412,43 @@ export function Investing() {
           />
         </CardContent>
       </Card>
+
+      {draftBase.monthlyContribution > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Scenario comparison</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Same contribution ({money.format(draft.monthlyContribution, contributionCurrency)}/month) · {draft.durationYears > 0 ? `${draft.durationYears} years` : '10 years'} · different risk profiles
+            </p>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-3 px-5 pb-6 sm:grid-cols-3 sm:px-8">
+            {RISK_PROFILES.map((profile, i) => {
+              const assumedReturn = SCENARIO_RETURNS[i]
+              const scenarioPlan = calculateInvestmentPlan({
+                ...draftBase,
+                annualReturnRate: assumedReturn,
+                durationYears: Math.max(1, draft.durationYears || 10),
+              })
+              return (
+                <div key={profile.label} className="rounded-2xl border border-border bg-secondary p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-extrabold text-foreground">{profile.label}</p>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">{assumedReturn}%/yr</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{profile.description}</p>
+                  <div className="mt-3 flex gap-1">
+                    {profile.allocation.map(item => (
+                      <div key={item.name} className="flex-1 overflow-hidden rounded-full" style={{ background: item.color, height: 3 }} title={`${item.name} ${item.pct}%`} />
+                    ))}
+                  </div>
+                  <p className="mt-3 text-lg font-extrabold text-primary">{money.formatDisplay(scenarioPlan.projectedPortfolio)}</p>
+                  <p className="text-xs text-muted-foreground">Gain: {money.formatDisplay(scenarioPlan.projectedGain)}</p>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
