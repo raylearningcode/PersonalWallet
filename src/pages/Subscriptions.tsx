@@ -21,8 +21,8 @@ const FREQ_LABELS: Record<string, string> = {
 }
 
 const FREQ_MONTHS: Record<string, number> = {
-  daily: 1 / 30,
-  weekly: 1 / 4.33,
+  daily: 30,
+  weekly: 4.33,
   monthly: 1,
   yearly: 1 / 12,
 }

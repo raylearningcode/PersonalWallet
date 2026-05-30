@@ -88,8 +88,14 @@ export function Budget() {
     [categories, expenseTransactions]
   )
 
-  const totalAllocated = useMemo(() => categoriesWithSpent.reduce((s, c) => s + c.yearly_allocated, 0), [categoriesWithSpent])
-  const totalSpent = useMemo(() => categoriesWithSpent.reduce((s, c) => s + c.spent, 0), [categoriesWithSpent])
+  const monthsElapsed = now.getMonth() + 1
+  // Normalize all categories to a monthly equivalent so monthly and yearly budgets can be summed fairly
+  const totalAllocated = useMemo(() => categoriesWithSpent.reduce((s, c) => {
+    return s + (c.budget_period === 'yearly' ? c.yearly_allocated / 12 : c.yearly_allocated)
+  }, 0), [categoriesWithSpent])
+  const totalSpent = useMemo(() => categoriesWithSpent.reduce((s, c) => {
+    return s + (c.budget_period === 'yearly' ? c.spent / Math.max(1, monthsElapsed) : c.spent)
+  }, 0), [categoriesWithSpent, monthsElapsed])
   const remaining = totalAllocated - totalSpent
 
   const daysElapsed = now.getDate()
@@ -235,7 +241,7 @@ export function Budget() {
         }
       />
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-        <StatCard label="Planned budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Current category limits'} />
+        <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Blended monthly equivalent'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(hasData ? remaining : 0) : 'Safe inside active periods'} badgeVariant="success" />
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData ? 'Based on current period spending' : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>

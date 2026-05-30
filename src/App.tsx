@@ -18,6 +18,7 @@ export function App() {
         <Route path="transactions" element={<Transactions />} />
         <Route path="budget" element={<Budget />} />
         <Route path="estimation" element={<Estimation />} />
+        <Route path="planning" element={<Estimation />} />
         <Route path="investing" element={<Investing />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />

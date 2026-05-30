@@ -140,32 +140,36 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
       needs_review: false,
     }
 
-    await addTransaction.mutateAsync(payload)
+    try {
+      await addTransaction.mutateAsync(payload)
 
-    if (isRecurring) {
-      const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
-      await addRecurringRule.mutateAsync({
-        description: description.trim(),
-        amount: baseAmount,
-        original_amount: parsedAmount,
-        original_currency: inputCurrency,
-        type,
-        category: type === 'transfer' ? 'Transfer' : selectedCategory,
-        wallet_id: walletId || null,
-        transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
-        start_date: date,
-        next_due_date: addRecurringInterval(date, frequency),
-        frequency,
-        end_date: endDate || null,
-        installment_total: Number.isFinite(parsedInstallments) ? parsedInstallments : null,
-        installment_paid: Number.isFinite(parsedInstallments) ? 1 : 0,
-        active: !completedAtStart,
-      })
+      if (isRecurring) {
+        const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
+        await addRecurringRule.mutateAsync({
+          description: description.trim(),
+          amount: baseAmount,
+          original_amount: parsedAmount,
+          original_currency: inputCurrency,
+          type,
+          category: type === 'transfer' ? 'Transfer' : selectedCategory,
+          wallet_id: walletId || null,
+          transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
+          start_date: date,
+          next_due_date: addRecurringInterval(date, frequency),
+          frequency,
+          end_date: endDate || null,
+          installment_total: Number.isFinite(parsedInstallments) ? parsedInstallments : null,
+          installment_paid: Number.isFinite(parsedInstallments) ? 1 : 0,
+          active: !completedAtStart,
+        })
+      }
+
+      toast.success('Transaction added')
+      reset()
+      onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save transaction')
     }
-
-    toast.success('Transaction added')
-    reset()
-    onClose()
   }
 
   return (
