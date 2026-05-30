@@ -214,7 +214,11 @@ export function Subscriptions() {
               {rule.category} · {FREQ_LABELS[rule.frequency]}{walletName ? ` · ${walletName}` : ''}
               {rule.frequency !== 'monthly' && (
                 <span className="ml-1 text-muted-foreground/70">
+<<<<<<< HEAD
                   · ≈ {money.formatDisplay(Math.round(getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)))}/mo · {money.formatDisplay(Math.round(getYearlyImpact(rule.original_amount ?? rule.amount, rule.frequency)))}/yr
+=======
+                  · ≈ {money.formatDisplay(Math.round(getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)))}/month impact
+>>>>>>> 0942c21 (Sprint: Accuracy, Mobile Speed, and Trust)
                 </span>
               )}
             </p>
@@ -406,9 +410,15 @@ export function Subscriptions() {
       )}
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+<<<<<<< HEAD
         <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={`≈ ${money.formatDisplay(monthlyExpenses * 12)}/year`} badgeVariant="warning" />
         <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={`${income.filter(r => r.active).length} active`} badgeVariant="success" />
         <StatCard label="Net monthly" value={money.formatDisplay(monthlyIncome - monthlyExpenses)} sub="Income minus expenses" />
+=======
+        <StatCard label="Monthly cost" value={money.formatDisplayCompact(monthlyExpenses)} sub={money.formatDisplay(monthlyExpenses)} badgeVariant="warning" />
+        <StatCard label="Monthly income" value={money.formatDisplayCompact(monthlyIncome)} sub={money.formatDisplay(monthlyIncome)} badgeVariant="success" />
+        <StatCard label="Net monthly" value={money.formatDisplayCompact(monthlyIncome - monthlyExpenses)} sub="Income minus expenses" />
+>>>>>>> 0942c21 (Sprint: Accuracy, Mobile Speed, and Trust)
         <StatCard
           label="Next renewal"
           value={nextRenewal ? nextRenewal.description : 'None'}
