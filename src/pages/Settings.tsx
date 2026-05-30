@@ -741,9 +741,18 @@ export function Settings() {
       <ConfirmDialog
         open={Boolean(confirmDelete)}
         title={confirmDelete ? `Delete ${confirmDelete.name} ${confirmDelete.kind}?` : ''}
-        description={confirmDelete?.kind === 'category'
-          ? 'Existing transactions will keep their category text, but this option will disappear from new expense forms.'
-          : 'Existing transactions will keep their wallet reference, but this wallet will disappear from new entries.'}
+        description={(() => {
+          if (!confirmDelete) return ''
+          const txCount = confirmDelete.kind === 'category'
+            ? transactions.filter(t => t.category === confirmDelete.name).length
+            : transactions.filter(t => t.wallet_id === confirmDelete.id).length
+          const txNote = txCount > 0
+            ? `${txCount} transaction${txCount !== 1 ? 's' : ''} reference this ${confirmDelete.kind}. `
+            : ''
+          return confirmDelete.kind === 'category'
+            ? `${txNote}Existing transactions keep their category label but it will disappear from new expense forms.`
+            : `${txNote}Existing transactions keep their wallet reference but this wallet will disappear from new entries.`
+        })()}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={confirmDeleteSelected}
       />

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod } from './budget'
+import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod, toMonthlyAllocation } from './budget'
 
 describe('getOverspendRisk', () => {
   it('returns Low when remaining > 40%', () => {
@@ -25,6 +25,24 @@ describe('getCategoryUsedPct', () => {
   })
   it('caps at 100 when overspent', () => {
     expect(getCategoryUsedPct(1500, 1000)).toBe(100)
+  })
+})
+
+describe('toMonthlyAllocation', () => {
+  it('returns the amount unchanged for monthly budgets', () => {
+    expect(toMonthlyAllocation(1_000_000, 'monthly')).toBe(1_000_000)
+  })
+
+  it('divides yearly allocation by 12 for yearly budgets', () => {
+    expect(toMonthlyAllocation(1_200_000, 'yearly')).toBe(100_000)
+    expect(toMonthlyAllocation(6_000_000, 'yearly')).toBe(500_000)
+  })
+
+  it('normalising prevents apples-and-oranges summation', () => {
+    // Summing monthly + yearly/12 gives a sensible monthly total
+    const monthlyBudget = toMonthlyAllocation(500_000, 'monthly')
+    const yearlyBudget = toMonthlyAllocation(1_200_000, 'yearly')
+    expect(monthlyBudget + yearlyBudget).toBe(600_000)
   })
 })
 

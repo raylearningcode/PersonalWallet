@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { FREQ_MONTHS, getMonthlyImpact } from '@/lib/subscriptionCalc'
 import { toast } from 'sonner'
 import { Plus, Pause, Play, Trash2, RefreshCw, X } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
@@ -20,12 +21,6 @@ const FREQ_LABELS: Record<string, string> = {
   yearly: 'Yearly',
 }
 
-const FREQ_MONTHS: Record<string, number> = {
-  daily: 30,
-  weekly: 4.33,
-  monthly: 1,
-  yearly: 1 / 12,
-}
 
 function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000)
@@ -214,7 +209,7 @@ export function Subscriptions() {
               {rule.category} · {FREQ_LABELS[rule.frequency]}{walletName ? ` · ${walletName}` : ''}
               {rule.frequency !== 'monthly' && (
                 <span className="ml-1 text-muted-foreground/70">
-                  · ≈ {money.formatDisplay(Math.round((rule.original_amount ?? rule.amount) * (FREQ_MONTHS[rule.frequency] ?? 1)))}/month impact
+                  · ≈ {money.formatDisplay(Math.round(getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)))}/month impact
                 </span>
               )}
             </p>
@@ -406,9 +401,9 @@ export function Subscriptions() {
       )}
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-        <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={`${expenses.filter(r => r.active).length} active`} badgeVariant="warning" />
-        <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={`${income.filter(r => r.active).length} active`} badgeVariant="success" />
-        <StatCard label="Net monthly" value={money.formatDisplay(monthlyIncome - monthlyExpenses)} sub="Income minus expenses" />
+        <StatCard label="Monthly cost" value={money.formatDisplayCompact(monthlyExpenses)} sub={money.formatDisplay(monthlyExpenses)} badgeVariant="warning" />
+        <StatCard label="Monthly income" value={money.formatDisplayCompact(monthlyIncome)} sub={money.formatDisplay(monthlyIncome)} badgeVariant="success" />
+        <StatCard label="Net monthly" value={money.formatDisplayCompact(monthlyIncome - monthlyExpenses)} sub="Income minus expenses" />
         <StatCard
           label="Next renewal"
           value={nextRenewal ? nextRenewal.description : 'None'}
