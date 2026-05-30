@@ -540,23 +540,53 @@ export function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-xl">Upcoming bills</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {upcomingBills.length > 0 ? upcomingBills.map(rule => (
-              <div key={rule.id} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-foreground">{rule.description}</p>
-                  <p className="text-xs text-muted-foreground">{rule.next_due_date}</p>
-                </div>
-                <span className="shrink-0 text-sm font-extrabold text-[#FF8388]">
-                  -{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
-                </span>
-              </div>
-            )) : (
-              <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
-                No upcoming bills. Add recurring rules in Transactions.
-              </p>
-            )}
+          <CardHeader>
+            <CardTitle className="text-xl">Financial calendar</CardTitle>
+            <p className="text-sm text-muted-foreground">Bills, renewals &amp; goal deadlines</p>
+          </CardHeader>
+          <CardContent className="space-y-2 px-4 pb-5 sm:px-6">
+            {(() => {
+              const today = new Date().toISOString().slice(0, 10)
+              const in30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)
+              const in90 = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10)
+              const billEvents = upcomingBills
+                .filter(r => r.next_due_date <= in30)
+                .map(r => ({
+                  date: r.next_due_date,
+                  label: r.description,
+                  sub: money.format(r.original_amount ?? r.amount, r.original_currency ?? money.baseCurrency),
+                  kind: 'bill' as const,
+                }))
+              const goalEvents = goals
+                .filter(g => g.deadline && g.deadline >= today && g.deadline <= in90 && g.current_amount < g.target_amount)
+                .map(g => ({
+                  date: g.deadline!,
+                  label: g.name,
+                  sub: `${Math.round((g.current_amount / g.target_amount) * 100)}% saved`,
+                  kind: 'goal' as const,
+                }))
+              const events = [...billEvents, ...goalEvents].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 7)
+              if (events.length === 0) return (
+                <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">No upcoming events in the next 30 days.</p>
+              )
+              return events.map((ev, i) => {
+                const daysAway = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
+                return (
+                  <div key={i} className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 ${ev.kind === 'bill' ? 'bg-secondary' : 'bg-primary/5 border border-primary/10'}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs">{ev.kind === 'bill' ? '💳' : '🎯'}</span>
+                        <p className="truncate text-sm font-bold text-foreground">{ev.label}</p>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{ev.date} · {ev.sub}</p>
+                    </div>
+                    <span className={`shrink-0 text-xs font-extrabold ${daysAway <= 0 ? 'text-[#FF8388]' : daysAway <= 3 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
+                      {daysAway <= 0 ? 'Today' : daysAway === 1 ? 'Tomorrow' : `${daysAway}d`}
+                    </span>
+                  </div>
+                )
+              })
+            })()}
           </CardContent>
         </Card>
       </div>

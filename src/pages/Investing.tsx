@@ -27,6 +27,8 @@ const DEFAULT_ALLOCATION: AllocationItem[] = [
   { name: 'Learning', pct: 10, color: '#FFD276' },
 ]
 
+const SCENARIO_RETURNS = [5, 8, 12] // annual % for conservative, moderate, aggressive
+
 const RISK_PROFILES: { label: string; description: string; allocation: AllocationItem[] }[] = [
   {
     label: 'Conservative',
@@ -381,6 +383,43 @@ export function Investing() {
           />
         </CardContent>
       </Card>
+
+      {draftBase.monthlyContribution > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Scenario comparison</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Same contribution ({money.format(draft.monthlyContribution, contributionCurrency)}/month) · {draft.durationYears > 0 ? `${draft.durationYears} years` : '10 years'} · different risk profiles
+            </p>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-3 px-5 pb-6 sm:grid-cols-3 sm:px-8">
+            {RISK_PROFILES.map((profile, i) => {
+              const assumedReturn = SCENARIO_RETURNS[i]
+              const scenarioPlan = calculateInvestmentPlan({
+                ...draftBase,
+                annualReturnRate: assumedReturn,
+                durationYears: Math.max(1, draft.durationYears || 10),
+              })
+              return (
+                <div key={profile.label} className="rounded-2xl border border-border bg-secondary p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-extrabold text-foreground">{profile.label}</p>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">{assumedReturn}%/yr</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{profile.description}</p>
+                  <div className="mt-3 flex gap-1">
+                    {profile.allocation.map(item => (
+                      <div key={item.name} className="flex-1 overflow-hidden rounded-full" style={{ background: item.color, height: 3 }} title={`${item.name} ${item.pct}%`} />
+                    ))}
+                  </div>
+                  <p className="mt-3 text-lg font-extrabold text-primary">{money.formatDisplay(scenarioPlan.projectedPortfolio)}</p>
+                  <p className="text-xs text-muted-foreground">Gain: {money.formatDisplay(scenarioPlan.projectedGain)}</p>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
