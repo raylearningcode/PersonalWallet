@@ -10,7 +10,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
 import { Download, Upload, FileText } from 'lucide-react'
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 type ReportRange = 'week' | 'month' | 'year'
 type ReportMode = 'expense' | 'income'
@@ -434,13 +434,16 @@ export function Reports() {
                     contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 12, fontSize: 12 }}
                     formatter={(v) => money.formatDisplay(typeof v === 'number' ? v : 0)}
                   />
-                  <Bar dataKey="income" name="Income" fill="#A9F5C7" radius={[4, 4, 0, 0]}
-                    label={false}
-                    opacity={clickedBucket ? (d: {label?: string}) => d.label === clickedBucket ? 1 : 0.4 : 1}
-                  />
-                  <Bar dataKey="expenses" name="Expenses" fill="#FF8388" radius={[4, 4, 0, 0]}
-                    opacity={clickedBucket ? (d: {label?: string}) => d.label === clickedBucket ? 1 : 0.4 : 1}
-                  />
+                  <Bar dataKey="income" name="Income" fill="#A9F5C7" radius={[4, 4, 0, 0]} label={false}>
+                    {trendData.map((entry, i) => (
+                      <Cell key={i} opacity={clickedBucket && entry.label !== clickedBucket ? 0.4 : 1} />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="expenses" name="Expenses" fill="#FF8388" radius={[4, 4, 0, 0]}>
+                    {trendData.map((entry, i) => (
+                      <Cell key={i} opacity={clickedBucket && entry.label !== clickedBucket ? 0.4 : 1} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </>
