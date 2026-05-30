@@ -13,6 +13,10 @@ export function getCategoryUsedPct(spent: number, allocated: number): number {
   return Math.min(100, Math.round((spent / allocated) * 100))
 }
 
+export function toMonthlyAllocation(yearlyAllocated: number, period: BudgetPeriod): number {
+  return period === 'yearly' ? yearlyAllocated / 12 : yearlyAllocated
+}
+
 export function isInBudgetPeriod(date: string, period: BudgetPeriod, now = new Date()): boolean {
   const [year, month] = date.split('-')
   const currentYear = String(now.getFullYear())

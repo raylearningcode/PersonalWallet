@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { toast } from 'sonner'
 import { Plus, Pause, Play, Trash2, RefreshCw, X } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
@@ -20,12 +21,6 @@ const FREQ_LABELS: Record<string, string> = {
   yearly: 'Yearly',
 }
 
-const FREQ_MONTHS: Record<string, number> = {
-  daily: 30,
-  weekly: 4.33,
-  monthly: 1,
-  yearly: 1 / 12,
-}
 
 function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000)
@@ -71,6 +66,7 @@ export function Subscriptions() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState(emptyAddForm())
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const expenses = useMemo(
     () => rules.filter(r => r.type !== 'income').sort((a, b) => {
@@ -99,12 +95,16 @@ export function Subscriptions() {
   }, [expenses])
 
   const filteredExpenses = useMemo(() => {
-    if (expenseFilter === 'all') return expenses
-    if (expenseFilter === 'active') return expenses.filter(r => r.active)
-    if (expenseFilter === 'paused') return expenses.filter(r => !r.active)
-    if (expenseFilter === 'due-soon') return expenses.filter(r => r.active && daysUntil(r.next_due_date) <= 3)
-    return expenses
-  }, [expenses, expenseFilter])
+    let list = expenses
+    if (expenseFilter === 'active') list = list.filter(r => r.active)
+    else if (expenseFilter === 'paused') list = list.filter(r => !r.active)
+    else if (expenseFilter === 'due-soon') list = list.filter(r => r.active && daysUntil(r.next_due_date) <= 3)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      list = list.filter(r => r.description.toLowerCase().includes(q) || r.category.toLowerCase().includes(q))
+    }
+    return list
+  }, [expenses, expenseFilter, searchQuery])
 
   const lastPaidDate = (rule: RecurringRule) => {
     const related = transactions
@@ -214,7 +214,7 @@ export function Subscriptions() {
               {rule.category} · {FREQ_LABELS[rule.frequency]}{walletName ? ` · ${walletName}` : ''}
               {rule.frequency !== 'monthly' && (
                 <span className="ml-1 text-muted-foreground/70">
-                  · ≈ {money.formatDisplay(Math.round((rule.original_amount ?? rule.amount) * (FREQ_MONTHS[rule.frequency] ?? 1)))}/month impact
+                  · ≈ {money.formatDisplay(Math.round(getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)))}/mo · {money.formatDisplay(Math.round(getYearlyImpact(rule.original_amount ?? rule.amount, rule.frequency)))}/yr
                 </span>
               )}
             </p>
@@ -406,7 +406,7 @@ export function Subscriptions() {
       )}
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-        <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={`${expenses.filter(r => r.active).length} active`} badgeVariant="warning" />
+        <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={`≈ ${money.formatDisplay(monthlyExpenses * 12)}/year`} badgeVariant="warning" />
         <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={`${income.filter(r => r.active).length} active`} badgeVariant="success" />
         <StatCard label="Net monthly" value={money.formatDisplay(monthlyIncome - monthlyExpenses)} sub="Income minus expenses" />
         <StatCard
@@ -427,16 +427,25 @@ export function Subscriptions() {
           </CardHeader>
           <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
             {expenses.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {(['all', 'active', 'paused', 'due-soon'] as ExpenseFilter[]).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setExpenseFilter(f)}
-                    className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${expenseFilter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
-                  >
-                    {f === 'due-soon' ? 'Due Soon' : f.charAt(0).toUpperCase() + f.slice(1)}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {(['all', 'active', 'paused', 'due-soon'] as ExpenseFilter[]).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setExpenseFilter(f)}
+                      className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${expenseFilter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {f === 'due-soon' ? 'Due Soon' : f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  aria-label="Search subscriptions"
+                  className="h-9 w-full rounded-xl border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  placeholder="Search by name or category…"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
               </div>
             )}
             {filteredExpenses.length > 0 ? (

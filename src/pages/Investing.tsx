@@ -159,10 +159,10 @@ export function Investing() {
       setDraft(current => ({ ...current, annualReturnRate: Math.max(0, parsed) }))
       return
     }
-    const clamped = key === 'durationYears' ? Math.min(30, parsed) : parsed
+    const clamped = key === 'durationYears' ? Math.min(60, parsed) : parsed
     setDraft(current => ({ ...current, [key]: clamped }))
     if (key === 'durationYears') {
-      setChartMax(Math.min(30, Math.max(Math.round(clamped), 10)))
+      setChartMax(Math.min(60, Math.max(Math.round(clamped), 10)))
     }
   }
 
@@ -287,9 +287,15 @@ export function Investing() {
                 ))}
               </div>
             )}
-            <p className="mt-4 text-center text-xs text-muted-foreground/70">
-              Contributions are converted to a monthly equivalent; return is compounded monthly. Estimate only — not financial advice.
-            </p>
+            <div className="mt-4 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-xs text-muted-foreground">
+              <p className="font-bold text-foreground/70">Assumptions</p>
+              <ul className="mt-1.5 space-y-1 list-disc list-inside">
+                <li>Fixed annual return — no fee drag or market volatility</li>
+                <li>No tax or inflation adjustment included</li>
+                <li>No platform or transaction fees</li>
+                <li>Educational estimate only — not financial advice</li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
 
