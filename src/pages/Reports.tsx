@@ -75,6 +75,7 @@ export function Reports() {
   const [mode, setMode] = useState<ReportMode>('expense')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedWalletId, setSelectedWalletId] = useState<string>('')
+  const [clickedBucket, setClickedBucket] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [importText, setImportText] = useState('')
   const [importing, setImporting] = useState(false)
@@ -172,8 +173,31 @@ export function Reports() {
     })
   }, [range, rangeStart, rangeEnd, rangeTx])
 
-  const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null) }
+  const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null); setClickedBucket(null) }
   const handleModeChange = (m: ReportMode) => { setMode(m); setSelectedCategory(null) }
+
+  const bucketTx = useMemo(() => {
+    if (!clickedBucket) return []
+    const idx = trendData.findIndex(d => d.label === clickedBucket)
+    if (idx < 0) return []
+    // Recompute the date range for this bucket
+    const toStr = (d: Date) => d.toISOString().slice(0, 10)
+    let bucketStart: Date, bucketEnd: Date
+    if (range === 'week') {
+      bucketStart = new Date(rangeStart); bucketStart.setDate(rangeStart.getDate() + idx)
+      bucketEnd = new Date(bucketStart); bucketEnd.setDate(bucketStart.getDate() + 1)
+    } else if (range === 'month') {
+      bucketStart = new Date(rangeStart); bucketStart.setDate(rangeStart.getDate() + idx * 7)
+      bucketEnd = new Date(bucketStart); bucketEnd.setDate(bucketStart.getDate() + 7)
+    } else {
+      bucketStart = new Date(rangeStart.getFullYear(), idx, 1)
+      bucketEnd = new Date(rangeStart.getFullYear(), idx + 1, 1)
+    }
+    const s = toStr(bucketStart), e = toStr(bucketEnd)
+    return rangeTx
+      .filter(t => t.date >= s && t.date < e)
+      .sort((a, b) => b.date.localeCompare(a.date))
+  }, [clickedBucket, trendData, range, rangeStart, rangeTx])
 
   const handleFileLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -391,21 +415,74 @@ export function Reports() {
           {rangeTx.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No data for this period.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={trendData} barGap={3} barCategoryGap="28%">
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                  contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 12, fontSize: 12 }}
-                  formatter={(v) => money.formatDisplay(typeof v === 'number' ? v : 0)}
-                />
-                <Bar dataKey="income" name="Income" fill="#A9F5C7" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" name="Expenses" fill="#FF8388" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <>
+              <p className="mb-2 px-2 text-xs text-muted-foreground">Tap a bar to see transactions for that period</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={trendData}
+                  barGap={3}
+                  barCategoryGap="28%"
+                  style={{ cursor: 'pointer' }}
+                  onClick={d => {
+                    const label = d?.activeLabel as string | undefined
+                    if (label) setClickedBucket(b => b === label ? null : label)
+                  }}
+                >
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                    contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 12, fontSize: 12 }}
+                    formatter={(v) => money.formatDisplay(typeof v === 'number' ? v : 0)}
+                  />
+                  <Bar dataKey="income" name="Income" fill="#A9F5C7" radius={[4, 4, 0, 0]}
+                    label={false}
+                    opacity={clickedBucket ? (d: {label?: string}) => d.label === clickedBucket ? 1 : 0.4 : 1}
+                  />
+                  <Bar dataKey="expenses" name="Expenses" fill="#FF8388" radius={[4, 4, 0, 0]}
+                    opacity={clickedBucket ? (d: {label?: string}) => d.label === clickedBucket ? 1 : 0.4 : 1}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </>
+          )}
+          {clickedBucket && bucketTx.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-border bg-secondary/60 p-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <p className="font-extrabold text-foreground">{clickedBucket} — {bucketTx.length} transaction{bucketTx.length !== 1 ? 's' : ''}</p>
+                <button onClick={() => setClickedBucket(null)} className="rounded-full p-1 text-muted-foreground hover:text-foreground">✕</button>
+              </div>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {bucketTx.map(tx => (
+                  <div key={tx.id} className="flex items-center justify-between gap-3 rounded-xl bg-card px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-foreground">{tx.description}</p>
+                      <p className="text-xs text-muted-foreground">{tx.category} · {tx.date}</p>
+                    </div>
+                    <span className={`shrink-0 font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Narrative summary */}
+      {periodSummary.length > 0 && (
+        <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period summary</p>
+          <ul className="mt-3 space-y-1.5">
+            {periodSummary.map((line, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] lg:gap-8">
         <Card>
@@ -524,22 +601,6 @@ export function Reports() {
           )}
         </CardContent>
       </Card>
-
-      {periodSummary.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader><CardTitle className="text-xl">Period summary</CardTitle></CardHeader>
-          <CardContent className="px-5 pb-6 sm:px-8">
-            <ul className="space-y-2">
-              {periodSummary.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
 
       <Sheet open={importOpen} onOpenChange={setImportOpen}>
         <SheetContent side="right" className="w-full max-w-md">

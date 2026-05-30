@@ -338,7 +338,7 @@ export function Goals() {
                     <div className="flex shrink-0 gap-1">
                       <button
                         type="button"
-                        className={`rounded-xl p-2 transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                        className={`min-h-[44px] min-w-[44px] rounded-xl p-2.5 transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                         onClick={() => pinGoal(goal.id)}
                         title={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
                         aria-label={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
@@ -347,7 +347,7 @@ export function Goals() {
                       </button>
                       <button
                         type="button"
-                        className="rounded-xl p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
                         onClick={() => startEdit(goal)}
                         title="Edit goal"
                         aria-label={`Edit ${goal.name}`}
@@ -356,7 +356,7 @@ export function Goals() {
                       </button>
                       <button
                         type="button"
-                        className="rounded-xl p-2 text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-40"
+                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-40"
                         onClick={() => setDeleteTarget(goal)}
                         disabled={deleteGoal.isPending}
                         title="Delete goal"

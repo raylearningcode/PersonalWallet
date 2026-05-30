@@ -825,18 +825,18 @@ export function Transactions() {
                     </p>
                     <div className="flex gap-1">
                       {tx.needs_review && (
-                        <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
-                          <CheckCircle size={16} />
+                        <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                          <CheckCircle size={17} />
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
-                        <Copy size={16} />
+                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                        <Copy size={17} />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
-                        <Pencil size={16} />
+                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                        <Pencil size={17} />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
-                        <Trash2 size={16} />
+                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                        <Trash2 size={17} />
                       </Button>
                     </div>
                   </div>
