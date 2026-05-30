@@ -4,7 +4,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Numpad } from '@/components/ui/numpad'
 import {
   useAddTransaction,
   useAddRecurringRule,
@@ -209,9 +208,14 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
               >
                 {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <span className="flex h-14 w-44 items-center justify-center text-4xl font-extrabold">
-                {amount ? formatNumberInput(amount) : <span className="text-muted-foreground/40">0</span>}
-              </span>
+              <Input
+                aria-label="Amount"
+                inputMode="decimal"
+                className="h-14 w-44 border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
+                value={amount}
+                onChange={e => setAmount(formatNumberInput(e.target.value))}
+                placeholder="0"
+              />
               <button
                 type="button"
                 aria-label="Scan receipt"
@@ -237,7 +241,6 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
               value={date}
               onChange={e => setDate(e.target.value)}
             />
-            <Numpad value={amount} onChange={setAmount} />
           </div>
 
           {/* Merchant name */}
