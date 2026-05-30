@@ -25,6 +25,7 @@ vi.mock('@/lib/queries', () => ({
   }),
   useAddBudgetCategory: () => ({ mutateAsync: addCategory, isPending: false }),
   useDeleteBudgetCategory: () => ({ mutate: deleteCategory }),
+  useRenameBudgetCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useWallets: () => ({ data: [{ id: 'cash', name: 'Cash', type: 'cash', balance: 0, currency: 'IDR' }] }),
   useBudgetRules: () => ({ data: [] }),
   useInvestmentConfig: () => ({ data: null }),

@@ -29,6 +29,20 @@ const DEFAULT_ALLOCATION: AllocationItem[] = [
 
 const SCENARIO_RETURNS = [5, 8, 12] // annual % for conservative, moderate, aggressive
 
+type ContributionFrequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+const FREQ_TO_MONTHLY: Record<ContributionFrequency, number> = {
+  weekly: 52 / 12,
+  monthly: 1,
+  quarterly: 1 / 3,
+  yearly: 1 / 12,
+}
+const FREQ_LABELS: Record<ContributionFrequency, string> = {
+  weekly: 'week',
+  monthly: 'month',
+  quarterly: 'quarter',
+  yearly: 'year',
+}
+
 const RISK_PROFILES: { label: string; description: string; allocation: AllocationItem[] }[] = [
   {
     label: 'Conservative',
@@ -86,6 +100,7 @@ export function Investing() {
   const [draft, setDraft] = useState<SimulatorValues>({
     monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
   })
+  const [contributionFrequency, setContributionFrequency] = useState<ContributionFrequency>('monthly')
   const [contributionCurrency, setContributionCurrency] = useState(savedContributionCurrency)
   const [targetCurrency, setTargetCurrency] = useState(savedTargetCurrency)
   const [allocation, setAllocation] = useState<AllocationItem[]>(DEFAULT_ALLOCATION)
@@ -108,9 +123,9 @@ export function Investing() {
 
   const draftBase = useMemo(() => ({
     ...draft,
-    monthlyContribution: money.toBase(draft.monthlyContribution, contributionCurrency),
+    monthlyContribution: money.toBase(draft.monthlyContribution, contributionCurrency) * FREQ_TO_MONTHLY[contributionFrequency],
     targetPortfolio: money.toBase(draft.targetPortfolio, targetCurrency),
-  }), [contributionCurrency, draft, money.baseCurrency, money.displayCurrency, money.rates, targetCurrency])
+  }), [contributionCurrency, contributionFrequency, draft, money.baseCurrency, money.displayCurrency, money.rates, targetCurrency])
 
   const plan = useMemo(() => calculateInvestmentPlan(draftBase), [draftBase])
   const targetGap = Math.max(0, draftBase.targetPortfolio - plan.projectedPortfolio)
@@ -213,7 +228,7 @@ export function Investing() {
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Projected in {money.displayCurrency}</span>
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Base value {money.formatBase(plan.projectedPortfolio)}</span>
-              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">{money.format(draft.monthlyContribution, contributionCurrency)}/month</span>
+              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">{money.format(draft.monthlyContribution, contributionCurrency)}/{FREQ_LABELS[contributionFrequency]}</span>
               {draftBase.targetPortfolio > 0 && (
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Target gap {money.formatDisplay(targetGap)}</span>
               )}
@@ -267,7 +282,7 @@ export function Investing() {
               </div>
             )}
             <p className="mt-4 text-center text-xs text-muted-foreground/70">
-              Projection assumes monthly contributions and annual return compounded monthly. This is an estimate only, not financial advice.
+              Contributions are converted to a monthly equivalent; return is compounded monthly. Estimate only — not financial advice.
             </p>
           </CardContent>
         </Card>
@@ -299,6 +314,20 @@ export function Investing() {
                 {CURRENCIES.map(currency => <option key={currency} value={currency}>{currency}</option>)}
               </select>
             </div>
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Contribution frequency</Label>
+              <select
+                aria-label="Contribution frequency"
+                className="mt-1 h-8 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+                value={contributionFrequency}
+                onChange={event => setContributionFrequency(event.target.value as ContributionFrequency)}
+              >
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
             <div className="rounded-2xl border border-border bg-secondary p-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-bold text-muted-foreground">Target portfolio</p>
@@ -310,7 +339,7 @@ export function Investing() {
               <p className="mt-2 text-xs text-muted-foreground">Target gap {money.formatDisplay(targetGap)}</p>
             </div>
             {([
-              [`Monthly contribution (${contributionCurrency})`, 'monthlyContribution', formatNumberInput(draft.monthlyContribution)],
+              [`Contribution per ${FREQ_LABELS[contributionFrequency]} (${contributionCurrency})`, 'monthlyContribution', formatNumberInput(draft.monthlyContribution)],
               [`Target portfolio (${targetCurrency})`, 'targetPortfolio', formatNumberInput(draft.targetPortfolio)],
               ['Expected return / year', 'annualReturnRate', String(draft.annualReturnRate)],
               ['Duration (years)', 'durationYears', String(draft.durationYears)],

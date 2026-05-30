@@ -566,6 +566,34 @@ export function useDeleteBudgetCategory() {
   })
 }
 
+export function useRenameBudgetCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, name }: Pick<BudgetCategory, 'id' | 'name'>) => {
+      const userId = await getCurrentUserId()
+      if (!userId) { localUpdateCategory(id, { name }); return }
+      const patch = { name }
+      if (isOffline()) {
+        cacheUpdateItem('budget_categories', id, patch)
+        enqueue({ table: 'budget_categories', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })
+        return
+      }
+      try {
+        const { error } = await supabase.from('budget_categories').update(patch).eq('id', id).eq('user_id', userId)
+        if (error) throw error
+      } catch (e) {
+        if (isNetworkError(e)) {
+          cacheUpdateItem('budget_categories', id, patch)
+          enqueue({ table: 'budget_categories', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })
+          return
+        }
+        throw e
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['budget_categories'] }),
+  })
+}
+
 export function useUpdateBudgetCategory() {
   const qc = useQueryClient()
   return useMutation({

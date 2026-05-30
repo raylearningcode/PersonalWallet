@@ -361,7 +361,11 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-4 px-5 pb-6 sm:px-8">
             {spendingOverviewRows.length > 0 ? spendingOverviewRows.map(row => (
-              <div key={row.name} className="space-y-2">
+              <Link
+                key={row.name}
+                to={`/transactions?q=${encodeURIComponent(row.name)}`}
+                className="block space-y-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-secondary/60"
+              >
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="min-w-0 truncate font-bold text-foreground">{row.name}</span>
                   <span className="shrink-0 font-extrabold text-foreground">{fmt(row.amount)}</span>
@@ -369,7 +373,7 @@ export function Dashboard() {
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div className="h-full rounded-full" style={{ width: `${row.pct}%`, backgroundColor: row.color }} />
                 </div>
-              </div>
+              </Link>
             )) : (
               <div className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
                 Add expenses to see which category is taking the biggest share.

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   useAppSettings, useSaveAppSettings,
-  useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory,
+  useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
   useBudgetRules, useAddBudgetRule,
   useAuthSession, useSignIn, useSignUp, useSignOut,
   useWallets, useAddWallet, useDeleteWallet,
@@ -20,7 +20,7 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield } from 'lucide-react'
+import { X, Eye, EyeOff, Shield, Pencil, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Wallet } from '@/types'
 import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
@@ -55,6 +55,7 @@ export function Settings() {
   const { data: categories = [] } = useBudgetCategories()
   const addCategory = useAddBudgetCategory()
   const deleteCategory = useDeleteBudgetCategory()
+  const renameCategory = useRenameBudgetCategory()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
   const { data: budgetRules = [] } = useBudgetRules()
@@ -77,6 +78,8 @@ export function Settings() {
   const [newCategory, setNewCategory] = useState('')
   const [walletName, setWalletName] = useState('')
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [editingCategoryName, setEditingCategoryName] = useState('')
   const [backupText, setBackupText] = useState('')
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
@@ -192,6 +195,29 @@ export function Settings() {
       await addCategory.mutateAsync(category)
     }
     toast.success(missingCategories.length > 0 ? 'Starter categories restored' : 'Starter categories already complete')
+  }
+
+  const handleStartRename = (id: string, name: string) => {
+    setEditingCategoryId(id)
+    setEditingCategoryName(name)
+  }
+
+  const handleSaveRename = async () => {
+    if (!editingCategoryId) return
+    const trimmed = editingCategoryName.trim()
+    if (!trimmed) return
+    const duplicate = categories.some(c => c.id !== editingCategoryId && c.name.toLowerCase() === trimmed.toLowerCase())
+    if (duplicate) {
+      toast.error(`"${trimmed}" already exists`)
+      return
+    }
+    try {
+      await renameCategory.mutateAsync({ id: editingCategoryId, name: trimmed })
+      setEditingCategoryId(null)
+      toast.success('Category renamed')
+    } catch {
+      toast.error('Failed to rename')
+    }
   }
 
   const handleDeleteCategory = (id: string, name: string) => {
@@ -467,16 +493,55 @@ export function Settings() {
               {categories.map(category => (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3"
+                  className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-secondary px-4 py-3"
                 >
-                  <span className="min-w-0 truncate font-bold text-foreground">{category.name}</span>
-                  <button
-                    aria-label={`Delete ${category.name} category`}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
-                    onClick={() => handleDeleteCategory(category.id, category.name)}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  {editingCategoryId === category.id ? (
+                    <>
+                      <input
+                        className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
+                        value={editingCategoryName}
+                        autoFocus
+                        onChange={e => setEditingCategoryName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleSaveRename()
+                          if (e.key === 'Escape') setEditingCategoryId(null)
+                        }}
+                      />
+                      <button
+                        aria-label="Save rename"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                        onClick={handleSaveRename}
+                        disabled={renameCategory.isPending}
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                      <button
+                        aria-label="Cancel rename"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => setEditingCategoryId(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="min-w-0 truncate font-bold text-foreground">{category.name}</span>
+                      <button
+                        aria-label={`Rename ${category.name} category`}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                        onClick={() => handleStartRename(category.id, category.name)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        aria-label={`Delete ${category.name} category`}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
+                        onClick={() => handleDeleteCategory(category.id, category.name)}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

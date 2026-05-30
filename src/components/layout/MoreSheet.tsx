@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Calculator, RefreshCw, Settings, Target, TrendingUp } from 'lucide-react'
+import { BarChart2, Calculator, PieChart, RefreshCw, Settings, TrendingUp } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
 
 const MORE_NAV = [
-  { to: '/goals', label: 'Goals', Icon: Target },
+  { to: '/budget', label: 'Budget', Icon: PieChart },
   { to: '/subscriptions', label: 'Subscriptions', Icon: RefreshCw },
   { to: '/investing', label: 'Investing', Icon: TrendingUp },
   { to: '/estimation', label: 'Planning', Icon: Calculator },

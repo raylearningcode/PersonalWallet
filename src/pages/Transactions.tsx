@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   useTransactions,
   useDeleteTransaction,
@@ -52,8 +53,9 @@ function useIsDesktop() {
 
 export function Transactions() {
   const money = useMoney()
+  const [searchParams] = useSearchParams()
   const [filter, setFilter] = useState<Filter>('all')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)

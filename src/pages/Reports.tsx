@@ -74,6 +74,7 @@ export function Reports() {
   const [periodDate, setPeriodDate] = useState(() => new Date())
   const [mode, setMode] = useState<ReportMode>('expense')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('')
   const [importOpen, setImportOpen] = useState(false)
   const [importText, setImportText] = useState('')
   const [importing, setImporting] = useState(false)
@@ -84,8 +85,10 @@ export function Reports() {
 
   const rangeTx = useMemo(() => transactions.filter(tx => {
     const txDate = new Date(tx.date)
-    return txDate >= rangeStart && txDate < rangeEnd
-  }), [rangeEnd, rangeStart, transactions])
+    const inRange = txDate >= rangeStart && txDate < rangeEnd
+    const inWallet = !selectedWalletId || tx.wallet_id === selectedWalletId
+    return inRange && inWallet
+  }), [rangeEnd, rangeStart, transactions, selectedWalletId])
 
   const prevDate = useMemo(() => addPeriod(periodDate, range, -1), [periodDate, range])
   const { start: prevStart, end: prevEnd } = useMemo(() => getRangeBounds(range, prevDate), [prevDate, range])
@@ -268,6 +271,17 @@ export function Reports() {
                 </button>
               ))}
             </div>
+            {wallets.length > 0 && (
+              <select
+                aria-label="Filter by wallet"
+                className="h-9 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                value={selectedWalletId}
+                onChange={e => { setSelectedWalletId(e.target.value); setSelectedCategory(null) }}
+              >
+                <option value="">All wallets</option>
+                {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            )}
             <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportCSV} disabled={rangeTx.length === 0}>
               <Download className="h-4 w-4" />
               Export CSV

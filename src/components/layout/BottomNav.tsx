@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { CreditCard, LayoutDashboard, MoreHorizontal, PieChart, Plus } from 'lucide-react'
+import { CreditCard, LayoutDashboard, MoreHorizontal, Target, Plus } from 'lucide-react'
 
 const leftNavItems = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
@@ -7,7 +7,7 @@ const leftNavItems = [
 ]
 
 const rightNavItems = [
-  { to: '/budget', label: 'Budget', icon: PieChart },
+  { to: '/goals', label: 'Goals', icon: Target },
 ]
 
 export function BottomNav({

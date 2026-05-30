@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { Transactions } from './Transactions'
+
+const renderTx = () => render(<MemoryRouter><Transactions /></MemoryRouter>)
 
 const addTransaction = vi.fn()
 const updateTransaction = vi.fn()
@@ -101,7 +104,7 @@ describe('Transactions', () => {
   })
 
   it('adds a transaction from the input form', () => {
-    render(<Transactions />)
+    renderTx()
 
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Lunch' } })
@@ -126,7 +129,7 @@ describe('Transactions', () => {
   })
 
   it('edits an existing transaction from history', () => {
-    render(<Transactions />)
+    renderTx()
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit Old lunch' }))
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Updated lunch' } })
@@ -148,7 +151,7 @@ describe('Transactions', () => {
   })
 
   it('adds a transfer between wallets', () => {
-    render(<Transactions />)
+    renderTx()
 
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
@@ -169,7 +172,7 @@ describe('Transactions', () => {
   })
 
   it('creates a recurring installment rule from the transaction form', async () => {
-    render(<Transactions />)
+    renderTx()
 
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Laptop cicilan' } })
@@ -194,7 +197,7 @@ describe('Transactions', () => {
   })
 
   it('asks with an in-app dialog before deleting a transaction', () => {
-    render(<Transactions />)
+    renderTx()
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Old lunch' }))
 
@@ -205,14 +208,14 @@ describe('Transactions', () => {
   })
 
   it('keeps category management out of the transaction form', () => {
-    render(<Transactions />)
+    renderTx()
 
     expect(screen.queryByRole('button', { name: 'Add category option' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Transaction history' })).toBeInTheDocument()
   })
 
   it('groups history by date and shows note/category/price columns', () => {
-    render(<Transactions />)
+    renderTx()
 
     expect(screen.getByRole('heading', { name: '21 May 2026' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '20 May 2026' })).toBeInTheDocument()
@@ -222,7 +225,7 @@ describe('Transactions', () => {
   })
 
   it('uses income categories when adding income and hides recurring and needs review filters', () => {
-    render(<Transactions />)
+    renderTx()
 
     expect(screen.queryByRole('tab', { name: /recurring/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: /needs review/i })).not.toBeInTheDocument()
@@ -234,7 +237,7 @@ describe('Transactions', () => {
   })
 
   it('filters history when an expense category is selected', () => {
-    render(<Transactions />)
+    renderTx()
 
     fireEvent.click(screen.getByRole('button', { name: /View Food category/i }))
 
@@ -245,7 +248,7 @@ describe('Transactions', () => {
   })
 
   it('keeps the expense category box compact and scrollable', () => {
-    render(<Transactions />)
+    renderTx()
 
     const categoryList = screen.getByTestId('expense-category-list')
     expect(categoryList).toHaveClass('max-h-[220px]')
