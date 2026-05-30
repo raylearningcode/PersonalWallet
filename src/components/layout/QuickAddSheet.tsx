@@ -210,8 +210,6 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
     }
   }
 
-  const expenseCategories = type === 'income' ? [] : categories
-
   return (
     <Sheet open={open} onOpenChange={v => { if (!v) handleClose() }}>
       <SheetContent
