@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthSession } from '@/lib/queries'
 import { getQueue } from '@/lib/offlineCache'
@@ -14,6 +14,7 @@ import { NotificationsSheet } from './NotificationsSheet'
 
 export function AppLayout() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { data: session } = useAuthSession()
   const [moreOpen, setMoreOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
@@ -23,6 +24,24 @@ export function AppLayout() {
   const [offline, setOffline] = useState(() => !navigator.onLine)
   const [syncing, setSyncing] = useState(false)
   const isGuest = session === null
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if ((e.target as HTMLElement).isContentEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      switch (e.key) {
+        case 'n': setQuickAddOpen(true); break
+        case 'g': navigate('/goals'); break
+        case 'b': navigate('/budget'); break
+        case 'r': navigate('/reports'); break
+        case '?': toast('Keyboard shortcuts: N = Add transaction · G = Goals · B = Budget · R = Reports', { duration: 4000 }); break
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [navigate])
 
   useEffect(() => {
     const handleOffline = () => setOffline(true)

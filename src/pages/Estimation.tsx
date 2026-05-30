@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useEstimationPlans, useUpsertEstimationPlan } from '@/lib/queries'
+import { useEstimationPlans, useUpsertEstimationPlan, useTransactions } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +36,7 @@ export function Estimation() {
   const money = useMoney()
   const upsert = useUpsertEstimationPlan()
   const { data: plans } = useEstimationPlans()
+  const { data: transactions = [] } = useTransactions()
   const initialized = useRef(false)
 
   const [incomeItems, setIncomeItems] = useState<EstimateItem[]>([])
@@ -88,6 +89,16 @@ export function Estimation() {
       setNotes(current.notes)
     }
   }, [plans])
+
+  const actualThisMonth = useMemo(() => {
+    const now = new Date()
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const monthTx = transactions.filter(t => t.date.startsWith(monthStr))
+    return {
+      income: monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+      expenses: monthTx.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0),
+    }
+  }, [transactions])
 
   const monthlyIncome = useMemo(() => incomeItems.reduce((sum, item) => sum + (item.period === 'monthly' ? item.amount : item.amount / 12), 0), [incomeItems])
   const yearlyIncome = useMemo(() => incomeItems.reduce((sum, item) => sum + (item.period === 'monthly' ? item.amount * 12 : item.amount), 0), [incomeItems])
@@ -331,6 +342,39 @@ export function Estimation() {
         )
       })()}
 
+      {(monthlyIncome > 0 || monthlyExpenses > 0 || actualThisMonth.income > 0 || actualThisMonth.expenses > 0) && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Planned vs Actual this month</CardTitle>
+            <p className="text-sm text-muted-foreground">How your forecast compares to real transactions recorded this month.</p>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-4 px-5 pb-6 sm:grid-cols-2 sm:px-8">
+            {[
+              { label: 'Income', planned: monthlyIncome, actual: actualThisMonth.income, good: (actual: number, planned: number) => actual >= planned },
+              { label: 'Expenses', planned: monthlyExpenses, actual: actualThisMonth.expenses, good: (actual: number, planned: number) => actual <= planned },
+            ].map(row => {
+              const variance = row.actual - row.planned
+              const pct = row.planned > 0 ? Math.round((row.actual / row.planned) * 100) : 0
+              const isGood = row.good(row.actual, row.planned)
+              return (
+                <div key={row.label} className="rounded-2xl border border-border bg-secondary p-4">
+                  <p className="text-xs font-bold text-muted-foreground">{row.label}</p>
+                  <div className="mt-2 flex items-end justify-between gap-3">
+                    <div>
+                      <p className="text-xl font-extrabold text-foreground">{money.formatDisplay(row.actual)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">actual · planned {money.formatDisplay(row.planned)}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${isGood ? 'bg-primary/10 text-primary' : 'bg-[#FF8388]/10 text-[#FF8388]'}`}>
+                      {variance > 0 ? '+' : ''}{money.formatDisplay(Math.abs(variance))} {variance > 0 ? '▲' : '▼'} ({pct}%)
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-7">
         <Card>
           <CardHeader className="pb-0">
@@ -354,7 +398,7 @@ export function Estimation() {
                   <option value="yearly">Yearly</option>
                 </select>
               </div>
-              <Button onClick={addIncome}>Add</Button>
+              <Button onClick={addIncome} disabled={upsert.isPending}>Add</Button>
             </div>
             <ItemList
               items={incomeItems}
@@ -397,7 +441,7 @@ export function Estimation() {
                   <option value="yearly">Yearly</option>
                 </select>
               </div>
-              <Button onClick={addExpense}>Add</Button>
+              <Button onClick={addExpense} disabled={upsert.isPending}>Add</Button>
             </div>
             <ItemList
               items={expenseItems}
@@ -454,7 +498,7 @@ export function Estimation() {
                 <Label className="text-xs text-muted-foreground">Note</Label>
                 <Input aria-label="Wishlist note" className="mt-2 bg-secondary" value={wishlistNote} onChange={event => setWishlistNote(event.target.value)} placeholder="What this is for" />
               </div>
-              <Button onClick={addWishlistItem}>Add wishlist item</Button>
+              <Button onClick={addWishlistItem} disabled={upsert.isPending}>Add wishlist item</Button>
             </div>
             {wishlistItems.length > 0 ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

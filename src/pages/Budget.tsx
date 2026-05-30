@@ -91,6 +91,20 @@ export function Budget() {
   const totalAllocated = useMemo(() => categoriesWithSpent.reduce((s, c) => s + c.yearly_allocated, 0), [categoriesWithSpent])
   const totalSpent = useMemo(() => categoriesWithSpent.reduce((s, c) => s + c.spent, 0), [categoriesWithSpent])
   const remaining = totalAllocated - totalSpent
+
+  const daysElapsed = now.getDate()
+  const forecasts = useMemo(() => categoriesWithSpent
+    .filter(cat => cat.budget_period === 'monthly' && cat.yearly_allocated > 0 && cat.spent > 0 && daysElapsed > 0)
+    .map(cat => {
+      const dailyRate = cat.spent / daysElapsed
+      const projectedMonthEnd = Math.round(dailyRate * daysInMonth)
+      const overspend = projectedMonthEnd - cat.yearly_allocated
+      return { ...cat, projectedMonthEnd, overspend, dailyRate }
+    })
+    .filter(f => f.overspend > 0)
+    .sort((a, b) => b.overspend - a.overspend),
+    [categoriesWithSpent, daysElapsed, daysInMonth]
+  )
   const risk = totalAllocated > 0 ? getOverspendRisk(remaining, totalAllocated) : 'Low'
   const hasData = categories.length > 0
 
@@ -237,6 +251,32 @@ export function Budget() {
               : 'At your current pace, you are unlikely to exceed any category this month.'}
           </p>
         </div>
+      )}
+
+      {forecasts.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-xl">Month forecast</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Based on your current daily spend rate ({monthPct}% of month elapsed).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+            {forecasts.map(f => (
+              <div key={f.id} className="flex items-start justify-between gap-4 rounded-2xl border border-[#FF8388]/20 bg-[#FF8388]/5 p-4">
+                <div>
+                  <p className="font-extrabold text-foreground">{f.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Current: {fmt(f.spent)} · Forecast: {fmt(f.projectedMonthEnd)} · Budget: {fmt(f.yearly_allocated)}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-[#FF8388]/20 px-3 py-1 text-xs font-extrabold text-[#FF8388]">
+                  +{fmt(f.overspend)} over
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <Card>

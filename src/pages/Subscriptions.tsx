@@ -195,6 +195,11 @@ export function Subscriptions() {
     const days = daysUntil(rule.next_due_date)
     const lastPaid = lastPaidDate(rule)
     const walletName = rule.wallet_id ? wallets.find(w => w.id === rule.wallet_id)?.name : null
+    const daysSinceLastPaid = lastPaid
+      ? Math.floor((Date.now() - new Date(lastPaid).getTime()) / 86_400_000)
+      : null
+    const isUnused = rule.active && rule.type !== 'income' && (daysSinceLastPaid === null ? false : daysSinceLastPaid > 60)
+    const hasNeverPaid = rule.active && rule.type !== 'income' && !lastPaid
     return (
       <div className={`rounded-2xl border border-border bg-secondary p-4 transition-opacity ${rule.active ? '' : 'opacity-60'}`}>
         <div className="flex items-start justify-between gap-3">
@@ -235,6 +240,14 @@ export function Subscriptions() {
             <span>{rule.installment_paid} / {rule.installment_total} installments</span>
           )}
         </div>
+
+        {(isUnused || hasNeverPaid) && (
+          <div className="mt-2 flex items-center gap-1.5 rounded-xl bg-[#FFCF73]/10 px-3 py-1.5">
+            <span className="text-xs font-bold text-[#FFCF73]">
+              {hasNeverPaid ? '⚠ No payments recorded' : `⚠ No activity for ${daysSinceLastPaid}d — still needed?`}
+            </span>
+          </div>
+        )}
 
         <div className="mt-3 flex gap-2">
           <button

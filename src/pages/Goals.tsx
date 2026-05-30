@@ -38,6 +38,16 @@ const emptyForm = (): FormState => ({
   notes: '',
 })
 
+function getGoalUrgency(goal: Goal): 'urgent' | 'behind' | null {
+  if (goal.current_amount >= goal.target_amount || !goal.deadline) return null
+  const daysLeft = Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86_400_000)
+  const pct = goal.target_amount > 0 ? goal.current_amount / goal.target_amount : 0
+  if (daysLeft <= 0) return 'urgent'
+  if (daysLeft <= 30 && pct < 0.8) return 'urgent'
+  if (daysLeft <= 60 && pct < 0.5) return 'behind'
+  return null
+}
+
 export function Goals() {
   const money = useMoney()
   const { data: goals = [] } = useGoals()
@@ -314,6 +324,15 @@ export function Goals() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: goal.color + '33', color: goal.color }}>{goal.category}</span>
+                      {(() => {
+                        const urgency = getGoalUrgency(goal)
+                        if (!urgency) return null
+                        return (
+                          <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-bold ${urgency === 'urgent' ? 'bg-[#FF8388]/20 text-[#FF8388]' : 'bg-[#FFCF73]/20 text-[#FFCF73]'}`}>
+                            {urgency === 'urgent' ? '⚡ Urgent' : '⚠ Behind'}
+                          </span>
+                        )
+                      })()}
                       <h3 className="mt-2 truncate text-lg font-extrabold text-foreground">{goal.name}</h3>
                     </div>
                     <div className="flex shrink-0 gap-1">
