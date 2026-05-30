@@ -311,9 +311,9 @@ export function Dashboard() {
           ))
         ) : (
           <>
-            <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" />
-            <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : `${daysLeft} days remaining`} badgeVariant="warning" />
-            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={`Based on budgets · ${daysLeft}d left`} />
+            <StatCard label="Net worth" value={money.formatDisplayCompact(netWorth)} sub={fmt(netWorth)} badgeVariant="success" />
+            <StatCard label="This month" value={money.formatDisplayCompact(monthlySpent)} sub={monthlyIncome > 0 ? `of ${money.formatDisplayCompact(monthlyIncome)} income` : `${daysLeft} days remaining`} badgeVariant="warning" />
+            <StatCard label="Safe to spend" value={money.formatDisplayCompact(safeToSpend)} sub={`${fmt(safeToSpend)} · ${daysLeft}d left`} />
             <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} />
           </>
         )}
