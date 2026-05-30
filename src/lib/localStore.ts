@@ -70,6 +70,12 @@ export function localDeleteWallet(id: string): void {
   save('wallets', localGetWallets().filter(w => w.id !== id))
 }
 
+export function localUpdateWallet(id: string, patch: Partial<Wallet>): Wallet {
+  const all = localGetWallets().map(w => (w.id === id ? { ...w, ...patch } : w))
+  save('wallets', all)
+  return all.find(w => w.id === id)!
+}
+
 // ─── Budget Categories ────────────────────────────────────────────────────────
 
 export function localGetCategories(): BudgetCategory[] {

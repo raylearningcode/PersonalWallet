@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useEstimationPlans, useUpsertEstimationPlan, useTransactions } from '@/lib/queries'
+import { useEstimationPlans, useUpsertEstimationPlan, useTransactions, useAddGoal } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, X, Lightbulb } from 'lucide-react'
+import { Check, Pencil, X, Lightbulb, Target } from 'lucide-react'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
 
@@ -35,6 +35,7 @@ type WishlistItem = {
 export function Estimation() {
   const money = useMoney()
   const upsert = useUpsertEstimationPlan()
+  const addGoal = useAddGoal()
   const { data: plans } = useEstimationPlans()
   const { data: transactions = [] } = useTransactions()
   const initialized = useRef(false)
@@ -223,6 +224,21 @@ export function Estimation() {
     setWishlistItems(newWishlist)
     setEditWishlistId(null)
     await saveToBackend(incomeItems, expenseItems, newWishlist, notes)
+  }
+
+  const convertToGoal = async (item: WishlistItem) => {
+    const GOAL_COLORS = ['#A9F5C7', '#93C5FD', '#FADBEA', '#FFD276', '#C4AEFF']
+    const color = GOAL_COLORS[Math.floor(Math.random() * GOAL_COLORS.length)]
+    await addGoal.mutateAsync({
+      name: item.name,
+      target_amount: item.amount,
+      current_amount: 0,
+      color,
+      category: item.type || 'Other',
+      notes: item.note || '',
+      deadline: null,
+    })
+    toast.success(`"${item.name}" added as a goal`)
   }
 
   const handleSave = async () => {
@@ -526,6 +542,7 @@ export function Estimation() {
                         <p className="mt-1 text-xs text-muted-foreground">{item.type}</p>
                       </div>
                       <div className="flex shrink-0 gap-1">
+                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} title="Convert to goal" disabled={addGoal.isPending}><Target className="h-3.5 w-3.5" /></button>
                         <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => startEditWishlist(item.id)} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
                         <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })} title="Remove"><X className="h-3.5 w-3.5" /></button>
                       </div>

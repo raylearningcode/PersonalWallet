@@ -411,11 +411,12 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
             )}
           </div>
 
+          <div className="sticky bottom-0 -mx-5 bg-background px-5 pb-4 pt-3">
           {wallets.length === 0 ? (
             <Link
               to="/settings"
               onClick={onClose}
-              className="mt-2 flex h-12 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+              className="flex h-12 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
             >
               Add a wallet to get started →
             </Link>
@@ -423,13 +424,13 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
             <Link
               to="/budget"
               onClick={onClose}
-              className="mt-2 flex h-12 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+              className="flex h-12 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
             >
               Add a budget category first →
             </Link>
           ) : (
             <Button
-              className="mt-2 h-12 w-full text-base font-extrabold"
+              className="h-12 w-full text-base font-extrabold"
               onClick={handleSave}
               disabled={
                 addTransaction.isPending ||
@@ -438,9 +439,10 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
                 cannotSaveTransfer
               }
             >
-              Add transaction
+              {addTransaction.isPending ? 'Saving…' : 'Add transaction'}
             </Button>
           )}
+          </div>
         </div>
       </SheetContent>
     </Sheet>

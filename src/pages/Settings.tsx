@@ -3,6 +3,7 @@ import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
   useBudgetRules, useAddBudgetRule,
+  useRenameWallet,
   useAuthSession, useSignIn, useSignUp, useSignOut,
   useWallets, useAddWallet, useDeleteWallet,
   useTransactions, useAddTransaction,
@@ -56,6 +57,7 @@ export function Settings() {
   const addCategory = useAddBudgetCategory()
   const deleteCategory = useDeleteBudgetCategory()
   const renameCategory = useRenameBudgetCategory()
+  const renameWallet = useRenameWallet()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
   const { data: budgetRules = [] } = useBudgetRules()
@@ -80,6 +82,8 @@ export function Settings() {
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState('')
+  const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
+  const [editingWalletName, setEditingWalletName] = useState('')
   const [backupText, setBackupText] = useState('')
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
@@ -235,6 +239,19 @@ export function Settings() {
 
   const handleDeleteWallet = (id: string, name: string) => {
     setConfirmDelete({ kind: 'wallet', id, name })
+  }
+
+  const handleSaveWalletRename = async () => {
+    if (!editingWalletId) return
+    const trimmed = editingWalletName.trim()
+    if (!trimmed) return
+    try {
+      await renameWallet.mutateAsync({ id: editingWalletId, name: trimmed })
+      setEditingWalletId(null)
+      toast.success('Wallet renamed')
+    } catch {
+      toast.error('Failed to rename wallet')
+    }
   }
 
   const confirmDeleteSelected = () => {
@@ -454,18 +471,55 @@ export function Settings() {
                   </p>
                   <div className="space-y-1">
                     {group.wallets.map(wallet => (
-                      <div key={wallet.id} className="flex items-center justify-between rounded-xl border border-border bg-secondary px-4 py-2.5">
-                        <span className="font-bold text-foreground">{wallet.name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</span>
-                          <button
-                            aria-label={`Delete ${wallet.name} wallet`}
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
-                            onClick={() => handleDeleteWallet(wallet.id, wallet.name)}
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
+                      <div key={wallet.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-secondary px-4 py-2.5">
+                        {editingWalletId === wallet.id ? (
+                          <>
+                            <input
+                              className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
+                              value={editingWalletName}
+                              autoFocus
+                              onChange={e => setEditingWalletName(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSaveWalletRename()
+                                if (e.key === 'Escape') setEditingWalletId(null)
+                              }}
+                            />
+                            <button
+                              aria-label="Save wallet rename"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                              onClick={handleSaveWalletRename}
+                              disabled={renameWallet.isPending}
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                              aria-label="Cancel wallet rename"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
+                              onClick={() => setEditingWalletId(null)}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="min-w-0 flex-1 truncate font-bold text-foreground">{wallet.name}</span>
+                            <span className="shrink-0 font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</span>
+                            <button
+                              aria-label={`Rename ${wallet.name} wallet`}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                              onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name) }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              aria-label={`Delete ${wallet.name} wallet`}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
+                              onClick={() => handleDeleteWallet(wallet.id, wallet.name)}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
-import { Download, Upload } from 'lucide-react'
+import { Download, Upload, FileText } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 type ReportRange = 'week' | 'month' | 'year'
@@ -285,6 +285,10 @@ export function Reports() {
             <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportCSV} disabled={rangeTx.length === 0}>
               <Download className="h-4 w-4" />
               Export CSV
+            </Button>
+            <Button size="sm" variant="secondary" className="gap-2" onClick={() => window.print()}>
+              <FileText className="h-4 w-4" />
+              Export PDF
             </Button>
             <Button size="sm" variant="secondary" className="gap-2" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" />

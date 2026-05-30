@@ -18,7 +18,7 @@ import type {
 import { getDueRecurringOccurrences, getNextRecurringState } from './recurring'
 import {
   localGetTransactions, localAddTransaction, localUpdateTransaction, localDeleteTransaction, localMarkReviewed,
-  localGetWallets, localAddWallet, localDeleteWallet,
+  localGetWallets, localAddWallet, localDeleteWallet, localUpdateWallet,
   localGetCategories, localAddCategory, localUpdateCategory, localDeleteCategory,
   localGetRules, localAddRule, localUpdateRule, localDeleteRule, localRunDueRules,
   localGetSettings, localSaveSettings,
@@ -484,6 +484,34 @@ export function useDeleteWallet() {
         if (isNetworkError(e)) {
           cacheDeleteItem('wallets', id)
           enqueue({ table: 'wallets', op: 'delete', matchId: id, userId })
+          return
+        }
+        throw e
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['wallets'] }),
+  })
+}
+
+export function useRenameWallet() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const userId = await getCurrentUserId()
+      if (!userId) { localUpdateWallet(id, { name }); return }
+      const patch = { name }
+      if (isOffline()) {
+        cacheUpdateItem('wallets', id, patch)
+        enqueue({ table: 'wallets', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })
+        return
+      }
+      try {
+        const { error } = await supabase.from('wallets').update(patch).eq('id', id).eq('user_id', userId)
+        if (error) throw error
+      } catch (e) {
+        if (isNetworkError(e)) {
+          cacheUpdateItem('wallets', id, patch)
+          enqueue({ table: 'wallets', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })
           return
         }
         throw e
