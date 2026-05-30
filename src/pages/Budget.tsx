@@ -212,7 +212,16 @@ export function Budget() {
     setDeleteTarget(null)
   }
 
-  const activeBudgets = categoriesWithSpent.filter(c => c.yearly_allocated > 0)
+  const activeBudgets = useMemo(() =>
+    categoriesWithSpent
+      .filter(c => c.yearly_allocated > 0)
+      .sort((a, b) => {
+        const pctA = getCategoryUsedPct(a.spent, a.yearly_allocated)
+        const pctB = getCategoryUsedPct(b.spent, b.yearly_allocated)
+        return pctB - pctA
+      }),
+    [categoriesWithSpent]
+  )
   const noBudget = categoriesWithSpent.filter(c => c.yearly_allocated === 0)
 
   // Overspend risk explanation
@@ -231,7 +240,7 @@ export function Budget() {
     <div>
       <PageHeader
         title="Budget"
-        subtitle="Choose monthly or yearly limits, then track usage in the period that matters."
+        subtitle={<><span className="hidden sm:inline">Choose monthly or yearly limits, then track usage in the period that matters.</span><span className="sm:hidden">See where your money goes.</span></>}
         action={
           !showAdd ? (
             <Button size="sm" className="gap-2" onClick={() => setShowAdd(true)}>
@@ -240,7 +249,7 @@ export function Budget() {
           ) : undefined
         }
       />
-      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+      <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Blended monthly equivalent'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(hasData ? remaining : 0) : 'Safe inside active periods'} badgeVariant="success" />
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData ? 'Based on current period spending' : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
@@ -401,9 +410,9 @@ export function Budget() {
                           </div>
                           <ColorBar value={pct} color={barColor} />
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {pct}% used · {monthPct}% of month passed · {overPace ? '⚡ Over pace' : '✓ On track'}
-                            {catDailyAllowance !== null && (
-                              <span className="ml-2 text-primary">· You can spend {fmt(catDailyAllowance)}/day</span>
+                            {pct}% used · {daysLeft === 0 ? 'Month ends today' : `${monthPct}% of month passed`} · {overPace ? '⚡ Over pace' : '✓ On track'}
+                            {catDailyAllowance !== null && daysLeft > 0 && (
+                              <span className="ml-2 text-primary">· {fmt(catDailyAllowance)}/day left</span>
                             )}
                           </p>
                         </div>

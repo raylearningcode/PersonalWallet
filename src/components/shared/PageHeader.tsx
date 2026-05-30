@@ -2,7 +2,7 @@ import { useAppSettings } from '@/lib/queries'
 
 interface PageHeaderProps {
   title: string
-  subtitle: string
+  subtitle: React.ReactNode
   action?: React.ReactNode
   searchValue?: string
   onSearchChange?: (value: string) => void
