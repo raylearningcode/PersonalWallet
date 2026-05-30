@@ -153,6 +153,12 @@ export function Investing() {
   const updateDraft = (key: keyof SimulatorValues, value: string) => {
     const parser = key === 'annualReturnRate' ? parseRate : parseMoney
     const parsed = parser(value)
+    if (key === 'annualReturnRate') {
+      if (parsed > 50) { toast.error('Return rate cannot exceed 50%'); return }
+      if (parsed > 15) toast.warning('Returns above 15%/yr are historically rare — verify this assumption')
+      setDraft(current => ({ ...current, annualReturnRate: Math.max(0, parsed) }))
+      return
+    }
     const clamped = key === 'durationYears' ? Math.min(30, parsed) : parsed
     setDraft(current => ({ ...current, [key]: clamped }))
     if (key === 'durationYears') {

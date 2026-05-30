@@ -187,7 +187,33 @@ export function Reports() {
   const handleImportCSV = async () => {
     const lines = importText.trim().split('\n').filter(Boolean)
     if (lines.length < 2) { toast.error('CSV must have a header row and at least one data row'); return }
-    const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''))
+
+    // RFC 4180-compliant CSV field parser
+    const parseCSVLine = (line: string): string[] => {
+      const fields: string[] = []
+      let i = 0
+      while (i < line.length) {
+        if (line[i] === '"') {
+          let field = ''
+          i++ // skip opening quote
+          while (i < line.length) {
+            if (line[i] === '"' && line[i + 1] === '"') { field += '"'; i += 2 }
+            else if (line[i] === '"') { i++; break }
+            else { field += line[i++] }
+          }
+          fields.push(field.trim())
+          if (line[i] === ',') i++
+        } else {
+          const end = line.indexOf(',', i)
+          if (end < 0) { fields.push(line.slice(i).trim()); break }
+          fields.push(line.slice(i, end).trim())
+          i = end + 1
+        }
+      }
+      return fields
+    }
+
+    const header = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z]/g, ''))
     const dateIdx  = header.findIndex(h => h === 'date')
     const descIdx  = header.findIndex(h => h.startsWith('desc'))
     const catIdx   = header.findIndex(h => h.startsWith('cat'))
@@ -197,10 +223,16 @@ export function Reports() {
       toast.error('CSV must have Date, Description, and Amount columns')
       return
     }
+
+    // Build duplicate-detection set from existing transactions
+    const existingKeys = new Set(
+      transactions.map(t => `${t.date}|${t.description.toLowerCase()}|${Math.round(t.amount)}`)
+    )
+
     setImporting(true)
-    let added = 0; let failed = 0
+    let added = 0; let skipped = 0; let failed = 0
     for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+      const cols = parseCSVLine(lines[i])
       const date = cols[dateIdx]?.slice(0, 10)
       const description = cols[descIdx] ?? ''
       const category = catIdx >= 0 ? cols[catIdx] ?? '' : ''
@@ -208,6 +240,11 @@ export function Reports() {
       const type = rawType === 'income' ? 'income' : rawType === 'transfer' ? 'transfer' : 'expense'
       const amount = parseFloat(cols[amtIdx]?.replace(/[^0-9.]/g, '') ?? '0')
       if (!date || !description || isNaN(amount) || amount <= 0) { failed++; continue }
+
+      const dupKey = `${date}|${description.toLowerCase()}|${Math.round(amount)}`
+      if (existingKeys.has(dupKey)) { skipped++; continue }
+      existingKeys.add(dupKey)
+
       try {
         await addTransaction.mutateAsync({
           user_id: null, description, amount, original_amount: amount,
@@ -221,7 +258,10 @@ export function Reports() {
       } catch { failed++ }
     }
     setImporting(false)
-    toast.success(`Imported ${added} transaction${added !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} skipped)` : ''}`)
+    const parts = [`Imported ${added} transaction${added !== 1 ? 's' : ''}`]
+    if (skipped > 0) parts.push(`${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped`)
+    if (failed > 0) parts.push(`${failed} invalid row${failed !== 1 ? 's' : ''} skipped`)
+    toast.success(parts.join(' · '))
     if (added > 0) { setImportText(''); setImportOpen(false) }
   }
 
