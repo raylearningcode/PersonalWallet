@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Scale the page to 90% on desktop — makes the layout feel more spacious and efficient */
+@media (min-width: 1024px) {
+  html {
+    zoom: 0.9;
+  }
+}
+
 @layer base {
   :root {
     --background: 225 44% 4%;
