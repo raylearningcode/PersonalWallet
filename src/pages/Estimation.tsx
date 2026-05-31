@@ -154,8 +154,12 @@ export function Estimation() {
     setExpenseItems(newItems)
     setExpenseDetail('')
     setExpenseAmount('')
-    await saveToBackend(incomeItems, newItems, wishlistItems, notes)
-    toast.success('Expense item added')
+    try {
+      await saveToBackend(incomeItems, newItems, wishlistItems, notes)
+      toast.success('Expense item added')
+    } catch {
+      toast.error('Failed to save — item shown locally but may not persist')
+    }
   }
 
   const addWishlistItem = async () => {
@@ -173,7 +177,12 @@ export function Estimation() {
     setWishlistAmount('')
     setWishlistType('Want')
     setWishlistNote('')
-    await saveToBackend(incomeItems, expenseItems, newItems, notes)
+    try {
+      await saveToBackend(incomeItems, expenseItems, newItems, notes)
+      toast.success('Wishlist item added')
+    } catch {
+      toast.error('Failed to save — item shown locally but may not persist')
+    }
   }
 
   const startEditItem = (list: 'income' | 'expense', id: string) => {
@@ -494,7 +503,7 @@ export function Estimation() {
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(110px,0.45fr)_minmax(120px,0.45fr)]">
               <div>
                 <Label className="text-xs text-muted-foreground">Wishlist item</Label>
-                <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="MacBook upgrade" />
+                <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="e.g. new laptop, vacation, gadget" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>

@@ -298,7 +298,7 @@ export function Dashboard() {
           <>
             <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" />
             <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : daysLeft === 0 ? 'Month ends today' : `${daysLeft} days left`} badgeVariant="warning" />
-            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : `Based on budgets · ${daysLeft}d left`} />
+            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : daysLeft === 1 ? 'Based on budgets · last day' : `Based on budgets · ${daysLeft} days left`} />
             <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} />
           </>
         )}
@@ -466,7 +466,7 @@ export function Dashboard() {
                 </div>
               )}
               <p className="break-words text-xl font-extrabold leading-none text-foreground sm:text-2xl">
-                {topSpending.amount > 0 ? `${fmt(topSpending.amount)} ${topSpending.name}` : fmt(0) + ' category'}
+                {topSpending.amount > 0 ? `${fmt(topSpending.amount)} ${topSpending.name}` : 'No spending this year'}
               </p>
             </CardContent>
           </Card>

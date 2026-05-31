@@ -52,6 +52,7 @@ const emptyAddForm = () => ({
 })
 
 type ExpenseFilter = 'all' | 'active' | 'paused' | 'due-soon'
+type ExpenseSort = 'due-date' | 'amount-desc' | 'amount-asc' | 'name'
 
 export function Subscriptions() {
   const money = useMoney()
@@ -69,6 +70,7 @@ export function Subscriptions() {
   const [editTarget, setEditTarget] = useState<RecurringRule | null>(null)
   const [editForm, setEditForm] = useState(emptyAddForm())
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
+  const [expenseSort, setExpenseSort] = useState<ExpenseSort>('due-date')
   const [searchQuery, setSearchQuery] = useState('')
 
   const expenses = useMemo(
@@ -106,8 +108,13 @@ export function Subscriptions() {
       const q = searchQuery.toLowerCase()
       list = list.filter(r => r.description.toLowerCase().includes(q) || r.category.toLowerCase().includes(q))
     }
-    return list
-  }, [expenses, expenseFilter, searchQuery])
+    const sorted = [...list]
+    if (expenseSort === 'due-date') sorted.sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))
+    else if (expenseSort === 'amount-desc') sorted.sort((a, b) => b.amount - a.amount)
+    else if (expenseSort === 'amount-asc') sorted.sort((a, b) => a.amount - b.amount)
+    else if (expenseSort === 'name') sorted.sort((a, b) => a.description.localeCompare(b.description))
+    return sorted
+  }, [expenses, expenseFilter, expenseSort, searchQuery])
 
   const lastPaidDate = (rule: RecurringRule) => {
     const related = transactions
@@ -536,7 +543,7 @@ export function Subscriptions() {
           <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
             {expenses.length > 0 && (
               <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {(['all', 'active', 'paused', 'due-soon'] as ExpenseFilter[]).map(f => (
                     <button
                       key={f}
@@ -546,6 +553,17 @@ export function Subscriptions() {
                       {f === 'due-soon' ? 'Due Soon' : f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                   ))}
+                  <select
+                    aria-label="Sort subscriptions"
+                    className="ml-auto h-7 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
+                    value={expenseSort}
+                    onChange={e => setExpenseSort(e.target.value as ExpenseSort)}
+                  >
+                    <option value="due-date">Sort: Due date</option>
+                    <option value="amount-desc">Sort: Highest amount</option>
+                    <option value="amount-asc">Sort: Lowest amount</option>
+                    <option value="name">Sort: Name A–Z</option>
+                  </select>
                 </div>
                 <input
                   aria-label="Search subscriptions"
