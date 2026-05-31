@@ -307,7 +307,7 @@ export function Settings() {
     <div>
       <PageHeader
         title="Settings"
-        subtitle="Manage your profile, login, currency, and spending categories."
+        subtitle={<><span className="hidden sm:inline">Manage your profile, login, currency, and spending categories.</span><span className="sm:hidden">Profile, security, and preferences.</span></>}
       />
       {!session && (
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
@@ -344,6 +344,10 @@ export function Settings() {
                 <div>
                   <p className="break-words text-2xl font-extrabold leading-none text-foreground sm:text-[1.7rem]">{name || 'Empty profile'}</p>
                   <p className="mt-2 text-sm text-muted-foreground">{session?.user.email || 'No account connected'}</p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${session ? 'bg-primary' : 'bg-[#FFCF73]'}`} />
+                    {session ? 'Cloud sync enabled' : 'Guest mode — data saved locally only'}
+                  </p>
                 </div>
               </div>
               <Button className="px-9" onClick={() => setEditMode(!editMode)}>
@@ -398,6 +402,26 @@ export function Settings() {
             <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
             <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
               <p className="text-sm text-muted-foreground">Set the currency your amounts are saved in, then choose what FinPath displays.</p>
+
+              {/* Currency status banner */}
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold text-muted-foreground">Display currency: <span className="text-foreground">{money.displayCurrency}</span></p>
+                  <p className="text-xs font-bold text-muted-foreground">Base currency: <span className="text-foreground">{money.baseCurrency}</span></p>
+                </div>
+                <p className="text-right text-xs text-muted-foreground">
+                  {money.ratesDate ? `Rates: ${money.ratesDate}` : <span className="text-[#FFCF73]">Using fallback rates</span>}
+                </p>
+              </div>
+
+              {/* Conversion preview */}
+              {money.baseCurrency !== money.displayCurrency && (
+                <div className="rounded-2xl border border-border bg-secondary px-4 py-3 text-xs text-muted-foreground">
+                  <p>1 {money.baseCurrency} ≈ {money.format(money.fromBase(1, money.displayCurrency), money.displayCurrency)}</p>
+                  <p className="mt-0.5">1 {money.displayCurrency} ≈ {money.formatBase(money.toBase(1, money.displayCurrency))}</p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Base currency</Label>
                 <Select value={baseCurrency} onValueChange={setBaseCurrency}>
@@ -421,11 +445,6 @@ export function Settings() {
                 </Select>
               </div>
               <Button onClick={saveCurrency} disabled={saveSettings.isPending}>Save currency</Button>
-              {money.ratesDate && (
-                <p className="text-xs text-muted-foreground">
-                  Live rates as of {money.ratesDate}
-                </p>
-              )}
             </CardContent>
           </Card>
         </>
@@ -685,7 +704,7 @@ export function Settings() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">PIN lock</CardTitle>
-            <p className="text-sm text-muted-foreground">Protect the app with a 4-digit PIN when it opens.</p>
+            <p className="text-sm text-muted-foreground">Protect this browser session with a 4-digit PIN. PIN lock is not a replacement for account security — it only locks this device's screen.</p>
           </CardHeader>
           <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
             {pinEnabled ? (
@@ -711,6 +730,17 @@ export function Settings() {
                 <Button onClick={handleEnablePin} disabled={pinInput.length !== 4}>Enable PIN</Button>
               </div>
             )}
+
+            {/* Privacy & Data info */}
+            <div className="rounded-2xl border border-border bg-secondary p-4 text-sm space-y-2">
+              <p className="font-bold text-foreground">Privacy & Data</p>
+              <ul className="space-y-1 text-muted-foreground">
+                <li>· Your data is stored in your account or locally in guest mode.</li>
+                <li>· FinPath does not connect to bank accounts.</li>
+                <li>· PIN lock protects this browser session only.</li>
+                <li>· Export your data anytime from Backup &amp; Export.</li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
       )}

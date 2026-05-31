@@ -31,25 +31,11 @@ import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 type Filter = 'all' | 'income' | 'expense' | 'transfer'
 type EntryType = 'income' | 'expense' | 'transfer'
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
-
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return true
-    return window.matchMedia('(min-width: 1024px)').matches
-  })
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return
-    const mq = window.matchMedia('(min-width: 1024px)')
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-  return isDesktop
-}
 
 export function Transactions() {
   const money = useMoney()
@@ -385,7 +371,7 @@ export function Transactions() {
     <div>
       <PageHeader
         title="Transactions"
-        subtitle="Track every cashflow with clean filters, wallet routing, and category breakdowns."
+        subtitle={<><span className="hidden sm:inline">Track every cashflow with clean filters, wallet routing, and category breakdowns.</span><span className="sm:hidden">Track spending and income.</span></>}
         searchValue={searchQuery}
         onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
         action={(
@@ -421,7 +407,7 @@ export function Transactions() {
         </Tabs>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-[1.4rem] bg-gradient-to-l from-card to-transparent sm:hidden" />
       </div>
-      <div className="mb-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+      <div className="mb-9 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         {[
           { label: 'Money in', value: money.formatDisplay(moneyIn), dot: 'bg-primary', sub: money.baseCurrency !== money.displayCurrency ? money.formatBase(moneyIn) : 'Income received' },
           { label: 'Money out', value: money.formatDisplay(moneyOut), dot: 'bg-[#FF8388]', sub: money.baseCurrency !== money.displayCurrency ? money.formatBase(moneyOut) : `Across ${transactions.length} transactions` },
