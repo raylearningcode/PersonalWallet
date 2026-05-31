@@ -498,8 +498,9 @@ export function Reports() {
                 {(['income', 'expense'] as ReportMode[]).map(item => (
                   <button
                     key={item}
-                    className={`rounded-full px-5 py-2 text-sm font-extrabold capitalize ${mode === item ? 'bg-card text-foreground' : 'text-muted-foreground'}`}
+                    className={`rounded-full px-5 py-2 text-sm font-extrabold capitalize transition-colors ${mode === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     onClick={() => handleModeChange(item)}
+                    title={`Show ${item} breakdown`}
                   >
                     {item}
                   </button>
@@ -529,7 +530,7 @@ export function Reports() {
                     key={name}
                     className={`flex w-full items-center justify-between gap-4 rounded-xl px-2 py-1.5 transition-colors ${selectedCategory === name ? 'bg-secondary' : 'hover:bg-secondary/60'}`}
                     onClick={() => setSelectedCategory(selectedCategory === name ? null : name)}
-                    title={`Filter by ${name}`}
+                    title={`Filter transactions by ${name}`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />
@@ -538,7 +539,17 @@ export function Reports() {
                     <span className="text-sm font-bold text-muted-foreground">{Math.round((amount / activeTotal) * 100)}%</span>
                   </button>
                 )) : (
-                  <p className="text-sm text-muted-foreground">No {mode} data in this range.</p>
+                  <div>
+                    <p className="text-sm text-muted-foreground">No {mode} data in this range.</p>
+                    {mode === 'income' && (
+                      <button
+                        className="mt-2 text-xs font-bold text-primary hover:underline"
+                        onClick={() => handleModeChange('expense')}
+                      >
+                        Switch to expense view →
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

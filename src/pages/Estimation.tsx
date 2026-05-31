@@ -552,7 +552,14 @@ export function Estimation() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-extrabold text-foreground">{item.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{item.type}</p>
+                        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
+                          item.type === 'Need' ? 'bg-primary/15 text-primary' :
+                          item.type === 'Want' ? 'bg-[#FFCF73]/20 text-[#FFCF73]' :
+                          item.type === 'Work' ? 'bg-[#93C5FD]/20 text-[#93C5FD]' :
+                          item.type === 'Travel' ? 'bg-[#C4AEFF]/20 text-[#C4AEFF]' :
+                          item.type === 'Gift' ? 'bg-[#FADBEA]/50 text-[#FADBEA]' :
+                          'bg-secondary text-muted-foreground'
+                        }`}>{item.type}</span>
                       </div>
                       <div className="flex shrink-0 gap-1">
                         <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} title="Convert to goal" disabled={addGoal.isPending}><Target className="h-3.5 w-3.5" /></button>

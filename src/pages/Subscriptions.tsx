@@ -22,6 +22,11 @@ const FREQ_LABELS: Record<string, string> = {
   yearly: 'Yearly',
 }
 
+const COMMON_SUB_CATEGORIES = [
+  'Streaming', 'Entertainment', 'Utilities', 'Transport', 'Health & Fitness',
+  'Software', 'Cloud Storage', 'News & Media', 'Insurance', 'Subscriptions',
+]
+
 
 function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000)
@@ -317,6 +322,7 @@ export function Subscriptions() {
             }`}
             onClick={() => togglePause(rule)}
             disabled={updateRule.isPending}
+            title={rule.active ? 'Pause — stops automatic renewal until resumed' : 'Resume — restarts automatic renewal from next due date'}
           >
             {rule.active ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
             {rule.active ? 'Pause' : 'Resume'}
@@ -371,7 +377,21 @@ export function Subscriptions() {
                 <Label className="text-xs text-muted-foreground">Category</Label>
                 <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
                   <option value="">— auto —</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {categories.length > 0 && (
+                    <>
+                      <optgroup label="Your categories">
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </optgroup>
+                      <optgroup label="Common">
+                        {COMMON_SUB_CATEGORIES.filter(s => !categories.some(c => c.name.toLowerCase() === s.toLowerCase())).map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </optgroup>
+                    </>
+                  )}
+                  {categories.length === 0 && COMMON_SUB_CATEGORIES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -476,7 +496,21 @@ export function Subscriptions() {
                   onChange={e => setField('category', e.target.value)}
                 >
                   <option value="">— auto —</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {categories.length > 0 && (
+                    <>
+                      <optgroup label="Your categories">
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </optgroup>
+                      <optgroup label="Common">
+                        {COMMON_SUB_CATEGORIES.filter(s => !categories.some(c => c.name.toLowerCase() === s.toLowerCase())).map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </optgroup>
+                    </>
+                  )}
+                  {categories.length === 0 && COMMON_SUB_CATEGORIES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
                 </select>
               </div>
               <div>

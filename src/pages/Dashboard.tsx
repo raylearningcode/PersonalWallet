@@ -478,10 +478,19 @@ export function Dashboard() {
         {/* Budget health + Smart insights */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-7">
           <Card>
-            <CardHeader><CardTitle className="text-xl">Budget health</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-xl">Budget health</CardTitle>
+                <Link to="/budget" className="text-xs font-bold text-primary hover:underline">View budget →</Link>
+              </div>
+            </CardHeader>
             <CardContent className="space-y-3">
               {categoryRows.length > 0 ? categoryRows.map(category => (
-                <div key={category.id} className="space-y-2">
+                <Link
+                  key={category.id}
+                  to="/budget"
+                  className="block space-y-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-secondary/60"
+                >
                   <div className="flex items-center justify-between gap-3 text-sm">
                     <span className="min-w-0 truncate text-muted-foreground">{category.name}</span>
                     <span className="shrink-0 font-bold text-foreground">{fmt(category.spent)}</span>
@@ -498,7 +507,7 @@ export function Dashboard() {
                       }}
                     />
                   </div>
-                </div>
+                </Link>
               )) : (
                 <p className="text-sm text-muted-foreground">No budget categories yet.</p>
               )}
@@ -506,7 +515,12 @@ export function Dashboard() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-xl">Decision insights</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-xl">Decision insights</CardTitle>
+                <Link to="/reports" className="text-xs font-bold text-primary hover:underline">View reports →</Link>
+              </div>
+            </CardHeader>
             <CardContent className="space-y-3">
               {topSpending.amount > 0 && (() => {
                 const topPct = totalCategorySpend > 0 ? Math.round((topSpending.amount / totalCategorySpend) * 100) : 0
@@ -515,17 +529,17 @@ export function Dashboard() {
                   ? (topCatBudget.yearly_allocated - topSpending.amount) / daysLeft
                   : null
                 return (
-                  <div className="rounded-2xl border border-border bg-secondary p-4">
+                  <Link to={`/transactions?q=${encodeURIComponent(topSpending.name)}`} className="block rounded-2xl border border-border bg-secondary p-4 transition-colors hover:bg-muted/50">
                     <p className="text-xs font-bold text-muted-foreground">Top category</p>
                     <p className="mt-1 text-sm font-bold text-foreground">{topSpending.name} is your largest spending category this year.</p>
                     <p className="mt-1 text-xs text-muted-foreground">{fmt(topSpending.amount)} spent · {topPct}% of total spending</p>
                     {dailyAllowance !== null && (
                       <p className="mt-1 text-xs text-primary">You can spend ~{fmt(dailyAllowance)}/day on {topSpending.name} for the rest of this month</p>
                     )}
-                  </div>
+                  </Link>
                 )
               })()}
-              <div className="rounded-2xl border border-border bg-secondary p-4">
+              <Link to="/reports" className="block rounded-2xl border border-border bg-secondary p-4 transition-colors hover:bg-muted/50">
                 <p className="text-xs font-bold text-muted-foreground">Monthly cashflow</p>
                 <p className="mt-2 text-2xl font-extrabold text-foreground">
                   {(() => {
@@ -539,12 +553,12 @@ export function Dashboard() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {fmt(monthlyIncome)} in · {fmt(monthlySpent)} out this month
                 </p>
-              </div>
+              </Link>
               {categoryInsights.filter(i => i.overPace).slice(0, 1).map(insight => (
-                <div key={insight.category} className="rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 p-4">
+                <Link key={insight.category} to="/budget" className="block rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 p-4 transition-colors hover:bg-[#FFCF73]/10">
                   <p className="text-xs font-bold text-[#FFCF73]">Over pace</p>
                   <p className="mt-1 text-sm text-foreground">{insight.message}</p>
-                </div>
+                </Link>
               ))}
             </CardContent>
           </Card>
@@ -603,10 +617,15 @@ export function Dashboard() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-xl">Budget pace alerts</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-xl">Budget pace alerts</CardTitle>
+                <Link to="/budget" className="text-xs font-bold text-primary hover:underline">Manage →</Link>
+              </div>
+            </CardHeader>
             <CardContent className="space-y-3">
               {categoryInsights.length > 0 ? categoryInsights.map(insight => (
-                <div key={insight.category} className="rounded-2xl bg-secondary p-4">
+                <Link key={insight.category} to="/budget" className="block rounded-2xl bg-secondary p-4 transition-colors hover:bg-muted/50">
                   <div className="flex items-center justify-between gap-4">
                     <p className="font-extrabold text-foreground">{insight.category}</p>
                     <p className={insight.overPace ? 'text-sm font-bold text-[#FFCF73]' : 'text-sm font-bold text-primary'}>
@@ -614,7 +633,7 @@ export function Dashboard() {
                     </p>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{insight.message}</p>
-                </div>
+                </Link>
               )) : (
                 <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">Add budgets and transactions to see pace alerts.</p>
               )}
@@ -654,7 +673,7 @@ export function Dashboard() {
                 return events.map((ev, i) => {
                   const daysAway = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
                   return (
-                    <div key={i} className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 ${ev.kind === 'bill' ? 'bg-secondary' : 'bg-primary/5 border border-primary/10'}`}>
+                    <Link key={i} to={ev.kind === 'bill' ? '/subscriptions' : '/goals'} className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 transition-colors hover:opacity-80 ${ev.kind === 'bill' ? 'bg-secondary' : 'bg-primary/5 border border-primary/10'}`}>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs">{ev.kind === 'bill' ? '💳' : '🎯'}</span>
@@ -665,7 +684,7 @@ export function Dashboard() {
                       <span className={`shrink-0 text-xs font-extrabold ${daysAway <= 0 ? 'text-[#FF8388]' : daysAway <= 3 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
                         {daysAway <= 0 ? 'Today' : daysAway === 1 ? 'Tomorrow' : `${daysAway}d`}
                       </span>
-                    </div>
+                    </Link>
                   )
                 })
               })()}
@@ -704,9 +723,9 @@ export function Dashboard() {
                       type="button"
                       aria-label="Dismiss AI Insights card"
                       onClick={() => { localStorage.setItem('finpath_ai_dismissed', '1'); setAiCardDismissed(true) }}
-                      className="rounded-full p-1 text-muted-foreground hover:text-foreground"
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-5 w-5" />
                     </button>
                   )}
                 </div>

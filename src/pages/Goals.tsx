@@ -11,13 +11,13 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Bookmark, Plus, Pencil, Trash2, Target, TrendingUp } from 'lucide-react'
+import { Bookmark, Copy, Plus, Pencil, Trash2, Target, TrendingUp } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
 import type { Goal } from '@/types'
 
 const GOAL_COLORS = ['#A9F5C7', '#FADBEA', '#FFF7B5', '#D9E8FF', '#F8DCDC', '#C4AEFF', '#FFD276', '#93C5FD']
 
-const GOAL_CATEGORIES = ['Savings', 'Emergency Fund', 'Vacation', 'Home', 'Vehicle', 'Education', 'Retirement', 'Investment', 'Other']
+const GOAL_CATEGORIES = ['Savings', 'Emergency Fund', 'Vacation', 'Home', 'Vehicle', 'Education', 'Travel', 'Gadget', 'Health', 'Retirement', 'Investment', 'Other']
 
 type FormState = {
   name: string
@@ -196,6 +196,23 @@ export function Goals() {
     }
   }
 
+  const handleDuplicateGoal = async (goal: Goal) => {
+    try {
+      await addGoal.mutateAsync({
+        name: `${goal.name} (copy)`,
+        target_amount: goal.target_amount,
+        current_amount: 0,
+        deadline: goal.deadline,
+        color: goal.color,
+        category: goal.category,
+        notes: goal.notes,
+      })
+      toast.success('Goal duplicated')
+    } catch {
+      toast.error('Failed to duplicate goal')
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -368,6 +385,16 @@ export function Goals() {
                         aria-label={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
                       >
                         <Bookmark className="h-5 w-5" fill={pinnedGoalId === goal.id ? 'currentColor' : 'none'} />
+                      </button>
+                      <button
+                        type="button"
+                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                        onClick={() => handleDuplicateGoal(goal)}
+                        disabled={addGoal.isPending}
+                        title="Duplicate goal"
+                        aria-label={`Duplicate ${goal.name}`}
+                      >
+                        <Copy className="h-5 w-5" />
                       </button>
                       <button
                         type="button"
