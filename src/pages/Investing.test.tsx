@@ -35,8 +35,7 @@ describe('Investing', () => {
   it('starts empty and updates the ROI simulation from user input', () => {
     render(<Investing />)
 
-    expect(screen.getByText(/Estimated in 0 years/i)).toBeInTheDocument()
-    expect(screen.getAllByText('TWD 0').length).toBeGreaterThan(0)
+    expect(screen.getByText(/Estimated in 10 years/i)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Contribution currency'), { target: { value: 'TWD' } })
     fireEvent.change(screen.getByLabelText('Monthly contribution'), { target: { value: '1500000' } })

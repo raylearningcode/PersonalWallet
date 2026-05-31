@@ -104,18 +104,22 @@ export function Goals() {
       category: form.category,
       notes: form.notes.trim(),
     }
+    const prevEditingId = editingId
+    setShowForm(false)  // optimistic close — no double-click needed
+    setEditingId(null)
+    setForm(emptyForm())
+    setErrors({})
     try {
-      if (editingId) {
-        await updateGoal.mutateAsync({ id: editingId, ...payload })
+      if (prevEditingId) {
+        await updateGoal.mutateAsync({ id: prevEditingId, ...payload })
         toast.success('Goal updated')
       } else {
         await addGoal.mutateAsync(payload)
         toast.success('Goal created')
       }
-      setShowForm(false)
-      setEditingId(null)
-      setForm(emptyForm())
     } catch {
+      setShowForm(true)  // reopen on failure
+      setEditingId(prevEditingId)
       toast.error('Failed to save goal')
     }
   }

@@ -1,51 +1,74 @@
 import { NavLink } from 'react-router-dom'
-import { ReceiptText, LayoutDashboard, MoreHorizontal, Wallet, Plus } from 'lucide-react'
+import { CreditCard, LayoutDashboard, MoreHorizontal, PieChart, Plus } from 'lucide-react'
 
-const leftNavItems = [
+const navItems = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
-  { to: '/transactions', label: 'Activity', icon: ReceiptText },
-]
-
-const rightNavItems = [
-  { to: '/budget', label: 'Budget', icon: Wallet },
+  { to: '/transactions', label: 'Txns', icon: CreditCard },
+  { to: '/budget', label: 'Budget', icon: PieChart },
 ]
 
 export function BottomNav({
   onMoreClick,
   moreActive,
   onAddClick,
+  hidden = false,
 }: {
   onMoreClick: () => void
   moreActive: boolean
   onAddClick: () => void
+  hidden?: boolean
 }) {
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`
-
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center border-t border-border bg-background/95 backdrop-blur lg:hidden">
-      {leftNavItems.map(({ to, label, icon: Icon }) => (
-        <NavLink key={to} to={to} end={to === '/'} className={linkClass}>
-          <Icon className="h-5 w-5" />
-          {label}
+    <nav className={`fixed inset-x-0 bottom-0 z-40 flex h-[60px] items-stretch border-t border-border bg-background/97 backdrop-blur-md lg:hidden transition-transform duration-300 ${hidden ? 'translate-y-full' : 'translate-y-0'}`}>
+      {navItems.slice(0, 2).map(({ to, label, icon: Icon }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={to === '/'}
+          className={({ isActive }) =>
+            `flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-bold transition-colors active:bg-muted/40 ${isActive ? 'text-primary' : 'text-muted-foreground'}`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <span className={`flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-primary/15' : ''}`}>
+                <Icon size={18} />
+              </span>
+              {label}
+            </>
+          )}
         </NavLink>
       ))}
 
+      {/* Centre FAB */}
       <div className="flex flex-1 items-center justify-center">
         <button
           type="button"
           onClick={onAddClick}
           aria-label="Add transaction"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 transition-transform active:scale-95"
+          className="flex items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/40 transition-transform active:scale-90"
+          style={{ width: 52, height: 52 }}
         >
           <Plus className="h-6 w-6 text-primary-foreground" />
         </button>
       </div>
 
-      {rightNavItems.map(({ to, label, icon: Icon }) => (
-        <NavLink key={to} to={to} end={to === '/'} className={linkClass}>
-          <Icon className="h-5 w-5" />
-          {label}
+      {navItems.slice(2).map(({ to, label, icon: Icon }) => (
+        <NavLink
+          key={to}
+          to={to}
+          className={({ isActive }) =>
+            `flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-bold transition-colors active:bg-muted/40 ${isActive ? 'text-primary' : 'text-muted-foreground'}`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <span className={`flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-primary/15' : ''}`}>
+                <Icon size={18} />
+              </span>
+              {label}
+            </>
+          )}
         </NavLink>
       ))}
 
@@ -53,9 +76,11 @@ export function BottomNav({
         type="button"
         onClick={onMoreClick}
         aria-label="Open more menu"
-        className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold ${moreActive ? 'text-primary' : 'text-muted-foreground'}`}
+        className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-bold transition-colors active:bg-muted/40 ${moreActive ? 'text-primary' : 'text-muted-foreground'}`}
       >
-        <MoreHorizontal className="h-5 w-5" />
+        <span className={`flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${moreActive ? 'bg-primary/15' : ''}`}>
+          <MoreHorizontal size={18} />
+        </span>
         More
       </button>
     </nav>

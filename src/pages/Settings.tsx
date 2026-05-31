@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ElementType } from 'react'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -21,20 +21,21 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield, Pencil, Check } from 'lucide-react'
+import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon } from 'lucide-react'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { Wallet } from '@/types'
 import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
 
 const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
 type SettingsTab = typeof tabs[number]
-const TAB_LABELS: Record<SettingsTab, string> = {
-  profile: 'Profile',
-  wallets: 'Wallets',
-  categories: 'Categories',
-  ai: 'AI Features',
-  security: 'Security',
-  backup: 'Backup & Export',
+const TAB_META: Record<SettingsTab, { label: string; desc: string; Icon: ElementType; color: string }> = {
+  profile:    { label: 'Profile',        desc: 'Name, currency & account',  Icon: User,        color: '#A9F5C7' },
+  wallets:    { label: 'Wallets',        desc: 'Cash, bank & cards',        Icon: WalletIcon,  color: '#93C5FD' },
+  categories: { label: 'Categories',     desc: 'Budget categories',         Icon: Tag,         color: '#FFD276' },
+  ai:         { label: 'AI Features',    desc: 'Gemini AI integration',     Icon: Sparkles,    color: '#C4AEFF' },
+  security:   { label: 'Security',       desc: 'PIN lock & privacy',        Icon: Shield,      color: '#FADBEA' },
+  backup:     { label: 'Backup & Export',desc: 'Export & import data',      Icon: HardDrive,   color: '#F8DCDC' },
 }
 
 const CURRENCIES = ['USD', 'IDR', 'TWD', 'EUR', 'JPY']
@@ -70,7 +71,10 @@ export function Settings() {
   const saveInvestmentConfig = useSaveInvestmentConfig()
   const upsertEstimationPlan = useUpsertEstimationPlan()
 
+  const isDesktop = useIsDesktop()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
+  const [mobilePage, setMobilePage] = useState<SettingsTab | null>(null)
+  const effectiveTab = isDesktop ? activeTab : mobilePage
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')
   const [baseCurrency, setBaseCurrency] = useState('IDR')
@@ -319,21 +323,57 @@ export function Settings() {
         </div>
       )}
 
-      {/* Tab pill bar */}
-      <div className="mb-8 flex flex-wrap gap-2 overflow-x-auto">
+      {/* Desktop: pill tab bar */}
+      <div className="mb-8 hidden flex-wrap gap-2 overflow-x-auto lg:flex">
         {tabs.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${activeTab === tab ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
           >
-            {TAB_LABELS[tab]}
+            {TAB_META[tab].label}
           </button>
         ))}
       </div>
 
+      {/* Mobile: native-style settings list (shown when no page selected) */}
+      {!effectiveTab && (
+        <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
+          {tabs.map((tab, i) => {
+            const { label, desc, Icon, color } = TAB_META[tab]
+            return (
+              <button
+                key={tab}
+                onClick={() => setMobilePage(tab)}
+                className={`flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-muted/40 ${i < tabs.length - 1 ? 'border-b border-border' : ''}`}
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: color + '33' }}>
+                  <Icon className="h-5 w-5" style={{ color }} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Mobile: back button when a page is selected */}
+      {effectiveTab && !isDesktop && (
+        <button
+          onClick={() => setMobilePage(null)}
+          className="mb-6 flex items-center gap-2 text-sm font-bold text-primary lg:hidden"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Settings
+        </button>
+      )}
+
       {/* Profile tab */}
-      {activeTab === 'profile' && (
+      {effectiveTab === 'profile' && (
         <>
           <Card className="mb-8">
             <CardContent className="flex min-h-[156px] flex-col items-start gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
@@ -451,7 +491,7 @@ export function Settings() {
       )}
 
       {/* Wallets tab */}
-      {activeTab === 'wallets' && (
+      {effectiveTab === 'wallets' && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Wallets</CardTitle>
@@ -551,7 +591,7 @@ export function Settings() {
       )}
 
       {/* Categories tab */}
-      {activeTab === 'categories' && (
+      {effectiveTab === 'categories' && (
         <Card className="mb-8">
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -634,7 +674,7 @@ export function Settings() {
       )}
 
       {/* AI Features tab */}
-      {activeTab === 'ai' && (
+      {effectiveTab === 'ai' && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">AI Features</CardTitle>
@@ -700,7 +740,7 @@ export function Settings() {
       )}
 
       {/* Security tab */}
-      {activeTab === 'security' && (
+      {effectiveTab === 'security' && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">PIN lock</CardTitle>
@@ -746,7 +786,7 @@ export function Settings() {
       )}
 
       {/* Backup & Export tab */}
-      {activeTab === 'backup' && (
+      {effectiveTab === 'backup' && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Backup and restore</CardTitle>
