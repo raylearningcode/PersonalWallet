@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets } from '@/lib/queries'
+import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets, useAddTransaction } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { MoneyInput } from '@/components/shared/MoneyInput'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
@@ -55,6 +56,7 @@ export function Goals() {
   const addGoal = useAddGoal()
   const updateGoal = useUpdateGoal()
   const deleteGoal = useDeleteGoal()
+  const addTransaction = useAddTransaction()
 
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -151,14 +153,33 @@ export function Goals() {
     const amount = money.toBase(parseNumberInput(contributeAmount), money.displayCurrency)
     if (amount <= 0) { toast.error('Enter a valid amount'); return }
     const target = contributeTarget
-    const walletName = wallets.find(w => w.id === contributeWalletId)?.name
+    const wallet = wallets.find(w => w.id === contributeWalletId)
     const newAmount = target.current_amount + amount
     setContributeTarget(null)
     setContributeAmount('')
     setContributeWalletId('')
     try {
       await updateGoal.mutateAsync({ id: target.id, current_amount: newAmount })
-      toast.success(walletName ? `Contribution from ${walletName} logged` : 'Contribution logged')
+      // Create a ledger transaction so the contribution appears in transaction history
+      // and debits the selected wallet
+      if (wallet) {
+        await addTransaction.mutateAsync({
+          user_id: null,
+          description: `Goal: ${target.name}`,
+          amount,
+          original_amount: parseNumberInput(contributeAmount),
+          original_currency: money.displayCurrency,
+          type: 'expense',
+          category: 'Goals',
+          wallet_id: wallet.id,
+          transfer_wallet_id: null,
+          recurring_rule_id: null,
+          recurring_due_date: null,
+          date: new Date().toISOString().slice(0, 10),
+          needs_review: false,
+        })
+      }
+      toast.success(wallet ? `Contribution from ${wallet.name} logged` : 'Contribution logged')
     } catch {
       toast.error('Failed to log contribution')
     }
@@ -438,15 +459,14 @@ export function Goals() {
                           {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                         </select>
                         <div className="flex gap-2">
-                          <Input
+                          <MoneyInput
                             className="h-9 min-w-0 flex-1 bg-secondary text-sm"
-                            inputMode="decimal"
                             placeholder={`Amount (${money.displayCurrency})`}
                             value={contributeAmount}
-                            onChange={e => setContributeAmount(formatNumberInput(e.target.value))}
+                            onValueChange={setContributeAmount}
                             autoFocus
                           />
-                          <Button size="sm" className="shrink-0" onClick={handleContribute} disabled={updateGoal.isPending}>Log</Button>
+                          <Button size="sm" className="shrink-0" onClick={handleContribute} disabled={updateGoal.isPending || addTransaction.isPending}>Log</Button>
                           <Button size="sm" variant="secondary" className="shrink-0" onClick={() => { setContributeTarget(null); setContributeAmount(''); setContributeWalletId('') }}>✕</Button>
                         </div>
                       </div>

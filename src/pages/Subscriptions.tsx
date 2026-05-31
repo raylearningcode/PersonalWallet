@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { toast } from 'sonner'
-import { Plus, Pause, Play, Trash2, RefreshCw, X } from 'lucide-react'
+import { Plus, Pause, Play, Trash2, RefreshCw, X, Pencil } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
 
 const FREQ_LABELS: Record<string, string> = {
@@ -65,6 +66,8 @@ export function Subscriptions() {
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState(emptyAddForm())
+  const [editTarget, setEditTarget] = useState<RecurringRule | null>(null)
+  const [editForm, setEditForm] = useState(emptyAddForm())
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -135,6 +138,52 @@ export function Subscriptions() {
 
   const setField = <K extends keyof ReturnType<typeof emptyAddForm>>(key: K, value: ReturnType<typeof emptyAddForm>[K]) => {
     setAddForm(f => ({ ...f, [key]: value }))
+  }
+
+  const setEditField = <K extends keyof ReturnType<typeof emptyAddForm>>(key: K, value: ReturnType<typeof emptyAddForm>[K]) => {
+    setEditForm(f => ({ ...f, [key]: value }))
+  }
+
+  const openEdit = (rule: RecurringRule) => {
+    setEditTarget(rule)
+    setEditForm({
+      description: rule.description,
+      amount: String(rule.original_amount ?? rule.amount),
+      type: rule.type as 'expense' | 'income',
+      frequency: rule.frequency,
+      category: rule.category,
+      walletId: rule.wallet_id ?? '',
+      startDate: rule.next_due_date,
+      logFirstPayment: false,
+    })
+  }
+
+  const handleEdit = async () => {
+    if (!editTarget) return
+    const amount = parseNumberInput(editForm.amount)
+    if (!editForm.description.trim() || amount <= 0) {
+      toast.error('Description and amount are required')
+      return
+    }
+    const category = editForm.category || (editForm.type === 'income' ? 'Income' : 'Subscriptions')
+    try {
+      await updateRule.mutateAsync({
+        id: editTarget.id,
+        description: editForm.description.trim(),
+        amount: money.toBase(amount, money.displayCurrency),
+        original_amount: amount,
+        original_currency: money.displayCurrency,
+        type: editForm.type,
+        category,
+        wallet_id: editForm.walletId || null,
+        frequency: editForm.frequency,
+        next_due_date: nextDueFrom(editForm.startDate, editForm.frequency),
+      })
+      toast.success('Subscription updated')
+      setEditTarget(null)
+    } catch {
+      toast.error('Failed to update subscription')
+    }
   }
 
   const handleAdd = async () => {
@@ -263,6 +312,14 @@ export function Subscriptions() {
             {rule.active ? 'Pause' : 'Resume'}
           </button>
           <button
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+            onClick={() => editTarget?.id === rule.id ? setEditTarget(null) : openEdit(rule)}
+            disabled={updateRule.isPending}
+          >
+            <Pencil className="h-3 w-3" />
+            Edit
+          </button>
+          <button
             className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-[#FF8388] disabled:opacity-40"
             onClick={() => setDeleteTarget(rule)}
             disabled={deleteRule.isPending}
@@ -271,6 +328,58 @@ export function Subscriptions() {
             Delete
           </button>
         </div>
+
+        {editTarget?.id === rule.id && (
+          <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
+            <p className="text-xs font-bold text-muted-foreground">Edit subscription</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Name</Label>
+                <Input className="mt-1.5 bg-secondary text-sm" value={editForm.description} onChange={e => setEditField('description', e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
+                <MoneyInput className="mt-1.5 bg-secondary text-sm" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Type</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Frequency</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Category</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
+                  <option value="">— auto —</option>
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Wallet</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
+                  <option value="">— none —</option>
+                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleEdit} disabled={updateRule.isPending}>
+                {updateRule.isPending ? 'Saving…' : 'Save changes'}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setEditTarget(null)}>Cancel</Button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -315,11 +424,10 @@ export function Subscriptions() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency}) *</Label>
-                <Input
+                <MoneyInput
                   className="mt-2 bg-secondary"
-                  inputMode="decimal"
                   value={addForm.amount}
-                  onChange={e => setField('amount', formatNumberInput(e.target.value))}
+                  onValueChange={v => setField('amount', v)}
                   placeholder="0"
                 />
               </div>

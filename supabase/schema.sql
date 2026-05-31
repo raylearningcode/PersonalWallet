@@ -73,9 +73,6 @@ create table budget_rules (
 
 create unique index wallets_user_name_key on wallets(user_id, lower(name));
 create unique index budget_categories_user_name_key on budget_categories(user_id, lower(name));
-create unique index investment_config_user_key on investment_config(user_id);
-create unique index app_settings_user_key on app_settings(user_id);
-create unique index estimation_plans_user_month_year_key on estimation_plans(user_id, month, year);
 create unique index transactions_recurring_due_unique on transactions(user_id, recurring_rule_id, recurring_due_date);
 
 create table investment_config (
@@ -120,3 +117,7 @@ create table app_settings (
   annual_goal_pct integer not null default 0 check (annual_goal_pct between 0 and 100),
   created_at timestamptz default now()
 );
+
+create unique index investment_config_user_key on investment_config(user_id);
+create unique index app_settings_user_key on app_settings(user_id);
+create unique index estimation_plans_user_month_year_key on estimation_plans(user_id, month, year);
