@@ -72,8 +72,14 @@ export function Settings() {
   const upsertEstimationPlan = useUpsertEstimationPlan()
 
   const isDesktop = useIsDesktop()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
-  const [mobilePage, setMobilePage] = useState<SettingsTab | null>(null)
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const s = new URLSearchParams(window.location.search).get('section')
+    return (s && (tabs as readonly string[]).includes(s)) ? s as SettingsTab : 'profile'
+  })
+  const [mobilePage, setMobilePage] = useState<SettingsTab | null>(() => {
+    const s = new URLSearchParams(window.location.search).get('section')
+    return (s && (tabs as readonly string[]).includes(s)) ? s as SettingsTab : null
+  })
   const effectiveTab = isDesktop ? activeTab : mobilePage
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')

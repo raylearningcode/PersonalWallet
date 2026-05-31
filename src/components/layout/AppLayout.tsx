@@ -99,7 +99,7 @@ export function AppLayout() {
               <span className="font-bold text-primary">Guest mode</span> — your data is saved on this device only.
             </p>
             <Link
-              to="/settings"
+              to="/settings?section=profile"
               className="shrink-0 rounded-full bg-primary px-4 py-1.5 text-xs font-extrabold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Sign in to sync
