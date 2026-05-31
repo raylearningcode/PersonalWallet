@@ -64,23 +64,6 @@ async function requireUserId(action: string) {
   return userId
 }
 
-async function claimLegacyAccountData(userId: string) {
-  const tables = [
-    'app_settings',
-    'wallets',
-    'budget_categories',
-    'budget_rules',
-    'investment_config',
-    'estimation_plans',
-    'recurring_rules',
-    'transactions',
-  ]
-  for (const table of tables) {
-    const { error } = await supabase.from(table).update({ user_id: userId }).is('user_id', null)
-    if (error) throw error
-  }
-}
-
 async function migrateGuestDataToAccount(userId: string): Promise<number> {
   const guestData = getGuestDataForMigration()
   const { transactions, wallets, categories, rules, plans, goals, investment } = guestData
