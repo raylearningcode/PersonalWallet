@@ -139,8 +139,12 @@ export function Estimation() {
     setIncomeItems(newItems)
     setIncomeSource('')
     setIncomeAmount('')
-    await saveToBackend(newItems, expenseItems, wishlistItems, notes)
-    toast.success('Income item added')
+    try {
+      await saveToBackend(newItems, expenseItems, wishlistItems, notes)
+      toast.success('Income item added')
+    } catch {
+      toast.error('Failed to save — item shown locally but may not persist')
+    }
   }
 
   const addExpense = async () => {

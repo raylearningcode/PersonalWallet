@@ -138,9 +138,12 @@ export function Dashboard() {
       return { ...category, spent, pct }
     })
 
-  const monthlyBudget = categories
-    .filter(category => category.budget_period === 'monthly')
-    .reduce((sum, category) => sum + category.yearly_allocated, 0)
+  // Normalise all categories to monthly so yearly budgets contribute to safe-to-spend
+  const monthlyBudget = categories.reduce((sum, category) => {
+    if (category.budget_period === 'monthly') return sum + category.yearly_allocated
+    if (category.budget_period === 'yearly') return sum + category.yearly_allocated / 12
+    return sum
+  }, 0)
 
   const daysLeft = getDaysRemainingInMonth()
   const safeToSpend = getSafeToSpend(monthlyBudget, monthlySpent, daysLeft)

@@ -171,7 +171,8 @@ export function Budget() {
 
   const handleAdd = async () => {
     const amount = parseNumberInput(addAmount)
-    if (!addName.trim() || !Number.isFinite(amount) || amount < 0) return
+    if (!addName.trim()) { toast.error('Enter a category name'); return }
+    if (!Number.isFinite(amount) || amount < 0) return
     try {
       await addCategory.mutateAsync({ name: addName.trim(), yearly_allocated: money.toBase(amount, money.displayCurrency), budget_period: addPeriod, color: addColor })
       setAddName('')

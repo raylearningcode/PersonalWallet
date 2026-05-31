@@ -160,7 +160,9 @@ export function Subscriptions() {
       frequency: rule.frequency,
       category: rule.category,
       walletId: rule.wallet_id ?? '',
-      startDate: rule.next_due_date,
+      // Use start_date so nextDueFrom recalculates correctly for any frequency change
+      // without accidentally advancing next_due_date on a no-op edit
+      startDate: rule.start_date,
       logFirstPayment: false,
     })
   }
@@ -188,6 +190,7 @@ export function Subscriptions() {
       })
       toast.success('Subscription updated')
       setEditTarget(null)
+      setEditForm(emptyAddForm())
     } catch {
       toast.error('Failed to update subscription')
     }
@@ -320,7 +323,7 @@ export function Subscriptions() {
           </button>
           <button
             className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-            onClick={() => editTarget?.id === rule.id ? setEditTarget(null) : openEdit(rule)}
+            onClick={() => { if (editTarget?.id === rule.id) { setEditTarget(null); setEditForm(emptyAddForm()) } else openEdit(rule) }}
             disabled={updateRule.isPending}
           >
             <Pencil className="h-3 w-3" />
@@ -383,7 +386,7 @@ export function Subscriptions() {
               <Button size="sm" onClick={handleEdit} disabled={updateRule.isPending}>
                 {updateRule.isPending ? 'Saving…' : 'Save changes'}
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => setEditTarget(null)}>Cancel</Button>
+              <Button size="sm" variant="secondary" onClick={() => { setEditTarget(null); setEditForm(emptyAddForm()) }}>Cancel</Button>
             </div>
           </div>
         )}
