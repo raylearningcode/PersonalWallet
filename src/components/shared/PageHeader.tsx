@@ -14,12 +14,19 @@ function useScrollHide() {
   const lastY = useRef(0)
   useEffect(() => {
     const onScroll = () => {
+      // Only hide on pages that have enough content to scroll — prevents
+      // jitter on short pages where collapsing the header changes scrollY
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight
+      if (scrollable < 120) {
+        setHidden(false)
+        lastY.current = window.scrollY
+        return
+      }
       const y = window.scrollY
       if (y < 80) { setHidden(false); lastY.current = y; return }
       const dy = y - lastY.current
-      if (dy > 10) setHidden(true)
-      else if (dy < -8) setHidden(false)
-      lastY.current = y
+      if (dy > 10) { setHidden(true); lastY.current = y }
+      else if (dy < -8) { setHidden(false); lastY.current = y }
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
