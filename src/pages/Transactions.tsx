@@ -233,35 +233,40 @@ export function Transactions() {
       needs_review: false,
     }
 
-    if (editingTransaction) {
-      await updateTransaction.mutateAsync({ id: editingTransaction.id, ...payload })
-      toast.success('Transaction updated')
-    } else {
-      await addTransaction.mutateAsync(payload)
-      if (isRecurring) {
-        const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
-        await addRecurringRule.mutateAsync({
-          description: description.trim(),
-          amount: baseAmount,
-          original_amount: parsedAmount,
-          original_currency: inputCurrency,
-          type,
-          category: type === 'transfer' ? 'Transfer' : selectedCategory,
-          wallet_id: walletId || null,
-          transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
-          start_date: date,
-          next_due_date: addRecurringInterval(date, frequency),
-          frequency,
-          end_date: endDate || null,
-          installment_total: Number.isFinite(parsedInstallments) ? parsedInstallments : null,
-          installment_paid: Number.isFinite(parsedInstallments) ? 1 : 0,
-          active: !completedAtStart,
-        })
-      }
-      toast.success('Transaction added')
-    }
-    setIsFormOpen(false)
+    const editingTx = editingTransaction
+    setIsFormOpen(false)  // optimistic close — no double-click needed
     resetForm()
+    try {
+      if (editingTx) {
+        await updateTransaction.mutateAsync({ id: editingTx.id, ...payload })
+        toast.success('Transaction updated')
+      } else {
+        await addTransaction.mutateAsync(payload)
+        if (isRecurring) {
+          const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
+          await addRecurringRule.mutateAsync({
+            description: description.trim(),
+            amount: baseAmount,
+            original_amount: parsedAmount,
+            original_currency: inputCurrency,
+            type,
+            category: type === 'transfer' ? 'Transfer' : selectedCategory,
+            wallet_id: walletId || null,
+            transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
+            start_date: date,
+            next_due_date: addRecurringInterval(date, frequency),
+            frequency,
+            end_date: endDate || null,
+            installment_total: Number.isFinite(parsedInstallments) ? parsedInstallments : null,
+            installment_paid: Number.isFinite(parsedInstallments) ? 1 : 0,
+            active: !completedAtStart,
+          })
+        }
+        toast.success('Transaction added')
+      }
+    } catch {
+      toast.error('Failed to save transaction')
+    }
   }
 
   const handleDeleteTransaction = (tx: Transaction) => {

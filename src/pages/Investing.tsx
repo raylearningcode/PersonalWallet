@@ -92,8 +92,8 @@ export function Investing() {
   const emptySimulator: SimulatorValues = useMemo(() => ({
     monthlyContribution: money.fromBase(investConfig?.monthly_contribution ?? 0, savedContributionCurrency),
     targetPortfolio: money.fromBase(investConfig?.target_portfolio ?? 0, savedTargetCurrency),
-    annualReturnRate: investConfig?.return_rate ?? 0,
-    durationYears: investConfig?.duration_years ?? 0,
+    annualReturnRate: investConfig?.return_rate ?? 8,
+    durationYears: investConfig?.duration_years ?? 10,
     initialCapital: investConfig?.current_value ?? 0,
   }), [investConfig, money.baseCurrency, money.displayCurrency, money.rates, savedContributionCurrency, savedTargetCurrency])
 

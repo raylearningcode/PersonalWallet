@@ -44,8 +44,10 @@ function getRangeBounds(range: ReportRange, periodDate: Date) {
 function addPeriod(date: Date, range: ReportRange, direction: -1 | 1) {
   const next = new Date(date)
   if (range === 'year') next.setFullYear(date.getFullYear() + direction)
-  else if (range === 'month') next.setMonth(date.getMonth() + direction)
-  else next.setDate(date.getDate() + direction * 7)
+  else if (range === 'month') {
+    next.setDate(1) // avoid day-overflow (e.g. May 31 − 1 month → April 31 → May 1)
+    next.setMonth(date.getMonth() + direction)
+  } else next.setDate(date.getDate() + direction * 7)
   return next
 }
 

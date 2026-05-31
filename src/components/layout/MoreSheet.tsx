@@ -6,12 +6,12 @@ import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
 
 const MORE_NAV = [
-  { to: '/goals', label: 'Goals', Icon: Target },
-  { to: '/subscriptions', label: 'Subscriptions', Icon: RefreshCw },
-  { to: '/investing', label: 'Investing', Icon: TrendingUp },
-  { to: '/estimation', label: 'Planning', Icon: Calculator },
-  { to: '/reports', label: 'Reports', Icon: BarChart2 },
-  { to: '/settings', label: 'Settings', Icon: Settings },
+  { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
+  { to: '/subscriptions', label: 'Subs', Icon: RefreshCw, color: '#FADBEA' },
+  { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
+  { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
+  { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+  { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
 ]
 
 interface MoreSheetProps {
@@ -50,28 +50,45 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="rounded-t-2xl border-border bg-background pb-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-extrabold text-foreground">More</h2>
-        </div>
-        <div className="mb-6 flex flex-col gap-2">
-          {MORE_NAV.map(({ to, label, Icon }) => (
+      <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-10">
+        {/* Handle bar */}
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-muted" />
+
+        <h2 className="mb-5 text-lg font-extrabold text-foreground">More</h2>
+
+        {/* App-style icon grid */}
+        <div className="mb-6 grid grid-cols-3 gap-4">
+          {MORE_NAV.map(({ to, label, Icon, color }) => (
             <button
               key={to}
               onClick={() => handleNav(to)}
-              className="flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-foreground hover:bg-secondary"
+              className="flex flex-col items-center gap-2 rounded-2xl p-3 transition-colors active:scale-95 hover:bg-secondary"
             >
-              <Icon className="h-5 w-5 text-primary" />
-              {label}
+              <div
+                className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
+                style={{ backgroundColor: color + '33', border: `1.5px solid ${color}55` }}
+              >
+                <Icon className="h-6 w-6" style={{ color }} />
+              </div>
+              <span className="text-xs font-bold text-foreground">{label}</span>
             </button>
           ))}
         </div>
-        <div className="rounded-2xl border border-border bg-card px-5 py-5">
-          <p className="text-xs text-muted-foreground">{new Date().getFullYear()} goal</p>
-          <p className="mt-2 text-xl font-extrabold text-foreground">{displayGoal?.name ?? 'No goal set'}</p>
-          <p className="mt-1 text-sm text-primary">{goalPct}% completed</p>
-          <div className="mt-3 h-2 rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${goalPct}%` }} />
+
+        {/* Goal progress card */}
+        <div className="rounded-2xl border border-border bg-card px-5 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Current goal</p>
+              <p className="mt-0.5 truncate text-base font-extrabold text-foreground">{displayGoal?.name ?? 'No goal set'}</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-sm font-extrabold text-primary">{goalPct}%</span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500"
+              style={{ width: `${goalPct}%` }}
+            />
           </div>
         </div>
       </SheetContent>

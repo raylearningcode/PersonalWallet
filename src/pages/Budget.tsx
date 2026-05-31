@@ -154,15 +154,17 @@ export function Budget() {
       toast.error('Budget must be zero or greater')
       return
     }
+    const id = editingId
+    setEditingId(null) // optimistic close — no double-click needed
     try {
       await updateCategory.mutateAsync({
-        id: editingId,
+        id,
         ...editDraft,
         yearly_allocated: money.toBase(editDraft.yearly_allocated, money.displayCurrency),
       })
-      setEditingId(null)
       toast.success('Category updated')
     } catch {
+      setEditingId(id) // reopen on failure
       toast.error('Failed to update category')
     }
   }
