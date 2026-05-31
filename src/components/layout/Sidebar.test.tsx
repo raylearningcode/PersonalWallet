@@ -15,7 +15,7 @@ describe('Sidebar', () => {
   it('renders the FinPath concept shell with active navigation and the yearly goal card', () => {
     render(
       <MemoryRouter initialEntries={['/budget']}>
-        <Sidebar />
+        <Sidebar profileOpen={false} onProfileOpenChange={() => {}} />
       </MemoryRouter>
     )
 

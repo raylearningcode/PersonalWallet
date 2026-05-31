@@ -22,7 +22,10 @@ const navItems = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-export function Sidebar() {
+export function Sidebar({ profileOpen, onProfileOpenChange }: {
+  profileOpen: boolean
+  onProfileOpenChange: (open: boolean) => void
+}) {
   const { data: goals = [] } = useGoals()
   const { data: session } = useAuthSession()
   const signIn = useSignIn()
@@ -30,7 +33,6 @@ export function Sidebar() {
   const signOut = useSignOut()
 
   const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
-  const [profileOpen, setProfileOpen] = useState(false)
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
 
@@ -58,7 +60,7 @@ export function Sidebar() {
     try {
       await signIn.mutateAsync({ email: authEmail, password: authPassword })
       toast.success('Signed in')
-      setProfileOpen(false)
+      onProfileOpenChange(false)
     } catch {
       toast.error('Sign in failed — check your email and password')
     }
@@ -68,7 +70,7 @@ export function Sidebar() {
     try {
       await signUp.mutateAsync({ email: authEmail, password: authPassword })
       toast.success('Account created — check your email to confirm')
-      setProfileOpen(false)
+      onProfileOpenChange(false)
     } catch {
       toast.error('Sign up failed')
     }
@@ -76,7 +78,7 @@ export function Sidebar() {
 
   const handleSignOut = async () => {
     await signOut.mutateAsync()
-    setProfileOpen(false)
+    onProfileOpenChange(false)
   }
 
   return (
@@ -124,7 +126,7 @@ export function Sidebar() {
         {/* Profile button */}
         <div className="mt-4 border-t border-border pt-3">
           <button
-            onClick={() => setProfileOpen(true)}
+            onClick={() => onProfileOpenChange(true)}
             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors hover:bg-secondary"
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">
@@ -153,7 +155,7 @@ export function Sidebar() {
       </aside>
 
       {/* Auth sheet */}
-      <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
+      <Sheet open={profileOpen} onOpenChange={onProfileOpenChange}>
         <SheetContent side="left" className="w-80 border-border bg-background p-6">
           <SheetHeader className="mb-6">
             <SheetTitle>Account</SheetTitle>

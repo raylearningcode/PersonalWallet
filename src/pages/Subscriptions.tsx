@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
-import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { parseNumberInput } from '@/lib/numberInput'
+import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { toast } from 'sonner'
-import { Plus, Pause, Play, Trash2, RefreshCw, X } from 'lucide-react'
+import { Plus, Pause, Play, Trash2, RefreshCw, X, Pencil } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
 
 const FREQ_LABELS: Record<string, string> = {
@@ -20,6 +21,11 @@ const FREQ_LABELS: Record<string, string> = {
   monthly: 'Monthly',
   yearly: 'Yearly',
 }
+
+const COMMON_SUB_CATEGORIES = [
+  'Streaming', 'Entertainment', 'Utilities', 'Transport', 'Health & Fitness',
+  'Software', 'Cloud Storage', 'News & Media', 'Insurance', 'Subscriptions',
+]
 
 
 function daysUntil(dateStr: string) {
@@ -51,6 +57,7 @@ const emptyAddForm = () => ({
 })
 
 type ExpenseFilter = 'all' | 'active' | 'paused' | 'due-soon'
+type ExpenseSort = 'due-date' | 'amount-desc' | 'amount-asc' | 'name'
 
 export function Subscriptions() {
   const money = useMoney()
@@ -65,7 +72,10 @@ export function Subscriptions() {
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState(emptyAddForm())
+  const [editTarget, setEditTarget] = useState<RecurringRule | null>(null)
+  const [editForm, setEditForm] = useState(emptyAddForm())
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
+  const [expenseSort, setExpenseSort] = useState<ExpenseSort>('due-date')
   const [searchQuery, setSearchQuery] = useState('')
 
   const expenses = useMemo(
@@ -103,8 +113,13 @@ export function Subscriptions() {
       const q = searchQuery.toLowerCase()
       list = list.filter(r => r.description.toLowerCase().includes(q) || r.category.toLowerCase().includes(q))
     }
-    return list
-  }, [expenses, expenseFilter, searchQuery])
+    const sorted = [...list]
+    if (expenseSort === 'due-date') sorted.sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))
+    else if (expenseSort === 'amount-desc') sorted.sort((a, b) => b.amount - a.amount)
+    else if (expenseSort === 'amount-asc') sorted.sort((a, b) => a.amount - b.amount)
+    else if (expenseSort === 'name') sorted.sort((a, b) => a.description.localeCompare(b.description))
+    return sorted
+  }, [expenses, expenseFilter, expenseSort, searchQuery])
 
   const lastPaidDate = (rule: RecurringRule) => {
     const related = transactions
@@ -135,6 +150,55 @@ export function Subscriptions() {
 
   const setField = <K extends keyof ReturnType<typeof emptyAddForm>>(key: K, value: ReturnType<typeof emptyAddForm>[K]) => {
     setAddForm(f => ({ ...f, [key]: value }))
+  }
+
+  const setEditField = <K extends keyof ReturnType<typeof emptyAddForm>>(key: K, value: ReturnType<typeof emptyAddForm>[K]) => {
+    setEditForm(f => ({ ...f, [key]: value }))
+  }
+
+  const openEdit = (rule: RecurringRule) => {
+    setEditTarget(rule)
+    setEditForm({
+      description: rule.description,
+      amount: String(rule.original_amount ?? rule.amount),
+      type: rule.type as 'expense' | 'income',
+      frequency: rule.frequency,
+      category: rule.category,
+      walletId: rule.wallet_id ?? '',
+      // Use start_date so nextDueFrom recalculates correctly for any frequency change
+      // without accidentally advancing next_due_date on a no-op edit
+      startDate: rule.start_date,
+      logFirstPayment: false,
+    })
+  }
+
+  const handleEdit = async () => {
+    if (!editTarget) return
+    const amount = parseNumberInput(editForm.amount)
+    if (!editForm.description.trim() || amount <= 0) {
+      toast.error('Description and amount are required')
+      return
+    }
+    const category = editForm.category || (editForm.type === 'income' ? 'Income' : 'Subscriptions')
+    try {
+      await updateRule.mutateAsync({
+        id: editTarget.id,
+        description: editForm.description.trim(),
+        amount: money.toBase(amount, money.displayCurrency),
+        original_amount: amount,
+        original_currency: money.displayCurrency,
+        type: editForm.type,
+        category,
+        wallet_id: editForm.walletId || null,
+        frequency: editForm.frequency,
+        next_due_date: nextDueFrom(editForm.startDate, editForm.frequency),
+      })
+      toast.success('Subscription updated')
+      setEditTarget(null)
+      setEditForm(emptyAddForm())
+    } catch {
+      toast.error('Failed to update subscription')
+    }
   }
 
   const handleAdd = async () => {
@@ -258,9 +322,18 @@ export function Subscriptions() {
             }`}
             onClick={() => togglePause(rule)}
             disabled={updateRule.isPending}
+            title={rule.active ? 'Pause — stops automatic renewal until resumed' : 'Resume — restarts automatic renewal from next due date'}
           >
             {rule.active ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
             {rule.active ? 'Pause' : 'Resume'}
+          </button>
+          <button
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+            onClick={() => { if (editTarget?.id === rule.id) { setEditTarget(null); setEditForm(emptyAddForm()) } else openEdit(rule) }}
+            disabled={updateRule.isPending}
+          >
+            <Pencil className="h-3 w-3" />
+            Edit
           </button>
           <button
             className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-[#FF8388] disabled:opacity-40"
@@ -271,6 +344,72 @@ export function Subscriptions() {
             Delete
           </button>
         </div>
+
+        {editTarget?.id === rule.id && (
+          <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
+            <p className="text-xs font-bold text-muted-foreground">Edit subscription</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Name</Label>
+                <Input className="mt-1.5 bg-secondary text-sm" value={editForm.description} onChange={e => setEditField('description', e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
+                <MoneyInput className="mt-1.5 bg-secondary text-sm" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Type</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Frequency</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Category</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
+                  <option value="">— auto —</option>
+                  {categories.length > 0 && (
+                    <>
+                      <optgroup label="Your categories">
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </optgroup>
+                      <optgroup label="Common">
+                        {COMMON_SUB_CATEGORIES.filter(s => !categories.some(c => c.name.toLowerCase() === s.toLowerCase())).map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </optgroup>
+                    </>
+                  )}
+                  {categories.length === 0 && COMMON_SUB_CATEGORIES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Wallet</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
+                  <option value="">— none —</option>
+                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleEdit} disabled={updateRule.isPending}>
+                {updateRule.isPending ? 'Saving…' : 'Save changes'}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { setEditTarget(null); setEditForm(emptyAddForm()) }}>Cancel</Button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -315,11 +454,10 @@ export function Subscriptions() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency}) *</Label>
-                <Input
+                <MoneyInput
                   className="mt-2 bg-secondary"
-                  inputMode="decimal"
                   value={addForm.amount}
-                  onChange={e => setField('amount', formatNumberInput(e.target.value))}
+                  onValueChange={v => setField('amount', v)}
                   placeholder="0"
                 />
               </div>
@@ -358,7 +496,21 @@ export function Subscriptions() {
                   onChange={e => setField('category', e.target.value)}
                 >
                   <option value="">— auto —</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {categories.length > 0 && (
+                    <>
+                      <optgroup label="Your categories">
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </optgroup>
+                      <optgroup label="Common">
+                        {COMMON_SUB_CATEGORIES.filter(s => !categories.some(c => c.name.toLowerCase() === s.toLowerCase())).map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </optgroup>
+                    </>
+                  )}
+                  {categories.length === 0 && COMMON_SUB_CATEGORIES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -428,7 +580,7 @@ export function Subscriptions() {
           <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
             {expenses.length > 0 && (
               <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {(['all', 'active', 'paused', 'due-soon'] as ExpenseFilter[]).map(f => (
                     <button
                       key={f}
@@ -438,6 +590,17 @@ export function Subscriptions() {
                       {f === 'due-soon' ? 'Due Soon' : f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                   ))}
+                  <select
+                    aria-label="Sort subscriptions"
+                    className="ml-auto h-7 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
+                    value={expenseSort}
+                    onChange={e => setExpenseSort(e.target.value as ExpenseSort)}
+                  >
+                    <option value="due-date">Sort: Due date</option>
+                    <option value="amount-desc">Sort: Highest amount</option>
+                    <option value="amount-asc">Sort: Lowest amount</option>
+                    <option value="name">Sort: Name A–Z</option>
+                  </select>
                 </div>
                 <input
                   aria-label="Search subscriptions"

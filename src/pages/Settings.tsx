@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ElementType } from 'react'
+import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -21,7 +21,7 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon } from 'lucide-react'
+import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { Wallet } from '@/types'
@@ -72,8 +72,14 @@ export function Settings() {
   const upsertEstimationPlan = useUpsertEstimationPlan()
 
   const isDesktop = useIsDesktop()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
-  const [mobilePage, setMobilePage] = useState<SettingsTab | null>(null)
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const s = new URLSearchParams(window.location.search).get('section')
+    return (s && (tabs as readonly string[]).includes(s)) ? s as SettingsTab : 'profile'
+  })
+  const [mobilePage, setMobilePage] = useState<SettingsTab | null>(() => {
+    const s = new URLSearchParams(window.location.search).get('section')
+    return (s && (tabs as readonly string[]).includes(s)) ? s as SettingsTab : null
+  })
   const effectiveTab = isDesktop ? activeTab : mobilePage
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')
@@ -89,6 +95,7 @@ export function Settings() {
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
   const [editingWalletName, setEditingWalletName] = useState('')
   const [backupText, setBackupText] = useState('')
+  const backupFileRef = useRef<HTMLInputElement>(null)
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
   const [geminiKey, setGeminiKey] = useState(() => getGeminiKey() ?? '')
@@ -286,8 +293,23 @@ export function Settings() {
   const handleExportBackup = () => {
     const text = JSON.stringify(buildBackup(), null, 2)
     setBackupText(text)
-    navigator.clipboard?.writeText(text).catch(() => undefined)
-    toast.success('Backup prepared')
+    const blob = new Blob([text], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `finpath-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Backup downloaded')
+  }
+
+  const handleFileLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setBackupText((ev.target?.result as string) ?? '')
+    reader.readAsText(file)
+    if (backupFileRef.current) backupFileRef.current.value = ''
   }
 
   const stripSystemFields = <T extends Record<string, unknown>>(row: T) => {
@@ -790,19 +812,35 @@ export function Settings() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Backup and restore</CardTitle>
-            <p className="text-sm text-muted-foreground">Export your FinPath data as JSON, or paste a previous backup to restore it into this account.</p>
+            <p className="text-sm text-muted-foreground">Export your FinPath data as a JSON file, or upload a previous backup to restore it.</p>
           </CardHeader>
           <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button onClick={handleExportBackup}>Export backup</Button>
-              <Button variant="secondary" onClick={handleImportBackup}>Import backup</Button>
+              <Button className="gap-2" onClick={handleExportBackup}>
+                Export backup
+              </Button>
+              <Button variant="secondary" className="gap-2" onClick={() => backupFileRef.current?.click()}>
+                <Upload className="h-4 w-4" />
+                Choose backup file
+              </Button>
+              <Button variant="secondary" onClick={handleImportBackup} disabled={!backupText.trim()}>
+                Import from text
+              </Button>
             </div>
+            <input
+              ref={backupFileRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={handleFileLoad}
+            />
+            <p className="text-center text-xs text-muted-foreground">— or paste backup JSON below —</p>
             <textarea
               aria-label="Backup JSON"
-              className="min-h-44 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none"
+              className="min-h-44 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none focus:border-primary"
               value={backupText}
               onChange={event => setBackupText(event.target.value)}
-              placeholder="Backup JSON appears here, or paste one to import"
+              placeholder="Paste backup JSON here to import, or export to see your data"
             />
           </CardContent>
         </Card>

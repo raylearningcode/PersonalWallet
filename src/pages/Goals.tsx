@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets } from '@/lib/queries'
+import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets, useAddTransaction } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,16 +7,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { MoneyInput } from '@/components/shared/MoneyInput'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Bookmark, Plus, Pencil, Trash2, Target, TrendingUp } from 'lucide-react'
+import { Bookmark, Copy, Plus, Pencil, Trash2, Target, TrendingUp } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
 import type { Goal } from '@/types'
 
 const GOAL_COLORS = ['#A9F5C7', '#FADBEA', '#FFF7B5', '#D9E8FF', '#F8DCDC', '#C4AEFF', '#FFD276', '#93C5FD']
 
-const GOAL_CATEGORIES = ['Savings', 'Emergency Fund', 'Vacation', 'Home', 'Vehicle', 'Education', 'Retirement', 'Investment', 'Other']
+const GOAL_CATEGORIES = ['Savings', 'Emergency Fund', 'Vacation', 'Home', 'Vehicle', 'Education', 'Travel', 'Gadget', 'Health', 'Retirement', 'Investment', 'Other']
 
 type FormState = {
   name: string
@@ -55,6 +56,7 @@ export function Goals() {
   const addGoal = useAddGoal()
   const updateGoal = useUpdateGoal()
   const deleteGoal = useDeleteGoal()
+  const addTransaction = useAddTransaction()
 
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -149,17 +151,35 @@ export function Goals() {
   const handleContribute = async () => {
     if (!contributeTarget) return
     const amount = money.toBase(parseNumberInput(contributeAmount), money.displayCurrency)
-    if (amount <= 0) return
+    if (amount <= 0) { toast.error('Enter a valid amount'); return }
+    const target = contributeTarget
+    const wallet = wallets.find(w => w.id === contributeWalletId)
+    const newAmount = target.current_amount + amount
+    setContributeTarget(null)
+    setContributeAmount('')
+    setContributeWalletId('')
     try {
-      await updateGoal.mutateAsync({
-        id: contributeTarget.id,
-        current_amount: contributeTarget.current_amount + amount,
-      })
-      const walletName = wallets.find(w => w.id === contributeWalletId)?.name
-      toast.success(walletName ? `Contribution from ${walletName} logged` : 'Contribution logged')
-      setContributeTarget(null)
-      setContributeAmount('')
-      setContributeWalletId('')
+      await updateGoal.mutateAsync({ id: target.id, current_amount: newAmount })
+      // Create a ledger transaction so the contribution appears in transaction history
+      // and debits the selected wallet
+      if (wallet) {
+        await addTransaction.mutateAsync({
+          user_id: null,
+          description: `Goal: ${target.name}`,
+          amount,
+          original_amount: parseNumberInput(contributeAmount),
+          original_currency: money.displayCurrency,
+          type: 'expense',
+          category: 'Goals',
+          wallet_id: wallet.id,
+          transfer_wallet_id: null,
+          recurring_rule_id: null,
+          recurring_due_date: null,
+          date: new Date().toISOString().slice(0, 10),
+          needs_review: false,
+        })
+      }
+      toast.success(wallet ? `Contribution from ${wallet.name} logged` : 'Contribution logged')
     } catch {
       toast.error('Failed to log contribution')
     }
@@ -173,6 +193,23 @@ export function Goals() {
       setDeleteTarget(null)
     } catch {
       toast.error('Failed to delete goal')
+    }
+  }
+
+  const handleDuplicateGoal = async (goal: Goal) => {
+    try {
+      await addGoal.mutateAsync({
+        name: `${goal.name} (copy)`,
+        target_amount: goal.target_amount,
+        current_amount: 0,
+        deadline: goal.deadline,
+        color: goal.color,
+        category: goal.category,
+        notes: goal.notes,
+      })
+      toast.success('Goal duplicated')
+    } catch {
+      toast.error('Failed to duplicate goal')
     }
   }
 
@@ -339,7 +376,7 @@ export function Goals() {
                       })()}
                       <h3 className="mt-2 truncate text-lg font-extrabold text-foreground">{goal.name}</h3>
                     </div>
-                    <div className="flex shrink-0 gap-1">
+                    <div className="flex shrink-0 gap-2">
                       <button
                         type="button"
                         className={`min-h-[44px] min-w-[44px] rounded-xl p-2.5 transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
@@ -347,26 +384,36 @@ export function Goals() {
                         title={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
                         aria-label={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
                       >
-                        <Bookmark className="h-4 w-4" fill={pinnedGoalId === goal.id ? 'currentColor' : 'none'} />
+                        <Bookmark className="h-5 w-5" fill={pinnedGoalId === goal.id ? 'currentColor' : 'none'} />
                       </button>
                       <button
                         type="button"
-                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                        onClick={() => handleDuplicateGoal(goal)}
+                        disabled={addGoal.isPending}
+                        title="Duplicate goal"
+                        aria-label={`Duplicate ${goal.name}`}
+                      >
+                        <Copy className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                         onClick={() => startEdit(goal)}
                         title="Edit goal"
                         aria-label={`Edit ${goal.name}`}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-5 w-5" />
                       </button>
                       <button
                         type="button"
-                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-40"
+                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-[#FF8388]/50 transition-colors hover:bg-[#FF8388]/10 hover:text-[#FF8388] disabled:opacity-40"
                         onClick={() => setDeleteTarget(goal)}
                         disabled={deleteGoal.isPending}
                         title="Delete goal"
                         aria-label={`Delete ${goal.name}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     </div>
                   </div>
@@ -439,15 +486,14 @@ export function Goals() {
                           {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                         </select>
                         <div className="flex gap-2">
-                          <Input
-                            className="h-9 bg-secondary text-sm"
-                            inputMode="decimal"
+                          <MoneyInput
+                            className="h-9 min-w-0 flex-1 bg-secondary text-sm"
                             placeholder={`Amount (${money.displayCurrency})`}
                             value={contributeAmount}
-                            onChange={e => setContributeAmount(formatNumberInput(e.target.value))}
+                            onValueChange={setContributeAmount}
                             autoFocus
                           />
-                          <Button size="sm" className="shrink-0" onClick={handleContribute} disabled={updateGoal.isPending}>Log</Button>
+                          <Button size="sm" className="shrink-0" onClick={handleContribute} disabled={updateGoal.isPending || addTransaction.isPending}>Log</Button>
                           <Button size="sm" variant="secondary" className="shrink-0" onClick={() => { setContributeTarget(null); setContributeAmount(''); setContributeWalletId('') }}>✕</Button>
                         </div>
                       </div>

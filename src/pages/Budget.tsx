@@ -171,7 +171,8 @@ export function Budget() {
 
   const handleAdd = async () => {
     const amount = parseNumberInput(addAmount)
-    if (!addName.trim() || !Number.isFinite(amount) || amount < 0) return
+    if (!addName.trim()) { toast.error('Enter a category name'); return }
+    if (!Number.isFinite(amount) || amount < 0) return
     try {
       await addCategory.mutateAsync({ name: addName.trim(), yearly_allocated: money.toBase(amount, money.displayCurrency), budget_period: addPeriod, color: addColor })
       setAddName('')
@@ -254,7 +255,7 @@ export function Budget() {
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Blended monthly equivalent'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(hasData ? remaining : 0) : 'Safe inside active periods'} badgeVariant="success" />
-        <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData ? 'Based on current period spending' : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
+        <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% of budget used` : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>
 
       {hasData && (
@@ -413,7 +414,7 @@ export function Budget() {
                           <ColorBar value={pct} color={barColor} />
                           <p className="mt-1 text-xs text-muted-foreground">
                             {pct}% used · {daysLeft === 0 ? 'Month ends today' : `${monthPct}% of month passed`} · {overPace ? '⚡ Over pace' : '✓ On track'}
-                            {catDailyAllowance !== null && daysLeft > 0 && (
+                            {catDailyAllowance !== null && daysLeft > 0 && cat.budget_period === 'monthly' && (
                               <span className="ml-2 text-primary">· {fmt(catDailyAllowance)}/day left</span>
                             )}
                           </p>

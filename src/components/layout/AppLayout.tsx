@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
-import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthSession } from '@/lib/queries'
 import { getQueue } from '@/lib/offlineCache'
@@ -18,6 +18,7 @@ export function AppLayout() {
   const navigate = useNavigate()
   const { data: session } = useAuthSession()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const keyboardVisible = useKeyboardVisible()
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [pinLocked, setPinLocked] = useState(() =>
@@ -77,7 +78,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar profileOpen={profileOpen} onProfileOpenChange={setProfileOpen} />
       <main className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-24 sm:px-6 lg:ml-[240px] lg:w-[calc(100vw-275px)] lg:max-w-[1440px] lg:px-0 lg:py-6 lg:pb-8 lg:pr-8">
         {offline && (
           <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-3">
@@ -98,12 +99,13 @@ export function AppLayout() {
             <p className="text-sm text-muted-foreground">
               <span className="font-bold text-primary">Guest mode</span> — your data is saved on this device only.
             </p>
-            <Link
-              to="/settings"
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
               className="shrink-0 rounded-full bg-primary px-4 py-1.5 text-xs font-extrabold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Sign in to sync
-            </Link>
+            </button>
           </div>
         )}
         <div className="pointer-events-none mb-4 flex items-start justify-end lg:mb-0 lg:absolute lg:right-8 lg:top-6">

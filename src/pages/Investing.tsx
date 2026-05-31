@@ -171,15 +171,11 @@ export function Investing() {
     setDraft(current => ({ ...current, durationYears }))
   }
 
-  const runSimulator = () => {
+  const saveSimulator = async () => {
     if (draft.durationYears <= 0 || draft.monthlyContribution <= 0) {
-      toast.error('Set a monthly contribution and duration to run the simulation')
+      toast.error('Set a monthly contribution and duration to save')
       return
     }
-    toast.success(`${draft.durationYears}yr projection: ${money.formatDisplay(plan.projectedPortfolio)} · gain ${money.formatDisplay(plan.projectedGain)}`)
-  }
-
-  const saveSimulator = async () => {
     try {
       await saveInvestmentConfig.mutateAsync({
         id: investConfig?.id,
@@ -192,7 +188,7 @@ export function Investing() {
         current_value: draft.initialCapital,
         allocations: allocation,
       })
-      toast.success('Investment simulator saved')
+      toast.success(`Saved · ${draft.durationYears}yr projection: ${money.formatDisplay(plan.projectedPortfolio)} · gain ${money.formatDisplay(plan.projectedGain)}`)
     } catch {
       toast.error('Failed to save simulator')
     }
@@ -244,11 +240,8 @@ export function Investing() {
             </p>
           </div>
           <div className="relative flex flex-col gap-3 sm:flex-row lg:shrink-0">
-            <Button className="px-9" onClick={event => { runSimulator(); event.currentTarget.blur() }}>
-              Run ROI sim
-            </Button>
-            <Button variant="secondary" className="px-8" onClick={saveSimulator} disabled={saveInvestmentConfig.isPending}>
-              Save simulator
+            <Button className="px-9" onClick={saveSimulator} disabled={saveInvestmentConfig.isPending}>
+              {saveInvestmentConfig.isPending ? 'Saving…' : 'Save simulator'}
             </Button>
           </div>
         </CardContent>

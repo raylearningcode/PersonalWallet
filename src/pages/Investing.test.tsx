@@ -42,8 +42,6 @@ describe('Investing', () => {
     fireEvent.change(screen.getByLabelText('Expected return / year'), { target: { value: '7%' } })
     fireEvent.change(screen.getByLabelText('Duration (years)'), { target: { value: '7' } })
     fireEvent.change(screen.getByLabelText('Initial capital'), { target: { value: '5000000' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Run ROI sim' }))
-
     expect(screen.getByText(/Estimated in 7 years/i)).toBeInTheDocument()
     expect(screen.getByText(/Projected in TWD/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Base value/i).length).toBeGreaterThan(0)
@@ -78,7 +76,6 @@ describe('Investing', () => {
     fireEvent.change(screen.getByLabelText('Contribution currency'), { target: { value: 'TWD' } })
     fireEvent.change(screen.getByLabelText('Monthly contribution'), { target: { value: '1000' } })
     fireEvent.change(screen.getByLabelText('Target portfolio'), { target: { value: '100000' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Run ROI sim' }))
 
     expect(screen.getAllByText(/Target portfolio/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Target gap/i).length).toBeGreaterThan(0)

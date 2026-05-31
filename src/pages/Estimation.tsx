@@ -139,8 +139,12 @@ export function Estimation() {
     setIncomeItems(newItems)
     setIncomeSource('')
     setIncomeAmount('')
-    await saveToBackend(newItems, expenseItems, wishlistItems, notes)
-    toast.success('Income item added')
+    try {
+      await saveToBackend(newItems, expenseItems, wishlistItems, notes)
+      toast.success('Income item added')
+    } catch {
+      toast.error('Failed to save — item shown locally but may not persist')
+    }
   }
 
   const addExpense = async () => {
@@ -154,8 +158,12 @@ export function Estimation() {
     setExpenseItems(newItems)
     setExpenseDetail('')
     setExpenseAmount('')
-    await saveToBackend(incomeItems, newItems, wishlistItems, notes)
-    toast.success('Expense item added')
+    try {
+      await saveToBackend(incomeItems, newItems, wishlistItems, notes)
+      toast.success('Expense item added')
+    } catch {
+      toast.error('Failed to save — item shown locally but may not persist')
+    }
   }
 
   const addWishlistItem = async () => {
@@ -173,7 +181,12 @@ export function Estimation() {
     setWishlistAmount('')
     setWishlistType('Want')
     setWishlistNote('')
-    await saveToBackend(incomeItems, expenseItems, newItems, notes)
+    try {
+      await saveToBackend(incomeItems, expenseItems, newItems, notes)
+      toast.success('Wishlist item added')
+    } catch {
+      toast.error('Failed to save — item shown locally but may not persist')
+    }
   }
 
   const startEditItem = (list: 'income' | 'expense', id: string) => {
@@ -494,7 +507,7 @@ export function Estimation() {
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(110px,0.45fr)_minmax(120px,0.45fr)]">
               <div>
                 <Label className="text-xs text-muted-foreground">Wishlist item</Label>
-                <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="MacBook upgrade" />
+                <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="e.g. new laptop, vacation, gadget" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
@@ -539,7 +552,14 @@ export function Estimation() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-extrabold text-foreground">{item.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{item.type}</p>
+                        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
+                          item.type === 'Need' ? 'bg-primary/15 text-primary' :
+                          item.type === 'Want' ? 'bg-[#FFCF73]/20 text-[#FFCF73]' :
+                          item.type === 'Work' ? 'bg-[#93C5FD]/20 text-[#93C5FD]' :
+                          item.type === 'Travel' ? 'bg-[#C4AEFF]/20 text-[#C4AEFF]' :
+                          item.type === 'Gift' ? 'bg-[#FADBEA]/50 text-[#FADBEA]' :
+                          'bg-secondary text-muted-foreground'
+                        }`}>{item.type}</span>
                       </div>
                       <div className="flex shrink-0 gap-1">
                         <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} title="Convert to goal" disabled={addGoal.isPending}><Target className="h-3.5 w-3.5" /></button>

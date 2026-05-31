@@ -64,40 +64,48 @@ async function requireUserId(action: string) {
   return userId
 }
 
-async function claimLegacyAccountData(userId: string) {
-  const tables = [
-    'app_settings',
-    'wallets',
-    'budget_categories',
-    'budget_rules',
-    'investment_config',
-    'estimation_plans',
-    'recurring_rules',
-    'transactions',
-  ]
-  for (const table of tables) {
-    const { error } = await supabase.from(table).update({ user_id: userId }).is('user_id', null)
-    if (error) throw error
-  }
-}
-
 async function migrateGuestDataToAccount(userId: string): Promise<number> {
-  const { transactions, wallets, categories, rules, plans, goals, investment } = getGuestDataForMigration()
+  const guestData = getGuestDataForMigration()
+  const { transactions, wallets, categories, rules, plans, goals, investment } = guestData
   const strip = <T extends { user_id?: string | null; created_at?: string }>(
     items: T[]
   ): (Omit<T, 'user_id'> & { user_id: string })[] =>
     items.map(({ user_id: _uid, ...rest }) => ({ ...rest, user_id: userId } as Omit<T, 'user_id'> & { user_id: string }))
 
-  if (wallets.length) await supabase.from('wallets').insert(strip(wallets))
-  if (categories.length) await supabase.from('budget_categories').insert(strip(categories))
-  if (rules.length) await supabase.from('recurring_rules').insert(strip(rules))
-  if (transactions.length) await supabase.from('transactions').insert(strip(transactions))
-  if (plans.length) await supabase.from('estimation_plans').insert(strip(plans))
-  if (goals.length) await supabase.from('goals').insert(strip(goals))
+  // Backup guest data before migration so it can be recovered if something goes wrong
+  localStorage.setItem('finpath_guest_backup_before_migration', JSON.stringify(guestData))
+
+  // Check every insert for errors — only clear guest data after all succeed
+  if (wallets.length) {
+    const { error } = await supabase.from('wallets').insert(strip(wallets))
+    if (error) throw error
+  }
+  if (categories.length) {
+    const { error } = await supabase.from('budget_categories').insert(strip(categories))
+    if (error) throw error
+  }
+  if (rules.length) {
+    const { error } = await supabase.from('recurring_rules').insert(strip(rules))
+    if (error) throw error
+  }
+  if (transactions.length) {
+    const { error } = await supabase.from('transactions').insert(strip(transactions))
+    if (error) throw error
+  }
+  if (plans.length) {
+    const { error } = await supabase.from('estimation_plans').insert(strip(plans))
+    if (error) throw error
+  }
+  if (goals.length) {
+    const { error } = await supabase.from('goals').insert(strip(goals))
+    if (error) throw error
+  }
   if (investment) {
     const { user_id: _uid, id: _id, created_at: _ca, ...inv } = investment
-    await supabase.from('investment_config').insert({ ...inv, user_id: userId })
+    const { error } = await supabase.from('investment_config').insert({ ...inv, user_id: userId })
+    if (error) throw error
   }
+
   clearGuestData()
   return wallets.length + categories.length + rules.length + transactions.length + plans.length + goals.length + (investment ? 1 : 0)
 }
@@ -994,7 +1002,6 @@ export function useSignUp() {
       const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) throw error
       if (data.user?.id && data.session) {
-        await claimLegacyAccountData(data.user.id)
         clearSignedOutFlag()
         if (hasGuestData()) await migrateGuestDataToAccount(data.user.id)
       }
