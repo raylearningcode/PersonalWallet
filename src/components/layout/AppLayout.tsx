@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthSession } from '@/lib/queries'
@@ -17,6 +18,7 @@ export function AppLayout() {
   const navigate = useNavigate()
   const { data: session } = useAuthSession()
   const [moreOpen, setMoreOpen] = useState(false)
+  const keyboardVisible = useKeyboardVisible()
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [pinLocked, setPinLocked] = useState(() =>
     Boolean(localStorage.getItem(PIN_STORAGE_KEY)) && !sessionStorage.getItem(PIN_SESSION_KEY)
@@ -115,6 +117,7 @@ export function AppLayout() {
         onMoreClick={() => setMoreOpen(true)}
         moreActive={moreOpen}
         onAddClick={() => setQuickAddOpen(true)}
+        hidden={keyboardVisible}
       />
       <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
       <QuickAddSheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />

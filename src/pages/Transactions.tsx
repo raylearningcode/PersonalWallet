@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -69,6 +69,7 @@ export function Transactions() {
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [installmentTotal, setInstallmentTotal] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const { data: transactions = [], isPending: txPending } = useTransactions(filter)
@@ -186,6 +187,7 @@ export function Transactions() {
     setFrequency('monthly')
     setInstallmentTotal('')
     setEndDate('')
+    setShowAdvanced(false)
     if (wallets[0]) setWalletId(wallets[0].id)
     if (wallets[1]) setTransferWalletId(wallets[1].id)
   }
@@ -206,6 +208,7 @@ export function Transactions() {
     setTransferWalletId(transaction.transfer_wallet_id ?? wallets.find(wallet => wallet.id !== transaction.wallet_id)?.id ?? '')
     setType(transaction.type === 'income' || transaction.type === 'transfer' ? transaction.type : 'expense')
     setIsRecurring(false)
+    setShowAdvanced(true)
     setIsFormOpen(true)
   }
 
@@ -434,6 +437,7 @@ export function Transactions() {
             <SheetDescription>Fill the amount in the currency you actually paid or received.</SheetDescription>
           </SheetHeader>
           <div className="space-y-5">
+            {/* Type selector + big amount — always visible */}
             <div className="rounded-[1.25rem] border border-border bg-card p-4 text-center">
               <div className="mx-auto mb-3 inline-flex rounded-full border border-border bg-secondary p-1">
                 {(['income', 'expense', 'transfer'] as const).map(item => (
@@ -452,19 +456,11 @@ export function Transactions() {
                   </button>
                 ))}
               </div>
-              <div className="flex items-center justify-center gap-2">
-                <select
-                  aria-label="Input currency"
-                  className="h-10 rounded-full border border-border bg-secondary px-3 text-sm font-extrabold text-muted-foreground outline-none"
-                  value={inputCurrency}
-                  onChange={event => setInputCurrency(event.target.value)}
-                >
-                  {CURRENCIES.map(currency => <option key={currency} value={currency}>{currency}</option>)}
-                </select>
-                <Input aria-label="Amount" className="h-14 w-44 border-0 bg-transparent text-center text-4xl font-extrabold" inputMode="decimal" value={amount} onChange={event => setAmount(formatNumberInput(event.target.value))} placeholder="0" />
-              </div>
-              <Input aria-label="Date" className="mx-auto mt-4 max-w-[190px] rounded-full bg-secondary text-center" type="date" value={date} onChange={event => setDate(event.target.value)} />
+              <Input aria-label="Amount" className="mx-auto h-16 w-full border-0 bg-transparent text-center text-4xl font-extrabold" inputMode="decimal" value={amount} onChange={event => setAmount(formatNumberInput(event.target.value))} placeholder="0" />
+              <p className="mt-1 text-xs text-muted-foreground">{inputCurrency}</p>
             </div>
+
+            {/* Merchant — always visible */}
             <div>
               <Label className="text-sm font-bold text-foreground">Merchant name</Label>
               <Input aria-label="Description" className="mt-2 bg-secondary" value={description} onChange={event => setDescription(event.target.value)} placeholder="Enter a merchant name" />
@@ -482,88 +478,129 @@ export function Transactions() {
                 </button>
               )}
             </div>
-            {type !== 'transfer' ? (
-              <>
-                <div>
-                  <Label className="text-sm font-bold text-foreground">Category</Label>
-                  <select
-                    aria-label="Category"
-                    className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                    value={category}
-                    onChange={event => setCategory(event.target.value)}
-                  >
-                    {type === 'income' ? (
-                      INCOME_CATEGORIES.map(item => <option key={item} value={item}>{item}</option>)
-                    ) : (
-                      <>
-                        {categories.length === 0 && <option value="">Add categories in Settings</option>}
-                        {categories.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                      </>
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-sm font-bold text-foreground">Wallet</Label>
-                  <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
-                    {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
-                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                  </select>
-                </div>
-              </>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <Label className="text-sm font-bold text-foreground">From wallet</Label>
-                  <select aria-label="From wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
-                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-sm font-bold text-foreground">To wallet</Label>
-                  <select aria-label="To wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={transferWalletId} onChange={event => setTransferWalletId(event.target.value)}>
-                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                  </select>
-                </div>
+
+            {/* Category — always visible (except transfer) */}
+            {type !== 'transfer' && (
+              <div>
+                <Label className="text-sm font-bold text-foreground">Category</Label>
+                <select
+                  aria-label="Category"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={category}
+                  onChange={event => setCategory(event.target.value)}
+                >
+                  {type === 'income' ? (
+                    INCOME_CATEGORIES.map(item => <option key={item} value={item}>{item}</option>)
+                  ) : (
+                    <>
+                      {categories.length === 0 && <option value="">Add categories in Settings</option>}
+                      {categories.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
+                    </>
+                  )}
+                </select>
               </div>
             )}
-            {!editingTransaction && (
-              <div className="rounded-[1.25rem] border border-border bg-card p-4">
-                <label className="flex items-center justify-between gap-4">
-                  <span>
-                    <span className="block text-sm font-extrabold text-foreground">Recurring / Cicilan</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">Use this for rent, subscriptions, salary, or installment payments.</span>
-                  </span>
-                  <input
-                    aria-label="Recurring / Cicilan"
-                    type="checkbox"
-                    className="h-5 w-5 accent-primary"
-                    checked={isRecurring}
-                    onChange={event => setIsRecurring(event.target.checked)}
-                  />
-                </label>
-                {isRecurring && (
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+            {/* More options toggle */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(v => !v)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground active:bg-muted/40"
+            >
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`} />
+              {showAdvanced ? 'Fewer options' : 'More options'}
+            </button>
+
+            {/* Advanced fields */}
+            {showAdvanced && (
+              <div className="space-y-5">
+                {/* Currency */}
+                <div>
+                  <Label className="text-sm font-bold text-foreground">Currency</Label>
+                  <select
+                    aria-label="Input currency"
+                    className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                    value={inputCurrency}
+                    onChange={event => setInputCurrency(event.target.value)}
+                  >
+                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                {/* Date */}
+                <div>
+                  <Label className="text-sm font-bold text-foreground">Date</Label>
+                  <Input aria-label="Date" className="mt-2 bg-secondary" type="date" value={date} onChange={event => setDate(event.target.value)} />
+                </div>
+
+                {/* Wallet(s) */}
+                {type !== 'transfer' ? (
+                  <div>
+                    <Label className="text-sm font-bold text-foreground">Wallet</Label>
+                    <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
+                      {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
+                      {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                      <Label className="text-xs font-bold text-muted-foreground">Repeat</Label>
-                      <select aria-label="Recurring frequency" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={frequency} onChange={event => setFrequency(event.target.value as RecurringFrequency)}>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="yearly">Yearly</option>
+                      <Label className="text-sm font-bold text-foreground">From wallet</Label>
+                      <select aria-label="From wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
+                        {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                       </select>
                     </div>
                     <div>
-                      <Label className="text-xs font-bold text-muted-foreground">Installments</Label>
-                      <Input aria-label="Installment count" className="mt-2 bg-secondary" inputMode="numeric" value={installmentTotal} onChange={event => setInstallmentTotal(formatNumberInput(event.target.value))} placeholder="Empty = no limit" />
+                      <Label className="text-sm font-bold text-foreground">To wallet</Label>
+                      <select aria-label="To wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={transferWalletId} onChange={event => setTransferWalletId(event.target.value)}>
+                        {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                      </select>
                     </div>
-                    <div className="sm:col-span-2">
-                      <Label className="text-xs font-bold text-muted-foreground">End date</Label>
-                      <Input aria-label="Recurring end date" className="mt-2 bg-secondary" type="date" value={endDate} onChange={event => setEndDate(event.target.value)} />
-                    </div>
+                  </div>
+                )}
+
+                {/* Recurring */}
+                {!editingTransaction && (
+                  <div className="rounded-[1.25rem] border border-border bg-card p-4">
+                    <label className="flex items-center justify-between gap-4">
+                      <span>
+                        <span className="block text-sm font-extrabold text-foreground">Recurring / Cicilan</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">For rent, subscriptions, salary, or installments.</span>
+                      </span>
+                      <input
+                        aria-label="Recurring / Cicilan"
+                        type="checkbox"
+                        className="h-5 w-5 accent-primary"
+                        checked={isRecurring}
+                        onChange={event => setIsRecurring(event.target.checked)}
+                      />
+                    </label>
+                    {isRecurring && (
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <Label className="text-xs font-bold text-muted-foreground">Repeat</Label>
+                          <select aria-label="Recurring frequency" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={frequency} onChange={event => setFrequency(event.target.value as RecurringFrequency)}>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-bold text-muted-foreground">Installments</Label>
+                          <Input aria-label="Installment count" className="mt-2 bg-secondary" inputMode="numeric" value={installmentTotal} onChange={event => setInstallmentTotal(formatNumberInput(event.target.value))} placeholder="Empty = no limit" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Label className="text-xs font-bold text-muted-foreground">End date</Label>
+                          <Input aria-label="Recurring end date" className="mt-2 bg-secondary" type="date" value={endDate} onChange={event => setEndDate(event.target.value)} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
+
             <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
               {editingTransaction ? 'Save transaction' : 'Add transaction'}
             </Button>
