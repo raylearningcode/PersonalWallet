@@ -12,7 +12,7 @@ import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
 import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
 import { computeStreak } from '@/lib/streak'
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X } from 'lucide-react'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart } from 'lucide-react'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -401,21 +401,25 @@ export function Dashboard() {
         {/* Quick actions */}
         {!isNewUser && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {[
-              { label: 'Add transaction', sub: 'Log income or expense', to: '/transactions', color: '#A9F5C7' },
-              { label: 'Add goal', sub: 'Track a target', to: '/goals', color: '#93C5FD' },
-              { label: 'Add subscription', sub: 'Recurring payment', to: '/subscriptions', color: '#FADBEA' },
-              { label: 'Budget', sub: 'Check limits', to: '/budget', color: '#FFD276' },
-              { label: 'Reports', sub: 'See trends', to: '/reports', color: '#C4AEFF' },
-            ].map(action => (
+            {([
+              { label: 'Add transaction', sub: 'Log income or expense', to: '/transactions', color: '#A9F5C7', Icon: Plus },
+              { label: 'Add goal', sub: 'Track a target', to: '/goals', color: '#93C5FD', Icon: Target },
+              { label: 'Add subscription', sub: 'Recurring payment', to: '/subscriptions', color: '#FADBEA', Icon: RefreshCw },
+              { label: 'Budget', sub: 'Check limits', to: '/budget', color: '#FFD276', Icon: PieChart },
+              { label: 'Reports', sub: 'See trends', to: '/reports', color: '#C4AEFF', Icon: BarChart2 },
+            ] as const).map(({ label, sub, to, color, Icon }) => (
               <Link
-                key={action.label}
-                to={action.to}
+                key={label}
+                to={to}
                 className="flex flex-col gap-1 rounded-2xl border border-border bg-secondary px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5"
               >
-                <span className="h-2 w-6 rounded-full" style={{ backgroundColor: action.color }} />
-                <span className="mt-1 text-sm font-extrabold text-foreground">{action.label}</span>
-                <span className="text-xs text-muted-foreground">{action.sub}</span>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ backgroundColor: color + '30' }}>
+                    <Icon className="h-4 w-4" style={{ color }} />
+                  </span>
+                </div>
+                <span className="mt-1 text-sm font-extrabold text-foreground">{label}</span>
+                <span className="text-xs text-muted-foreground">{sub}</span>
               </Link>
             ))}
           </div>
