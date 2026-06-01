@@ -27,6 +27,24 @@ const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
 }
 
+const PRESET_COLORS = [
+  '#EF4444', '#F97316', '#EAB308', '#22C55E',
+  '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899',
+  '#64748B', '#A16207',
+]
+
+function ColorSwatch({ color, selected, onClick }: { color: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
+      style={{ backgroundColor: color }}
+      onClick={onClick}
+      title={color}
+    />
+  )
+}
+
 function getBarColor(pct: number, catColor: string): string {
   if (pct >= 90) return '#ef4444'
   if (pct >= 70) return '#f59e0b'
@@ -374,14 +392,26 @@ export function Budget() {
                                 </select>
                               </div>
                               <div>
-                                <p className="mb-1 text-xs text-muted-foreground">Color</p>
+                                <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
+                                <div className="mb-2 flex flex-wrap gap-1">
+                                  {PRESET_COLORS.map(c => (
+                                    <ColorSwatch key={c} color={c} selected={editDraft.color === c} onClick={() => setEditDraft(d => ({ ...d, color: c }))} />
+                                  ))}
+                                </div>
                                 <div className="flex items-center gap-2">
-                                  <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <input
+                                    type="text"
+                                    aria-label="Category color hex"
+                                    className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+                                    value={editDraft.color}
+                                    onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setEditDraft(d => ({ ...d, color: e.target.value })) }}
+                                  />
                                   <input
                                     type="color"
-                                    aria-label="Category color"
-                                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                                    value={editDraft.color}
+                                    aria-label="Category color picker"
+                                    className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                                    value={editDraft.color.length === 7 ? editDraft.color : '#6c63ff'}
                                     onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
                                   />
                                 </div>
@@ -479,14 +509,26 @@ export function Budget() {
                                 </select>
                               </div>
                               <div>
-                                <p className="mb-1 text-xs text-muted-foreground">Color</p>
+                                <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
+                                <div className="mb-2 flex flex-wrap gap-1">
+                                  {PRESET_COLORS.map(c => (
+                                    <ColorSwatch key={c} color={c} selected={editDraft.color === c} onClick={() => setEditDraft(d => ({ ...d, color: c }))} />
+                                  ))}
+                                </div>
                                 <div className="flex items-center gap-2">
-                                  <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <input
+                                    type="text"
+                                    aria-label="Category color hex"
+                                    className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+                                    value={editDraft.color}
+                                    onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setEditDraft(d => ({ ...d, color: e.target.value })) }}
+                                  />
                                   <input
                                     type="color"
-                                    aria-label="Category color"
-                                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                                    value={editDraft.color}
+                                    aria-label="Category color picker"
+                                    className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                                    value={editDraft.color.length === 7 ? editDraft.color : '#6c63ff'}
                                     onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
                                   />
                                 </div>
@@ -585,11 +627,11 @@ export function Budget() {
                   value={addName}
                   onChange={e => setAddName(e.target.value)}
                 />
-                <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <div className="flex flex-wrap items-center gap-2">
                   <Input
                     aria-label="Budget amount"
                     inputMode="decimal"
-                    className="h-8 bg-secondary text-sm font-bold"
+                    className="h-8 min-w-0 flex-1 bg-secondary text-sm font-bold"
                     placeholder={`Budget amount (${money.displayCurrency})`}
                     value={addAmount}
                     onChange={e => setAddAmount(formatNumberInput(e.target.value))}
@@ -603,13 +645,28 @@ export function Budget() {
                     <option value="monthly">Monthly</option>
                     <option value="yearly">Yearly</option>
                   </select>
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
+                </div>
+                <div>
+                  <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
+                  <div className="mb-2 flex flex-wrap gap-1">
+                    {PRESET_COLORS.map(c => (
+                      <ColorSwatch key={c} color={c} selected={addColor === c} onClick={() => setAddColor(c)} />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
+                    <input
+                      type="text"
+                      aria-label="Category color hex"
+                      className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+                      value={addColor}
+                      onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setAddColor(e.target.value) }}
+                    />
                     <input
                       type="color"
-                      aria-label="Category color"
-                      className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                      value={addColor}
+                      aria-label="Category color picker"
+                      className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                      value={addColor.length === 7 ? addColor : '#6c63ff'}
                       onChange={e => setAddColor(e.target.value)}
                     />
                   </div>
