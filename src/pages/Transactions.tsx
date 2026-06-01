@@ -308,7 +308,7 @@ export function Transactions() {
         const savedTx = await addTransaction.mutateAsync(payload)
         // Create system-generated change transfer when cash given > expense
         if (cashEnabled && baseChange > 0 && changeWalletId && savedTx?.id) {
-          await addTransaction.mutateAsync({
+          const changeTx = await addTransaction.mutateAsync({
             description: `Change — ${description.trim()}`,
             amount: baseChange,
             original_amount: parsedTendered - parsedAmount,
@@ -325,6 +325,10 @@ export function Transactions() {
             linked_transaction_id: savedTx.id,
             cash_tendered: null,
           })
+          // Bidirectional link: update expense tx to point back to change transfer
+          if (changeTx?.id) {
+            await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: changeTx.id })
+          }
         }
         if (isRecurring) {
           const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
@@ -346,7 +350,7 @@ export function Transactions() {
             active: !completedAtStart,
           })
         }
-        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · NT$${parsedTendered - parsedAmount} change to pouch` : 'Transaction added')
+        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · ${money.format(parsedTendered - parsedAmount, inputCurrency)} change to pouch` : 'Transaction added')
       }
     } catch {
       toast.error('Failed to save transaction')
@@ -719,6 +723,9 @@ export function Transactions() {
                             )}
                             {isUnderpay && (
                               <p className="mt-2 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
+                            )}
+                            {!isUnderpay && Number.isFinite(parsedTendered) && parsedTendered > 0 && walletCurrentBal < money.toBase(parsedTendered, inputCurrency) && (
+                              <p className="mt-2 text-xs font-bold text-[#FFCF73]">⚠ Wallet balance {money.formatBase(walletCurrentBal)} may be lower than cash given</p>
                             )}
                           </div>
 

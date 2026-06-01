@@ -3,7 +3,7 @@ import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
   useBudgetRules, useAddBudgetRule,
-  useRenameWallet,
+  useRenameWallet, useUpdateWallet,
   useAuthSession, useSignIn, useSignUp, useSignOut,
   useWallets, useAddWallet, useDeleteWallet,
   useTransactions, useAddTransaction,
@@ -59,6 +59,7 @@ export function Settings() {
   const deleteCategory = useDeleteBudgetCategory()
   const renameCategory = useRenameBudgetCategory()
   const renameWallet = useRenameWallet()
+  const updateWallet = useUpdateWallet()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
   const { data: budgetRules = [] } = useBudgetRules()
@@ -95,6 +96,7 @@ export function Settings() {
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
   const [editingWalletName, setEditingWalletName] = useState('')
+  const [editingWalletCashRole, setEditingWalletCashRole] = useState<CashRole | ''>('')
   const [backupText, setBackupText] = useState('')
   const backupFileRef = useRef<HTMLInputElement>(null)
   const [pinInput, setPinInput] = useState('')
@@ -264,12 +266,17 @@ export function Settings() {
     if (!editingWalletId) return
     const trimmed = editingWalletName.trim()
     if (!trimmed) return
+    const wallet = wallets.find(w => w.id === editingWalletId)
     try {
-      await renameWallet.mutateAsync({ id: editingWalletId, name: trimmed })
+      if (wallet?.type === 'cash') {
+        await updateWallet.mutateAsync({ id: editingWalletId, name: trimmed, cash_role: editingWalletCashRole || null })
+      } else {
+        await renameWallet.mutateAsync({ id: editingWalletId, name: trimmed })
+      }
       setEditingWalletId(null)
-      toast.success('Wallet renamed')
+      toast.success('Wallet updated')
     } catch {
-      toast.error('Failed to rename wallet')
+      toast.error('Failed to update wallet')
     }
   }
 
@@ -575,34 +582,51 @@ export function Settings() {
                   </p>
                   <div className="space-y-1">
                     {group.wallets.map(wallet => (
-                      <div key={wallet.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-secondary px-4 py-2.5">
+                      <div key={wallet.id} className={`rounded-xl border border-border bg-secondary px-4 py-2.5 ${editingWalletId === wallet.id ? 'flex flex-col gap-2' : 'flex items-center justify-between gap-2'}`}>
                         {editingWalletId === wallet.id ? (
                           <>
-                            <input
-                              className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
-                              value={editingWalletName}
-                              autoFocus
-                              onChange={e => setEditingWalletName(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') handleSaveWalletRename()
-                                if (e.key === 'Escape') setEditingWalletId(null)
-                              }}
-                            />
-                            <button
-                              aria-label="Save wallet rename"
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
-                              onClick={handleSaveWalletRename}
-                              disabled={renameWallet.isPending}
-                            >
-                              <Check className="h-4 w-4" />
-                            </button>
-                            <button
-                              aria-label="Cancel wallet rename"
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
-                              onClick={() => setEditingWalletId(null)}
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <input
+                                className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
+                                value={editingWalletName}
+                                autoFocus
+                                onChange={e => setEditingWalletName(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSaveWalletRename()
+                                  if (e.key === 'Escape') setEditingWalletId(null)
+                                }}
+                              />
+                              <button
+                                aria-label="Save wallet rename"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                                onClick={handleSaveWalletRename}
+                                disabled={updateWallet.isPending || renameWallet.isPending}
+                              >
+                                <Check className="h-4 w-4" />
+                              </button>
+                              <button
+                                aria-label="Cancel wallet rename"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
+                                onClick={() => setEditingWalletId(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {wallet.type === 'cash' && (
+                              <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                                <span className="text-xs font-bold text-muted-foreground">Cash role:</span>
+                                {([['', 'General'], ['notes', 'Notes / Wallet'], ['coins', 'Coins / Pouch'], ['mixed', 'Mixed']] as const).map(([val, label]) => (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => setEditingWalletCashRole(val as CashRole | '')}
+                                    className={`rounded-full border px-2.5 py-0.5 text-xs font-bold transition-colors ${editingWalletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </>
                         ) : (
                           <>
@@ -618,7 +642,7 @@ export function Settings() {
                             <button
                               aria-label={`Rename ${wallet.name} wallet`}
                               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
-                              onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name) }}
+                              onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name); setEditingWalletCashRole(wallet.cash_role ?? '') }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
