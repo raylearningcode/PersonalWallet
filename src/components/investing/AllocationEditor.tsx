@@ -87,13 +87,13 @@ export function AllocationEditor({ value, onChange, onSave, isSaving }: Props) {
                 <input
                   type="color"
                   aria-label="Asset color"
-                  className="h-6 w-6 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                  className="h-8 w-8 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
                   value={item.color}
                   onChange={e => update(i, 'color', e.target.value)}
                 />
                 <Input
                   aria-label="Asset name"
-                  className="h-7 flex-1 rounded-lg bg-secondary px-2 text-xs font-bold"
+                  className="h-9 flex-1 rounded-lg bg-secondary px-2 text-xs font-bold"
                   placeholder="Asset name"
                   value={item.name}
                   onChange={e => update(i, 'name', e.target.value)}
@@ -102,7 +102,7 @@ export function AllocationEditor({ value, onChange, onSave, isSaving }: Props) {
                 <button
                   onClick={() => remove(i)}
                   disabled={value.length <= 1}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-30"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-30"
                   aria-label={`Remove ${item.name || 'asset'}`}
                 >
                   ×
