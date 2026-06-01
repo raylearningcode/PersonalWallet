@@ -33,6 +33,34 @@ const PRESET_COLORS = [
   '#64748B', '#A16207',
 ]
 
+const CATEGORY_GROUPS: { label: string; keywords: string[] }[] = [
+  { label: 'Food & Drink', keywords: ['food', 'drink', 'eat', 'lunch', 'dinner', 'breakfast', 'grocery', 'groceries', 'restaurant', 'cafe', 'coffee', 'meal', 'snack'] },
+  { label: 'Transport', keywords: ['transport', 'transit', 'travel', 'car', 'fuel', 'gas', 'petrol', 'parking', 'taxi', 'uber', 'commute', 'bus', 'train', 'toll'] },
+  { label: 'Home & Living', keywords: ['rent', 'home', 'housing', 'utilities', 'electric', 'electricity', 'water', 'internet', 'cleaning', 'furnish', 'maintenance', 'household'] },
+  { label: 'Health', keywords: ['health', 'medical', 'doctor', 'pharmacy', 'gym', 'fitness', 'sport', 'wellness', 'dental', 'medicine'] },
+  { label: 'Entertainment', keywords: ['entertainment', 'streaming', 'games', 'game', 'movie', 'music', 'netflix', 'spotify', 'hobby', 'fun', 'leisure', 'cinema'] },
+  { label: 'Education', keywords: ['education', 'learning', 'course', 'book', 'school', 'tuition', 'study', 'training', 'subscription'] },
+  { label: 'Shopping', keywords: ['shopping', 'clothes', 'clothing', 'fashion', 'beauty', 'cosmetic', 'gadget', 'phone', 'electronics'] },
+]
+
+function getCategoryGroup(name: string): string {
+  const lower = name.toLowerCase()
+  for (const { label, keywords } of CATEGORY_GROUPS) {
+    if (keywords.some(k => lower.includes(k))) return label
+  }
+  return 'Other'
+}
+
+function groupCategories<T extends { name: string }>(cats: T[]): { group: string; items: T[] }[] {
+  const map = new Map<string, T[]>()
+  for (const cat of cats) {
+    const g = getCategoryGroup(cat.name)
+    if (!map.has(g)) map.set(g, [])
+    map.get(g)!.push(cat)
+  }
+  return Array.from(map.entries()).map(([group, items]) => ({ group, items }))
+}
+
 function ColorSwatch({ color, selected, onClick }: { color: string; selected: boolean; onClick: () => void }) {
   return (
     <button
@@ -363,55 +391,66 @@ export function Budget() {
                 {activeBudgets.length > 0 && (
                   <div className="space-y-4">
                     <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
-                    {activeBudgets.map(cat => {
-                      const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
-                      const barColor = getBarColor(pct, cat.color)
-                      const catDailyAllowance = cat.yearly_allocated > cat.spent && daysLeft > 0
-                        ? (cat.yearly_allocated - cat.spent) / daysLeft
-                        : null
-                      const overPace = pct > monthPct
+                    {(() => {
+                      const grouped = groupCategories(activeBudgets)
+                      const showGroups = grouped.length > 1
+                      return grouped.map(({ group, items }) => (
+                        <div key={group} className="space-y-4">
+                          {showGroups && (
+                            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
+                          )}
+                          {items.map(cat => {
+                            const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
+                            const barColor = getBarColor(pct, cat.color)
+                            const catDailyAllowance = cat.yearly_allocated > cat.spent && daysLeft > 0
+                              ? (cat.yearly_allocated - cat.spent) / daysLeft
+                              : null
+                            const overPace = pct > monthPct
 
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => openSheet(cat)}
-                          className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995]"
-                          aria-label={`Open ${cat.name} budget details`}
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-2 text-sm">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-                              <span className="truncate font-bold text-foreground">{cat.name}</span>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                {fmt(cat.spent)} / {fmt(cat.yearly_allocated)}
-                              </span>
-                              <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
-                                {pct}%
-                              </span>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          </div>
-                          <ColorBar value={pct} color={barColor} />
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {viewMode === 'monthly' && (
-                              <>{pct}% used · {overPace ? '⚡ Over pace' : '✓ On track'}</>
-                            )}
-                            {viewMode === 'daily' && cat.budget_period === 'monthly' && catDailyAllowance !== null && daysLeft > 0 && (
-                              <span className="text-primary">Daily guide: {fmt(catDailyAllowance)}/day</span>
-                            )}
-                            {viewMode === 'daily' && (cat.budget_period !== 'monthly' || catDailyAllowance === null || daysLeft === 0) && (
-                              <>{pct}% used · {daysLeft === 0 ? 'Month ends today' : 'No daily data'}</>
-                            )}
-                            {viewMode === 'remaining' && (
-                              <>Remaining: <span className="font-bold text-foreground">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))}</span> · {overPace ? '⚡ Over pace' : '✓ On track'}</>
-                            )}
-                          </p>
-                        </button>
-                      )
-                    })}
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => openSheet(cat)}
+                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995]"
+                                aria-label={`Open ${cat.name} budget details`}
+                              >
+                                <div className="mb-2 flex items-center justify-between gap-2 text-sm">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                    <span className="truncate font-bold text-foreground">{cat.name}</span>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">
+                                      {fmt(cat.spent)} / {fmt(cat.yearly_allocated)}
+                                    </span>
+                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                                      {pct}%
+                                    </span>
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                </div>
+                                <ColorBar value={pct} color={barColor} />
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {viewMode === 'monthly' && (
+                                    <>{pct}% used · {overPace ? '⚡ Over pace' : '✓ On track'}</>
+                                  )}
+                                  {viewMode === 'daily' && cat.budget_period === 'monthly' && catDailyAllowance !== null && daysLeft > 0 && (
+                                    <span className="text-primary">Daily guide: {fmt(catDailyAllowance)}/day</span>
+                                  )}
+                                  {viewMode === 'daily' && (cat.budget_period !== 'monthly' || catDailyAllowance === null || daysLeft === 0) && (
+                                    <>{pct}% used · {daysLeft === 0 ? 'Month ends today' : 'No daily data'}</>
+                                  )}
+                                  {viewMode === 'remaining' && (
+                                    <>Remaining: <span className="font-bold text-foreground">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))}</span> · {overPace ? '⚡ Over pace' : '✓ On track'}</>
+                                  )}
+                                </p>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ))
+                    })()}
                   </div>
                 )}
                 {noBudget.length > 0 && (
