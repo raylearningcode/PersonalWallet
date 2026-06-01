@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   useTransactions,
   useDeleteTransaction,
@@ -9,8 +9,6 @@ import {
   useWallets,
   useRecurringRules,
   useAddRecurringRule,
-  useUpdateRecurringRule,
-  useDeleteRecurringRule,
   useRunDueRecurringRules,
   useMarkReviewed,
 } from '@/lib/queries'
@@ -55,16 +53,8 @@ export function Transactions() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
-  const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
-  const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
   const [dateFrom, setDateFrom] = useState(getMonthStart)
   const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
-  const [ruleDescription, setRuleDescription] = useState('')
-  const [ruleAmount, setRuleAmount] = useState('')
-  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
-  const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
-  const [ruleNextDueDate, setRuleNextDueDate] = useState('')
-  const [ruleEndDate, setRuleEndDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
@@ -95,8 +85,6 @@ export function Transactions() {
   const updateTransaction = useUpdateTransaction()
   const del = useDeleteTransaction()
   const addRecurringRule = useAddRecurringRule()
-  const updateRecurringRule = useUpdateRecurringRule()
-  const deleteRecurringRule = useDeleteRecurringRule()
   const runDueRecurringRules = useRunDueRecurringRules()
   const markReviewed = useMarkReviewed()
 
@@ -463,17 +451,6 @@ export function Transactions() {
     })
   }
 
-  const handleToggleRule = (rule: RecurringRule) => {
-    updateRecurringRule.mutate({ id: rule.id, active: !rule.active })
-  }
-
-  const confirmDeleteRule = () => {
-    if (!deleteRuleTarget) return
-    deleteRecurringRule.mutate(deleteRuleTarget.id)
-    toast.success('Recurring rule removed')
-    setDeleteRuleTarget(null)
-  }
-
   const handleDuplicateTransaction = async (tx: Transaction) => {
     await addTransaction.mutateAsync({
       description: tx.description,
@@ -495,35 +472,6 @@ export function Transactions() {
   const handleMarkReviewed = (id: string) => {
     markReviewed.mutate(id)
     toast.success('Marked as reviewed')
-  }
-
-  const openEditRule = (rule: RecurringRule) => {
-    setEditingRule(rule)
-    setRuleDescription(rule.description)
-    setRuleAmount(String(rule.original_amount))
-    setRuleInputCurrency(rule.original_currency)
-    setRuleFrequency(rule.frequency)
-    setRuleNextDueDate(rule.next_due_date)
-    setRuleEndDate(rule.end_date ?? '')
-  }
-
-  const handleSaveRule = async () => {
-    if (!editingRule) return
-    const parsedAmount = parseNumberInput(ruleAmount)
-    if (!ruleDescription.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return
-    const baseAmount = money.toBase(parsedAmount, ruleInputCurrency)
-    await updateRecurringRule.mutateAsync({
-      id: editingRule.id,
-      description: ruleDescription.trim(),
-      amount: baseAmount,
-      original_amount: parsedAmount,
-      original_currency: ruleInputCurrency,
-      frequency: ruleFrequency,
-      next_due_date: ruleNextDueDate,
-      end_date: ruleEndDate || null,
-    })
-    toast.success('Recurring rule updated')
-    setEditingRule(null)
   }
 
   const handleAddCandidateAsRule = async (candidate: ReturnType<typeof getRecurringCandidates>[0]) => {
@@ -1061,66 +1009,6 @@ export function Transactions() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
-        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 sm:max-w-md sm:p-6">
-          <SheetHeader className="mb-6 text-left">
-            <SheetTitle>Edit recurring rule</SheetTitle>
-            <SheetDescription>Update the schedule or amount for this recurring payment.</SheetDescription>
-          </SheetHeader>
-          <div className="space-y-5">
-            <div>
-              <Label className="text-sm font-bold text-foreground">Description</Label>
-              <Input aria-label="Rule description" className="mt-2 bg-secondary" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} />
-            </div>
-            <div className="flex gap-3">
-              <div className="w-28 shrink-0">
-                <Label className="text-sm font-bold text-foreground">Currency</Label>
-                <select
-                  aria-label="Rule currency"
-                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                  value={ruleInputCurrency}
-                  onChange={e => setRuleInputCurrency(e.target.value)}
-                >
-                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="flex-1">
-                <Label className="text-sm font-bold text-foreground">Amount</Label>
-                <Input aria-label="Rule amount" className="mt-2 bg-secondary" inputMode="decimal" value={ruleAmount} onChange={e => setRuleAmount(formatNumberInput(e.target.value))} />
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm font-bold text-foreground">Frequency</Label>
-              <select
-                aria-label="Rule frequency"
-                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                value={ruleFrequency}
-                onChange={e => setRuleFrequency(e.target.value as RecurringFrequency)}
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
-            </div>
-            <div>
-              <Label className="text-sm font-bold text-foreground">Next due date</Label>
-              <Input aria-label="Rule next due date" className="mt-2 bg-secondary" type="date" value={ruleNextDueDate} onChange={e => setRuleNextDueDate(e.target.value)} />
-            </div>
-            <div>
-              <Label className="text-sm font-bold text-foreground">End date (optional)</Label>
-              <Input aria-label="Rule end date" className="mt-2 bg-secondary" type="date" value={ruleEndDate} onChange={e => setRuleEndDate(e.target.value)} />
-            </div>
-            <Button className="mt-4 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
-              Save rule
-            </Button>
-            <Button variant="secondary" className="mt-2 w-full" onClick={() => setEditingRule(null)}>
-              Cancel
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-
 
       {expenseCategoryTotals.length > 0 && (
         <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
@@ -1155,37 +1043,44 @@ export function Transactions() {
               <h2 className="text-lg font-extrabold text-foreground">Recurring / cicilan</h2>
               <p className="mt-1 text-xs font-bold text-muted-foreground">Auto-generates due payments without duplicates.</p>
             </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleGenerateDue}
-              disabled={runDueRecurringRules.isPending}
-              title={nextDueRule ? `Next due: ${nextDueRule.description} on ${nextDueRule.next_due_date}` : 'No upcoming rules'}
-            >
-              Generate due transactions
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleGenerateDue}
+                disabled={runDueRecurringRules.isPending}
+                title={nextDueRule ? `Next due: ${nextDueRule.description} on ${nextDueRule.next_due_date}` : 'No upcoming rules'}
+              >
+                Generate due
+              </Button>
+              <Button asChild size="sm" variant="secondary">
+                <Link to="/subscriptions">Manage →</Link>
+              </Button>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {upcomingRecurringRules.map(rule => (
-              <div key={rule.id} className={`rounded-2xl border p-4 ${rule.active ? 'border-border bg-secondary' : 'border-border/60 bg-secondary/50 opacity-70'}`}>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="min-w-0 truncate font-extrabold text-foreground">{rule.description}</p>
-                  <p className="shrink-0 text-sm font-bold text-primary">{rule.frequency}</p>
+              <Link
+                key={rule.id}
+                to="/subscriptions"
+                className={`flex items-center justify-between gap-3 rounded-2xl border p-4 transition-colors hover:border-primary/30 hover:bg-primary/5 ${rule.active ? 'border-border bg-secondary' : 'border-border/60 bg-secondary/50 opacity-70'}`}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="min-w-0 truncate font-extrabold text-foreground">{rule.description}</p>
+                    {!rule.active && <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">Paused</span>}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{rule.category} · next {rule.next_due_date}</p>
+                  <p className="mt-0.5 text-sm font-bold text-foreground">
+                    {money.format(rule.original_amount, rule.original_currency)}
+                    {rule.original_currency !== money.baseCurrency && <span className="ml-2 text-xs text-muted-foreground">~ {money.formatBase(rule.amount)}</span>}
+                  </p>
+                  {rule.installment_total && (
+                    <p className="mt-0.5 text-xs font-bold text-muted-foreground">{rule.installment_paid}/{rule.installment_total} paid</p>
+                  )}
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">{rule.category} - next {rule.next_due_date}</p>
-                <p className="mt-1 text-sm font-bold text-foreground">
-                  {money.format(rule.original_amount, rule.original_currency)}
-                  {rule.original_currency !== money.baseCurrency && <span className="ml-2 text-xs text-muted-foreground">~ {money.formatBase(rule.amount)}</span>}
-                </p>
-                {rule.installment_total && (
-                  <p className="mt-1 text-xs font-bold text-muted-foreground">{rule.installment_paid}/{rule.installment_total} paid</p>
-                )}
-                <div className="mt-3 flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => handleToggleRule(rule)}>{rule.active ? 'Pause' : 'Resume'}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => openEditRule(rule)}><Pencil size={13} className="mr-1" />Edit</Button>
-                  <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => setDeleteRuleTarget(rule)}>Delete</Button>
-                </div>
-              </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
             ))}
           </div>
           {recurringCandidates.length > 0 && (
@@ -1480,13 +1375,6 @@ export function Transactions() {
         description="This removes the transaction from your history and wallet calculations."
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDeleteTransaction}
-      />
-      <ConfirmDialog
-        open={Boolean(deleteRuleTarget)}
-        title={deleteRuleTarget ? `Delete recurring rule for ${deleteRuleTarget.description}?` : ''}
-        description="Existing generated transactions stay in history. Only future automatic payments stop."
-        onCancel={() => setDeleteRuleTarget(null)}
-        onConfirm={confirmDeleteRule}
       />
       <ConfirmDialog
         open={bulkDeleteConfirm}
