@@ -37,6 +37,11 @@ type Filter = 'all' | 'income' | 'expense' | 'transfer'
 type EntryType = 'income' | 'expense' | 'transfer'
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 
+function getMonthStart() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
 export function Transactions() {
   const money = useMoney()
   const [searchParams] = useSearchParams()
@@ -48,7 +53,7 @@ export function Transactions() {
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
   const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
   const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
-  const [dateFrom, setDateFrom] = useState('')
+  const [dateFrom, setDateFrom] = useState(getMonthStart)
   const [dateTo, setDateTo] = useState('')
   const [showDateFilter, setShowDateFilter] = useState(false)
   const [ruleDescription, setRuleDescription] = useState('')
@@ -608,7 +613,7 @@ export function Transactions() {
         )}
       />
       <div className="relative mb-8">
-        <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); setDateFrom(''); setDateTo('') }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
+        <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); setDateFrom(getMonthStart()); setDateTo('') }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
           <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
             {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
               <TabsTrigger
@@ -1103,6 +1108,12 @@ export function Transactions() {
       {showDateFilter && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-border bg-card px-4 py-4 sm:px-6">
           <span className="text-sm font-bold text-muted-foreground">Date range</span>
+          <button
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${dateFrom === getMonthStart() && !dateTo ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+            onClick={() => { setDateFrom(getMonthStart()); setDateTo('') }}
+          >
+            This month
+          </button>
           <Input
             type="date"
             aria-label="Date from"
@@ -1118,18 +1129,14 @@ export function Transactions() {
             value={dateTo}
             onChange={e => setDateTo(e.target.value)}
           />
-          {(dateFrom || dateTo) && (
-            <button
-              className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
-              onClick={() => { setDateFrom(''); setDateTo('') }}
-            >
-              <X className="h-3 w-3" />
-              Clear
-            </button>
-          )}
-          {(dateFrom || dateTo) && (
-            <span className="text-xs text-primary font-bold">{sortedTransactions.length} result{sortedTransactions.length !== 1 ? 's' : ''}</span>
-          )}
+          <button
+            className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+            onClick={() => { setDateFrom(''); setDateTo('') }}
+          >
+            <X className="h-3 w-3" />
+            Show all
+          </button>
+          <span className="text-xs text-primary font-bold">{sortedTransactions.length} result{sortedTransactions.length !== 1 ? 's' : ''}</span>
         </div>
       )}
 
