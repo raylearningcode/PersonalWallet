@@ -76,7 +76,11 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
         </div>
 
         {/* Goal progress card */}
-        <div className="rounded-2xl border border-border bg-card px-5 py-4">
+        <button
+          type="button"
+          onClick={() => handleNav('/goals')}
+          className="w-full rounded-2xl border border-border bg-card px-5 py-4 text-left transition-colors active:bg-secondary/60"
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Current goal</p>
@@ -90,7 +94,7 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
               style={{ width: `${goalPct}%` }}
             />
           </div>
-        </div>
+        </button>
       </SheetContent>
     </Sheet>
   )

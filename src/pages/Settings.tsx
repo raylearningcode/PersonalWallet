@@ -638,7 +638,7 @@ export function Settings() {
                               />
                               <button
                                 aria-label="Save wallet rename"
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
                                 onClick={handleSaveWalletRename}
                                 disabled={updateWallet.isPending || renameWallet.isPending}
                               >
@@ -646,7 +646,7 @@ export function Settings() {
                               </button>
                               <button
                                 aria-label="Cancel wallet rename"
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
                                 onClick={() => setEditingWalletId(null)}
                               >
                                 <X className="h-4 w-4" />
@@ -681,14 +681,14 @@ export function Settings() {
                             <span className="shrink-0 font-extrabold text-foreground">{money.formatDisplay(walletBalances.get(wallet.id) ?? 0)}</span>
                             <button
                               aria-label={`Rename ${wallet.name} wallet`}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
                               onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name); setEditingWalletCashRole(wallet.cash_role ?? '') }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                               aria-label={`Delete ${wallet.name} wallet`}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
                               onClick={() => handleDeleteWallet(wallet.id, wallet.name)}
                             >
                               <X className="h-4 w-4" />
@@ -738,7 +738,7 @@ export function Settings() {
                       />
                       <button
                         aria-label="Save rename"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
                         onClick={handleSaveRename}
                         disabled={renameCategory.isPending}
                       >
@@ -746,7 +746,7 @@ export function Settings() {
                       </button>
                       <button
                         aria-label="Cancel rename"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
                         onClick={() => setEditingCategoryId(null)}
                       >
                         <X className="h-4 w-4" />
@@ -757,14 +757,14 @@ export function Settings() {
                       <span className="min-w-0 truncate font-bold text-foreground">{category.name}</span>
                       <button
                         aria-label={`Rename ${category.name} category`}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
                         onClick={() => handleStartRename(category.id, category.name)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         aria-label={`Delete ${category.name} category`}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
                         onClick={() => handleDeleteCategory(category.id, category.name)}
                       >
                         <X className="h-4 w-4" />

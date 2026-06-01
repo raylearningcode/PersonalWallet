@@ -264,19 +264,22 @@ export function Investing() {
                 <p className="mt-2 text-sm text-muted-foreground">Enter monthly contribution and expected return, then run the simulation.</p>
               </div>
             ) : (
-              <div className="flex items-end justify-between gap-2" style={{ height: '200px' }}>
+              <div className="flex items-stretch justify-between gap-1" style={{ height: '200px' }}>
                 {chartData.map((point) => (
-                  <div key={point.year} className="flex flex-1 flex-col items-center gap-1.5">
-                    <button
-                      type="button"
+                  <button
+                    key={point.year}
+                    type="button"
+                    className="flex flex-1 flex-col items-center justify-end gap-1.5 pb-1"
+                    onClick={() => setDuration(point.year)}
+                    aria-label={`Use ${point.year} year duration`}
+                    title={`${point.year} years: ${money.formatDisplay(point.value)}`}
+                  >
+                    <div
                       className={`w-full max-w-[20px] rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
                       style={{ height: `${Math.max(8, (point.value / maxValue) * 168)}px` }}
-                      onClick={() => setDuration(point.year)}
-                      aria-label={`Use ${point.year} year duration`}
-                      title={`${point.year} years: ${money.formatDisplay(point.value)}`}
                     />
                     <span className={`text-[9px] font-bold leading-none sm:text-[10px] ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}y</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -309,10 +312,10 @@ export function Investing() {
               </p>
             </div>
             <div>
-              <Label className="text-[11px] text-muted-foreground">Contribution currency</Label>
+              <Label className="text-xs text-muted-foreground">Contribution currency</Label>
               <select
                 aria-label="Contribution currency"
-                className="mt-1 h-8 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
                 value={contributionCurrency}
                 onChange={event => setContributionCurrency(event.target.value)}
               >
@@ -320,10 +323,10 @@ export function Investing() {
               </select>
             </div>
             <div>
-              <Label className="text-[11px] text-muted-foreground">Contribution frequency</Label>
+              <Label className="text-xs text-muted-foreground">Contribution frequency</Label>
               <select
                 aria-label="Contribution frequency"
-                className="mt-1 h-8 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
                 value={contributionFrequency}
                 onChange={event => setContributionFrequency(event.target.value as ContributionFrequency)}
               >
@@ -351,20 +354,20 @@ export function Investing() {
               [`Initial capital (${money.baseCurrency})`, 'initialCapital', formatNumberInput(draft.initialCapital)],
             ] as [string, keyof SimulatorValues, string][]).map(([label, key, value]) => (
               <div key={key}>
-                <Label className="text-[11px] text-muted-foreground">{label}</Label>
+                <Label className="text-xs text-muted-foreground">{label}</Label>
                 <Input
                   aria-label={key === 'monthlyContribution' ? 'Monthly contribution' : key === 'targetPortfolio' ? 'Target portfolio' : key === 'initialCapital' ? 'Initial capital' : label}
-                  className="mt-1 h-8 rounded-xl bg-secondary text-sm font-extrabold"
+                  className="mt-1 h-11 rounded-xl bg-secondary text-sm font-extrabold"
                   value={value}
                   onChange={event => updateDraft(key, event.target.value)}
                 />
               </div>
             ))}
             <div>
-              <Label className="text-[11px] text-muted-foreground">Target portfolio currency</Label>
+              <Label className="text-xs text-muted-foreground">Target portfolio currency</Label>
               <select
                 aria-label="Target portfolio currency"
-                className="mt-1 h-8 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
                 value={targetCurrency}
                 onChange={event => setTargetCurrency(event.target.value)}
               >

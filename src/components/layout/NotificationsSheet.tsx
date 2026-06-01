@@ -45,7 +45,7 @@ export function NotificationsSheet() {
         type="button"
         aria-label={`${badgeCount} notification${badgeCount === 1 ? '' : 's'}`}
         onClick={() => setOpen(true)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+        className="relative flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
       >
         <Bell className="h-4 w-4" />
         <span className={`absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-extrabold text-primary-foreground ${criticalCount > 0 ? 'bg-red-500' : 'bg-[#FFCF73]'}`}>
