@@ -369,7 +369,7 @@ export function Dashboard() {
             {topGoals.slice(0, 2).map(goal => {
               const pct = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0
               return (
-                <div key={goal.id} className="flex items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3">
+                <Link key={goal.id} to="/goals" className="flex items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-foreground">{goal.name}</p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -377,7 +377,7 @@ export function Dashboard() {
                     </div>
                   </div>
                   <span className="shrink-0 text-sm font-extrabold text-foreground">{pct}%</span>
-                </div>
+                </Link>
               )
             })}
           </div>
@@ -831,7 +831,7 @@ export function Dashboard() {
               {topGoals.map(goal => {
                 const pct = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0
                 return (
-                  <div key={goal.id} className="relative overflow-hidden rounded-2xl border border-border bg-card p-5">
+                  <Link key={goal.id} to="/goals" className="relative block overflow-hidden rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary/30 hover:bg-primary/5">
                     <div className="pointer-events-none absolute inset-y-0 left-0 w-1 rounded-l-[inherit]" style={{ backgroundColor: goal.color }} />
                     <p className="truncate font-extrabold text-foreground">{goal.name}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{goal.category}</p>
@@ -843,7 +843,7 @@ export function Dashboard() {
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">Target: {fmt(goal.target_amount)}</p>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
