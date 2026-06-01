@@ -1317,6 +1317,7 @@ export function Transactions() {
             {!isDesktop && <div className="flex flex-col gap-2">
               {rows.map(tx => {
                 const isSelected = selectedIds.has(tx.id)
+                const txWallet = wallets.find(w => w.id === tx.wallet_id)
                 return (
                   <button
                     key={tx.id}
@@ -1337,7 +1338,7 @@ export function Transactions() {
                           <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          {tx.category} · {tx.date}
+                          {tx.category}{txWallet ? ` · ${txWallet.name}` : ''}
                           {tx.cash_tendered && tx.cash_tendered > 0 && (
                             <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                               Cash

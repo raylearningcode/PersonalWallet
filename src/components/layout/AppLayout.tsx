@@ -14,14 +14,15 @@ import { QuickAddSheet } from './QuickAddSheet'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 import { NotificationsSheet } from './NotificationsSheet'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
-import { DollarSign, ArrowLeftRight, TrendingUp } from 'lucide-react'
+import { DollarSign, ArrowLeftRight, TrendingUp, Target } from 'lucide-react'
 
 type QuickAddType = 'expense' | 'income' | 'transfer'
 
-const QUICK_ACTIONS: { type: QuickAddType; label: string; description: string; color: string; Icon: typeof DollarSign }[] = [
+const QUICK_ACTIONS: { type: QuickAddType | 'goal'; label: string; description: string; color: string; Icon: typeof DollarSign; to?: string }[] = [
   { type: 'expense', label: 'Add expense', description: 'Record a purchase or payment', color: '#FF8388', Icon: DollarSign },
   { type: 'income', label: 'Add income', description: 'Log salary, gift, or refund', color: '#4ADE80', Icon: TrendingUp },
   { type: 'transfer', label: 'Transfer', description: 'Move money between wallets', color: '#60A5FA', Icon: ArrowLeftRight },
+  { type: 'goal', label: 'Goal contribution', description: 'Log savings toward a goal', color: '#A9F5C7', Icon: Target, to: '/goals' },
 ]
 
 function ResponsiveToaster() {
@@ -65,11 +66,13 @@ export function AppLayout() {
       if ((e.target as HTMLElement).isContentEditable) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       switch (e.key) {
-        case 'n': setQuickAddOpen(true); break
+        case 'n': setQuickAddType('expense'); setQuickAddOpen(true); break
+        case 'h': navigate('/'); break
+        case 't': navigate('/transactions'); break
         case 'g': navigate('/goals'); break
         case 'b': navigate('/budget'); break
         case 'r': navigate('/reports'); break
-        case '?': toast('Keyboard shortcuts: N = Add transaction · G = Goals · B = Budget · R = Reports', { duration: 4000 }); break
+        case '?': toast('Shortcuts: N = Add · H = Home · T = Transactions · B = Budget · G = Goals · R = Reports', { duration: 5000 }); break
       }
     }
     window.addEventListener('keydown', handler)
@@ -166,12 +169,17 @@ export function AppLayout() {
           <h2 className="mb-1 text-lg font-extrabold text-foreground">Quick add</h2>
           <p className="mb-5 text-sm text-muted-foreground">What do you want to record?</p>
           <div className="space-y-2">
-            {QUICK_ACTIONS.map(({ type, label, description, color, Icon }) => (
+            {QUICK_ACTIONS.map(({ type, label, description, color, Icon, to }) => (
               <button
                 key={type}
                 type="button"
                 className="flex w-full items-center gap-4 rounded-2xl border border-border bg-secondary p-4 text-left transition-colors active:scale-[0.99] hover:bg-muted/30"
-                onClick={() => { setQuickActionsOpen(false); setQuickAddType(type); setQuickAddOpen(true) }}
+                onClick={() => {
+                  setQuickActionsOpen(false)
+                  if (to) { navigate(to); return }
+                  setQuickAddType(type as QuickAddType)
+                  setQuickAddOpen(true)
+                }}
               >
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: color + '22', border: `1.5px solid ${color}44` }}>
                   <Icon className="h-5 w-5" style={{ color }} />

@@ -21,7 +21,7 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload } from 'lucide-react'
+import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
@@ -73,6 +73,22 @@ export function Settings() {
   const upsertEstimationPlan = useUpsertEstimationPlan()
 
   const isDesktop = useIsDesktop()
+  const [installPrompt, setInstallPrompt] = useState<Event & { prompt?: () => void } | null>(null)
+  const [appInstalled, setAppInstalled] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e) }
+    window.addEventListener('beforeinstallprompt', handler)
+    window.addEventListener('appinstalled', () => { setAppInstalled(true); setInstallPrompt(null) })
+    return () => { window.removeEventListener('beforeinstallprompt', handler) }
+  }, [])
+
+  const handleInstall = async () => {
+    if (!installPrompt || typeof (installPrompt as { prompt?: () => void }).prompt !== 'function') return
+    ;(installPrompt as { prompt: () => void }).prompt()
+    setInstallPrompt(null)
+  }
+
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const s = new URLSearchParams(window.location.search).get('section')
     return (s && (tabs as readonly string[]).includes(s)) ? s as SettingsTab : 'profile'
@@ -376,6 +392,26 @@ export function Settings() {
           </button>
         ))}
       </div>
+
+      {/* PWA install banner */}
+      {!effectiveTab && installPrompt && !appInstalled && (
+        <div className="mb-4 flex items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 lg:hidden">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+            <Download className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-foreground">Install FinPath</p>
+            <p className="text-xs text-muted-foreground">Add to home screen for faster access offline</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleInstall}
+            className="shrink-0 rounded-full bg-primary px-4 py-1.5 text-xs font-extrabold text-primary-foreground"
+          >
+            Install
+          </button>
+        </div>
+      )}
 
       {/* Mobile: native-style settings list (shown when no page selected) */}
       {!effectiveTab && (
