@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText, ChevronDown, CheckSquare, Square } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText, CheckSquare, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -69,7 +69,6 @@ export function Transactions() {
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [installmentTotal, setInstallmentTotal] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [cashEnabled, setCashEnabled] = useState(false)
   const [cashTendered, setCashTendered] = useState('')
   const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
@@ -207,7 +206,6 @@ export function Transactions() {
     setFrequency('monthly')
     setInstallmentTotal('')
     setEndDate('')
-    setShowAdvanced(false)
     setCashEnabled(false)
     setCashTendered('')
     setChangeBillsWalletId('')
@@ -232,7 +230,6 @@ export function Transactions() {
     setTransferWalletId(transaction.transfer_wallet_id ?? wallets.find(wallet => wallet.id !== transaction.wallet_id)?.id ?? '')
     setType(transaction.type === 'income' || transaction.type === 'transfer' ? transaction.type : 'expense')
     setIsRecurring(false)
-    setShowAdvanced(true)
     setIsFormOpen(true)
   }
 
@@ -684,8 +681,12 @@ export function Transactions() {
                     if (merchantSuggestion.wallet_id) setWalletId(merchantSuggestion.wallet_id)
                     setType(merchantSuggestion.type === 'income' || merchantSuggestion.type === 'transfer' ? merchantSuggestion.type : 'expense')
                   }}
+                  title="Fills in category, wallet, and type from last time you used this merchant"
                 >
-                  Use suggestion: {merchantSuggestion.category}
+                  Last time: {merchantSuggestion.category}
+                  {merchantSuggestion.wallet_id && wallets.find(w => w.id === merchantSuggestion.wallet_id) && (
+                    <span className="ml-1.5 opacity-70">· {wallets.find(w => w.id === merchantSuggestion.wallet_id)!.name}</span>
+                  )}
                 </button>
               )}
             </div>
@@ -712,64 +713,52 @@ export function Transactions() {
               </div>
             )}
 
-            {/* More options toggle */}
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(v => !v)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground active:bg-muted/40"
-            >
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`} />
-              {showAdvanced ? 'Fewer options' : 'More options'}
-            </button>
-
-            {/* Advanced fields */}
-            {showAdvanced && (
-              <div className="space-y-5">
-                {/* Currency */}
+            {/* Wallet(s) */}
+            {type !== 'transfer' ? (
+              <div>
+                <Label className="text-sm font-bold text-foreground">Wallet</Label>
+                <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => { setWalletId(event.target.value); setCashEnabled(false); setCashTendered(''); setChangeBillsWalletId(''); setChangeCoinsWalletId('') }}>
+                  {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
+                  {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                </select>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <Label className="text-sm font-bold text-foreground">Currency</Label>
-                  <select
-                    aria-label="Input currency"
-                    className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                    value={inputCurrency}
-                    onChange={event => setInputCurrency(event.target.value)}
-                  >
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  <Label className="text-sm font-bold text-foreground">From wallet</Label>
+                  <select aria-label="From wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
+                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                   </select>
                 </div>
-
-                {/* Date */}
                 <div>
-                  <Label className="text-sm font-bold text-foreground">Date</Label>
-                  <Input aria-label="Date" className="mt-2 bg-secondary" type="date" value={date} onChange={event => setDate(event.target.value)} />
+                  <Label className="text-sm font-bold text-foreground">To wallet</Label>
+                  <select aria-label="To wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={transferWalletId} onChange={event => setTransferWalletId(event.target.value)}>
+                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                  </select>
                 </div>
+              </div>
+            )}
 
-                {/* Wallet(s) */}
-                {type !== 'transfer' ? (
-                  <div>
-                    <Label className="text-sm font-bold text-foreground">Wallet</Label>
-                    <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => { setWalletId(event.target.value); setCashEnabled(false); setCashTendered(''); setChangeBillsWalletId(''); setChangeCoinsWalletId('') }}>
-                      {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
-                      {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                    </select>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <Label className="text-sm font-bold text-foreground">From wallet</Label>
-                      <select aria-label="From wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
-                        {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-bold text-foreground">To wallet</Label>
-                      <select aria-label="To wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={transferWalletId} onChange={event => setTransferWalletId(event.target.value)}>
-                        {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                )}
+            {/* Date + Currency — side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-bold text-foreground">Date</Label>
+                <Input aria-label="Date" className="mt-2 bg-secondary" type="date" value={date} onChange={event => setDate(event.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm font-bold text-foreground">Currency</Label>
+                <select
+                  aria-label="Input currency"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={inputCurrency}
+                  onChange={event => setInputCurrency(event.target.value)}
+                >
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
 
+            <div className="space-y-5">
                 {/* Cash Change Assistant — expense + cash wallet only */}
                 {type === 'expense' && wallets.find(w => w.id === walletId)?.type === 'cash' && (() => {
                   const selectedWallet = wallets.find(w => w.id === walletId)!
@@ -1040,7 +1029,6 @@ export function Transactions() {
                   </div>
                 )}
               </div>
-            )}
 
             <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
               {editingTransaction ? 'Save transaction' : 'Add transaction'}
