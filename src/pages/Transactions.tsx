@@ -1132,12 +1132,15 @@ export function Transactions() {
               <button
                 key={name}
                 type="button"
-                aria-label={`View ${name} category`}
+                aria-label={`Filter by ${name} — ${value.count} transaction${value.count === 1 ? '' : 's'}`}
                 className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selectedCategory === name ? 'border-primary bg-primary/10' : 'border-border bg-secondary hover:bg-muted/50'}`}
                 onClick={() => setSelectedCategory(name)}
               >
                 <span className="min-w-0 truncate font-extrabold text-foreground">{name}</span>
-                <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{value.count} item{value.count === 1 ? '' : 's'}</span>
+                <div className="shrink-0 flex flex-col items-end gap-0.5">
+                  <span className="text-xs font-extrabold text-foreground">{money.formatDisplay(value.total)}</span>
+                  <span className="text-[10px] text-muted-foreground">{value.count} item{value.count === 1 ? '' : 's'}</span>
+                </div>
               </button>
             ))}
           </div>

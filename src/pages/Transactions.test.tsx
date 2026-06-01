@@ -239,7 +239,7 @@ describe('Transactions', () => {
   it('filters history when an expense category is selected', () => {
     renderTx()
 
-    fireEvent.click(screen.getByRole('button', { name: /View Food category/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Filter by Food/i }))
 
     expect(screen.getByRole('heading', { name: 'Food' })).toBeInTheDocument()
     expect(screen.getByText('Old lunch')).toBeInTheDocument()
@@ -253,6 +253,7 @@ describe('Transactions', () => {
     const categoryList = screen.getByTestId('expense-category-list')
     expect(categoryList).toHaveClass('max-h-[220px]')
     expect(screen.getByTestId('expense-category-list')).toHaveClass('overflow-y-auto')
-    expect(within(categoryList).queryByText('NT$100')).not.toBeInTheDocument()
+    // category buttons now show the total amount per category alongside the count
+    expect(within(categoryList).getByText('Food')).toBeInTheDocument()
   })
 })
