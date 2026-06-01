@@ -283,13 +283,14 @@ export function Goals() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Target deadline</Label>
+                <Label className="text-xs text-muted-foreground">Target deadline <span className="font-normal opacity-60">(optional)</span></Label>
                 <Input
                   type="date"
                   className="mt-2 bg-secondary"
                   value={form.deadline}
                   onChange={e => setField('deadline', e.target.value)}
                 />
+                <p className="mt-1 text-[10px] text-muted-foreground/60">You can type the date directly or use the calendar icon</p>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Color</Label>

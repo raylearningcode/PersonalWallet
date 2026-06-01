@@ -12,6 +12,7 @@ import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
 import { Check, Pencil, X, Lightbulb, Target } from 'lucide-react'
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
 
@@ -377,29 +378,58 @@ export function Estimation() {
             <CardTitle className="text-xl">Planned vs Actual this month</CardTitle>
             <p className="text-sm text-muted-foreground">How your forecast compares to real transactions recorded this month.</p>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 px-5 pb-6 sm:grid-cols-2 sm:px-8">
-            {[
-              { label: 'Income', planned: monthlyIncome, actual: actualThisMonth.income, good: (actual: number, planned: number) => actual >= planned },
-              { label: 'Expenses', planned: monthlyExpenses, actual: actualThisMonth.expenses, good: (actual: number, planned: number) => actual <= planned },
-            ].map(row => {
-              const variance = row.actual - row.planned
-              const pct = row.planned > 0 ? Math.round((row.actual / row.planned) * 100) : 0
-              const isGood = row.good(row.actual, row.planned)
-              return (
-                <div key={row.label} className="rounded-2xl border border-border bg-secondary p-4">
-                  <p className="text-xs font-bold text-muted-foreground">{row.label}</p>
-                  <div className="mt-2 flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-xl font-extrabold text-foreground">{money.formatDisplay(row.actual)}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">actual · planned {money.formatDisplay(row.planned)}</p>
+          <CardContent className="space-y-4 px-5 pb-6 sm:px-8">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {[
+                { label: 'Income', planned: monthlyIncome, actual: actualThisMonth.income, good: (actual: number, planned: number) => actual >= planned },
+                { label: 'Expenses', planned: monthlyExpenses, actual: actualThisMonth.expenses, good: (actual: number, planned: number) => actual <= planned },
+              ].map(row => {
+                const variance = row.actual - row.planned
+                const pct = row.planned > 0 ? Math.round((row.actual / row.planned) * 100) : 0
+                const isGood = row.good(row.actual, row.planned)
+                return (
+                  <div key={row.label} className="rounded-2xl border border-border bg-secondary p-4">
+                    <p className="text-xs font-bold text-muted-foreground">{row.label}</p>
+                    <div className="mt-2 flex items-end justify-between gap-3">
+                      <div>
+                        <p className="text-xl font-extrabold text-foreground">{money.formatDisplay(row.actual)}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">actual · planned {money.formatDisplay(row.planned)}</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${isGood ? 'bg-primary/10 text-primary' : 'bg-[#FF8388]/10 text-[#FF8388]'}`}>
+                        {variance > 0 ? '+' : ''}{money.formatDisplay(Math.abs(variance))} {variance > 0 ? '▲' : '▼'} ({pct}%)
+                      </span>
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${isGood ? 'bg-primary/10 text-primary' : 'bg-[#FF8388]/10 text-[#FF8388]'}`}>
-                      {variance > 0 ? '+' : ''}{money.formatDisplay(Math.abs(variance))} {variance > 0 ? '▲' : '▼'} ({pct}%)
-                    </span>
                   </div>
+                )
+              })}
+            </div>
+            {(monthlyIncome > 0 || monthlyExpenses > 0) && (
+              <div>
+                <p className="mb-2 text-xs text-muted-foreground">Visual comparison</p>
+                <ResponsiveContainer width="100%" height={140}>
+                  <BarChart
+                    data={[
+                      { name: 'Income', Planned: monthlyIncome, Actual: actualThisMonth.income },
+                      { name: 'Expenses', Planned: monthlyExpenses, Actual: actualThisMonth.expenses },
+                    ]}
+                    barGap={4}
+                    barCategoryGap="35%"
+                  >
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ background: '#1a2236', border: '1px solid #2d3953', borderRadius: 10, fontSize: 12 }}
+                      formatter={(v) => money.formatDisplay(typeof v === 'number' ? v : 0)}
+                    />
+                    <Bar dataKey="Planned" fill="#2d3953" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Actual" fill="#A9F5C7" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#2d3953]" />Planned</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#A9F5C7]" />Actual</span>
                 </div>
-              )
-            })}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
