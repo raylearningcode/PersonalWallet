@@ -275,61 +275,130 @@ export function Transactions() {
     try {
       if (editingTx) {
         await updateTransaction.mutateAsync({ id: editingTx.id, ...payload })
-        // Recalculate linked change transfer if it exists
+        // For edit: delete any previous linked change transfers and recreate with split logic
         const prevLinkedId = editingTx.linked_transaction_id
-        if (cashEnabled && baseChange > 0 && changeWalletId) {
-          const changePayload = {
-            amount: baseChange,
-            original_amount: parsedTendered - parsedAmount,
-            original_currency: inputCurrency,
-            wallet_id: walletId || null,
-            transfer_wallet_id: changeWalletId,
-            date,
-          }
-          if (prevLinkedId) {
-            await updateTransaction.mutateAsync({ id: prevLinkedId, ...changePayload })
-          } else {
-            await addTransaction.mutateAsync({
-              description: `Change — ${description.trim()}`,
-              ...changePayload,
-              type: 'transfer',
-              category: 'Transfer',
-              recurring_rule_id: null,
-              recurring_due_date: null,
-              needs_review: false,
-              is_system_generated: true,
-              linked_transaction_id: editingTx.id,
-              cash_tendered: null,
+        const allPrevLinked = transactions.filter(tx => tx.linked_transaction_id === editingTx.id && tx.is_system_generated)
+        if (prevLinkedId && !allPrevLinked.find(tx => tx.id === prevLinkedId)) await del.mutateAsync(prevLinkedId)
+        for (const tx of allPrevLinked) await del.mutateAsync(tx.id)
+        if (cashEnabled && baseChange > 0) {
+          const isTWDEdit = inputCurrency === 'TWD'
+          const rawChangeEdit = parsedTendered - parsedAmount
+          const billsChangeEdit = isTWDEdit ? Math.floor(rawChangeEdit / 100) * 100 : 0
+          const coinsChangeEdit = isTWDEdit ? rawChangeEdit % 100 : rawChangeEdit
+          let firstEditChangeTxId: string | undefined
+          if (isTWDEdit && billsChangeEdit > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change bills — ${description.trim()}`,
+              amount: money.toBase(billsChangeEdit, inputCurrency),
+              original_amount: billsChangeEdit,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeBillsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: editingTx.id, cash_tendered: null,
             })
+            firstEditChangeTxId = ct?.id
           }
-        } else if (prevLinkedId) {
-          await del.mutateAsync(prevLinkedId)
+          if (isTWDEdit && coinsChangeEdit > 0 && changeCoinsWalletId) {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change coins — ${description.trim()}`,
+              amount: money.toBase(coinsChangeEdit, inputCurrency),
+              original_amount: coinsChangeEdit,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: editingTx.id, cash_tendered: null,
+            })
+            if (!firstEditChangeTxId) firstEditChangeTxId = ct?.id
+          }
+          if (!isTWDEdit && changeCoinsWalletId) {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change — ${description.trim()}`,
+              amount: baseChange,
+              original_amount: rawChangeEdit,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: editingTx.id, cash_tendered: null,
+            })
+            firstEditChangeTxId = ct?.id
+          }
+          if (firstEditChangeTxId) {
+            await updateTransaction.mutateAsync({ id: editingTx.id, linked_transaction_id: firstEditChangeTxId })
+          }
         }
         toast.success('Transaction updated')
       } else {
         const savedTx = await addTransaction.mutateAsync(payload)
-        // Create system-generated change transfer when cash given > expense
-        if (cashEnabled && baseChange > 0 && changeWalletId && savedTx?.id) {
-          const changeTx = await addTransaction.mutateAsync({
-            description: `Change — ${description.trim()}`,
-            amount: baseChange,
-            original_amount: parsedTendered - parsedAmount,
-            original_currency: inputCurrency,
-            type: 'transfer',
-            category: 'Transfer',
-            wallet_id: walletId || null,
-            transfer_wallet_id: changeWalletId,
-            recurring_rule_id: null,
-            recurring_due_date: null,
-            date,
-            needs_review: false,
-            is_system_generated: true,
-            linked_transaction_id: savedTx.id,
-            cash_tendered: null,
-          })
-          // Bidirectional link: update expense tx to point back to change transfer
-          if (changeTx?.id) {
-            await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: changeTx.id })
+        // Create system-generated change transfer(s) when cash given > expense
+        if (cashEnabled && baseChange > 0 && savedTx?.id) {
+          const isTWD = inputCurrency === 'TWD'
+          const rawChange = parsedTendered - parsedAmount
+          const billsChangeAmt = isTWD ? Math.floor(rawChange / 100) * 100 : 0
+          const coinsChangeAmt = isTWD ? rawChange % 100 : rawChange
+          let firstChangeTxId: string | undefined
+
+          // Bills transfer (only if destination != spending wallet and there are bills)
+          if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change bills — ${description.trim()}`,
+              amount: money.toBase(billsChangeAmt, inputCurrency),
+              original_amount: billsChangeAmt,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeBillsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            firstChangeTxId = ct?.id
+          }
+
+          // Coins transfer
+          if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
+            const ct2 = await addTransaction.mutateAsync({
+              description: `Change coins — ${description.trim()}`,
+              amount: money.toBase(coinsChangeAmt, inputCurrency),
+              original_amount: coinsChangeAmt,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            if (!firstChangeTxId) firstChangeTxId = ct2?.id
+          }
+
+          // Non-TWD: single change transfer to coinsWallet
+          if (!isTWD && changeCoinsWalletId) {
+            const ct3 = await addTransaction.mutateAsync({
+              description: `Change — ${description.trim()}`,
+              amount: baseChange,
+              original_amount: rawChange,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            firstChangeTxId = ct3?.id
+          }
+
+          if (firstChangeTxId) {
+            await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: firstChangeTxId })
           }
         }
         if (isRecurring) {
@@ -352,7 +421,7 @@ export function Transactions() {
             active: !completedAtStart,
           })
         }
-        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · ${money.format(parsedTendered - parsedAmount, inputCurrency)} change to pouch` : 'Transaction added')
+        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · change routed to wallet` : 'Transaction added')
       }
     } catch {
       toast.error('Failed to save transaction')
@@ -366,10 +435,13 @@ export function Transactions() {
   const confirmDeleteTransaction = async () => {
     if (!deleteTarget) return
     const linkedId = deleteTarget.linked_transaction_id
+    // Find ALL system-generated transfers linked to this expense
+    const allLinked = transactions.filter(tx => tx.linked_transaction_id === deleteTarget.id && tx.is_system_generated)
     setDeleteTarget(null)
     try {
       await del.mutateAsync(deleteTarget.id)
-      if (linkedId) await del.mutateAsync(linkedId)
+      if (linkedId && !allLinked.find(tx => tx.id === linkedId)) await del.mutateAsync(linkedId)
+      for (const tx of allLinked) await del.mutateAsync(tx.id)
       toast.success('Transaction deleted')
     } catch {
       toast.error('Failed to delete transaction')
