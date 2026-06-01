@@ -822,7 +822,7 @@ export function Dashboard() {
                       type="button"
                       aria-label="Dismiss AI Insights card"
                       onClick={() => { localStorage.setItem('finpath_ai_dismissed', '1'); setAiCardDismissed(true) }}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
                     >
                       <X className="h-5 w-5" />
                     </button>

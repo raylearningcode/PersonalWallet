@@ -432,7 +432,7 @@ export function Goals() {
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
-                          className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                          className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                           onClick={e => { e.stopPropagation(); pinGoal(goal.id) }}
                           aria-label={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
                         >

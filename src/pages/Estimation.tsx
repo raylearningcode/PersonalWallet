@@ -628,9 +628,9 @@ export function Estimation() {
                         }`}>{item.type}</span>
                       </div>
                       <div className="flex shrink-0 gap-1">
-                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} title="Convert to goal" disabled={addGoal.isPending}><Target className="h-3.5 w-3.5" /></button>
-                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => startEditWishlist(item.id)} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })} title="Remove"><X className="h-3.5 w-3.5" /></button>
+                        <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} title="Convert to goal" disabled={addGoal.isPending}><Target className="h-4 w-4" /></button>
+                        <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => startEditWishlist(item.id)} title="Edit"><Pencil className="h-4 w-4" /></button>
+                        <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })} title="Remove"><X className="h-4 w-4" /></button>
                       </div>
                     </div>
                     <p className="mt-3 text-lg font-extrabold text-primary">{money.formatDisplay(item.amount)}</p>
@@ -709,14 +709,14 @@ function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount
         editingId === item.id ? (
           <div key={item.id} className="space-y-2 rounded-2xl border border-primary/30 bg-secondary px-4 py-3">
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.5fr)_minmax(100px,0.45fr)_auto_auto] items-center gap-2">
-              <Input className="h-8 bg-card text-sm" value={editName} onChange={e => onEditNameChange(e.target.value)} placeholder="Name" />
-              <Input className="h-8 bg-card text-sm" inputMode="decimal" value={editAmount} onChange={e => onEditAmountChange(e.target.value)} placeholder="Amount" />
-              <select className="h-8 rounded-md border border-input bg-card px-2 text-xs font-bold text-foreground outline-none" value={editPeriod} onChange={e => onEditPeriodChange(e.target.value)}>
+              <Input className="h-10 bg-card text-sm" value={editName} onChange={e => onEditNameChange(e.target.value)} placeholder="Name" />
+              <Input className="h-10 bg-card text-sm" inputMode="decimal" value={editAmount} onChange={e => onEditAmountChange(e.target.value)} placeholder="Amount" />
+              <select className="h-10 rounded-md border border-input bg-card px-2 text-xs font-bold text-foreground outline-none" value={editPeriod} onChange={e => onEditPeriodChange(e.target.value)}>
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>
               </select>
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={onEditSave} title="Save"><Check className="h-3.5 w-3.5" /></button>
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border" onClick={onEditCancel} title="Cancel"><X className="h-3.5 w-3.5" /></button>
+              <button className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={onEditSave} title="Save"><Check className="h-4 w-4" /></button>
+              <button className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border" onClick={onEditCancel} title="Cancel"><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">Editing · amounts in {displayCurrency}</p>
           </div>
@@ -728,8 +728,8 @@ function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount
           </div>
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-foreground">{fmt(item.amount)}</span>
-            <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => onEditStart(item.id)} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
-            <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => onDelete(item.id, item.name)} title="Remove"><X className="h-3.5 w-3.5" /></button>
+            <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => onEditStart(item.id)} title="Edit"><Pencil className="h-4 w-4" /></button>
+            <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => onDelete(item.id, item.name)} title="Remove"><X className="h-4 w-4" /></button>
           </div>
         </div>
         )
