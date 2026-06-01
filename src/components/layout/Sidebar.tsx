@@ -16,7 +16,7 @@ const navItems = [
   { to: '/budget', label: 'Budget', icon: PieChart },
   { to: '/goals', label: 'Goals', icon: Target },
   { to: '/estimation', label: 'Planning', icon: Calculator },
-  { to: '/subscriptions', label: 'Subscriptions', icon: RefreshCw },
+  { to: '/subscriptions', label: 'Recurring', icon: RefreshCw },
   { to: '/investing', label: 'Investing', icon: TrendingUp },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },

@@ -13,6 +13,16 @@ import { MoreSheet } from './MoreSheet'
 import { QuickAddSheet } from './QuickAddSheet'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 import { NotificationsSheet } from './NotificationsSheet'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { DollarSign, ArrowLeftRight, TrendingUp } from 'lucide-react'
+
+type QuickAddType = 'expense' | 'income' | 'transfer'
+
+const QUICK_ACTIONS: { type: QuickAddType; label: string; description: string; color: string; Icon: typeof DollarSign }[] = [
+  { type: 'expense', label: 'Add expense', description: 'Record a purchase or payment', color: '#FF8388', Icon: DollarSign },
+  { type: 'income', label: 'Add income', description: 'Log salary, gift, or refund', color: '#4ADE80', Icon: TrendingUp },
+  { type: 'transfer', label: 'Transfer', description: 'Move money between wallets', color: '#60A5FA', Icon: ArrowLeftRight },
+]
 
 function ResponsiveToaster() {
   const isDesktop = useIsDesktop()
@@ -33,6 +43,8 @@ export function AppLayout() {
   const [profileOpen, setProfileOpen] = useState(false)
   const keyboardVisible = useKeyboardVisible()
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [quickAddType, setQuickAddType] = useState<QuickAddType>('expense')
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false)
   const [pinLocked, setPinLocked] = useState(() =>
     Boolean(localStorage.getItem(PIN_STORAGE_KEY)) && !sessionStorage.getItem(PIN_SESSION_KEY)
   )
@@ -140,11 +152,39 @@ export function AppLayout() {
       <BottomNav
         onMoreClick={() => setMoreOpen(true)}
         moreActive={moreOpen}
-        onAddClick={() => setQuickAddOpen(true)}
+        onAddClick={() => { setQuickAddType('expense'); setQuickAddOpen(true) }}
+        onLongPressAdd={() => setQuickActionsOpen(true)}
         hidden={keyboardVisible}
       />
       <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
-      <QuickAddSheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
+      <QuickAddSheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} initialType={quickAddType} />
+
+      {/* Long-press action picker */}
+      <Sheet open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
+        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-10">
+          <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-muted" />
+          <h2 className="mb-1 text-lg font-extrabold text-foreground">Quick add</h2>
+          <p className="mb-5 text-sm text-muted-foreground">What do you want to record?</p>
+          <div className="space-y-2">
+            {QUICK_ACTIONS.map(({ type, label, description, color, Icon }) => (
+              <button
+                key={type}
+                type="button"
+                className="flex w-full items-center gap-4 rounded-2xl border border-border bg-secondary p-4 text-left transition-colors active:scale-[0.99] hover:bg-muted/30"
+                onClick={() => { setQuickActionsOpen(false); setQuickAddType(type); setQuickAddOpen(true) }}
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: color + '22', border: `1.5px solid ${color}44` }}>
+                  <Icon className="h-5 w-5" style={{ color }} />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

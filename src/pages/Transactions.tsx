@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -84,6 +84,7 @@ export function Transactions() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const { data: transactions = [], isPending: txPending } = useTransactions(filter)
@@ -1317,10 +1318,11 @@ export function Transactions() {
               {rows.map(tx => {
                 const isSelected = selectedIds.has(tx.id)
                 return (
-                  <div
+                  <button
                     key={tx.id}
-                    className={`rounded-xl border px-4 py-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-border bg-[#FFCF73]/5' : 'border-border bg-secondary'} ${selectMode ? 'cursor-pointer' : ''}`}
-                    onClick={selectMode ? () => toggleSelectId(tx.id) : undefined}
+                    type="button"
+                    className={`w-full rounded-xl border px-4 py-3 text-left transition-colors active:scale-[0.99] ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary hover:border-border/80 hover:bg-muted/30'}`}
+                    onClick={selectMode ? () => toggleSelectId(tx.id) : () => setDetailTx(tx)}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -1330,15 +1332,15 @@ export function Transactions() {
                               ? <CheckSquare className="h-4 w-4 shrink-0 text-primary" />
                               : <Square className="h-4 w-4 shrink-0 text-muted-foreground" />
                           ) : tx.needs_review ? (
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />
                           ) : null}
                           <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          {tx.category}
+                          {tx.category} · {tx.date}
                           {tx.cash_tendered && tx.cash_tendered > 0 && (
                             <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                              Cash · {money.formatDisplay(tx.cash_tendered)} given
+                              Cash
                             </span>
                           )}
                         </p>
@@ -1347,31 +1349,7 @@ export function Transactions() {
                         {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
                       </span>
                     </div>
-                    {!selectMode && (
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <p className="text-xs text-muted-foreground">
-                          {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
-                          {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
-                        </p>
-                        <div className="flex gap-1">
-                          {tx.needs_review && (
-                            <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
-                              <CheckCircle size={17} />
-                            </Button>
-                          )}
-                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
-                            <Copy size={17} />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
-                            <Pencil size={17} />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
-                            <Trash2 size={17} />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  </button>
                 )
               })}
             </div>}
@@ -1516,6 +1494,146 @@ export function Transactions() {
         onCancel={() => setBulkDeleteConfirm(false)}
         onConfirm={confirmBulkDelete}
       />
+
+      {/* Transaction detail sheet (mobile) */}
+      <Sheet open={!!detailTx} onOpenChange={open => { if (!open) setDetailTx(null) }}>
+        <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+          {detailTx && (() => {
+            const tx = detailTx
+            const wallet = wallets.find(w => w.id === tx.wallet_id)
+            const transferWallet = wallets.find(w => w.id === tx.transfer_wallet_id)
+            const changeAmount = tx.cash_tendered && tx.cash_tendered > 0 ? tx.cash_tendered - (tx.original_amount ?? tx.amount) : 0
+            const linkedChangeTx = transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated)
+            return (
+              <div>
+                <div className="px-6 pb-4 pt-2">
+                  <SheetHeader className="mb-4 text-left">
+                    <SheetTitle className="text-base font-extrabold">{tx.description}</SheetTitle>
+                    <SheetDescription className="sr-only">Transaction details</SheetDescription>
+                  </SheetHeader>
+
+                  {/* Amount hero */}
+                  <div className="mb-5 text-center">
+                    <p className={`text-4xl font-extrabold tracking-tight ${txAmountColor(tx.amount, tx.type)}`}>
+                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                    </p>
+                    {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                      </p>
+                    )}
+                    <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${tx.type === 'income' ? 'bg-green-500/15 text-green-400' : tx.type === 'expense' ? 'bg-red-500/15 text-red-400' : 'bg-blue-500/15 text-blue-400'}`}>
+                      {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
+                    </span>
+                  </div>
+
+                  {/* Detail rows */}
+                  <div className="space-y-0 divide-y divide-border rounded-2xl border border-border bg-secondary/50">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Date</span>
+                      <span className="text-sm font-bold text-foreground">{formatDate(tx.date)}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Category</span>
+                      <span className="text-sm font-bold text-foreground">{tx.category}</span>
+                    </div>
+                    {wallet && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <WalletIcon size={13} />Wallet
+                        </span>
+                        <span className="text-sm font-bold text-foreground">{wallet.name}</span>
+                      </div>
+                    )}
+                    {transferWallet && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <ArrowRightLeft size={13} />Transfer to
+                        </span>
+                        <span className="text-sm font-bold text-foreground">{transferWallet.name}</span>
+                      </div>
+                    )}
+                    {tx.cash_tendered && tx.cash_tendered > 0 && (
+                      <>
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <Banknote size={13} />Cash given
+                          </span>
+                          <span className="text-sm font-bold text-foreground">{money.format(tx.cash_tendered, tx.original_currency ?? money.baseCurrency)}</span>
+                        </div>
+                        {changeAmount > 0 && (
+                          <div className="flex items-center justify-between px-4 py-3">
+                            <span className="text-sm text-muted-foreground">Change</span>
+                            <span className="text-sm font-bold text-primary">{money.format(changeAmount, tx.original_currency ?? money.baseCurrency)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {tx.is_system_generated && (
+                      <div className="px-4 py-3">
+                        <p className="text-xs text-muted-foreground">Auto-generated change transfer</p>
+                      </div>
+                    )}
+                    {linkedChangeTx.length > 0 && (
+                      <div className="px-4 py-3">
+                        <p className="mb-1 text-xs text-muted-foreground">Change routed to:</p>
+                        {linkedChangeTx.map(ct => {
+                          const ctWallet = wallets.find(w => w.id === ct.wallet_id)
+                          return (
+                            <p key={ct.id} className="text-xs font-bold text-foreground">
+                              {money.format(ct.original_amount ?? ct.amount, ct.original_currency ?? money.baseCurrency)} → {ctWallet?.name ?? 'wallet'}
+                            </p>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {tx.needs_review && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="text-sm font-bold text-[#FFCF73]">Needs review</span>
+                        <button
+                          type="button"
+                          className="rounded-full bg-[#FFCF73]/15 px-3 py-1 text-xs font-bold text-[#FFCF73]"
+                          onClick={() => { handleMarkReviewed(tx.id); setDetailTx(null) }}
+                        >
+                          Mark reviewed
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="sticky bottom-0 border-t border-border bg-background px-6 py-4">
+                  <div className="flex gap-2">
+                    <Button
+                      className="h-12 flex-1 gap-2"
+                      variant="secondary"
+                      onClick={() => { setDetailTx(null); openEditForm(tx) }}
+                    >
+                      <Pencil size={15} />Edit
+                    </Button>
+                    <Button
+                      className="h-12 flex-1 gap-2"
+                      variant="secondary"
+                      onClick={() => { handleDuplicateTransaction(tx); setDetailTx(null) }}
+                    >
+                      <Copy size={15} />Duplicate
+                    </Button>
+                    <Button
+                      className="h-12 w-12 shrink-0 gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      variant="ghost"
+                      onClick={() => { setDetailTx(null); handleDeleteTransaction(tx) }}
+                      aria-label="Delete transaction"
+                    >
+                      <Trash2 size={17} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

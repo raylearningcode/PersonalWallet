@@ -428,8 +428,8 @@ export function Subscriptions() {
   return (
     <div>
       <PageHeader
-        title="Subscriptions"
-        subtitle="Monitor recurring payments and income streams, pause or cancel unwanted subscriptions."
+        title="Recurring"
+        subtitle="Monitor bills, income streams, and subscriptions. Pause or cancel unwanted recurring payments."
         action={
           !showAddForm ? (
             <Button className="gap-2" onClick={() => setShowAddForm(true)}>
@@ -587,6 +587,34 @@ export function Subscriptions() {
           sub={nextRenewal ? `${nextRenewal.next_due_date} · ${money.formatDisplay(nextRenewal.amount)}` : 'No active subscriptions'}
         />
       </div>
+
+      {/* Upcoming bills timeline */}
+      {expenses.filter(r => r.active && daysUntil(r.next_due_date) <= 30).length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-lg font-extrabold text-foreground">Due in 30 days</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {expenses
+              .filter(r => r.active && daysUntil(r.next_due_date) >= 0 && daysUntil(r.next_due_date) <= 30)
+              .sort((a, b) => daysUntil(a.next_due_date) - daysUntil(b.next_due_date))
+              .map(rule => {
+                const days = daysUntil(rule.next_due_date)
+                return (
+                  <div
+                    key={rule.id}
+                    className={`flex shrink-0 flex-col rounded-2xl border px-4 py-3 ${days === 0 ? 'border-[#FF8388]/30 bg-[#FF8388]/5' : days <= 3 ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary'}`}
+                    style={{ minWidth: 160 }}
+                  >
+                    <p className="truncate text-sm font-extrabold text-foreground">{rule.description}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{money.formatDisplay(rule.original_amount ?? rule.amount)}</p>
+                    <p className={`mt-auto pt-2 text-xs font-bold ${days === 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-primary'}`}>
+                      {days === 0 ? 'Due today' : `In ${days}d`}
+                    </p>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
         <Card>

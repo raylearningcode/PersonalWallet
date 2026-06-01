@@ -27,7 +27,7 @@ type EntryType = 'income' | 'expense' | 'transfer'
 const LAST_CATEGORY_KEY = 'finpath_last_category'
 const LAST_WALLET_KEY = 'finpath_last_wallet'
 
-export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function QuickAddSheet({ open, onClose, initialType }: { open: boolean; onClose: () => void; initialType?: EntryType }) {
   const money = useMoney()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
@@ -81,13 +81,14 @@ export function QuickAddSheet({ open, onClose }: { open: boolean; onClose: () =>
     setInputCurrency(cur => cur || money.displayCurrency)
   }, [money.displayCurrency])
 
-  // Auto-focus amount when sheet opens
+  // Reset type to initialType and auto-focus when sheet opens
   useEffect(() => {
     if (open) {
+      if (initialType) setType(initialType)
       const timer = setTimeout(() => amountInputRef.current?.focus(), 120)
       return () => clearTimeout(timer)
     }
-  }, [open])
+  }, [open, initialType])
 
   const merchantSuggestion = useMemo(
     () => getMerchantSuggestion(description, transactions),

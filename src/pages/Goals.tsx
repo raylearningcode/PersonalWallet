@@ -19,6 +19,15 @@ const GOAL_COLORS = ['#A9F5C7', '#FADBEA', '#FFF7B5', '#D9E8FF', '#F8DCDC', '#C4
 
 const GOAL_CATEGORIES = ['Savings', 'Emergency Fund', 'Vacation', 'Home', 'Vehicle', 'Education', 'Travel', 'Gadget', 'Health', 'Retirement', 'Investment', 'Other']
 
+const GOAL_TEMPLATES: { name: string; category: string; color: string; emoji: string }[] = [
+  { name: 'Emergency fund', category: 'Emergency Fund', color: '#FF8388', emoji: '🆘' },
+  { name: 'Travel fund', category: 'Travel', color: '#93C5FD', emoji: '✈️' },
+  { name: 'New laptop', category: 'Gadget', color: '#C4AEFF', emoji: '💻' },
+  { name: 'Tuition', category: 'Education', color: '#FFD276', emoji: '🎓' },
+  { name: 'Rent deposit', category: 'Home', color: '#A9F5C7', emoji: '🏠' },
+  { name: 'New phone', category: 'Gadget', color: '#FADBEA', emoji: '📱' },
+]
+
 type FormState = {
   name: string
   target_amount: string
@@ -247,6 +256,23 @@ export function Goals() {
             <CardTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 px-5 pb-6 sm:px-8">
+            {!editingId && (
+              <div>
+                <p className="mb-2 text-xs font-bold text-muted-foreground">Start from a template</p>
+                <div className="flex flex-wrap gap-2">
+                  {GOAL_TEMPLATES.map(t => (
+                    <button
+                      key={t.name}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, name: t.name, category: t.category, color: t.color }))}
+                      className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground active:scale-95"
+                    >
+                      <span>{t.emoji}</span>{t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <Label className="text-xs text-muted-foreground">Goal name *</Label>

@@ -7,7 +7,7 @@ import { PINNED_GOAL_KEY } from './Sidebar'
 
 const MORE_NAV = [
   { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
-  { to: '/subscriptions', label: 'Subs', Icon: RefreshCw, color: '#FADBEA' },
+  { to: '/subscriptions', label: 'Recurring', Icon: RefreshCw, color: '#FADBEA' },
   { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
   { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
   { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },

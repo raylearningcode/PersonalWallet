@@ -319,10 +319,10 @@ export function Dashboard() {
           ))
         ) : (
           <>
-            <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" />
-            <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : daysLeft === 0 ? 'Month ends today' : `${daysLeft} days left`} badgeVariant="warning" />
-            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : daysLeft === 1 ? 'Based on budgets · 1 day left' : `Based on budgets · ${daysLeft} days left`} />
-            <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} />
+            <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" to="/settings" />
+            <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : daysLeft === 0 ? 'Month ends today' : `${daysLeft} days left`} badgeVariant="warning" to="/transactions" />
+            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : daysLeft === 1 ? 'Based on budgets · 1 day left' : `Based on budgets · ${daysLeft} days left`} to="/budget" />
+            <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} to="/reports" />
           </>
         )}
       </div>
@@ -400,6 +400,45 @@ export function Dashboard() {
                 </Link>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Insights row */}
+      {transactions.length > 0 && (
+        <div className="mb-6 lg:hidden">
+          <h2 className="mb-3 text-lg font-extrabold text-foreground">Insights</h2>
+          <div className="space-y-2">
+            {safeToSpend > 0 && daysLeft > 0 && (
+              <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+                <span className="text-lg">💡</span>
+                <p className="text-sm text-muted-foreground">
+                  You can spend <span className="font-bold text-foreground">{money.formatDisplay(safeToSpend / daysLeft)}</span> per day for the rest of the month.
+                </p>
+              </div>
+            )}
+            {topSpending.name && (
+              <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+                <span className="text-lg">📊</span>
+                <p className="text-sm text-muted-foreground">
+                  Top spend: <span className="font-bold text-foreground">{topSpending.name}</span> — {money.formatDisplay(topSpending.amount)} this year.
+                </p>
+              </div>
+            )}
+            {overPaceInsight && !overPaceInsight.message.includes('undefined') && (
+              <div className="flex items-center gap-3 rounded-2xl border border-[#FFCF73]/20 bg-[#FFCF73]/5 px-4 py-3">
+                <span className="text-lg">⚡</span>
+                <p className="text-sm text-muted-foreground">{overPaceInsight.message}</p>
+              </div>
+            )}
+            {savingsRate > 0 && (
+              <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+                <span className="text-lg">🎯</span>
+                <p className="text-sm text-muted-foreground">
+                  Saving <span className="font-bold text-foreground">{savingsRate}%</span> of income this year.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

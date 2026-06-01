@@ -144,6 +144,7 @@ export function Budget() {
   const hasData = categories.length > 0
 
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [viewMode, setViewMode] = useState<'monthly' | 'daily' | 'remaining'>('monthly')
 
   const spendingSuggestions = useMemo(() => {
     const now = new Date()
@@ -327,7 +328,23 @@ export function Budget() {
       )}
 
       <Card>
-        <CardHeader><CardTitle className="text-xl">Category allocation</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-xl">Category allocation</CardTitle>
+            <div className="flex rounded-xl border border-border bg-secondary p-0.5 text-xs font-bold">
+              {(['monthly', 'daily', 'remaining'] as const).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setViewMode(mode)}
+                  className={`rounded-lg px-3 py-1.5 transition-colors ${viewMode === mode ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  {mode === 'monthly' ? 'Monthly' : mode === 'daily' ? 'Daily' : 'Remaining'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
         <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
             {catPending ? (
               Array.from({ length: 4 }).map((_, i) => (
@@ -456,9 +473,17 @@ export function Budget() {
                           </div>
                           <ColorBar value={pct} color={barColor} />
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {pct}% used · {daysLeft === 0 ? 'Month ends today' : `${monthPct}% of month passed`} · {overPace ? '⚡ Over pace' : '✓ On track'}
-                            {catDailyAllowance !== null && daysLeft > 0 && cat.budget_period === 'monthly' && (
-                              <span className="ml-2 text-primary">· {fmt(catDailyAllowance)}/day left</span>
+                            {viewMode === 'monthly' && (
+                              <>{pct}% used · {overPace ? '⚡ Over pace' : '✓ On track'}</>
+                            )}
+                            {viewMode === 'daily' && cat.budget_period === 'monthly' && catDailyAllowance !== null && daysLeft > 0 && (
+                              <span className="text-primary">Daily guide: {fmt(catDailyAllowance)}/day</span>
+                            )}
+                            {viewMode === 'daily' && (cat.budget_period !== 'monthly' || catDailyAllowance === null || daysLeft === 0) && (
+                              <>{pct}% used · {daysLeft === 0 ? 'Month ends today' : 'No daily data'}</>
+                            )}
+                            {viewMode === 'remaining' && (
+                              <>Remaining: <span className="font-bold text-foreground">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))}</span> · {overPace ? '⚡ Over pace' : '✓ On track'}</>
                             )}
                           </p>
                         </div>
