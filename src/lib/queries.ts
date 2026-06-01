@@ -1012,7 +1012,11 @@ export function useSignIn() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       clearSignedOutFlag()
-      if (data.user?.id && hasGuestData()) await migrateGuestDataToAccount(data.user.id)
+      // Guest data migration is best-effort — a failure (e.g. duplicate rows from
+      // a previous login) must never block the login itself from succeeding.
+      if (data.user?.id && hasGuestData()) {
+        try { await migrateGuestDataToAccount(data.user.id) } catch { /* ignore */ }
+      }
       return data
     },
     onSuccess: () => {

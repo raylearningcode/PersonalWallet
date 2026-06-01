@@ -245,17 +245,21 @@ export function Settings() {
   const handleAddWallet = async () => {
     const name = walletName.trim()
     if (!name) return
-    await addWallet.mutateAsync({
-      name,
-      type: walletType,
-      balance: 0,
-      currency: baseCurrency,
-      cash_role: walletType === 'cash' && walletCashRole ? walletCashRole : null,
-    })
-    setWalletName('')
-    setWalletType('cash')
-    setWalletCashRole('')
-    toast.success('Wallet added')
+    try {
+      await addWallet.mutateAsync({
+        name,
+        type: walletType,
+        balance: 0,
+        currency: baseCurrency,
+        cash_role: walletType === 'cash' && walletCashRole ? walletCashRole : null,
+      })
+      setWalletName('')
+      setWalletType('cash')
+      setWalletCashRole('')
+      toast.success('Wallet added')
+    } catch {
+      toast.error('Failed to add wallet — please try again')
+    }
   }
 
   const handleDeleteWallet = (id: string, name: string) => {
