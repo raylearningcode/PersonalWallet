@@ -453,29 +453,40 @@ export function Budget() {
                     })()}
                   </div>
                 )}
-                {noBudget.length > 0 && (
-                  <div className="space-y-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">No budget set</p>
-                    {noBudget.map(cat => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => openSheet(cat)}
-                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995]"
-                        aria-label={`Open ${cat.name} details`}
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-                          <span className="truncate font-bold text-foreground">{cat.name}</span>
+                {noBudget.length > 0 && (() => {
+                  const grouped = groupCategories(noBudget)
+                  const showGroups = grouped.length > 1
+                  return (
+                    <div className="space-y-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">No budget set</p>
+                      {grouped.map(({ group, items }) => (
+                        <div key={group} className="space-y-2">
+                          {showGroups && (
+                            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
+                          )}
+                          {items.map(cat => (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => openSheet(cat)}
+                              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995]"
+                              aria-label={`Open ${cat.name} details`}
+                            >
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                <span className="truncate font-bold text-foreground">{cat.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>No budget</span>
+                                <ChevronRight className="h-4 w-4" />
+                              </div>
+                            </button>
+                          ))}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>No budget</span>
-                          <ChevronRight className="h-4 w-4" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )
+                })()}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">

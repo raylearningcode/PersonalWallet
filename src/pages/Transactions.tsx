@@ -161,6 +161,12 @@ export function Transactions() {
     })
     return [...groups.entries()]
   }, [sortedTransactions])
+  const categoryColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    categories.forEach(c => map.set(c.name, c.color))
+    return map
+  }, [categories])
+
   const selectedCategoryTotal = selectedCategory
     ? expenseCategoryTotals.find(([name]) => name === selectedCategory)?.[1].total ?? 0
     : 0
@@ -1232,14 +1238,19 @@ export function Transactions() {
                           ) : null}
                           <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
                         </div>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {tx.category}{txWallet ? ` · ${txWallet.name}` : ''}
-                          {tx.cash_tendered && tx.cash_tendered > 0 && (
-                            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                              Cash
-                            </span>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          {categoryColorMap.has(tx.category) && (
+                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
                           )}
-                        </p>
+                          <span className="truncate">
+                            {tx.category}{txWallet ? ` · ${txWallet.name}` : ''}
+                            {tx.cash_tendered && tx.cash_tendered > 0 && (
+                              <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                                Cash
+                              </span>
+                            )}
+                          </span>
+                        </div>
                       </div>
                       <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
                         {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
