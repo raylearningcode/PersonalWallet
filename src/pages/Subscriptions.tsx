@@ -536,7 +536,7 @@ export function Subscriptions() {
                   ))}
                   <select
                     aria-label="Sort subscriptions"
-                    className="ml-auto h-7 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
+                    className="ml-auto h-9 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
                     value={expenseSort}
                     onChange={e => setExpenseSort(e.target.value as ExpenseSort)}
                   >
@@ -548,7 +548,7 @@ export function Subscriptions() {
                 </div>
                 <input
                   aria-label="Search subscriptions"
-                  className="h-9 w-full rounded-xl border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  className="h-11 w-full rounded-xl border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   placeholder="Search by name or category…"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
