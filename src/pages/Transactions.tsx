@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText, ChevronDown } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText, ChevronDown, CheckSquare, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -74,6 +74,9 @@ export function Transactions() {
   const [cashTendered, setCashTendered] = useState('')
   const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
   const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const { data: transactions = [], isPending: txPending } = useTransactions(filter)
@@ -540,6 +543,49 @@ export function Transactions() {
     toast.success(`${candidate.description} added as recurring rule`)
   }
 
+  const toggleSelectMode = () => {
+    setSelectMode(v => !v)
+    setSelectedIds(new Set())
+  }
+
+  const toggleSelectId = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => setSelectedIds(new Set(sortedTransactions.map(tx => tx.id)))
+
+  const confirmBulkDelete = async () => {
+    setBulkDeleteConfirm(false)
+    const toDelete = sortedTransactions.filter(tx => selectedIds.has(tx.id))
+    // Collect linked system-generated transfers to also remove
+    const linkedIds = new Set<string>()
+    toDelete.forEach(tx => {
+      if (tx.linked_transaction_id) linkedIds.add(tx.linked_transaction_id)
+      transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated).forEach(t => linkedIds.add(t.id))
+    })
+    const deleteSet = new Set([...toDelete.map(t => t.id), ...linkedIds])
+    try {
+      for (const id of deleteSet) await del.mutateAsync(id)
+      toast.success(`${toDelete.length} transaction${toDelete.length === 1 ? '' : 's'} deleted`)
+    } catch {
+      toast.error('Failed to delete some transactions')
+    }
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const bulkMarkReviewed = async () => {
+    const toReview = sortedTransactions.filter(tx => selectedIds.has(tx.id) && tx.needs_review)
+    for (const tx of toReview) markReviewed.mutate(tx.id)
+    if (toReview.length > 0) toast.success(`${toReview.length} marked as reviewed`)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
   return (
     <div>
       <PageHeader
@@ -549,6 +595,14 @@ export function Transactions() {
         onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
         action={(
           <div className="flex items-center gap-2">
+            <button
+              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${selectMode ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+              onClick={toggleSelectMode}
+              title="Select multiple"
+              aria-label="Toggle multi-select"
+            >
+              <CheckSquare className="h-4 w-4" />
+            </button>
             <button
               className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${showDateFilter || dateFrom || dateTo ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
               onClick={() => setShowDateFilter(v => !v)}
@@ -1202,7 +1256,26 @@ export function Transactions() {
             </div>
           </div>
         ) : (
-          <h2 className="mb-4 text-xl font-extrabold text-foreground">Transaction history</h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-xl font-extrabold text-foreground">Transaction history</h2>
+            {selectMode && sortedTransactions.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-muted-foreground">{selectedIds.size} selected</span>
+                <button
+                  onClick={selectAll}
+                  className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                >
+                  Select all
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
         )}
         {txPending ? (
           <div className="space-y-3">
@@ -1224,54 +1297,66 @@ export function Transactions() {
 
             {/* Mobile card list */}
             {!isDesktop && <div className="flex flex-col gap-2">
-              {rows.map(tx => (
-                <div
-                  key={tx.id}
-                  className={`rounded-xl border border-border px-4 py-3 ${tx.needs_review ? 'bg-[#FFCF73]/5' : 'bg-secondary'}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />}
-                        <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+              {rows.map(tx => {
+                const isSelected = selectedIds.has(tx.id)
+                return (
+                  <div
+                    key={tx.id}
+                    className={`rounded-xl border px-4 py-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-border bg-[#FFCF73]/5' : 'border-border bg-secondary'} ${selectMode ? 'cursor-pointer' : ''}`}
+                    onClick={selectMode ? () => toggleSelectId(tx.id) : undefined}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {selectMode ? (
+                            isSelected
+                              ? <CheckSquare className="h-4 w-4 shrink-0 text-primary" />
+                              : <Square className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          ) : tx.needs_review ? (
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />
+                          ) : null}
+                          <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {tx.category}
+                          {tx.cash_tendered && tx.cash_tendered > 0 && (
+                            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                              Cash · {money.formatDisplay(tx.cash_tendered)} given
+                            </span>
+                          )}
+                        </p>
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {tx.category}
-                        {tx.cash_tendered && tx.cash_tendered > 0 && (
-                          <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                            Cash · {money.formatDisplay(tx.cash_tendered)} given
-                          </span>
-                        )}
-                      </p>
+                      <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                        {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                      </span>
                     </div>
-                    <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
-                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
-                    </span>
+                    {!selectMode && (
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                          {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
+                        </p>
+                        <div className="flex gap-1">
+                          {tx.needs_review && (
+                            <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                              <CheckCircle size={17} />
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                            <Copy size={17} />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                            <Pencil size={17} />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                            <Trash2 size={17} />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
-                      {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
-                    </p>
-                    <div className="flex gap-1">
-                      {tx.needs_review && (
-                        <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
-                          <CheckCircle size={17} />
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
-                        <Copy size={17} />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
-                        <Pencil size={17} />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
-                        <Trash2 size={17} />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>}
 
             {/* Desktop table */}
@@ -1279,53 +1364,70 @@ export function Transactions() {
               <Table className="min-w-[820px]">
                 <TableBody>
                   <TableRow className="border-border bg-secondary/70 hover:bg-secondary/70">
+                    {selectMode && <TableCell className="w-10 py-2" />}
                     <TableCell className="py-2 text-xs font-bold text-muted-foreground">Item name</TableCell>
                     <TableCell className="py-2 text-xs font-bold text-muted-foreground">Category</TableCell>
                     <TableCell className="py-2 text-xs font-bold text-muted-foreground">Note</TableCell>
                     <TableCell className="py-2 text-right text-xs font-bold text-muted-foreground">Price</TableCell>
-                    <TableCell className="py-2" />
+                    {!selectMode && <TableCell className="py-2" />}
                   </TableRow>
-                  {rows.map(tx => (
-                    <TableRow key={tx.id} className={`border-border hover:bg-muted/10 ${tx.needs_review ? 'bg-[#FFCF73]/5' : ''}`}>
-                      <TableCell className="w-1/4 py-3 text-foreground">
-                        <div className="flex items-center gap-2">
-                          {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />}
-                          {tx.description}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{tx.category}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
-                        {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
-                        {tx.cash_tendered && tx.cash_tendered > 0 && (
-                          <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                            Cash
-                          </span>
+                  {rows.map(tx => {
+                    const isSelected = selectedIds.has(tx.id)
+                    return (
+                      <TableRow
+                        key={tx.id}
+                        className={`border-border transition-colors ${isSelected ? 'bg-primary/5 hover:bg-primary/8' : tx.needs_review ? 'bg-[#FFCF73]/5 hover:bg-[#FFCF73]/10' : 'hover:bg-muted/10'} ${selectMode ? 'cursor-pointer' : ''}`}
+                        onClick={selectMode ? () => toggleSelectId(tx.id) : undefined}
+                      >
+                        {selectMode && (
+                          <TableCell className="w-10 py-3">
+                            {isSelected
+                              ? <CheckSquare className="h-4 w-4 text-primary" />
+                              : <Square className="h-4 w-4 text-muted-foreground" />}
+                          </TableCell>
                         )}
-                      </TableCell>
-                      <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
-                        {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
-                      </TableCell>
-                      <TableCell className="w-[124px]">
-                        <div className="flex justify-end gap-1">
-                          {tx.needs_review && (
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
-                              <CheckCircle size={15} />
-                            </Button>
+                        <TableCell className="w-1/4 py-3 text-foreground">
+                          <div className="flex items-center gap-2">
+                            {!selectMode && tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />}
+                            {tx.description}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{tx.category}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                          {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
+                          {tx.cash_tendered && tx.cash_tendered > 0 && (
+                            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                              Cash
+                            </span>
                           )}
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
-                            <Copy size={15} />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
-                            <Pencil size={15} />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
-                            <Trash2 size={15} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
+                          {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                        </TableCell>
+                        {!selectMode && (
+                          <TableCell className="w-[124px]">
+                            <div className="flex justify-end gap-1">
+                              {tx.needs_review && (
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                                  <CheckCircle size={15} />
+                                </Button>
+                              )}
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                                <Copy size={15} />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                                <Pencil size={15} />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                                <Trash2 size={15} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>}
@@ -1346,6 +1448,36 @@ export function Transactions() {
           </div>
         )}
       </div>
+      {/* Bulk action bar — shown when items are selected */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 shadow-lg sm:px-6">
+          <span className="text-sm font-extrabold text-foreground">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={bulkMarkReviewed}
+              disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
+            >
+              <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+              Mark reviewed
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+              onClick={() => setBulkDeleteConfirm(true)}
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Delete
+            </Button>
+            <Button size="sm" variant="secondary" onClick={toggleSelectMode}>
+              <X className="mr-1.5 h-3.5 w-3.5" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget ? `Delete ${deleteTarget.description}?` : ''}
@@ -1359,6 +1491,13 @@ export function Transactions() {
         description="Existing generated transactions stay in history. Only future automatic payments stop."
         onCancel={() => setDeleteRuleTarget(null)}
         onConfirm={confirmDeleteRule}
+      />
+      <ConfirmDialog
+        open={bulkDeleteConfirm}
+        title={`Delete ${selectedIds.size} transaction${selectedIds.size === 1 ? '' : 's'}?`}
+        description="This permanently removes all selected transactions and any linked change transfers."
+        onCancel={() => setBulkDeleteConfirm(false)}
+        onConfirm={confirmBulkDelete}
       />
     </div>
   )
