@@ -250,6 +250,32 @@ export function Goals() {
         <StatCard label="Still needed" value={money.formatDisplay(Math.max(0, totalTarget - totalSaved))} sub="Combined gap" />
       </div>
 
+      {/* "What should I save this month?" card */}
+      {goals.filter(g => g.current_amount < g.target_amount && g.deadline).length > 0 && (
+        <div className="mb-8 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+          <p className="mb-3 text-xs font-bold text-primary">Monthly savings guide</p>
+          <div className="space-y-2">
+            {goals
+              .filter(g => g.current_amount < g.target_amount && g.deadline)
+              .map(g => {
+                const daysLeft = Math.ceil((new Date(g.deadline!).getTime() - Date.now()) / 86_400_000)
+                if (daysLeft <= 0) return null
+                const remaining = g.target_amount - g.current_amount
+                const monthsLeft = Math.max(1, daysLeft / 30)
+                const monthlyNeeded = Math.ceil(remaining / monthsLeft)
+                return (
+                  <div key={g.id} className="flex items-center justify-between gap-4">
+                    <p className="truncate text-sm text-muted-foreground">{g.name}</p>
+                    <span className="shrink-0 text-sm font-bold text-foreground">{money.formatDisplay(monthlyNeeded)}/mo</span>
+                  </div>
+                )
+              })
+              .filter(Boolean)}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">Based on your deadlines — adjust contributions anytime.</p>
+        </div>
+      )}
+
       {showForm && (
         <Card className="mb-8">
           <CardHeader className="pb-3">
