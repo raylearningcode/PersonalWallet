@@ -1053,8 +1053,8 @@ export function Transactions() {
             <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
               {editingTransaction ? 'Save transaction' : 'Add transaction'}
             </Button>
-            <Button variant="secondary" className="mt-2 w-full lg:hidden" onClick={() => setIsFormOpen(false)}>
-              Close
+            <Button variant="secondary" className="mt-2 w-full" onClick={() => setIsFormOpen(false)}>
+              Cancel
             </Button>
           </div>
         </SheetContent>
@@ -1113,8 +1113,8 @@ export function Transactions() {
             <Button className="mt-4 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
               Save rule
             </Button>
-            <Button variant="secondary" className="mt-2 w-full lg:hidden" onClick={() => setEditingRule(null)}>
-              Close
+            <Button variant="secondary" className="mt-2 w-full" onClick={() => setEditingRule(null)}>
+              Cancel
             </Button>
           </div>
         </SheetContent>

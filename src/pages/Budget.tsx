@@ -439,6 +439,7 @@ export function Budget() {
                                 onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
                                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-muted-foreground hover:text-foreground"
                                 aria-label={`Edit ${cat.name}`}
+                                title={`Edit ${cat.name} budget`}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
@@ -447,6 +448,7 @@ export function Budget() {
                                 disabled={deleteCategory.isPending}
                                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
                                 aria-label={`Delete ${cat.name}`}
+                                title={`Delete ${cat.name} budget`}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -549,6 +551,7 @@ export function Budget() {
                               onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
                               className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground hover:text-foreground"
                               aria-label={`Edit ${cat.name}`}
+                              title={`Edit ${cat.name}`}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
@@ -557,6 +560,7 @@ export function Budget() {
                               disabled={deleteCategory.isPending}
                               className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-destructive hover:text-red-300 disabled:opacity-50"
                               aria-label={`Delete ${cat.name}`}
+                              title={`Delete ${cat.name}`}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
