@@ -53,6 +53,7 @@ vi.mock('@/lib/currency', () => ({
     baseCurrency: 'IDR',
     displayCurrency: 'IDR',
     formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
+    formatDisplay: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
   }),
 }))
 

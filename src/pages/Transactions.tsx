@@ -72,7 +72,8 @@ export function Transactions() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [cashEnabled, setCashEnabled] = useState(false)
   const [cashTendered, setCashTendered] = useState('')
-  const [changeWalletId, setChangeWalletId] = useState('')
+  const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
+  const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const { data: transactions = [], isPending: txPending } = useTransactions(filter)
@@ -206,7 +207,8 @@ export function Transactions() {
     setShowAdvanced(false)
     setCashEnabled(false)
     setCashTendered('')
-    setChangeWalletId('')
+    setChangeBillsWalletId('')
+    setChangeCoinsWalletId('')
     if (wallets[0]) setWalletId(wallets[0].id)
     if (wallets[1]) setTransferWalletId(wallets[1].id)
   }
@@ -628,7 +630,7 @@ export function Transactions() {
                 {type !== 'transfer' ? (
                   <div>
                     <Label className="text-sm font-bold text-foreground">Wallet</Label>
-                    <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => { setWalletId(event.target.value); setCashEnabled(false); setCashTendered(''); setChangeWalletId('') }}>
+                    <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => { setWalletId(event.target.value); setCashEnabled(false); setCashTendered(''); setChangeBillsWalletId(''); setChangeCoinsWalletId('') }}>
                       {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
                       {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                     </select>
@@ -659,8 +661,12 @@ export function Transactions() {
                   const isUnderpay = cashEnabled && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedExpense
                   const otherWallets = wallets.filter(w => w.id !== walletId)
                   const walletCurrentBal = walletBalances.get(walletId) ?? 0
-                  const changeWalletBal = walletBalances.get(changeWalletId) ?? 0
                   const showChips = selectedWallet.currency === 'TWD' && inputCurrency === 'TWD'
+                  const isTWD = inputCurrency === 'TWD'
+                  const billsChange = isTWD ? Math.floor(changeAmount / 100) * 100 : 0
+                  const coinsChange = isTWD ? changeAmount % 100 : changeAmount
+                  const hasBills = billsChange > 0
+                  const hasCoins = coinsChange > 0
                   const twdChips = [100, 500, 1000].filter(n => !Number.isFinite(parsedExpense) || parsedExpense <= 0 || n >= parsedExpense)
                   const validTender = Number.isFinite(parsedTendered) && parsedTendered >= parsedExpense && parsedTendered > 0
 
@@ -678,10 +684,15 @@ export function Transactions() {
                           checked={cashEnabled}
                           onChange={e => {
                             setCashEnabled(e.target.checked)
-                            if (e.target.checked && !changeWalletId) {
-                              const coinPouch = otherWallets.find(w => w.cash_role === 'coins')
-                              const anyCash = otherWallets.find(w => w.type === 'cash')
-                              setChangeWalletId(coinPouch?.id ?? anyCash?.id ?? '')
+                            if (e.target.checked) {
+                              const coinsWallet = otherWallets.find(w => w.cash_role === 'coins')
+                              setChangeCoinsWalletId(coinsWallet?.id ?? otherWallets[0]?.id ?? '')
+                              const billsWallet = otherWallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed')
+                              setChangeBillsWalletId(billsWallet?.id ?? '')
+                              if (!cashTendered && parsedExpense > 0 && showChips) {
+                                const minDenom = parsedExpense <= 100 ? 100 : parsedExpense <= 500 ? 500 : 1000
+                                setCashTendered(String(minDenom))
+                              }
                             }
                             if (!e.target.checked) setCashTendered('')
                           }}
@@ -729,7 +740,81 @@ export function Transactions() {
                             )}
                           </div>
 
-                          {changeAmount > 0 && (
+                          {changeAmount > 0 && isTWD && hasBills && hasCoins && (
+                            <>
+                              <div>
+                                <Label className="text-xs font-bold text-muted-foreground">
+                                  Bills change (NT${billsChange.toLocaleString()}) stays in
+                                </Label>
+                                <select
+                                  aria-label="Bills change destination wallet"
+                                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                  value={changeBillsWalletId}
+                                  onChange={e => setChangeBillsWalletId(e.target.value)}
+                                >
+                                  <option value="">Keep in {selectedWallet.name}</option>
+                                  {otherWallets.map(w => (
+                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label className="text-xs font-bold text-muted-foreground">
+                                  Coins change (NT${coinsChange.toLocaleString()}) goes to
+                                </Label>
+                                <select
+                                  aria-label="Coins change destination wallet"
+                                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                  value={changeCoinsWalletId}
+                                  onChange={e => setChangeCoinsWalletId(e.target.value)}
+                                >
+                                  {otherWallets.map(w => (
+                                    <option key={w.id} value={w.id}>
+                                      {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </>
+                          )}
+                          {changeAmount > 0 && isTWD && hasBills && !hasCoins && (
+                            <div>
+                              <Label className="text-xs font-bold text-muted-foreground">
+                                Bills change (NT${billsChange.toLocaleString()}) stays in
+                              </Label>
+                              <select
+                                aria-label="Bills change destination wallet"
+                                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                value={changeBillsWalletId}
+                                onChange={e => setChangeBillsWalletId(e.target.value)}
+                              >
+                                <option value="">Keep in {selectedWallet.name}</option>
+                                {otherWallets.map(w => (
+                                  <option key={w.id} value={w.id}>{w.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          {changeAmount > 0 && isTWD && !hasBills && hasCoins && (
+                            <div>
+                              <Label className="text-xs font-bold text-muted-foreground">
+                                Coins change (NT${coinsChange.toLocaleString()}) goes to
+                              </Label>
+                              <select
+                                aria-label="Coins change destination wallet"
+                                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                value={changeCoinsWalletId}
+                                onChange={e => setChangeCoinsWalletId(e.target.value)}
+                              >
+                                {otherWallets.map(w => (
+                                  <option key={w.id} value={w.id}>
+                                    {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          {changeAmount > 0 && !isTWD && (
                             <div>
                               <Label className="text-xs font-bold text-muted-foreground">
                                 Change ({money.format(changeAmount, inputCurrency)}) goes to
@@ -737,8 +822,8 @@ export function Transactions() {
                               <select
                                 aria-label="Change destination wallet"
                                 className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                                value={changeWalletId}
-                                onChange={e => setChangeWalletId(e.target.value)}
+                                value={changeCoinsWalletId}
+                                onChange={e => setChangeCoinsWalletId(e.target.value)}
                               >
                                 <option value="">Keep in same wallet (no transfer)</option>
                                 {otherWallets.map(w => (
@@ -760,11 +845,27 @@ export function Transactions() {
                                     {money.formatDisplay(walletCurrentBal)} → {money.formatDisplay(walletCurrentBal - money.toBase(parsedTendered, inputCurrency))}
                                   </span>
                                 </div>
-                                {changeAmount > 0 && changeWalletId && (
+                                {hasBills && changeBillsWalletId && changeBillsWalletId !== walletId && (
                                   <div className="flex items-center justify-between gap-3">
-                                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeWalletId)?.name}</span>
+                                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeBillsWalletId)?.name}</span>
                                     <span className="font-extrabold text-foreground">
-                                      {money.formatDisplay(changeWalletBal)} → {money.formatDisplay(changeWalletBal + money.toBase(changeAmount, inputCurrency))}
+                                      {money.formatDisplay(walletBalances.get(changeBillsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeBillsWalletId) ?? 0) + money.toBase(billsChange, inputCurrency))}
+                                    </span>
+                                  </div>
+                                )}
+                                {hasCoins && changeCoinsWalletId && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeCoinsWalletId)?.name}</span>
+                                    <span className="font-extrabold text-foreground">
+                                      {money.formatDisplay(walletBalances.get(changeCoinsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeCoinsWalletId) ?? 0) + money.toBase(coinsChange, inputCurrency))}
+                                    </span>
+                                  </div>
+                                )}
+                                {!isTWD && changeAmount > 0 && changeCoinsWalletId && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeCoinsWalletId)?.name}</span>
+                                    <span className="font-extrabold text-foreground">
+                                      {money.formatDisplay(walletBalances.get(changeCoinsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeCoinsWalletId) ?? 0) + money.toBase(changeAmount, inputCurrency))}
                                     </span>
                                   </div>
                                 )}

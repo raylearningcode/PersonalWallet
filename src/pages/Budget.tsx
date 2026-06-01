@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useBudgetCategories,
@@ -67,6 +67,17 @@ export function Budget() {
   const [addColor, setAddColor] = useState('#6c63ff')
 
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; name: string }>(null)
+
+  const addFormRef = useRef<HTMLDivElement>(null)
+  const addNameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (showAdd) {
+      addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      const timer = setTimeout(() => addNameInputRef.current?.focus(), 100)
+      return () => clearTimeout(timer)
+    }
+  }, [showAdd])
 
   const currentYear = String(new Date().getFullYear())
   const now = new Date()
@@ -564,9 +575,10 @@ export function Budget() {
             )}
 
             {showAdd ? (
-              <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+              <div ref={addFormRef} className="space-y-3 rounded-xl border border-border bg-card p-4">
                 <p className="text-sm font-bold text-foreground">New category</p>
                 <Input
+                  ref={addNameInputRef}
                   aria-label="Category name"
                   className="h-8 bg-secondary text-sm"
                   placeholder="Category name"

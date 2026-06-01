@@ -638,7 +638,7 @@ export function Settings() {
                                 </span>
                               )}
                             </span>
-                            <span className="shrink-0 font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</span>
+                            <span className="shrink-0 font-extrabold text-foreground">{money.formatDisplay(walletBalances.get(wallet.id) ?? 0)}</span>
                             <button
                               aria-label={`Rename ${wallet.name} wallet`}
                               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
