@@ -488,7 +488,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
-                <select aria-label="Income period" className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={incomePeriod} onChange={event => setIncomePeriod(event.target.value as EstimatePeriod)}>
+                <select aria-label="Income period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={incomePeriod} onChange={event => setIncomePeriod(event.target.value as EstimatePeriod)}>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
                 </select>
@@ -531,7 +531,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
-                <select aria-label="Expense period" className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={expensePeriod} onChange={event => setExpensePeriod(event.target.value as EstimatePeriod)}>
+                <select aria-label="Expense period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={expensePeriod} onChange={event => setExpensePeriod(event.target.value as EstimatePeriod)}>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
                 </select>
@@ -581,7 +581,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
-                <select aria-label="Wishlist type" className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
+                <select aria-label="Wishlist type" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
                   <option value="Want">Want</option>
                   <option value="Need">Need</option>
                   <option value="Work">Work</option>

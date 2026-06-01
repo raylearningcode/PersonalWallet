@@ -586,7 +586,7 @@ export function Settings() {
               />
               <select
                 aria-label="Wallet type"
-                className="h-10 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                className="h-11 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                 value={walletType}
                 onChange={event => { setWalletType(event.target.value as Wallet['type']); setWalletCashRole('') }}
               >

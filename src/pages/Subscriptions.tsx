@@ -380,7 +380,7 @@ export function Subscriptions() {
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={addForm.type}
                   onChange={e => setField('type', e.target.value as 'expense' | 'income')}
                 >
@@ -394,7 +394,7 @@ export function Subscriptions() {
               <div>
                 <Label className="text-xs text-muted-foreground">Frequency</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={addForm.frequency}
                   onChange={e => setField('frequency', e.target.value as RecurringFrequency)}
                 >
@@ -407,7 +407,7 @@ export function Subscriptions() {
               <div>
                 <Label className="text-xs text-muted-foreground">Category</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={addForm.category}
                   onChange={e => setField('category', e.target.value)}
                 >
@@ -432,7 +432,7 @@ export function Subscriptions() {
               <div>
                 <Label className="text-xs text-muted-foreground">Wallet</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={addForm.walletId}
                   onChange={e => setField('walletId', e.target.value)}
                 >
@@ -674,14 +674,14 @@ export function Subscriptions() {
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Type</Label>
-                      <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
+                      <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
                         <option value="expense">Expense</option>
                         <option value="income">Income</option>
                       </select>
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Frequency</Label>
-                      <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
+                      <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
                         <option value="monthly">Monthly</option>
@@ -690,7 +690,7 @@ export function Subscriptions() {
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Category</Label>
-                      <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
+                      <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
                         <option value="">— auto —</option>
                         {categories.length > 0 && (
                           <>
@@ -711,7 +711,7 @@ export function Subscriptions() {
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Wallet</Label>
-                      <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
+                      <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
                         <option value="">— none —</option>
                         {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                       </select>

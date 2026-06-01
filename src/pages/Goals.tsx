@@ -311,7 +311,7 @@ export function Goals() {
               <div>
                 <Label className="text-xs text-muted-foreground">Category</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={form.category}
                   onChange={e => setField('category', e.target.value)}
                 >
