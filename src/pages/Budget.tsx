@@ -65,7 +65,7 @@ function ColorSwatch({ color, selected, onClick }: { color: string; selected: bo
   return (
     <button
       type="button"
-      className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
+      className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
       style={{ backgroundColor: color }}
       onClick={onClick}
       title={color}
@@ -524,7 +524,7 @@ export function Budget() {
                         </div>
                         <Button
                           size="sm"
-                          className="h-7 text-xs"
+                          className="h-9 text-xs"
                           onClick={() => handleApplySuggestion(s.name, s.monthlyAvg)}
                           disabled={addCategory.isPending}
                         >
@@ -575,18 +575,18 @@ export function Budget() {
                     ))}
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
+                    <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
                     <input
                       type="text"
                       aria-label="Category color hex"
-                      className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+                      className="h-9 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
                       value={addColor}
                       onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setAddColor(e.target.value) }}
                     />
                     <input
                       type="color"
                       aria-label="Category color picker"
-                      className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                      className="h-9 w-9 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
                       value={addColor.length === 7 ? addColor : '#6c63ff'}
                       onChange={e => setAddColor(e.target.value)}
                     />
@@ -700,18 +700,18 @@ export function Budget() {
                       ))}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: sheetDraft.color }} />
+                      <div className="h-9 w-9 shrink-0 rounded-full border border-border" style={{ backgroundColor: sheetDraft.color }} />
                       <input
                         type="text"
                         aria-label="Color hex"
-                        className="h-8 w-28 rounded-md border border-input bg-secondary px-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+                        className="h-9 w-28 rounded-md border border-input bg-secondary px-3 font-mono text-sm text-foreground outline-none focus:border-primary"
                         value={sheetDraft.color}
                         onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setSheetDraft(d => ({ ...d, color: e.target.value })) }}
                       />
                       <input
                         type="color"
                         aria-label="Color picker"
-                        className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                        className="h-9 w-9 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
                         value={sheetDraft.color.length === 7 ? sheetDraft.color : '#6c63ff'}
                         onChange={e => setSheetDraft(d => ({ ...d, color: e.target.value }))}
                       />

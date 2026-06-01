@@ -1,12 +1,40 @@
 {
-  "name": "FinPath",
+  "name": "FinPath — Personal Finance OS",
   "short_name": "FinPath",
-  "description": "Personal finance tracker — wallets, budgets, and investments",
+  "description": "Privacy-first manual finance tracker — wallets, cash-change, budgets, goals, and investments.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f1117",
   "theme_color": "#0f1117",
+  "orientation": "portrait-primary",
   "icons": [
-    { "src": "/vite.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "short_name": "Add",
+      "description": "Quickly record a new expense",
+      "url": "/transactions?action=expense"
+    },
+    {
+      "name": "View Budget",
+      "short_name": "Budget",
+      "description": "Check your budget categories",
+      "url": "/budget"
+    },
+    {
+      "name": "Reports",
+      "short_name": "Reports",
+      "description": "View spending reports",
+      "url": "/reports"
+    },
+    {
+      "name": "Goals",
+      "short_name": "Goals",
+      "description": "Track your savings goals",
+      "url": "/goals"
+    }
   ]
 }

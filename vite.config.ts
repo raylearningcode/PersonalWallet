@@ -28,8 +28,8 @@ export default defineConfig({
         start_url: '/',
         orientation: 'portrait-primary',
         icons: [
-          { src: '/vite.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/vite.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
         shortcuts: [
           {
