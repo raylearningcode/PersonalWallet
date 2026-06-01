@@ -543,7 +543,7 @@ export function Budget() {
                 <Input
                   ref={addNameInputRef}
                   aria-label="Category name"
-                  className="h-8 bg-secondary text-sm"
+                  className="bg-secondary text-sm"
                   placeholder="Category name"
                   value={addName}
                   onChange={e => setAddName(e.target.value)}
@@ -552,14 +552,14 @@ export function Budget() {
                   <Input
                     aria-label="Budget amount"
                     inputMode="decimal"
-                    className="h-8 min-w-0 flex-1 bg-secondary text-sm font-bold"
+                    className="min-w-0 flex-1 bg-secondary text-sm font-bold"
                     placeholder={`Budget amount (${money.displayCurrency})`}
                     value={addAmount}
                     onChange={e => setAddAmount(formatNumberInput(e.target.value))}
                   />
                   <select
                     aria-label="New category budget period"
-                    className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                    className="h-11 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                     value={addPeriod}
                     onChange={e => setAddPeriod(e.target.value as BudgetPeriod)}
                   >
@@ -593,10 +593,10 @@ export function Budget() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button className="h-8 flex-1 text-xs" onClick={handleAdd} disabled={addCategory.isPending}>
+                  <Button className="h-10 flex-1 text-sm" onClick={handleAdd} disabled={addCategory.isPending}>
                     Add category
                   </Button>
-                  <Button variant="secondary" className="h-8 text-xs" onClick={() => setShowAdd(false)}>
+                  <Button variant="secondary" className="h-10 text-sm" onClick={() => setShowAdd(false)}>
                     Cancel
                   </Button>
                 </div>
