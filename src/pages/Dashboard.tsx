@@ -205,6 +205,12 @@ export function Dashboard() {
     [transactions]
   )
 
+  const categoryColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    categories.forEach(c => map.set(c.name, c.color))
+    return map
+  }, [categories])
+
   const savingsRateVariant = savingsRate >= 20 ? 'success' : savingsRate > 0 ? 'warning' : 'danger'
 
   const topGoals = useMemo(
@@ -360,7 +366,12 @@ export function Dashboard() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
-                  <p className="text-xs text-muted-foreground">{tx.category} · {tx.date}</p>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {categoryColorMap.has(tx.category) && (
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
+                    )}
+                    <span className="truncate">{tx.category} · {tx.date}</span>
+                  </div>
                 </div>
                 <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
                   {txAmountSign(tx.amount, tx.type)}{fmt(tx.amount)}
