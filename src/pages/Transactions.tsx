@@ -1435,7 +1435,12 @@ export function Transactions() {
                     </div>
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className="text-sm text-muted-foreground">Category</span>
-                      <span className="text-sm font-bold text-foreground">{tx.category}</span>
+                      <div className="flex items-center gap-1.5">
+                        {categoryColorMap.has(tx.category) && (
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
+                        )}
+                        <span className="text-sm font-bold text-foreground">{tx.category}</span>
+                      </div>
                     </div>
                     {wallet && (
                       <div className="flex items-center justify-between px-4 py-3">

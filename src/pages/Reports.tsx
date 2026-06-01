@@ -405,9 +405,9 @@ export function Reports() {
       {/* Mobile sticky period bar */}
       <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden">
         <div className="flex items-center justify-between gap-2">
-          {range !== 'all' && <button aria-label="Previous period" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>}
+          {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>}
           <span className="flex-1 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-          {range !== 'all' && <button aria-label="Next period" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
+          {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
           <div className="flex rounded-full border border-border bg-secondary p-0.5">
             {(['week', 'month', 'year', 'all'] as ReportRange[]).map(item => (
               <button
@@ -520,7 +520,7 @@ export function Reports() {
             <div className="mt-4 rounded-2xl border border-border bg-secondary/60 p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-extrabold text-foreground">{clickedBucket} — {bucketTx.length} transaction{bucketTx.length !== 1 ? 's' : ''}</p>
-                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" title="Close" className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">✕</button>
+                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" title="Close" className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">✕</button>
               </div>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {bucketTx.map(tx => (
