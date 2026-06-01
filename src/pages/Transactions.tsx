@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText, CheckSquare, Square } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -42,6 +42,10 @@ function getMonthStart() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
 
+function getLastDay(year: number, month: number) {
+  return new Date(year, month, 0).toISOString().slice(0, 10)
+}
+
 export function Transactions() {
   const money = useMoney()
   const [searchParams] = useSearchParams()
@@ -54,8 +58,7 @@ export function Transactions() {
   const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
   const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
   const [dateFrom, setDateFrom] = useState(getMonthStart)
-  const [dateTo, setDateTo] = useState('')
-  const [showDateFilter, setShowDateFilter] = useState(false)
+  const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
   const [ruleDescription, setRuleDescription] = useState('')
   const [ruleAmount, setRuleAmount] = useState('')
   const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
@@ -588,6 +591,28 @@ export function Transactions() {
     setSelectedIds(new Set())
   }
 
+  // Month navigator
+  const _today = new Date()
+  const navYear = dateFrom ? parseInt(dateFrom.slice(0, 4)) : _today.getFullYear()
+  const navMonth = dateFrom ? parseInt(dateFrom.slice(5, 7)) : _today.getMonth() + 1
+  const isAllTime = !dateFrom && !dateTo
+  const isOnCurrentMonth = navYear === _today.getFullYear() && navMonth === _today.getMonth() + 1
+  const monthLabel = new Date(navYear, navMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  const goToPrevMonth = () => {
+    const d = new Date(navYear, navMonth - 2, 1)
+    const y = d.getFullYear(), m = d.getMonth() + 1
+    setDateFrom(`${y}-${String(m).padStart(2, '0')}-01`)
+    setDateTo(getLastDay(y, m))
+  }
+
+  const goToNextMonth = () => {
+    const d = new Date(navYear, navMonth, 1)
+    const y = d.getFullYear(), m = d.getMonth() + 1
+    setDateFrom(`${y}-${String(m).padStart(2, '0')}-01`)
+    setDateTo(getLastDay(y, m))
+  }
+
   return (
     <div>
       <PageHeader
@@ -596,24 +621,14 @@ export function Transactions() {
         searchValue={searchQuery}
         onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
         action={(
-          <div className="flex items-center gap-2">
-            <button
-              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${showDateFilter || dateFrom || dateTo ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setShowDateFilter(v => !v)}
-              title="Date range filter"
-              aria-label="Toggle date range filter"
-            >
-              <CalendarRange className="h-4 w-4" />
-            </button>
-            <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
-              <Plus className="h-4 w-4" />
-              New transaction
-            </Button>
-          </div>
+          <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
+            <Plus className="h-4 w-4" />
+            New transaction
+          </Button>
         )}
       />
       <div className="relative mb-8">
-        <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); setDateFrom(getMonthStart()); setDateTo('') }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
+        <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
           <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
             {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
               <TabsTrigger
@@ -1105,40 +1120,6 @@ export function Transactions() {
         </SheetContent>
       </Sheet>
 
-      {showDateFilter && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-border bg-card px-4 py-4 sm:px-6">
-          <span className="text-sm font-bold text-muted-foreground">Date range</span>
-          <button
-            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${dateFrom === getMonthStart() && !dateTo ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
-            onClick={() => { setDateFrom(getMonthStart()); setDateTo('') }}
-          >
-            This month
-          </button>
-          <Input
-            type="date"
-            aria-label="Date from"
-            className="h-9 w-auto min-w-0 bg-secondary text-sm"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-          />
-          <span className="text-muted-foreground">→</span>
-          <Input
-            type="date"
-            aria-label="Date to"
-            className="h-9 w-auto min-w-0 bg-secondary text-sm"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-          />
-          <button
-            className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
-            onClick={() => { setDateFrom(''); setDateTo('') }}
-          >
-            <X className="h-3 w-3" />
-            Show all
-          </button>
-          <span className="text-xs text-primary font-bold">{sortedTransactions.length} result{sortedTransactions.length !== 1 ? 's' : ''}</span>
-        </div>
-      )}
 
       {expenseCategoryTotals.length > 0 && (
         <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
@@ -1274,6 +1255,42 @@ export function Transactions() {
             </div>
           </div>
         )}
+
+        {/* Month navigator */}
+        <div className="mb-5 flex items-center gap-1">
+          <button
+            onClick={goToPrevMonth}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex flex-1 items-center justify-center gap-2">
+            <span className={`text-sm font-extrabold ${isAllTime ? 'text-muted-foreground' : 'text-foreground'}`}>
+              {isAllTime ? 'All transactions' : monthLabel}
+            </span>
+            {!isAllTime && (
+              <span className="text-xs text-muted-foreground">· {sortedTransactions.length}</span>
+            )}
+          </div>
+          <button
+            onClick={goToNextMonth}
+            disabled={isOnCurrentMonth || isAllTime}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          {!isAllTime && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+              className="ml-1 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              All
+            </button>
+          )}
+        </div>
+
         {txPending ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
