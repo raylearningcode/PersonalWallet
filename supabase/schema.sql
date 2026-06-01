@@ -5,6 +5,8 @@ create table wallets (
   type text not null default 'cash' check (type in ('cash', 'bank', 'card', 'e_wallet', 'investment', 'other')),
   balance numeric not null default 0,
   currency text not null default 'IDR' check (currency in ('USD', 'IDR', 'TWD', 'EUR', 'JPY')),
+  cash_role text check (cash_role in ('notes', 'coins', 'mixed', 'digital_cash')),
+  default_change_wallet_id uuid references wallets(id) on delete set null,
   created_at timestamptz default now()
 );
 
@@ -23,6 +25,9 @@ create table transactions (
   recurring_due_date date,
   date date not null default current_date,
   needs_review boolean not null default false,
+  is_system_generated boolean not null default false,
+  linked_transaction_id uuid,
+  cash_tendered numeric check (cash_tendered is null or cash_tendered >= 0),
   created_at timestamptz default now()
 );
 

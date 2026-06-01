@@ -76,15 +76,22 @@ export function getCategoryInsights(transactions: Transaction[], categories: Bud
       const dayOfMonth = today.getDate()
       const expectedMonthlyPct = Math.round((dayOfMonth / new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()) * 100)
       const overPace = category.budget_period === 'monthly' && usedPct > expectedMonthlyPct + 15
+      const paceGap = overPace ? usedPct - expectedMonthlyPct : 0
+      const message = (() => {
+        if (limit <= 0) return `${category.name} has spending but no budget set — consider adding a limit.`
+        if (category.budget_period === 'monthly') {
+          if (overPace) return `${category.name} is at ${usedPct}% of its monthly limit but you're only ${expectedMonthlyPct}% through the month — ${paceGap}% over pace.`
+          return `${category.name} is at ${usedPct}% of its monthly limit with ${100 - expectedMonthlyPct}% of the month still ahead.`
+        }
+        return `${category.name} is at ${usedPct}% of its yearly limit.`
+      })()
       return {
         category: category.name,
         spent: periodExpenses,
         limit,
         usedPct,
         overPace,
-        message: limit > 0
-          ? `${category.name} is at ${usedPct}% of its ${category.budget_period} budget${overPace ? ', above pace' : ', on pace'}.`
-          : `${category.name} has spending but no budget limit yet.`,
+        message,
       }
     })
     .filter(item => item.spent > 0 || item.limit > 0)

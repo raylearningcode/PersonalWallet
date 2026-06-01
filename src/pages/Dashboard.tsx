@@ -12,7 +12,7 @@ import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
 import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
 import { computeStreak } from '@/lib/streak'
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X } from 'lucide-react'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart } from 'lucide-react'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -272,6 +272,26 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Low wallet balance warning */}
+      {!walletPending && (() => {
+        const negative = wallets.filter(w => (walletBalances.get(w.id) ?? 0) < 0)
+        if (negative.length === 0) return null
+        return (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/5 px-5 py-4">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[#FF8388]" />
+            <div className="flex-1">
+              <p className="font-bold text-[#FF8388]">{negative.length === 1 ? 'Wallet balance below zero' : 'Wallets below zero'}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {negative.map(w => `${w.name} (${fmt(walletBalances.get(w.id) ?? 0)})`).join(', ')} — check for missing income entries.
+              </p>
+            </div>
+            <Button asChild size="sm" variant="secondary" className="shrink-0">
+              <Link to="/transactions">Review</Link>
+            </Button>
+          </div>
+        )
+      })()}
+
       {/* Review queue banner */}
       {reviewCount > 0 && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
@@ -301,7 +321,7 @@ export function Dashboard() {
           <>
             <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" />
             <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : daysLeft === 0 ? 'Month ends today' : `${daysLeft} days left`} badgeVariant="warning" />
-            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : daysLeft === 1 ? 'Based on budgets · last day' : `Based on budgets · ${daysLeft} days left`} />
+            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : daysLeft === 1 ? 'Based on budgets · 1 day left' : `Based on budgets · ${daysLeft} days left`} />
             <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} />
           </>
         )}
@@ -369,7 +389,7 @@ export function Dashboard() {
             {topGoals.slice(0, 2).map(goal => {
               const pct = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0
               return (
-                <div key={goal.id} className="flex items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3">
+                <Link key={goal.id} to="/goals" className="flex items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-foreground">{goal.name}</p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -377,7 +397,7 @@ export function Dashboard() {
                     </div>
                   </div>
                   <span className="shrink-0 text-sm font-extrabold text-foreground">{pct}%</span>
-                </div>
+                </Link>
               )
             })}
           </div>
@@ -401,21 +421,25 @@ export function Dashboard() {
         {/* Quick actions */}
         {!isNewUser && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {[
-              { label: 'Add transaction', sub: 'Log income or expense', to: '/transactions', color: '#A9F5C7' },
-              { label: 'Add goal', sub: 'Track a target', to: '/goals', color: '#93C5FD' },
-              { label: 'Add subscription', sub: 'Recurring payment', to: '/subscriptions', color: '#FADBEA' },
-              { label: 'Budget', sub: 'Check limits', to: '/budget', color: '#FFD276' },
-              { label: 'Reports', sub: 'See trends', to: '/reports', color: '#C4AEFF' },
-            ].map(action => (
+            {([
+              { label: 'Add transaction', sub: 'Log income or expense', to: '/transactions', color: '#A9F5C7', Icon: Plus },
+              { label: 'Add goal', sub: 'Track a target', to: '/goals', color: '#93C5FD', Icon: Target },
+              { label: 'Add subscription', sub: 'Recurring payment', to: '/subscriptions', color: '#FADBEA', Icon: RefreshCw },
+              { label: 'Budget', sub: 'Check limits', to: '/budget', color: '#FFD276', Icon: PieChart },
+              { label: 'Reports', sub: 'See trends', to: '/reports', color: '#C4AEFF', Icon: BarChart2 },
+            ] as const).map(({ label, sub, to, color, Icon }) => (
               <Link
-                key={action.label}
-                to={action.to}
+                key={label}
+                to={to}
                 className="flex flex-col gap-1 rounded-2xl border border-border bg-secondary px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5"
               >
-                <span className="h-2 w-6 rounded-full" style={{ backgroundColor: action.color }} />
-                <span className="mt-1 text-sm font-extrabold text-foreground">{action.label}</span>
-                <span className="text-xs text-muted-foreground">{action.sub}</span>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ backgroundColor: color + '30' }}>
+                    <Icon className="h-4 w-4" style={{ color }} />
+                  </span>
+                </div>
+                <span className="mt-1 text-sm font-extrabold text-foreground">{label}</span>
+                <span className="text-xs text-muted-foreground">{sub}</span>
               </Link>
             ))}
           </div>
@@ -601,10 +625,32 @@ export function Dashboard() {
           <Card>
             <CardHeader><CardTitle className="text-xl">Net worth</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
-                <span className="text-sm text-muted-foreground">Wallet cash</span>
-                <strong className="text-foreground">{fmt(cashBalance)}</strong>
-              </div>
+              {wallets.some(w => w.type === 'cash' && w.cash_role) ? (
+                <>
+                  {wallets.filter(w => w.type === 'cash').map(w => (
+                    <div key={w.id} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{w.name}</span>
+                        {w.cash_role && (
+                          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                            {w.cash_role === 'notes' ? 'Notes' : w.cash_role === 'coins' ? 'Coins' : w.cash_role === 'mixed' ? 'Mixed' : 'Digital'}
+                          </span>
+                        )}
+                      </div>
+                      <strong className="text-sm text-foreground">{fmt(walletBalances.get(w.id) ?? 0)}</strong>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-2">
+                    <span className="text-xs font-bold text-muted-foreground">Total physical cash</span>
+                    <strong className="text-sm text-foreground">{fmt(cashBalance)}</strong>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
+                  <span className="text-sm text-muted-foreground">Wallet cash</span>
+                  <strong className="text-foreground">{fmt(cashBalance)}</strong>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
                 <span className="text-sm text-muted-foreground">Invested</span>
                 <strong className="text-foreground">{fmt(invested)}</strong>
@@ -809,7 +855,7 @@ export function Dashboard() {
               {topGoals.map(goal => {
                 const pct = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0
                 return (
-                  <div key={goal.id} className="relative overflow-hidden rounded-2xl border border-border bg-card p-5">
+                  <Link key={goal.id} to="/goals" className="relative block overflow-hidden rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary/30 hover:bg-primary/5">
                     <div className="pointer-events-none absolute inset-y-0 left-0 w-1 rounded-l-[inherit]" style={{ backgroundColor: goal.color }} />
                     <p className="truncate font-extrabold text-foreground">{goal.name}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{goal.category}</p>
@@ -821,7 +867,7 @@ export function Dashboard() {
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">Target: {fmt(goal.target_amount)}</p>
-                  </div>
+                  </Link>
                 )
               })}
             </div>

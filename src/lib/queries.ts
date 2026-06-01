@@ -529,6 +529,33 @@ export function useRenameWallet() {
   })
 }
 
+export function useUpdateWallet() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<Omit<Wallet, 'created_at'>> & { id: string }) => {
+      const userId = await getCurrentUserId()
+      if (!userId) { localUpdateWallet(id, patch); return }
+      if (isOffline()) {
+        cacheUpdateItem('wallets', id, patch)
+        enqueue({ table: 'wallets', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })
+        return
+      }
+      try {
+        const { error } = await supabase.from('wallets').update(patch).eq('id', id).eq('user_id', userId)
+        if (error) throw error
+      } catch (e) {
+        if (isNetworkError(e)) {
+          cacheUpdateItem('wallets', id, patch)
+          enqueue({ table: 'wallets', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })
+          return
+        }
+        throw e
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['wallets'] }),
+  })
+}
+
 export function useBudgetCategories() {
   return useQuery({
     queryKey: ['budget_categories'],
@@ -985,7 +1012,11 @@ export function useSignIn() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       clearSignedOutFlag()
-      if (data.user?.id && hasGuestData()) await migrateGuestDataToAccount(data.user.id)
+      // Guest data migration is best-effort — a failure (e.g. duplicate rows from
+      // a previous login) must never block the login itself from succeeding.
+      if (data.user?.id && hasGuestData()) {
+        try { await migrateGuestDataToAccount(data.user.id) } catch { /* ignore */ }
+      }
       return data
     },
     onSuccess: () => {

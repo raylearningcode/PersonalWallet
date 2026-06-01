@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
+import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { parseNumberInput } from '@/lib/numberInput'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
@@ -45,9 +45,10 @@ function nextDueFrom(startDate: string, frequency: RecurringFrequency): string {
   return d.toISOString().slice(0, 10)
 }
 
-const emptyAddForm = () => ({
+const emptyAddForm = (currency = '') => ({
   description: '',
   amount: '',
+  currency,
   type: 'expense' as 'expense' | 'income',
   frequency: 'monthly' as RecurringFrequency,
   category: '',
@@ -71,9 +72,9 @@ export function Subscriptions() {
   const deleteRule = useDeleteRecurringRule()
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [addForm, setAddForm] = useState(emptyAddForm())
+  const [addForm, setAddForm] = useState(() => emptyAddForm(money.displayCurrency))
   const [editTarget, setEditTarget] = useState<RecurringRule | null>(null)
-  const [editForm, setEditForm] = useState(emptyAddForm())
+  const [editForm, setEditForm] = useState(() => emptyAddForm(money.displayCurrency))
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
   const [expenseSort, setExpenseSort] = useState<ExpenseSort>('due-date')
   const [searchQuery, setSearchQuery] = useState('')
@@ -161,12 +162,11 @@ export function Subscriptions() {
     setEditForm({
       description: rule.description,
       amount: String(rule.original_amount ?? rule.amount),
+      currency: rule.original_currency ?? money.displayCurrency,
       type: rule.type as 'expense' | 'income',
       frequency: rule.frequency,
       category: rule.category,
       walletId: rule.wallet_id ?? '',
-      // Use start_date so nextDueFrom recalculates correctly for any frequency change
-      // without accidentally advancing next_due_date on a no-op edit
       startDate: rule.start_date,
       logFirstPayment: false,
     })
@@ -180,13 +180,14 @@ export function Subscriptions() {
       return
     }
     const category = editForm.category || (editForm.type === 'income' ? 'Income' : 'Subscriptions')
+    const currency = editForm.currency || money.displayCurrency
     try {
       await updateRule.mutateAsync({
         id: editTarget.id,
         description: editForm.description.trim(),
-        amount: money.toBase(amount, money.displayCurrency),
+        amount: money.toBase(amount, currency),
         original_amount: amount,
-        original_currency: money.displayCurrency,
+        original_currency: currency,
         type: editForm.type,
         category,
         wallet_id: editForm.walletId || null,
@@ -195,7 +196,7 @@ export function Subscriptions() {
       })
       toast.success('Subscription updated')
       setEditTarget(null)
-      setEditForm(emptyAddForm())
+      setEditForm(emptyAddForm(money.displayCurrency))
     } catch {
       toast.error('Failed to update subscription')
     }
@@ -209,13 +210,14 @@ export function Subscriptions() {
     }
     const startDate = addForm.startDate || new Date().toISOString().slice(0, 10)
     const category = addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions')
+    const currency = addForm.currency || money.displayCurrency
     try {
       const rule = await addRule.mutateAsync({
         user_id: null,
         description: addForm.description.trim(),
-        amount: money.toBase(amount, money.displayCurrency),
+        amount: money.toBase(amount, currency),
         original_amount: amount,
-        original_currency: money.displayCurrency,
+        original_currency: currency,
         type: addForm.type,
         category,
         wallet_id: addForm.walletId || null,
@@ -232,9 +234,9 @@ export function Subscriptions() {
         await addTransaction.mutateAsync({
           user_id: null,
           description: addForm.description.trim(),
-          amount: money.toBase(amount, money.displayCurrency),
+          amount: money.toBase(amount, currency),
           original_amount: amount,
-          original_currency: money.displayCurrency,
+          original_currency: currency,
           type: addForm.type,
           category,
           wallet_id: addForm.walletId || null,
@@ -248,7 +250,7 @@ export function Subscriptions() {
       } else {
         toast.success('Subscription added')
       }
-      setAddForm(emptyAddForm())
+      setAddForm(emptyAddForm(money.displayCurrency))
       setShowAddForm(false)
     } catch {
       toast.error('Failed to add subscription')
@@ -354,8 +356,17 @@ export function Subscriptions() {
                 <Input className="mt-1.5 bg-secondary text-sm" value={editForm.description} onChange={e => setEditField('description', e.target.value)} />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
-                <MoneyInput className="mt-1.5 bg-secondary text-sm" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+                <Label className="text-xs text-muted-foreground">Amount</Label>
+                <div className="mt-1.5 flex gap-2">
+                  <select
+                    className="h-10 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                    value={editForm.currency}
+                    onChange={e => setEditField('currency', e.target.value)}
+                  >
+                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <MoneyInput className="flex-1 bg-secondary text-sm" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+                </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
@@ -435,7 +446,7 @@ export function Subscriptions() {
               <CardTitle className="text-xl">New subscription</CardTitle>
               <button
                 className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm()) }}
+                onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.displayCurrency)) }}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -453,13 +464,22 @@ export function Subscriptions() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency}) *</Label>
-                <MoneyInput
-                  className="mt-2 bg-secondary"
-                  value={addForm.amount}
-                  onValueChange={v => setField('amount', v)}
-                  placeholder="0"
-                />
+                <Label className="text-xs text-muted-foreground">Amount *</Label>
+                <div className="mt-2 flex gap-2">
+                  <select
+                    className="h-10 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                    value={addForm.currency}
+                    onChange={e => setField('currency', e.target.value)}
+                  >
+                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <MoneyInput
+                    className="flex-1 bg-secondary"
+                    value={addForm.amount}
+                    onValueChange={v => setField('amount', v)}
+                    placeholder="0"
+                  />
+                </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
@@ -549,7 +569,7 @@ export function Subscriptions() {
               <Button onClick={handleAdd} disabled={addRule.isPending || addTransaction.isPending}>
                 {(addRule.isPending || addTransaction.isPending) ? 'Adding…' : 'Add subscription'}
               </Button>
-              <Button variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm()) }}>
+              <Button variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.displayCurrency)) }}>
                 Cancel
               </Button>
             </div>

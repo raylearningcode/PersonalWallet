@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useBudgetCategories,
@@ -25,6 +25,24 @@ import { getDaysRemainingInMonth } from '@/lib/financeOs'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
+}
+
+const PRESET_COLORS = [
+  '#EF4444', '#F97316', '#EAB308', '#22C55E',
+  '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899',
+  '#64748B', '#A16207',
+]
+
+function ColorSwatch({ color, selected, onClick }: { color: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
+      style={{ backgroundColor: color }}
+      onClick={onClick}
+      title={color}
+    />
+  )
 }
 
 function getBarColor(pct: number, catColor: string): string {
@@ -67,6 +85,17 @@ export function Budget() {
   const [addColor, setAddColor] = useState('#6c63ff')
 
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; name: string }>(null)
+
+  const addFormRef = useRef<HTMLDivElement>(null)
+  const addNameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (showAdd) {
+      addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      const timer = setTimeout(() => addNameInputRef.current?.focus(), 100)
+      return () => clearTimeout(timer)
+    }
+  }, [showAdd])
 
   const currentYear = String(new Date().getFullYear())
   const now = new Date()
@@ -363,14 +392,26 @@ export function Budget() {
                                 </select>
                               </div>
                               <div>
-                                <p className="mb-1 text-xs text-muted-foreground">Color</p>
+                                <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
+                                <div className="mb-2 flex flex-wrap gap-1">
+                                  {PRESET_COLORS.map(c => (
+                                    <ColorSwatch key={c} color={c} selected={editDraft.color === c} onClick={() => setEditDraft(d => ({ ...d, color: c }))} />
+                                  ))}
+                                </div>
                                 <div className="flex items-center gap-2">
-                                  <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <input
+                                    type="text"
+                                    aria-label="Category color hex"
+                                    className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+                                    value={editDraft.color}
+                                    onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setEditDraft(d => ({ ...d, color: e.target.value })) }}
+                                  />
                                   <input
                                     type="color"
-                                    aria-label="Category color"
-                                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                                    value={editDraft.color}
+                                    aria-label="Category color picker"
+                                    className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                                    value={editDraft.color.length === 7 ? editDraft.color : '#6c63ff'}
                                     onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
                                   />
                                 </div>
@@ -398,6 +439,7 @@ export function Budget() {
                                 onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
                                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-muted-foreground hover:text-foreground"
                                 aria-label={`Edit ${cat.name}`}
+                                title={`Edit ${cat.name} budget`}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
@@ -406,6 +448,7 @@ export function Budget() {
                                 disabled={deleteCategory.isPending}
                                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
                                 aria-label={`Delete ${cat.name}`}
+                                title={`Delete ${cat.name} budget`}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -468,14 +511,26 @@ export function Budget() {
                                 </select>
                               </div>
                               <div>
-                                <p className="mb-1 text-xs text-muted-foreground">Color</p>
+                                <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
+                                <div className="mb-2 flex flex-wrap gap-1">
+                                  {PRESET_COLORS.map(c => (
+                                    <ColorSwatch key={c} color={c} selected={editDraft.color === c} onClick={() => setEditDraft(d => ({ ...d, color: c }))} />
+                                  ))}
+                                </div>
                                 <div className="flex items-center gap-2">
-                                  <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
+                                  <input
+                                    type="text"
+                                    aria-label="Category color hex"
+                                    className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+                                    value={editDraft.color}
+                                    onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setEditDraft(d => ({ ...d, color: e.target.value })) }}
+                                  />
                                   <input
                                     type="color"
-                                    aria-label="Category color"
-                                    className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                                    value={editDraft.color}
+                                    aria-label="Category color picker"
+                                    className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                                    value={editDraft.color.length === 7 ? editDraft.color : '#6c63ff'}
                                     onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
                                   />
                                 </div>
@@ -496,6 +551,7 @@ export function Budget() {
                               onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
                               className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground hover:text-foreground"
                               aria-label={`Edit ${cat.name}`}
+                              title={`Edit ${cat.name}`}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
@@ -504,6 +560,7 @@ export function Budget() {
                               disabled={deleteCategory.isPending}
                               className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-destructive hover:text-red-300 disabled:opacity-50"
                               aria-label={`Delete ${cat.name}`}
+                              title={`Delete ${cat.name}`}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -564,20 +621,21 @@ export function Budget() {
             )}
 
             {showAdd ? (
-              <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+              <div ref={addFormRef} className="space-y-3 rounded-xl border border-border bg-card p-4">
                 <p className="text-sm font-bold text-foreground">New category</p>
                 <Input
+                  ref={addNameInputRef}
                   aria-label="Category name"
                   className="h-8 bg-secondary text-sm"
                   placeholder="Category name"
                   value={addName}
                   onChange={e => setAddName(e.target.value)}
                 />
-                <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <div className="flex flex-wrap items-center gap-2">
                   <Input
                     aria-label="Budget amount"
                     inputMode="decimal"
-                    className="h-8 bg-secondary text-sm font-bold"
+                    className="h-8 min-w-0 flex-1 bg-secondary text-sm font-bold"
                     placeholder={`Budget amount (${money.displayCurrency})`}
                     value={addAmount}
                     onChange={e => setAddAmount(formatNumberInput(e.target.value))}
@@ -591,13 +649,28 @@ export function Budget() {
                     <option value="monthly">Monthly</option>
                     <option value="yearly">Yearly</option>
                   </select>
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
+                </div>
+                <div>
+                  <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
+                  <div className="mb-2 flex flex-wrap gap-1">
+                    {PRESET_COLORS.map(c => (
+                      <ColorSwatch key={c} color={c} selected={addColor === c} onClick={() => setAddColor(c)} />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
+                    <input
+                      type="text"
+                      aria-label="Category color hex"
+                      className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+                      value={addColor}
+                      onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setAddColor(e.target.value) }}
+                    />
                     <input
                       type="color"
-                      aria-label="Category color"
-                      className="h-8 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                      value={addColor}
+                      aria-label="Category color picker"
+                      className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                      value={addColor.length === 7 ? addColor : '#6c63ff'}
                       onChange={e => setAddColor(e.target.value)}
                     />
                   </div>

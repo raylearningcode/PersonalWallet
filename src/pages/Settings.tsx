@@ -3,7 +3,7 @@ import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
   useBudgetRules, useAddBudgetRule,
-  useRenameWallet,
+  useRenameWallet, useUpdateWallet,
   useAuthSession, useSignIn, useSignUp, useSignOut,
   useWallets, useAddWallet, useDeleteWallet,
   useTransactions, useAddTransaction,
@@ -24,7 +24,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
-import type { Wallet } from '@/types'
+import type { CashRole, Wallet } from '@/types'
 import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
 
 const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
@@ -59,6 +59,7 @@ export function Settings() {
   const deleteCategory = useDeleteBudgetCategory()
   const renameCategory = useRenameBudgetCategory()
   const renameWallet = useRenameWallet()
+  const updateWallet = useUpdateWallet()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
   const { data: budgetRules = [] } = useBudgetRules()
@@ -90,10 +91,12 @@ export function Settings() {
   const [newCategory, setNewCategory] = useState('')
   const [walletName, setWalletName] = useState('')
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
+  const [walletCashRole, setWalletCashRole] = useState<CashRole | ''>('')
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
   const [editingWalletName, setEditingWalletName] = useState('')
+  const [editingWalletCashRole, setEditingWalletCashRole] = useState<CashRole | ''>('')
   const [backupText, setBackupText] = useState('')
   const backupFileRef = useRef<HTMLInputElement>(null)
   const [pinInput, setPinInput] = useState('')
@@ -242,10 +245,21 @@ export function Settings() {
   const handleAddWallet = async () => {
     const name = walletName.trim()
     if (!name) return
-    await addWallet.mutateAsync({ name, type: walletType, balance: 0, currency: baseCurrency })
-    setWalletName('')
-    setWalletType('cash')
-    toast.success('Wallet added')
+    try {
+      await addWallet.mutateAsync({
+        name,
+        type: walletType,
+        balance: 0,
+        currency: baseCurrency,
+        cash_role: walletType === 'cash' && walletCashRole ? walletCashRole : null,
+      })
+      setWalletName('')
+      setWalletType('cash')
+      setWalletCashRole('')
+      toast.success('Wallet added')
+    } catch {
+      toast.error('Failed to add wallet — please try again')
+    }
   }
 
   const handleDeleteWallet = (id: string, name: string) => {
@@ -256,12 +270,17 @@ export function Settings() {
     if (!editingWalletId) return
     const trimmed = editingWalletName.trim()
     if (!trimmed) return
+    const wallet = wallets.find(w => w.id === editingWalletId)
     try {
-      await renameWallet.mutateAsync({ id: editingWalletId, name: trimmed })
+      if (wallet?.type === 'cash') {
+        await updateWallet.mutateAsync({ id: editingWalletId, name: trimmed, cash_role: editingWalletCashRole || null })
+      } else {
+        await renameWallet.mutateAsync({ id: editingWalletId, name: trimmed })
+      }
       setEditingWalletId(null)
-      toast.success('Wallet renamed')
+      toast.success('Wallet updated')
     } catch {
-      toast.error('Failed to rename wallet')
+      toast.error('Failed to update wallet')
     }
   }
 
@@ -533,7 +552,7 @@ export function Settings() {
                 aria-label="Wallet type"
                 className="h-10 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                 value={walletType}
-                onChange={event => setWalletType(event.target.value as Wallet['type'])}
+                onChange={event => { setWalletType(event.target.value as Wallet['type']); setWalletCashRole('') }}
               >
                 <option value="cash">Cash</option>
                 <option value="bank">Bank</option>
@@ -544,6 +563,21 @@ export function Settings() {
               </select>
               <Button onClick={handleAddWallet} disabled={addWallet.isPending}>Add wallet</Button>
             </div>
+            {walletType === 'cash' && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-muted-foreground">Cash role:</span>
+                {([['', 'General'], ['notes', 'Notes / Wallet'], ['coins', 'Coins / Pouch'], ['mixed', 'Mixed']] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setWalletCashRole(val as CashRole | '')}
+                    className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${walletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="max-h-[320px] overflow-y-auto space-y-5 pr-1">
               {walletGroups.map(group => (
                 <div key={group.type}>
@@ -552,43 +586,67 @@ export function Settings() {
                   </p>
                   <div className="space-y-1">
                     {group.wallets.map(wallet => (
-                      <div key={wallet.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-secondary px-4 py-2.5">
+                      <div key={wallet.id} className={`rounded-xl border border-border bg-secondary px-4 py-2.5 ${editingWalletId === wallet.id ? 'flex flex-col gap-2' : 'flex items-center justify-between gap-2'}`}>
                         {editingWalletId === wallet.id ? (
                           <>
-                            <input
-                              className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
-                              value={editingWalletName}
-                              autoFocus
-                              onChange={e => setEditingWalletName(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') handleSaveWalletRename()
-                                if (e.key === 'Escape') setEditingWalletId(null)
-                              }}
-                            />
-                            <button
-                              aria-label="Save wallet rename"
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
-                              onClick={handleSaveWalletRename}
-                              disabled={renameWallet.isPending}
-                            >
-                              <Check className="h-4 w-4" />
-                            </button>
-                            <button
-                              aria-label="Cancel wallet rename"
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
-                              onClick={() => setEditingWalletId(null)}
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <input
+                                className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
+                                value={editingWalletName}
+                                autoFocus
+                                onChange={e => setEditingWalletName(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSaveWalletRename()
+                                  if (e.key === 'Escape') setEditingWalletId(null)
+                                }}
+                              />
+                              <button
+                                aria-label="Save wallet rename"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                                onClick={handleSaveWalletRename}
+                                disabled={updateWallet.isPending || renameWallet.isPending}
+                              >
+                                <Check className="h-4 w-4" />
+                              </button>
+                              <button
+                                aria-label="Cancel wallet rename"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
+                                onClick={() => setEditingWalletId(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {wallet.type === 'cash' && (
+                              <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                                <span className="text-xs font-bold text-muted-foreground">Cash role:</span>
+                                {([['', 'General'], ['notes', 'Notes / Wallet'], ['coins', 'Coins / Pouch'], ['mixed', 'Mixed']] as const).map(([val, label]) => (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => setEditingWalletCashRole(val as CashRole | '')}
+                                    className={`rounded-full border px-2.5 py-0.5 text-xs font-bold transition-colors ${editingWalletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </>
                         ) : (
                           <>
-                            <span className="min-w-0 flex-1 truncate font-bold text-foreground">{wallet.name}</span>
-                            <span className="shrink-0 font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</span>
+                            <span className="min-w-0 flex-1 truncate font-bold text-foreground">
+                              {wallet.name}
+                              {wallet.cash_role && (
+                                <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                                  {wallet.cash_role === 'notes' ? 'Notes' : wallet.cash_role === 'coins' ? 'Coins' : wallet.cash_role === 'mixed' ? 'Mixed' : 'Digital'}
+                                </span>
+                              )}
+                            </span>
+                            <span className="shrink-0 font-extrabold text-foreground">{money.formatDisplay(walletBalances.get(wallet.id) ?? 0)}</span>
                             <button
                               aria-label={`Rename ${wallet.name} wallet`}
                               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
-                              onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name) }}
+                              onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name); setEditingWalletCashRole(wallet.cash_role ?? '') }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>

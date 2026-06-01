@@ -26,7 +26,7 @@ const mockTransactions = [{
   category: 'Food',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-05-20',
+  date: '2026-06-01',
   needs_review: false,
 }, {
   id: 'tx-3',
@@ -38,7 +38,7 @@ const mockTransactions = [{
   category: 'Transport',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-05-20',
+  date: '2026-06-01',
   needs_review: false,
 }, {
   id: 'tx-2',
@@ -50,13 +50,13 @@ const mockTransactions = [{
   category: 'Wage',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-05-21',
+  date: '2026-06-02',
   needs_review: false,
 }]
 
 vi.mock('@/lib/queries', () => ({
   useTransactions: () => ({ data: mockTransactions }),
-  useDeleteTransaction: () => ({ mutate: deleteTransaction }),
+  useDeleteTransaction: () => ({ mutate: deleteTransaction, mutateAsync: deleteTransaction }),
   useMarkReviewed: () => ({ mutate: vi.fn() }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
   useUpdateTransaction: () => ({ mutateAsync: updateTransaction, isPending: false }),
@@ -109,7 +109,6 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Lunch' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '120000' } })
-    fireEvent.click(screen.getByRole('button', { name: 'More options' }))
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-10' } })
     fireEvent.click(screen.getByRole('combobox', { name: 'Category' }))
     fireEvent.click(screen.getByRole('option', { name: 'Food' }))
@@ -146,7 +145,7 @@ describe('Transactions', () => {
       category: 'Food',
       wallet_id: 'cash',
       transfer_wallet_id: null,
-      date: '2026-05-20',
+      date: '2026-06-01',
       type: 'expense',
     }))
   })
@@ -158,7 +157,6 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Move to card' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '300' } })
-    fireEvent.click(screen.getByRole('button', { name: 'More options' }))
     fireEvent.change(screen.getByLabelText('From wallet'), { target: { value: 'cash' } })
     fireEvent.change(screen.getByLabelText('To wallet'), { target: { value: 'card' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }))
@@ -179,7 +177,6 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Laptop cicilan' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '1000' } })
-    fireEvent.click(screen.getByRole('button', { name: 'More options' }))
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-27' } })
     fireEvent.click(screen.getByLabelText('Recurring / Cicilan'))
     fireEvent.change(screen.getByLabelText('Recurring frequency'), { target: { value: 'monthly' } })
@@ -220,8 +217,8 @@ describe('Transactions', () => {
   it('groups history by date and shows note/category/price columns', () => {
     renderTx()
 
-    expect(screen.getByRole('heading', { name: '21 May 2026' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '20 May 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '2 Jun 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '1 Jun 2026' })).toBeInTheDocument()
     expect(screen.getAllByText('Item name').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Note').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Price').length).toBeGreaterThan(0)
@@ -242,7 +239,7 @@ describe('Transactions', () => {
   it('filters history when an expense category is selected', () => {
     renderTx()
 
-    fireEvent.click(screen.getByRole('button', { name: /View Food category/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Filter by Food/i }))
 
     expect(screen.getByRole('heading', { name: 'Food' })).toBeInTheDocument()
     expect(screen.getByText('Old lunch')).toBeInTheDocument()
@@ -256,6 +253,7 @@ describe('Transactions', () => {
     const categoryList = screen.getByTestId('expense-category-list')
     expect(categoryList).toHaveClass('max-h-[220px]')
     expect(screen.getByTestId('expense-category-list')).toHaveClass('overflow-y-auto')
-    expect(within(categoryList).queryByText('NT$100')).not.toBeInTheDocument()
+    // category buttons now show the total amount per category alongside the count
+    expect(within(categoryList).getByText('Food')).toBeInTheDocument()
   })
 })

@@ -81,6 +81,8 @@ export function Goals() {
   const totalSaved = useMemo(() => goals.reduce((s, g) => s + g.current_amount, 0), [goals])
   const overallPct = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0
   const completedGoals = goals.filter(g => g.current_amount >= g.target_amount).length
+  const urgentGoals = useMemo(() => goals.filter(g => getGoalUrgency(g) === 'urgent').length, [goals])
+  const behindGoals = useMemo(() => goals.filter(g => getGoalUrgency(g) === 'behind').length, [goals])
 
   const setField = (key: keyof FormState, value: string) => {
     setForm(f => ({ ...f, [key]: value }))
@@ -228,7 +230,12 @@ export function Goals() {
       />
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-        <StatCard label="Goals set" value={String(goals.length)} sub={`${completedGoals} completed`} badgeVariant="success" />
+        <StatCard
+          label="Goals set"
+          value={String(goals.length)}
+          sub={urgentGoals > 0 ? `⚡ ${urgentGoals} urgent · ${completedGoals} done` : behindGoals > 0 ? `⚠ ${behindGoals} behind · ${completedGoals} done` : `${completedGoals} completed`}
+          badgeVariant={urgentGoals > 0 ? 'danger' : behindGoals > 0 ? 'warning' : 'success'}
+        />
         <StatCard label="Total target" value={money.formatDisplay(totalTarget)} sub="Across all goals" />
         <StatCard label="Total saved" value={money.formatDisplay(totalSaved)} sub={`${overallPct}% of total target`} badgeVariant="warning" />
         <StatCard label="Still needed" value={money.formatDisplay(Math.max(0, totalTarget - totalSaved))} sub="Combined gap" />
@@ -283,13 +290,14 @@ export function Goals() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Target deadline</Label>
+                <Label className="text-xs text-muted-foreground">Target deadline <span className="font-normal opacity-60">(optional)</span></Label>
                 <Input
                   type="date"
                   className="mt-2 bg-secondary"
                   value={form.deadline}
                   onChange={e => setField('deadline', e.target.value)}
                 />
+                <p className="mt-1 text-[10px] text-muted-foreground/60">You can type the date directly or use the calendar icon</p>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Color</Label>

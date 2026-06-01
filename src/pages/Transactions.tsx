@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, CalendarRange, X, ReceiptText, ChevronDown } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -37,6 +37,15 @@ type Filter = 'all' | 'income' | 'expense' | 'transfer'
 type EntryType = 'income' | 'expense' | 'transfer'
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 
+function getMonthStart() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+function getLastDay(year: number, month: number) {
+  return new Date(year, month, 0).toISOString().slice(0, 10)
+}
+
 export function Transactions() {
   const money = useMoney()
   const [searchParams] = useSearchParams()
@@ -48,9 +57,8 @@ export function Transactions() {
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
   const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
   const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [showDateFilter, setShowDateFilter] = useState(false)
+  const [dateFrom, setDateFrom] = useState(getMonthStart)
+  const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
   const [ruleDescription, setRuleDescription] = useState('')
   const [ruleAmount, setRuleAmount] = useState('')
   const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
@@ -69,7 +77,13 @@ export function Transactions() {
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [installmentTotal, setInstallmentTotal] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [cashEnabled, setCashEnabled] = useState(false)
+  const [cashTendered, setCashTendered] = useState('')
+  const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
+  const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const { data: transactions = [], isPending: txPending } = useTransactions(filter)
@@ -110,14 +124,27 @@ export function Transactions() {
     })
   }, [recurringRules, runDueRecurringRules])
 
+  const walletBalances = useMemo(() => {
+    const balances = new Map(wallets.map(w => [w.id, w.balance ?? 0]))
+    transactions.forEach(tx => {
+      if (tx.type === 'income' && tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) + tx.amount)
+      if (tx.type !== 'income' && tx.type !== 'transfer' && tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
+      if (tx.type === 'transfer') {
+        if (tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
+        if (tx.transfer_wallet_id) balances.set(tx.transfer_wallet_id, (balances.get(tx.transfer_wallet_id) ?? 0) + tx.amount)
+      }
+    })
+    return balances
+  }, [wallets, transactions])
+
   const moneyIn = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const moneyOut = transactions.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0)
   const cannotSaveTransfer = type === 'transfer' && (wallets.length < 2 || !walletId || !transferWalletId || walletId === transferWalletId)
   const sortedTransactions = useMemo(
     () => {
-      let visibleTransactions = selectedCategory
-        ? transactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
-        : transactions
+      // Hide system-generated change transfers from the main list
+      let visibleTransactions = transactions.filter(tx => !tx.is_system_generated)
+      if (selectedCategory) visibleTransactions = visibleTransactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         visibleTransactions = visibleTransactions.filter(tx =>
@@ -187,7 +214,10 @@ export function Transactions() {
     setFrequency('monthly')
     setInstallmentTotal('')
     setEndDate('')
-    setShowAdvanced(false)
+    setCashEnabled(false)
+    setCashTendered('')
+    setChangeBillsWalletId('')
+    setChangeCoinsWalletId('')
     if (wallets[0]) setWalletId(wallets[0].id)
     if (wallets[1]) setTransferWalletId(wallets[1].id)
   }
@@ -208,7 +238,6 @@ export function Transactions() {
     setTransferWalletId(transaction.transfer_wallet_id ?? wallets.find(wallet => wallet.id !== transaction.wallet_id)?.id ?? '')
     setType(transaction.type === 'income' || transaction.type === 'transfer' ? transaction.type : 'expense')
     setIsRecurring(false)
-    setShowAdvanced(true)
     setIsFormOpen(true)
   }
 
@@ -217,34 +246,169 @@ export function Transactions() {
     if (!description.trim()) { toast.error('Please enter a merchant name'); return }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return }
     if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) { toast.error('Select two different wallets for a transfer'); return }
-    const selectedCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
-    if (type !== 'transfer' && (!selectedCategory || !walletId)) return
+    const txCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
+    if (type !== 'transfer' && (!txCategory || !walletId)) return
+
+    // Cash change validation
+    const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
+    if (cashEnabled && type === 'expense' && (!Number.isFinite(parsedTendered) || parsedTendered < parsedAmount)) {
+      toast.error('Cash given must be at least the expense amount')
+      return
+    }
+
     const baseAmount = money.toBase(parsedAmount, inputCurrency)
+    const baseTendered = cashEnabled ? money.toBase(parsedTendered, inputCurrency) : 0
+    const baseChange = Math.max(0, baseTendered - baseAmount)
     const parsedInstallments = parseInt(installmentTotal.replace(/[^\d]/g, ''), 10)
+
     const payload = {
       description: description.trim(),
       amount: baseAmount,
       original_amount: parsedAmount,
       original_currency: inputCurrency,
       type,
-      category: type === 'transfer' ? 'Transfer' : selectedCategory,
+      category: type === 'transfer' ? 'Transfer' : txCategory,
       wallet_id: walletId || null,
       transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
       recurring_rule_id: editingTransaction?.recurring_rule_id ?? null,
       recurring_due_date: editingTransaction?.recurring_due_date ?? null,
       date,
       needs_review: false,
+      cash_tendered: cashEnabled && baseTendered > 0 ? baseTendered : null,
     }
 
     const editingTx = editingTransaction
-    setIsFormOpen(false)  // optimistic close — no double-click needed
+    setIsFormOpen(false)
     resetForm()
     try {
       if (editingTx) {
         await updateTransaction.mutateAsync({ id: editingTx.id, ...payload })
+        // For edit: delete any previous linked change transfers and recreate with split logic
+        const prevLinkedId = editingTx.linked_transaction_id
+        const allPrevLinked = transactions.filter(tx => tx.linked_transaction_id === editingTx.id && tx.is_system_generated)
+        if (prevLinkedId && !allPrevLinked.find(tx => tx.id === prevLinkedId)) await del.mutateAsync(prevLinkedId)
+        for (const tx of allPrevLinked) await del.mutateAsync(tx.id)
+        if (cashEnabled && baseChange > 0) {
+          const isTWDEdit = inputCurrency === 'TWD'
+          const rawChangeEdit = parsedTendered - parsedAmount
+          const billsChangeEdit = isTWDEdit ? Math.floor(rawChangeEdit / 100) * 100 : 0
+          const coinsChangeEdit = isTWDEdit ? rawChangeEdit % 100 : rawChangeEdit
+          let firstEditChangeTxId: string | undefined
+          if (isTWDEdit && billsChangeEdit > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change bills — ${description.trim()}`,
+              amount: money.toBase(billsChangeEdit, inputCurrency),
+              original_amount: billsChangeEdit,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeBillsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: editingTx.id, cash_tendered: null,
+            })
+            firstEditChangeTxId = ct?.id
+          }
+          if (isTWDEdit && coinsChangeEdit > 0 && changeCoinsWalletId) {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change coins — ${description.trim()}`,
+              amount: money.toBase(coinsChangeEdit, inputCurrency),
+              original_amount: coinsChangeEdit,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: editingTx.id, cash_tendered: null,
+            })
+            if (!firstEditChangeTxId) firstEditChangeTxId = ct?.id
+          }
+          if (!isTWDEdit && changeCoinsWalletId) {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change — ${description.trim()}`,
+              amount: baseChange,
+              original_amount: rawChangeEdit,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: editingTx.id, cash_tendered: null,
+            })
+            firstEditChangeTxId = ct?.id
+          }
+          if (firstEditChangeTxId) {
+            await updateTransaction.mutateAsync({ id: editingTx.id, linked_transaction_id: firstEditChangeTxId })
+          }
+        }
         toast.success('Transaction updated')
       } else {
-        await addTransaction.mutateAsync(payload)
+        const savedTx = await addTransaction.mutateAsync(payload)
+        // Create system-generated change transfer(s) when cash given > expense
+        if (cashEnabled && baseChange > 0 && savedTx?.id) {
+          const isTWD = inputCurrency === 'TWD'
+          const rawChange = parsedTendered - parsedAmount
+          const billsChangeAmt = isTWD ? Math.floor(rawChange / 100) * 100 : 0
+          const coinsChangeAmt = isTWD ? rawChange % 100 : rawChange
+          let firstChangeTxId: string | undefined
+
+          // Bills transfer (only if destination != spending wallet and there are bills)
+          if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change bills — ${description.trim()}`,
+              amount: money.toBase(billsChangeAmt, inputCurrency),
+              original_amount: billsChangeAmt,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeBillsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            firstChangeTxId = ct?.id
+          }
+
+          // Coins transfer
+          if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
+            const ct2 = await addTransaction.mutateAsync({
+              description: `Change coins — ${description.trim()}`,
+              amount: money.toBase(coinsChangeAmt, inputCurrency),
+              original_amount: coinsChangeAmt,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            if (!firstChangeTxId) firstChangeTxId = ct2?.id
+          }
+
+          // Non-TWD: single change transfer to coinsWallet
+          if (!isTWD && changeCoinsWalletId) {
+            const ct3 = await addTransaction.mutateAsync({
+              description: `Change — ${description.trim()}`,
+              amount: baseChange,
+              original_amount: rawChange,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            firstChangeTxId = ct3?.id
+          }
+
+          if (firstChangeTxId) {
+            await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: firstChangeTxId })
+          }
+        }
         if (isRecurring) {
           const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
           await addRecurringRule.mutateAsync({
@@ -253,7 +417,7 @@ export function Transactions() {
             original_amount: parsedAmount,
             original_currency: inputCurrency,
             type,
-            category: type === 'transfer' ? 'Transfer' : selectedCategory,
+            category: type === 'transfer' ? 'Transfer' : txCategory,
             wallet_id: walletId || null,
             transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
             start_date: date,
@@ -265,7 +429,7 @@ export function Transactions() {
             active: !completedAtStart,
           })
         }
-        toast.success('Transaction added')
+        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · change routed to wallet` : 'Transaction added')
       }
     } catch {
       toast.error('Failed to save transaction')
@@ -276,11 +440,20 @@ export function Transactions() {
     setDeleteTarget(tx)
   }
 
-  const confirmDeleteTransaction = () => {
+  const confirmDeleteTransaction = async () => {
     if (!deleteTarget) return
-    del.mutate(deleteTarget.id)
-    toast.success('Transaction deleted')
+    const linkedId = deleteTarget.linked_transaction_id
+    // Find ALL system-generated transfers linked to this expense
+    const allLinked = transactions.filter(tx => tx.linked_transaction_id === deleteTarget.id && tx.is_system_generated)
     setDeleteTarget(null)
+    try {
+      await del.mutateAsync(deleteTarget.id)
+      if (linkedId && !allLinked.find(tx => tx.id === linkedId)) await del.mutateAsync(linkedId)
+      for (const tx of allLinked) await del.mutateAsync(tx.id)
+      toast.success('Transaction deleted')
+    } catch {
+      toast.error('Failed to delete transaction')
+    }
   }
 
   const handleGenerateDue = () => {
@@ -375,6 +548,71 @@ export function Transactions() {
     toast.success(`${candidate.description} added as recurring rule`)
   }
 
+  const toggleSelectMode = () => {
+    setSelectMode(v => !v)
+    setSelectedIds(new Set())
+  }
+
+  const toggleSelectId = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => setSelectedIds(new Set(sortedTransactions.map(tx => tx.id)))
+
+  const confirmBulkDelete = async () => {
+    setBulkDeleteConfirm(false)
+    const toDelete = sortedTransactions.filter(tx => selectedIds.has(tx.id))
+    // Collect linked system-generated transfers to also remove
+    const linkedIds = new Set<string>()
+    toDelete.forEach(tx => {
+      if (tx.linked_transaction_id) linkedIds.add(tx.linked_transaction_id)
+      transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated).forEach(t => linkedIds.add(t.id))
+    })
+    const deleteSet = new Set([...toDelete.map(t => t.id), ...linkedIds])
+    try {
+      for (const id of deleteSet) await del.mutateAsync(id)
+      toast.success(`${toDelete.length} transaction${toDelete.length === 1 ? '' : 's'} deleted`)
+    } catch {
+      toast.error('Failed to delete some transactions')
+    }
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const bulkMarkReviewed = async () => {
+    const toReview = sortedTransactions.filter(tx => selectedIds.has(tx.id) && tx.needs_review)
+    for (const tx of toReview) markReviewed.mutate(tx.id)
+    if (toReview.length > 0) toast.success(`${toReview.length} marked as reviewed`)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  // Month navigator
+  const _today = new Date()
+  const navYear = dateFrom ? parseInt(dateFrom.slice(0, 4)) : _today.getFullYear()
+  const navMonth = dateFrom ? parseInt(dateFrom.slice(5, 7)) : _today.getMonth() + 1
+  const isAllTime = !dateFrom && !dateTo
+  const isOnCurrentMonth = navYear === _today.getFullYear() && navMonth === _today.getMonth() + 1
+  const monthLabel = new Date(navYear, navMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  const goToPrevMonth = () => {
+    const d = new Date(navYear, navMonth - 2, 1)
+    const y = d.getFullYear(), m = d.getMonth() + 1
+    setDateFrom(`${y}-${String(m).padStart(2, '0')}-01`)
+    setDateTo(getLastDay(y, m))
+  }
+
+  const goToNextMonth = () => {
+    const d = new Date(navYear, navMonth, 1)
+    const y = d.getFullYear(), m = d.getMonth() + 1
+    setDateFrom(`${y}-${String(m).padStart(2, '0')}-01`)
+    setDateTo(getLastDay(y, m))
+  }
+
   return (
     <div>
       <PageHeader
@@ -383,24 +621,14 @@ export function Transactions() {
         searchValue={searchQuery}
         onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
         action={(
-          <div className="flex items-center gap-2">
-            <button
-              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${showDateFilter || dateFrom || dateTo ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setShowDateFilter(v => !v)}
-              title="Date range filter"
-              aria-label="Toggle date range filter"
-            >
-              <CalendarRange className="h-4 w-4" />
-            </button>
-            <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
-              <Plus className="h-4 w-4" />
-              New transaction
-            </Button>
-          </div>
+          <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
+            <Plus className="h-4 w-4" />
+            New transaction
+          </Button>
         )}
       />
       <div className="relative mb-8">
-        <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); setDateFrom(''); setDateTo('') }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
+        <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
           <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
             {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
               <TabsTrigger
@@ -473,8 +701,12 @@ export function Transactions() {
                     if (merchantSuggestion.wallet_id) setWalletId(merchantSuggestion.wallet_id)
                     setType(merchantSuggestion.type === 'income' || merchantSuggestion.type === 'transfer' ? merchantSuggestion.type : 'expense')
                   }}
+                  title="Fills in category, wallet, and type from last time you used this merchant"
                 >
-                  Use suggestion: {merchantSuggestion.category}
+                  Last time: {merchantSuggestion.category}
+                  {merchantSuggestion.wallet_id && wallets.find(w => w.id === merchantSuggestion.wallet_id) && (
+                    <span className="ml-1.5 opacity-70">· {wallets.find(w => w.id === merchantSuggestion.wallet_id)!.name}</span>
+                  )}
                 </button>
               )}
             </div>
@@ -501,63 +733,281 @@ export function Transactions() {
               </div>
             )}
 
-            {/* More options toggle */}
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(v => !v)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground active:bg-muted/40"
-            >
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`} />
-              {showAdvanced ? 'Fewer options' : 'More options'}
-            </button>
-
-            {/* Advanced fields */}
-            {showAdvanced && (
-              <div className="space-y-5">
-                {/* Currency */}
+            {/* Wallet(s) */}
+            {type !== 'transfer' ? (
+              <div>
+                <Label className="text-sm font-bold text-foreground">Wallet</Label>
+                <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => { setWalletId(event.target.value); setCashEnabled(false); setCashTendered(''); setChangeBillsWalletId(''); setChangeCoinsWalletId('') }}>
+                  {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
+                  {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                </select>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <Label className="text-sm font-bold text-foreground">Currency</Label>
-                  <select
-                    aria-label="Input currency"
-                    className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                    value={inputCurrency}
-                    onChange={event => setInputCurrency(event.target.value)}
-                  >
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  <Label className="text-sm font-bold text-foreground">From wallet</Label>
+                  <select aria-label="From wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
+                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                   </select>
                 </div>
-
-                {/* Date */}
                 <div>
-                  <Label className="text-sm font-bold text-foreground">Date</Label>
-                  <Input aria-label="Date" className="mt-2 bg-secondary" type="date" value={date} onChange={event => setDate(event.target.value)} />
+                  <Label className="text-sm font-bold text-foreground">To wallet</Label>
+                  <select aria-label="To wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={transferWalletId} onChange={event => setTransferWalletId(event.target.value)}>
+                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                  </select>
                 </div>
+              </div>
+            )}
 
-                {/* Wallet(s) */}
-                {type !== 'transfer' ? (
-                  <div>
-                    <Label className="text-sm font-bold text-foreground">Wallet</Label>
-                    <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
-                      {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
-                      {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                    </select>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <Label className="text-sm font-bold text-foreground">From wallet</Label>
-                      <select aria-label="From wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
-                        {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                      </select>
+            {/* Date + Currency — side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-bold text-foreground">Date</Label>
+                <Input aria-label="Date" className="mt-2 bg-secondary" type="date" value={date} onChange={event => setDate(event.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm font-bold text-foreground">Currency</Label>
+                <select
+                  aria-label="Input currency"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={inputCurrency}
+                  onChange={event => setInputCurrency(event.target.value)}
+                >
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+                {/* Cash Change Assistant — expense + cash wallet only */}
+                {type === 'expense' && wallets.find(w => w.id === walletId)?.type === 'cash' && (() => {
+                  const selectedWallet = wallets.find(w => w.id === walletId)!
+                  const parsedExpense = parseNumberInput(amount)
+                  const parsedTendered = parseNumberInput(cashTendered)
+                  const changeAmount = cashEnabled && Number.isFinite(parsedTendered) && parsedTendered > parsedExpense ? parsedTendered - parsedExpense : 0
+                  const isUnderpay = cashEnabled && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedExpense
+                  const otherWallets = wallets.filter(w => w.id !== walletId)
+                  const walletCurrentBal = walletBalances.get(walletId) ?? 0
+                  const showChips = selectedWallet.currency === 'TWD' && inputCurrency === 'TWD'
+                  const isTWD = inputCurrency === 'TWD'
+                  const billsChange = isTWD ? Math.floor(changeAmount / 100) * 100 : 0
+                  const coinsChange = isTWD ? changeAmount % 100 : changeAmount
+                  const hasBills = billsChange > 0
+                  const hasCoins = coinsChange > 0
+                  const twdChips = [100, 500, 1000].filter(n => !Number.isFinite(parsedExpense) || parsedExpense <= 0 || n >= parsedExpense)
+                  const validTender = Number.isFinite(parsedTendered) && parsedTendered >= parsedExpense && parsedTendered > 0
+
+                  return (
+                    <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
+                      <label className="flex cursor-pointer items-center justify-between gap-4">
+                        <span>
+                          <span className="block text-sm font-extrabold text-foreground">Cash Change Assistant</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">Track the bill given and change received</span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          aria-label="Enable cash change"
+                          className="h-5 w-5 accent-primary"
+                          checked={cashEnabled}
+                          onChange={e => {
+                            setCashEnabled(e.target.checked)
+                            if (e.target.checked) {
+                              const coinsWallet = otherWallets.find(w => w.cash_role === 'coins')
+                              setChangeCoinsWalletId(coinsWallet?.id ?? otherWallets[0]?.id ?? '')
+                              const billsWallet = otherWallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed')
+                              setChangeBillsWalletId(billsWallet?.id ?? '')
+                              if (!cashTendered && parsedExpense > 0 && showChips) {
+                                const minDenom = parsedExpense <= 100 ? 100 : parsedExpense <= 500 ? 500 : 1000
+                                setCashTendered(String(minDenom))
+                              }
+                            }
+                            if (!e.target.checked) setCashTendered('')
+                          }}
+                        />
+                      </label>
+
+                      {cashEnabled && (
+                        <div className="mt-4 space-y-4">
+                          <div>
+                            <Label className="text-xs font-bold text-muted-foreground">Cash given ({inputCurrency})</Label>
+                            <Input
+                              aria-label="Cash given"
+                              className="mt-2 bg-secondary"
+                              inputMode="decimal"
+                              value={cashTendered}
+                              onChange={e => setCashTendered(formatNumberInput(e.target.value))}
+                              placeholder="Amount you handed over"
+                            />
+                            {showChips && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setCashTendered(parsedExpense > 0 ? String(parsedExpense) : '')}
+                                  className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
+                                >
+                                  Exact
+                                </button>
+                                {twdChips.map(chip => (
+                                  <button
+                                    key={chip}
+                                    type="button"
+                                    onClick={() => setCashTendered(String(chip))}
+                                    className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTendered === chip ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
+                                  >
+                                    NT${chip.toLocaleString()}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {isUnderpay && (
+                              <p className="mt-2 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
+                            )}
+                            {!isUnderpay && Number.isFinite(parsedTendered) && parsedTendered > 0 && walletCurrentBal < money.toBase(parsedTendered, inputCurrency) && (
+                              <p className="mt-2 text-xs font-bold text-[#FFCF73]">⚠ Wallet balance {money.formatBase(walletCurrentBal)} may be lower than cash given</p>
+                            )}
+                          </div>
+
+                          {changeAmount > 0 && isTWD && hasBills && hasCoins && (
+                            <>
+                              <div>
+                                <Label className="text-xs font-bold text-muted-foreground">
+                                  Bills change (NT${billsChange.toLocaleString()}) stays in
+                                </Label>
+                                <select
+                                  aria-label="Bills change destination wallet"
+                                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                  value={changeBillsWalletId}
+                                  onChange={e => setChangeBillsWalletId(e.target.value)}
+                                >
+                                  <option value="">Keep in {selectedWallet.name}</option>
+                                  {otherWallets.map(w => (
+                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label className="text-xs font-bold text-muted-foreground">
+                                  Coins change (NT${coinsChange.toLocaleString()}) goes to
+                                </Label>
+                                <select
+                                  aria-label="Coins change destination wallet"
+                                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                  value={changeCoinsWalletId}
+                                  onChange={e => setChangeCoinsWalletId(e.target.value)}
+                                >
+                                  {otherWallets.map(w => (
+                                    <option key={w.id} value={w.id}>
+                                      {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </>
+                          )}
+                          {changeAmount > 0 && isTWD && hasBills && !hasCoins && (
+                            <div>
+                              <Label className="text-xs font-bold text-muted-foreground">
+                                Bills change (NT${billsChange.toLocaleString()}) stays in
+                              </Label>
+                              <select
+                                aria-label="Bills change destination wallet"
+                                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                value={changeBillsWalletId}
+                                onChange={e => setChangeBillsWalletId(e.target.value)}
+                              >
+                                <option value="">Keep in {selectedWallet.name}</option>
+                                {otherWallets.map(w => (
+                                  <option key={w.id} value={w.id}>{w.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          {changeAmount > 0 && isTWD && !hasBills && hasCoins && (
+                            <div>
+                              <Label className="text-xs font-bold text-muted-foreground">
+                                Coins change (NT${coinsChange.toLocaleString()}) goes to
+                              </Label>
+                              <select
+                                aria-label="Coins change destination wallet"
+                                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                value={changeCoinsWalletId}
+                                onChange={e => setChangeCoinsWalletId(e.target.value)}
+                              >
+                                {otherWallets.map(w => (
+                                  <option key={w.id} value={w.id}>
+                                    {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          {changeAmount > 0 && !isTWD && (
+                            <div>
+                              <Label className="text-xs font-bold text-muted-foreground">
+                                Change ({money.format(changeAmount, inputCurrency)}) goes to
+                              </Label>
+                              <select
+                                aria-label="Change destination wallet"
+                                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                value={changeCoinsWalletId}
+                                onChange={e => setChangeCoinsWalletId(e.target.value)}
+                              >
+                                <option value="">Keep in same wallet (no transfer)</option>
+                                {otherWallets.map(w => (
+                                  <option key={w.id} value={w.id}>
+                                    {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          {validTender && (
+                            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                              <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Balance preview</p>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">{selectedWallet.name}</span>
+                                  <span className="font-extrabold text-foreground">
+                                    {money.formatDisplay(walletCurrentBal)} → {money.formatDisplay(walletCurrentBal - money.toBase(parsedTendered, inputCurrency))}
+                                  </span>
+                                </div>
+                                {hasBills && changeBillsWalletId && changeBillsWalletId !== walletId && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeBillsWalletId)?.name}</span>
+                                    <span className="font-extrabold text-foreground">
+                                      {money.formatDisplay(walletBalances.get(changeBillsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeBillsWalletId) ?? 0) + money.toBase(billsChange, inputCurrency))}
+                                    </span>
+                                  </div>
+                                )}
+                                {hasCoins && changeCoinsWalletId && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeCoinsWalletId)?.name}</span>
+                                    <span className="font-extrabold text-foreground">
+                                      {money.formatDisplay(walletBalances.get(changeCoinsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeCoinsWalletId) ?? 0) + money.toBase(coinsChange, inputCurrency))}
+                                    </span>
+                                  </div>
+                                )}
+                                {!isTWD && changeAmount > 0 && changeCoinsWalletId && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeCoinsWalletId)?.name}</span>
+                                    <span className="font-extrabold text-foreground">
+                                      {money.formatDisplay(walletBalances.get(changeCoinsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeCoinsWalletId) ?? 0) + money.toBase(changeAmount, inputCurrency))}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                                  <span className="text-muted-foreground">Expense recorded</span>
+                                  <span className="font-extrabold text-primary">{money.format(parsedExpense, inputCurrency)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <Label className="text-sm font-bold text-foreground">To wallet</Label>
-                      <select aria-label="To wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={transferWalletId} onChange={event => setTransferWalletId(event.target.value)}>
-                        {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 {/* Recurring */}
                 {!editingTransaction && (
@@ -599,13 +1049,12 @@ export function Transactions() {
                   </div>
                 )}
               </div>
-            )}
 
             <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
               {editingTransaction ? 'Save transaction' : 'Add transaction'}
             </Button>
-            <Button variant="secondary" className="mt-2 w-full lg:hidden" onClick={() => setIsFormOpen(false)}>
-              Close
+            <Button variant="secondary" className="mt-2 w-full" onClick={() => setIsFormOpen(false)}>
+              Cancel
             </Button>
           </div>
         </SheetContent>
@@ -664,45 +1113,13 @@ export function Transactions() {
             <Button className="mt-4 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
               Save rule
             </Button>
-            <Button variant="secondary" className="mt-2 w-full lg:hidden" onClick={() => setEditingRule(null)}>
-              Close
+            <Button variant="secondary" className="mt-2 w-full" onClick={() => setEditingRule(null)}>
+              Cancel
             </Button>
           </div>
         </SheetContent>
       </Sheet>
 
-      {showDateFilter && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-border bg-card px-4 py-4 sm:px-6">
-          <span className="text-sm font-bold text-muted-foreground">Date range</span>
-          <Input
-            type="date"
-            aria-label="Date from"
-            className="h-9 w-auto min-w-0 bg-secondary text-sm"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-          />
-          <span className="text-muted-foreground">→</span>
-          <Input
-            type="date"
-            aria-label="Date to"
-            className="h-9 w-auto min-w-0 bg-secondary text-sm"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-          />
-          {(dateFrom || dateTo) && (
-            <button
-              className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
-              onClick={() => { setDateFrom(''); setDateTo('') }}
-            >
-              <X className="h-3 w-3" />
-              Clear
-            </button>
-          )}
-          {(dateFrom || dateTo) && (
-            <span className="text-xs text-primary font-bold">{sortedTransactions.length} result{sortedTransactions.length !== 1 ? 's' : ''}</span>
-          )}
-        </div>
-      )}
 
       {expenseCategoryTotals.length > 0 && (
         <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
@@ -715,12 +1132,15 @@ export function Transactions() {
               <button
                 key={name}
                 type="button"
-                aria-label={`View ${name} category`}
+                aria-label={`Filter by ${name} — ${value.count} transaction${value.count === 1 ? '' : 's'}`}
                 className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selectedCategory === name ? 'border-primary bg-primary/10' : 'border-border bg-secondary hover:bg-muted/50'}`}
                 onClick={() => setSelectedCategory(name)}
               >
                 <span className="min-w-0 truncate font-extrabold text-foreground">{name}</span>
-                <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{value.count} item{value.count === 1 ? '' : 's'}</span>
+                <div className="shrink-0 flex flex-col items-end gap-0.5">
+                  <span className="text-xs font-extrabold text-foreground">{money.formatDisplay(value.total)}</span>
+                  <span className="text-[10px] text-muted-foreground">{value.count} item{value.count === 1 ? '' : 's'}</span>
+                </div>
               </button>
             ))}
           </div>
@@ -807,8 +1227,73 @@ export function Transactions() {
             </div>
           </div>
         ) : (
-          <h2 className="mb-4 text-xl font-extrabold text-foreground">Transaction history</h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-xl font-extrabold text-foreground">Transaction history</h2>
+            <div className="flex items-center gap-2">
+              {selectMode && sortedTransactions.length > 0 && (
+                <>
+                  <span className="text-xs font-bold text-muted-foreground">{selectedIds.size} selected</span>
+                  <button
+                    onClick={selectAll}
+                    className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
+              <button
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${selectMode ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                onClick={toggleSelectMode}
+                aria-label="Toggle multi-select"
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                Select
+              </button>
+            </div>
+          </div>
         )}
+
+        {/* Month navigator */}
+        <div className="mb-5 flex items-center gap-1">
+          <button
+            onClick={goToPrevMonth}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex flex-1 items-center justify-center gap-2">
+            <span className={`text-sm font-extrabold ${isAllTime ? 'text-muted-foreground' : 'text-foreground'}`}>
+              {isAllTime ? 'All transactions' : monthLabel}
+            </span>
+            {!isAllTime && (
+              <span className="text-xs text-muted-foreground">· {sortedTransactions.length}</span>
+            )}
+          </div>
+          <button
+            onClick={goToNextMonth}
+            disabled={isOnCurrentMonth || isAllTime}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          {!isAllTime && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+              className="ml-1 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              All
+            </button>
+          )}
+        </div>
+
         {txPending ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -829,47 +1314,66 @@ export function Transactions() {
 
             {/* Mobile card list */}
             {!isDesktop && <div className="flex flex-col gap-2">
-              {rows.map(tx => (
-                <div
-                  key={tx.id}
-                  className={`rounded-xl border border-border px-4 py-3 ${tx.needs_review ? 'bg-[#FFCF73]/5' : 'bg-secondary'}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />}
-                        <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+              {rows.map(tx => {
+                const isSelected = selectedIds.has(tx.id)
+                return (
+                  <div
+                    key={tx.id}
+                    className={`rounded-xl border px-4 py-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-border bg-[#FFCF73]/5' : 'border-border bg-secondary'} ${selectMode ? 'cursor-pointer' : ''}`}
+                    onClick={selectMode ? () => toggleSelectId(tx.id) : undefined}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {selectMode ? (
+                            isSelected
+                              ? <CheckSquare className="h-4 w-4 shrink-0 text-primary" />
+                              : <Square className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          ) : tx.needs_review ? (
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />
+                          ) : null}
+                          <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {tx.category}
+                          {tx.cash_tendered && tx.cash_tendered > 0 && (
+                            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                              Cash · {money.formatDisplay(tx.cash_tendered)} given
+                            </span>
+                          )}
+                        </p>
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{tx.category}</p>
+                      <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                        {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                      </span>
                     </div>
-                    <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
-                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
-                    </span>
+                    {!selectMode && (
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                          {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
+                        </p>
+                        <div className="flex gap-1">
+                          {tx.needs_review && (
+                            <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                              <CheckCircle size={17} />
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                            <Copy size={17} />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                            <Pencil size={17} />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                            <Trash2 size={17} />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
-                      {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
-                    </p>
-                    <div className="flex gap-1">
-                      {tx.needs_review && (
-                        <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
-                          <CheckCircle size={17} />
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
-                        <Copy size={17} />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
-                        <Pencil size={17} />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
-                        <Trash2 size={17} />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>}
 
             {/* Desktop table */}
@@ -877,48 +1381,70 @@ export function Transactions() {
               <Table className="min-w-[820px]">
                 <TableBody>
                   <TableRow className="border-border bg-secondary/70 hover:bg-secondary/70">
+                    {selectMode && <TableCell className="w-10 py-2" />}
                     <TableCell className="py-2 text-xs font-bold text-muted-foreground">Item name</TableCell>
                     <TableCell className="py-2 text-xs font-bold text-muted-foreground">Category</TableCell>
                     <TableCell className="py-2 text-xs font-bold text-muted-foreground">Note</TableCell>
                     <TableCell className="py-2 text-right text-xs font-bold text-muted-foreground">Price</TableCell>
-                    <TableCell className="py-2" />
+                    {!selectMode && <TableCell className="py-2" />}
                   </TableRow>
-                  {rows.map(tx => (
-                    <TableRow key={tx.id} className={`border-border hover:bg-muted/10 ${tx.needs_review ? 'bg-[#FFCF73]/5' : ''}`}>
-                      <TableCell className="w-1/4 py-3 text-foreground">
-                        <div className="flex items-center gap-2">
-                          {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />}
-                          {tx.description}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{tx.category}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
-                        {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
-                      </TableCell>
-                      <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
-                        {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
-                      </TableCell>
-                      <TableCell className="w-[124px]">
-                        <div className="flex justify-end gap-1">
-                          {tx.needs_review && (
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
-                              <CheckCircle size={15} />
-                            </Button>
+                  {rows.map(tx => {
+                    const isSelected = selectedIds.has(tx.id)
+                    return (
+                      <TableRow
+                        key={tx.id}
+                        className={`border-border transition-colors ${isSelected ? 'bg-primary/5 hover:bg-primary/8' : tx.needs_review ? 'bg-[#FFCF73]/5 hover:bg-[#FFCF73]/10' : 'hover:bg-muted/10'} ${selectMode ? 'cursor-pointer' : ''}`}
+                        onClick={selectMode ? () => toggleSelectId(tx.id) : undefined}
+                      >
+                        {selectMode && (
+                          <TableCell className="w-10 py-3">
+                            {isSelected
+                              ? <CheckSquare className="h-4 w-4 text-primary" />
+                              : <Square className="h-4 w-4 text-muted-foreground" />}
+                          </TableCell>
+                        )}
+                        <TableCell className="w-1/4 py-3 text-foreground">
+                          <div className="flex items-center gap-2">
+                            {!selectMode && tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />}
+                            {tx.description}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{tx.category}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                          {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
+                          {tx.cash_tendered && tx.cash_tendered > 0 && (
+                            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                              Cash
+                            </span>
                           )}
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
-                            <Copy size={15} />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
-                            <Pencil size={15} />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
-                            <Trash2 size={15} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
+                          {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                        </TableCell>
+                        {!selectMode && (
+                          <TableCell className="w-[124px]">
+                            <div className="flex justify-end gap-1">
+                              {tx.needs_review && (
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                                  <CheckCircle size={15} />
+                                </Button>
+                              )}
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                                <Copy size={15} />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                                <Pencil size={15} />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                                <Trash2 size={15} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>}
@@ -939,6 +1465,36 @@ export function Transactions() {
           </div>
         )}
       </div>
+      {/* Bulk action bar — shown when items are selected */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 shadow-lg sm:px-6">
+          <span className="text-sm font-extrabold text-foreground">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={bulkMarkReviewed}
+              disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
+            >
+              <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+              Mark reviewed
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+              onClick={() => setBulkDeleteConfirm(true)}
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Delete
+            </Button>
+            <Button size="sm" variant="secondary" onClick={toggleSelectMode}>
+              <X className="mr-1.5 h-3.5 w-3.5" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget ? `Delete ${deleteTarget.description}?` : ''}
@@ -952,6 +1508,13 @@ export function Transactions() {
         description="Existing generated transactions stay in history. Only future automatic payments stop."
         onCancel={() => setDeleteRuleTarget(null)}
         onConfirm={confirmDeleteRule}
+      />
+      <ConfirmDialog
+        open={bulkDeleteConfirm}
+        title={`Delete ${selectedIds.size} transaction${selectedIds.size === 1 ? '' : 's'}?`}
+        description="This permanently removes all selected transactions and any linked change transfers."
+        onCancel={() => setBulkDeleteConfirm(false)}
+        onConfirm={confirmBulkDelete}
       />
     </div>
   )

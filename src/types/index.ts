@@ -13,6 +13,9 @@ export interface Transaction {
   recurring_due_date?: string | null
   date: string
   needs_review: boolean
+  is_system_generated?: boolean | null
+  linked_transaction_id?: string | null
+  cash_tendered?: number | null
   created_at?: string
 }
 
@@ -39,6 +42,8 @@ export interface RecurringRule {
   created_at?: string
 }
 
+export type CashRole = 'notes' | 'coins' | 'mixed' | 'digital_cash'
+
 export interface Wallet {
   id: string
   user_id?: string | null
@@ -46,6 +51,8 @@ export interface Wallet {
   type: 'cash' | 'bank' | 'card' | 'e_wallet' | 'investment' | 'other'
   balance: number
   currency: string
+  cash_role?: CashRole | null
+  default_change_wallet_id?: string | null
   created_at?: string
 }
 

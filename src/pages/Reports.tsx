@@ -78,6 +78,7 @@ export function Reports() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedWalletId, setSelectedWalletId] = useState<string>('')
   const [clickedBucket, setClickedBucket] = useState<string | null>(null)
+  const [showInternalMoves, setShowInternalMoves] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importText, setImportText] = useState('')
   const [importing, setImporting] = useState(false)
@@ -86,7 +87,14 @@ export function Reports() {
   const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate), [periodDate, range])
   const periodLabel = formatPeriodLabel(range, periodDate)
 
+  const internalMovesTx = useMemo(() => transactions.filter(tx => {
+    if (!tx.is_system_generated) return false
+    const txDate = new Date(tx.date)
+    return txDate >= rangeStart && txDate < rangeEnd
+  }), [rangeEnd, rangeStart, transactions])
+
   const rangeTx = useMemo(() => transactions.filter(tx => {
+    if (tx.is_system_generated) return false
     const txDate = new Date(tx.date)
     const inRange = txDate >= rangeStart && txDate < rangeEnd
     const inWallet = !selectedWalletId || tx.wallet_id === selectedWalletId
@@ -348,6 +356,14 @@ export function Reports() {
                 {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             )}
+            {internalMovesTx.length > 0 && (
+              <button
+                onClick={() => setShowInternalMoves(v => !v)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${showInternalMoves ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+              >
+                Cash movements ({internalMovesTx.length})
+              </button>
+            )}
             <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportCSV} disabled={rangeTx.length === 0}>
               <Download className="h-4 w-4" />
               Export CSV
@@ -454,7 +470,7 @@ export function Reports() {
             <div className="mt-4 rounded-2xl border border-border bg-secondary/60 p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-extrabold text-foreground">{clickedBucket} — {bucketTx.length} transaction{bucketTx.length !== 1 ? 's' : ''}</p>
-                <button onClick={() => setClickedBucket(null)} className="rounded-full p-1 text-muted-foreground hover:text-foreground">✕</button>
+                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" title="Close" className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">✕</button>
               </div>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {bucketTx.map(tx => (
@@ -567,7 +583,9 @@ export function Reports() {
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-extrabold text-foreground">{name}</p>
-                    <p className="text-xs text-muted-foreground">{categoryCounts[name] ?? 0} transaction{(categoryCounts[name] ?? 0) !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {categoryCounts[name] ?? 0} transaction{(categoryCounts[name] ?? 0) !== 1 ? 's' : ''} · avg {money.formatDisplay(Math.round(amount / Math.max(1, categoryCounts[name] ?? 1)))}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -600,6 +618,32 @@ export function Reports() {
                 </p>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {showInternalMoves && internalMovesTx.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Cash movements</CardTitle>
+            <p className="text-sm text-muted-foreground">System-generated change transfers from Cash Change Assistant.</p>
+          </CardHeader>
+          <CardContent className="space-y-2 px-5 pb-6 sm:px-8">
+            {internalMovesTx.sort((a, b) => b.date.localeCompare(a.date)).map(tx => {
+              const fromWallet = wallets.find(w => w.id === tx.wallet_id)
+              const toWallet = wallets.find(w => w.id === tx.transfer_wallet_id)
+              return (
+                <div key={tx.id} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-foreground">{tx.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tx.date} · {fromWallet?.name ?? 'wallet'} → {toWallet?.name ?? 'wallet'}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-extrabold text-foreground">{money.formatDisplay(tx.amount)}</p>
+                </div>
+              )
+            })}
           </CardContent>
         </Card>
       )}
