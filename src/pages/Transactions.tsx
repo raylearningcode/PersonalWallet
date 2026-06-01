@@ -596,14 +596,6 @@ export function Transactions() {
         action={(
           <div className="flex items-center gap-2">
             <button
-              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${selectMode ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
-              onClick={toggleSelectMode}
-              title="Select multiple"
-              aria-label="Toggle multi-select"
-            >
-              <CheckSquare className="h-4 w-4" />
-            </button>
-            <button
               className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${showDateFilter || dateFrom || dateTo ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
               onClick={() => setShowDateFilter(v => !v)}
               title="Date range filter"
@@ -1258,23 +1250,33 @@ export function Transactions() {
         ) : (
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-xl font-extrabold text-foreground">Transaction history</h2>
-            {selectMode && sortedTransactions.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-muted-foreground">{selectedIds.size} selected</span>
-                <button
-                  onClick={selectAll}
-                  className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
-                >
-                  Select all
-                </button>
-                <button
-                  onClick={() => setSelectedIds(new Set())}
-                  className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {selectMode && sortedTransactions.length > 0 && (
+                <>
+                  <span className="text-xs font-bold text-muted-foreground">{selectedIds.size} selected</span>
+                  <button
+                    onClick={selectAll}
+                    className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className="rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
+              <button
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${selectMode ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                onClick={toggleSelectMode}
+                aria-label="Toggle multi-select"
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                Select
+              </button>
+            </div>
           </div>
         )}
         {txPending ? (
