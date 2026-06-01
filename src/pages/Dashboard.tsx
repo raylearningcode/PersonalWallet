@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals, useAuthSession } from '@/lib/queries'
 import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { StatCard } from '@/components/shared/StatCard'
@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export function Dashboard() {
   const money = useMoney()
   const fmt = money.formatDisplay
+  const navigate = useNavigate()
   const [showDetails, setShowDetails] = useState(false)
   const { data: transactions = [], isPending: txPending } = useTransactions()
   const { data: investConfig } = useInvestmentConfig()
@@ -349,11 +350,13 @@ export function Dashboard() {
             <h2 className="text-lg font-extrabold text-foreground">Recent</h2>
             <Link to="/transactions" className="text-sm font-bold text-primary hover:underline">View all →</Link>
           </div>
-          <div className="rounded-2xl border border-border bg-card">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
             {recentTransactions.map((tx, i) => (
-              <div
+              <button
                 key={tx.id}
-                className={`flex items-center justify-between gap-4 px-4 py-3.5 ${i < recentTransactions.length - 1 ? 'border-b border-border' : ''}`}
+                type="button"
+                onClick={() => navigate('/transactions')}
+                className={`flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-colors active:bg-secondary/50 ${i < recentTransactions.length - 1 ? 'border-b border-border' : ''}`}
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
@@ -362,7 +365,7 @@ export function Dashboard() {
                 <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
                   {txAmountSign(tx.amount, tx.type)}{fmt(tx.amount)}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>

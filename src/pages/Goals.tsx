@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Bookmark, Copy, Plus, Pencil, Trash2, Target, TrendingUp } from 'lucide-react'
+import { Bookmark, ChevronRight, Plus, Pencil, Trash2, Target, TrendingUp } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
 import type { Goal } from '@/types'
 
@@ -70,7 +71,7 @@ export function Goals() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm())
-  const [contributeTarget, setContributeTarget] = useState<Goal | null>(null)
+  const [sheetGoal, setSheetGoal] = useState<Goal | null>(null)
   const [contributeAmount, setContributeAmount] = useState('')
   const [contributeWalletId, setContributeWalletId] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null)
@@ -160,19 +161,16 @@ export function Goals() {
   }
 
   const handleContribute = async () => {
-    if (!contributeTarget) return
+    if (!sheetGoal) return
     const amount = money.toBase(parseNumberInput(contributeAmount), money.displayCurrency)
     if (amount <= 0) { toast.error('Enter a valid amount'); return }
-    const target = contributeTarget
+    const target = sheetGoal
     const wallet = wallets.find(w => w.id === contributeWalletId)
     const newAmount = target.current_amount + amount
-    setContributeTarget(null)
     setContributeAmount('')
     setContributeWalletId('')
     try {
       await updateGoal.mutateAsync({ id: target.id, current_amount: newAmount })
-      // Create a ledger transaction so the contribution appears in transaction history
-      // and debits the selected wallet
       if (wallet) {
         await addTransaction.mutateAsync({
           user_id: null,
@@ -406,101 +404,63 @@ export function Goals() {
             const done = goal.current_amount >= goal.target_amount
             const remaining = Math.max(0, goal.target_amount - goal.current_amount)
             const daysLeft = goal.deadline ? Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86_400_000) : null
-
-            // Completion forecast
-            const now = new Date()
-            const monthsSoFar = goal.deadline
-              ? Math.max(1, (new Date(goal.deadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))
-              : 6
-            const monthlyRate = goal.current_amount / Math.max(1, monthsSoFar)
-            const monthsToComplete = monthlyRate > 0 ? Math.ceil(remaining / monthlyRate) : null
-            const requiredMonthly = goal.deadline && daysLeft !== null && daysLeft > 0
-              ? Math.ceil(remaining / Math.max(1, daysLeft / 30))
-              : null
+            const urgency = getGoalUrgency(goal)
 
             return (
               <Card key={goal.id} className="relative overflow-hidden">
                 <div className="pointer-events-none absolute inset-y-0 left-0 w-1 rounded-l-[inherit]" style={{ backgroundColor: goal.color }} />
-                <CardContent className="p-5 sm:p-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: goal.color + '33', color: goal.color }}>{goal.category}</span>
-                      {(() => {
-                        const urgency = getGoalUrgency(goal)
-                        if (!urgency) return null
-                        return (
-                          <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-bold ${urgency === 'urgent' ? 'bg-[#FF8388]/20 text-[#FF8388]' : 'bg-[#FFCF73]/20 text-[#FFCF73]'}`}>
-                            {urgency === 'urgent' ? '⚡ Urgent' : '⚠ Behind'}
-                          </span>
-                        )
-                      })()}
-                      <h3 className="mt-2 truncate text-lg font-extrabold text-foreground">{goal.name}</h3>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        className={`min-h-[44px] min-w-[44px] rounded-xl p-2.5 transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
-                        onClick={() => pinGoal(goal.id)}
-                        title={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
-                        aria-label={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
-                      >
-                        <Bookmark className="h-5 w-5" fill={pinnedGoalId === goal.id ? 'currentColor' : 'none'} />
-                      </button>
-                      <button
-                        type="button"
-                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                        onClick={() => handleDuplicateGoal(goal)}
-                        disabled={addGoal.isPending}
-                        title="Duplicate goal"
-                        aria-label={`Duplicate ${goal.name}`}
-                      >
-                        <Copy className="h-5 w-5" />
-                      </button>
-                      <button
-                        type="button"
-                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                        onClick={() => startEdit(goal)}
-                        title="Edit goal"
-                        aria-label={`Edit ${goal.name}`}
-                      >
-                        <Pencil className="h-5 w-5" />
-                      </button>
-                      <button
-                        type="button"
-                        className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-[#FF8388]/50 transition-colors hover:bg-[#FF8388]/10 hover:text-[#FF8388] disabled:opacity-40"
-                        onClick={() => setDeleteTarget(goal)}
-                        disabled={deleteGoal.isPending}
-                        title="Delete goal"
-                        aria-label={`Delete ${goal.name}`}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="flex items-end justify-between gap-2">
-                      <div>
-                        <p className="text-2xl font-extrabold text-foreground">{money.formatDisplay(goal.current_amount)}</p>
-                        <p className="text-xs text-muted-foreground">of {money.formatDisplay(goal.target_amount)}</p>
+                <CardContent className="p-0">
+                  {/* Tappable card body → opens detail sheet */}
+                  <button
+                    type="button"
+                    onClick={() => { setSheetGoal(goal); setContributeAmount(''); setContributeWalletId(wallets[0]?.id ?? '') }}
+                    className="w-full rounded-[inherit] p-5 text-left transition-colors hover:bg-secondary/30 active:scale-[0.995] sm:p-6"
+                    aria-label={`Open ${goal.name} details`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: goal.color + '33', color: goal.color }}>{goal.category}</span>
+                          {urgency && (
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${urgency === 'urgent' ? 'bg-[#FF8388]/20 text-[#FF8388]' : 'bg-[#FFCF73]/20 text-[#FFCF73]'}`}>
+                              {urgency === 'urgent' ? '⚡ Urgent' : '⚠ Behind'}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="mt-2 truncate text-lg font-extrabold text-foreground">{goal.name}</h3>
                       </div>
-                      <p className={`text-xl font-extrabold ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${pinnedGoalId === goal.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                          onClick={e => { e.stopPropagation(); pinGoal(goal.id) }}
+                          aria-label={pinnedGoalId === goal.id ? 'Unpin from sidebar' : 'Pin to sidebar'}
+                        >
+                          <Bookmark className="h-4 w-4" fill={pinnedGoalId === goal.id ? 'currentColor' : 'none'} />
+                        </button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     </div>
-                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, backgroundColor: goal.color }}
-                      />
-                    </div>
-                  </div>
 
-                  {done ? (
-                    <div className="mt-3 flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-bold text-primary">Goal reached!</p>
+                    <div className="mt-4">
+                      <div className="flex items-end justify-between gap-2">
+                        <div>
+                          <p className="text-2xl font-extrabold text-foreground">{money.formatDisplay(goal.current_amount)}</p>
+                          <p className="text-xs text-muted-foreground">of {money.formatDisplay(goal.target_amount)}</p>
+                        </div>
+                        <p className={`text-xl font-extrabold ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
+                      </div>
+                      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
+                      </div>
                     </div>
-                  ) : (
-                    <>
+
+                    {done ? (
+                      <div className="mt-3 flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                        <p className="text-sm font-bold text-primary">Goal reached!</p>
+                      </div>
+                    ) : (
                       <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                         <span>{money.formatDisplay(remaining)} remaining</span>
                         {daysLeft !== null && (
@@ -509,71 +469,155 @@ export function Goals() {
                           </span>
                         )}
                       </div>
-                      {/* Completion forecast */}
-                      {daysLeft !== null && daysLeft <= 0 ? (
-                        <div className="mt-2 space-y-1 rounded-xl border border-[#FF8388]/20 bg-[#FF8388]/5 px-3 py-2">
-                          <p className="text-xs font-bold text-[#FF8388]">Deadline passed — recovery options:</p>
-                          <p className="text-xs text-muted-foreground">Extend deadline by 6 months</p>
-                          {monthlyRate > 0 && (
-                            <p className="text-xs text-muted-foreground">Increase monthly contribution to {money.formatDisplay(Math.ceil(remaining / 6))}/month</p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="mt-2 space-y-0.5">
-                          {monthsToComplete !== null && (
-                            <p className="text-xs text-muted-foreground">At this pace, goal completes in ~{monthsToComplete} month{monthsToComplete !== 1 ? 's' : ''}</p>
-                          )}
-                          {requiredMonthly !== null && (
-                            <p className="text-xs text-primary">To finish by deadline, save {money.formatDisplay(requiredMonthly)}/month</p>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {goal.notes && <p className="mt-3 text-xs text-muted-foreground">{goal.notes}</p>}
-
-                  {!done && (
-                    contributeTarget?.id === goal.id ? (
-                      <div className="mt-4 space-y-2">
-                        <select
-                          aria-label="Wallet source"
-                          className="h-9 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                          value={contributeWalletId}
-                          onChange={e => setContributeWalletId(e.target.value)}
-                        >
-                          <option value="">From: no specific wallet</option>
-                          {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                        </select>
-                        <div className="flex gap-2">
-                          <MoneyInput
-                            className="h-9 min-w-0 flex-1 bg-secondary text-sm"
-                            placeholder={`Amount (${money.displayCurrency})`}
-                            value={contributeAmount}
-                            onValueChange={setContributeAmount}
-                            autoFocus
-                          />
-                          <Button size="sm" className="shrink-0" onClick={handleContribute} disabled={updateGoal.isPending || addTransaction.isPending}>Log</Button>
-                          <Button size="sm" variant="secondary" className="shrink-0" onClick={() => { setContributeTarget(null); setContributeAmount(''); setContributeWalletId('') }}>✕</Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="mt-4 w-full"
-                        onClick={() => { setContributeTarget(goal); setContributeAmount('') }}
-                      >
-                        Log contribution
-                      </Button>
-                    )
-                  )}
+                    )}
+                  </button>
                 </CardContent>
               </Card>
             )
           })}
         </div>
       )}
+
+      {/* Goal detail sheet */}
+      <Sheet open={!!sheetGoal} onOpenChange={open => { if (!open) { setSheetGoal(null); setContributeAmount(''); setContributeWalletId('') } }}>
+        <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+          {sheetGoal && (() => {
+            const g = sheetGoal
+            const pct = g.target_amount > 0 ? Math.min(100, Math.round((g.current_amount / g.target_amount) * 100)) : 0
+            const done = g.current_amount >= g.target_amount
+            const remaining = Math.max(0, g.target_amount - g.current_amount)
+            const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline).getTime() - Date.now()) / 86_400_000) : null
+            const urgency = getGoalUrgency(g)
+            const requiredMonthly = g.deadline && daysLeft !== null && daysLeft > 0
+              ? Math.ceil(remaining / Math.max(1, daysLeft / 30))
+              : null
+            const now = new Date()
+            const monthsSoFar = g.deadline
+              ? Math.max(1, (new Date(g.deadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))
+              : 6
+            const monthlyRate = g.current_amount / Math.max(1, monthsSoFar)
+            const monthsToComplete = monthlyRate > 0 && !done ? Math.ceil(remaining / monthlyRate) : null
+
+            return (
+              <div>
+                <div className="px-6 pb-4 pt-2">
+                  <SheetHeader className="mb-4 text-left">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                      <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: g.color + '33', color: g.color }}>{g.category}</span>
+                      {urgency && (
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${urgency === 'urgent' ? 'bg-[#FF8388]/20 text-[#FF8388]' : 'bg-[#FFCF73]/20 text-[#FFCF73]'}`}>
+                          {urgency === 'urgent' ? '⚡ Urgent' : '⚠ Behind'}
+                        </span>
+                      )}
+                    </div>
+                    <SheetTitle className="text-xl font-extrabold">{g.name}</SheetTitle>
+                    <SheetDescription className="sr-only">Goal details</SheetDescription>
+                  </SheetHeader>
+
+                  {/* Progress */}
+                  <div className="mb-5 text-center">
+                    <p className={`text-5xl font-extrabold tracking-tight ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{money.formatDisplay(g.current_amount)} of {money.formatDisplay(g.target_amount)}</p>
+                    <div className="mx-auto mt-3 h-3 w-full max-w-xs overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: g.color }} />
+                    </div>
+                    {done && (
+                      <div className="mx-auto mt-3 flex max-w-xs items-center justify-center gap-2 rounded-xl bg-primary/10 px-4 py-2">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                        <p className="text-sm font-bold text-primary">Goal reached!</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stats grid */}
+                  <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      { label: 'Saved', value: money.formatDisplay(g.current_amount) },
+                      { label: 'Target', value: money.formatDisplay(g.target_amount) },
+                      { label: 'Remaining', value: money.formatDisplay(remaining) },
+                      { label: 'Deadline', value: g.deadline ? (daysLeft !== null && daysLeft <= 0 ? 'Passed' : daysLeft !== null ? `${daysLeft}d left` : g.deadline) : 'None' },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="rounded-xl border border-border bg-secondary/50 px-3 py-3 text-center">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+                        <p className="mt-1 text-sm font-extrabold text-foreground">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pace info */}
+                  {!done && (
+                    <div className="mb-5 space-y-1.5 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm">
+                      {monthsToComplete !== null && (
+                        <p className="text-muted-foreground">At this pace: completes in ~{monthsToComplete} month{monthsToComplete !== 1 ? 's' : ''}</p>
+                      )}
+                      {requiredMonthly !== null && (
+                        <p className="font-bold text-primary">Save {money.formatDisplay(requiredMonthly)}/month to meet deadline</p>
+                      )}
+                      {daysLeft !== null && daysLeft <= 0 && (
+                        <p className="font-bold text-[#FF8388]">Deadline passed — consider extending it</p>
+                      )}
+                    </div>
+                  )}
+
+                  {g.notes && (
+                    <p className="mb-5 text-sm text-muted-foreground">{g.notes}</p>
+                  )}
+
+                  {/* Contribute section */}
+                  {!done && (
+                    <div className="mb-5 space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Log contribution</p>
+                      <select
+                        aria-label="Wallet source"
+                        className="h-11 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                        value={contributeWalletId}
+                        onChange={e => setContributeWalletId(e.target.value)}
+                      >
+                        <option value="">From: no specific wallet</option>
+                        {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      </select>
+                      <MoneyInput
+                        className="h-11 w-full bg-secondary"
+                        placeholder={`Amount (${money.displayCurrency})`}
+                        value={contributeAmount}
+                        onValueChange={setContributeAmount}
+                      />
+                      <Button
+                        className="h-12 w-full"
+                        onClick={handleContribute}
+                        disabled={updateGoal.isPending || addTransaction.isPending || !contributeAmount}
+                      >
+                        Log contribution
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="sticky bottom-0 border-t border-border bg-background px-6 py-4">
+                  <div className="flex gap-2">
+                    <Button
+                      className="h-14 flex-1 gap-2"
+                      variant="secondary"
+                      onClick={() => { setSheetGoal(null); startEdit(g) }}
+                    >
+                      <Pencil className="h-4 w-4" />Edit
+                    </Button>
+                    <Button
+                      className="h-14 px-5 gap-2 border border-red-500/30 bg-red-500/10 text-[#FF8388] hover:bg-red-500/20"
+                      variant="ghost"
+                      onClick={() => { setSheetGoal(null); setDeleteTarget(g) }}
+                      aria-label="Delete goal"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+        </SheetContent>
+      </Sheet>
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
