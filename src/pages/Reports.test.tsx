@@ -46,7 +46,7 @@ describe('Reports', () => {
 
     // Period label appears in both the header and the mobile sticky bar
     expect(screen.getAllByText('June 2026').length).toBeGreaterThan(0)
-    expect(screen.getByText(/No expense data for this period\./)).toBeInTheDocument()
+    expect(screen.getAllByText(/No expense data for this period\./).length).toBeGreaterThan(0)
     // Go back to May 2026 where mock transactions exist
     fireEvent.click(screen.getAllByRole('button', { name: 'Previous period' })[0])
     expect(screen.getAllByText('May 2026').length).toBeGreaterThan(0)

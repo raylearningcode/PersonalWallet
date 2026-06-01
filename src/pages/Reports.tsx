@@ -12,18 +12,26 @@ import { getCategoryInsights } from '@/lib/financeOs'
 import { Download, Upload, FileText } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-type ReportRange = 'week' | 'month' | 'year'
+type ReportRange = 'week' | 'month' | 'year' | 'all'
 type ReportMode = 'expense' | 'income'
 
 const RANGE_LABELS: Record<ReportRange, string> = {
   week: 'Week',
   month: 'Month',
   year: 'Year',
+  all: 'All time',
 }
 
 const categoryColors = ['#A9F5C7', '#FADBEA', '#FFF7B5', '#D9E8FF', '#F8DCDC', '#C4AEFF', '#FFD276']
 
-function getRangeBounds(range: ReportRange, periodDate: Date) {
+function getRangeBounds(range: ReportRange, periodDate: Date, allTxDates?: string[]) {
+  if (range === 'all') {
+    if (allTxDates && allTxDates.length > 0) {
+      const sorted = [...allTxDates].sort()
+      return { start: new Date(sorted[0]), end: new Date(Date.now() + 86_400_000) }
+    }
+    return { start: new Date(0), end: new Date(Date.now() + 86_400_000) }
+  }
   if (range === 'year') {
     const start = new Date(periodDate.getFullYear(), 0, 1)
     return { start, end: new Date(periodDate.getFullYear() + 1, 0, 1) }
@@ -42,6 +50,7 @@ function getRangeBounds(range: ReportRange, periodDate: Date) {
 }
 
 function addPeriod(date: Date, range: ReportRange, direction: -1 | 1) {
+  if (range === 'all') return date
   const next = new Date(date)
   if (range === 'year') next.setFullYear(date.getFullYear() + direction)
   else if (range === 'month') {
@@ -52,6 +61,7 @@ function addPeriod(date: Date, range: ReportRange, direction: -1 | 1) {
 }
 
 function formatPeriodLabel(range: ReportRange, date: Date) {
+  if (range === 'all') return 'All time'
   if (range === 'year') return String(date.getFullYear())
   if (range === 'month') return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const { start, end } = getRangeBounds(range, date)
@@ -84,7 +94,8 @@ export function Reports() {
   const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate), [periodDate, range])
+  const allTxDates = useMemo(() => transactions.map(t => t.date), [transactions])
+  const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate, allTxDates), [periodDate, range, allTxDates])
   const periodLabel = formatPeriodLabel(range, periodDate)
 
   const internalMovesTx = useMemo(() => transactions.filter(tx => {
@@ -102,7 +113,7 @@ export function Reports() {
   }), [rangeEnd, rangeStart, transactions, selectedWalletId])
 
   const prevDate = useMemo(() => addPeriod(periodDate, range, -1), [periodDate, range])
-  const { start: prevStart, end: prevEnd } = useMemo(() => getRangeBounds(range, prevDate), [prevDate, range])
+  const { start: prevStart, end: prevEnd } = useMemo(() => getRangeBounds(range, prevDate, allTxDates), [prevDate, range, allTxDates])
   const prevRangeTx = useMemo(() => transactions.filter(tx => {
     const txDate = new Date(tx.date)
     return txDate >= prevStart && txDate < prevEnd
@@ -176,6 +187,14 @@ export function Reports() {
       }
       return weeks
     }
+    if (range === 'all') {
+      const years = Array.from(new Set(rangeTx.map(t => t.date.slice(0, 4)))).sort()
+      if (years.length === 0) return []
+      return years.map(yr => ({
+        label: yr,
+        ...bucket(rangeTx.filter(t => t.date.startsWith(yr))),
+      }))
+    }
     return Array.from({ length: 12 }, (_, i) => {
       const mStart = new Date(rangeStart.getFullYear(), i, 1)
       const mEnd = new Date(rangeStart.getFullYear(), i + 1, 1)
@@ -199,6 +218,10 @@ export function Reports() {
     } else if (range === 'month') {
       bucketStart = new Date(rangeStart); bucketStart.setDate(rangeStart.getDate() + idx * 7)
       bucketEnd = new Date(bucketStart); bucketEnd.setDate(bucketStart.getDate() + 7)
+    } else if (range === 'all') {
+      const yr = clickedBucket
+      bucketStart = new Date(`${yr}-01-01`)
+      bucketEnd = new Date(`${String(Number(yr) + 1)}-01-01`)
     } else {
       bucketStart = new Date(rangeStart.getFullYear(), idx, 1)
       bucketEnd = new Date(rangeStart.getFullYear(), idx + 1, 1)
@@ -330,12 +353,12 @@ export function Reports() {
         action={(
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center rounded-full border border-border bg-secondary p-1">
-              <button aria-label="Previous period" className="h-9 w-9 rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>
+              {range !== 'all' && <button aria-label="Previous period" className="h-9 w-9 rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>}
               <span className="min-w-[118px] px-3 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-              <button aria-label="Next period" className="h-9 w-9 rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>
+              {range !== 'all' && <button aria-label="Next period" className="h-9 w-9 rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
             </div>
             <div className="flex rounded-full border border-border bg-secondary p-1">
-              {(['week', 'month', 'year'] as ReportRange[]).map(item => (
+              {(['week', 'month', 'year', 'all'] as ReportRange[]).map(item => (
                 <button
                   key={item}
                   className={`rounded-full px-4 py-2 text-sm font-extrabold ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
@@ -382,17 +405,17 @@ export function Reports() {
       {/* Mobile sticky period bar */}
       <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden">
         <div className="flex items-center justify-between gap-2">
-          <button aria-label="Previous period" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>
+          {range !== 'all' && <button aria-label="Previous period" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>}
           <span className="flex-1 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-          <button aria-label="Next period" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>
+          {range !== 'all' && <button aria-label="Next period" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
           <div className="flex rounded-full border border-border bg-secondary p-0.5">
-            {(['week', 'month', 'year'] as ReportRange[]).map(item => (
+            {(['week', 'month', 'year', 'all'] as ReportRange[]).map(item => (
               <button
                 key={item}
-                className={`rounded-full px-3 py-1 text-xs font-extrabold transition-colors ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                className={`rounded-full px-2.5 py-1 text-xs font-extrabold transition-colors ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
                 onClick={() => handleRangeChange(item)}
               >
-                {RANGE_LABELS[item]}
+                {item === 'all' ? 'All' : RANGE_LABELS[item]}
               </button>
             ))}
           </div>
@@ -446,16 +469,17 @@ export function Reports() {
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            {range === 'week' ? 'Daily breakdown' : range === 'month' ? 'Weekly breakdown' : 'Monthly breakdown'} for {periodLabel}
+            {range === 'week' ? 'Daily breakdown' : range === 'month' ? 'Weekly breakdown' : range === 'all' ? 'Yearly breakdown' : 'Monthly breakdown'} for {periodLabel}
           </p>
         </CardHeader>
         <CardContent className="px-2 pb-4 sm:px-6">
           {rangeTx.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-sm text-muted-foreground">No transactions for {periodLabel}.</p>
-              <div className="mt-3 flex justify-center gap-2">
+              <p className="text-sm text-muted-foreground">No expense data for this period.</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
                 <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => { handleRangeChange('month'); setPeriodDate(new Date()) }}>This month</button>
-                <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => handleRangeChange('year')}>This year</button>
+                <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => { handleRangeChange('year'); setPeriodDate(new Date()) }}>This year</button>
+                <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => handleRangeChange('all')}>All time</button>
               </div>
             </div>
           ) : (
