@@ -43,11 +43,14 @@ describe('Reports', () => {
   it('moves between specific reporting periods', () => {
     render(<Reports />)
 
-    expect(screen.getByText('May 2026')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Previous period' }))
-    expect(screen.getByText('April 2026')).toBeInTheDocument()
+    // Current month (June 2026) has no mock data — empty state
+    expect(screen.getByText('June 2026')).toBeInTheDocument()
     expect(screen.getByText('No expense data in this range.')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Next period' }))
+    // Go back to May 2026 where mock transactions exist
+    fireEvent.click(screen.getByRole('button', { name: 'Previous period' }))
     expect(screen.getByText('May 2026')).toBeInTheDocument()
+    // Go forward again
+    fireEvent.click(screen.getByRole('button', { name: 'Next period' }))
+    expect(screen.getByText('June 2026')).toBeInTheDocument()
   })
 })

@@ -70,6 +70,9 @@ export function Transactions() {
   const [installmentTotal, setInstallmentTotal] = useState('')
   const [endDate, setEndDate] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [cashEnabled, setCashEnabled] = useState(false)
+  const [cashTendered, setCashTendered] = useState('')
+  const [changeWalletId, setChangeWalletId] = useState('')
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const { data: transactions = [], isPending: txPending } = useTransactions(filter)
@@ -110,14 +113,27 @@ export function Transactions() {
     })
   }, [recurringRules, runDueRecurringRules])
 
+  const walletBalances = useMemo(() => {
+    const balances = new Map(wallets.map(w => [w.id, w.balance ?? 0]))
+    transactions.forEach(tx => {
+      if (tx.type === 'income' && tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) + tx.amount)
+      if (tx.type !== 'income' && tx.type !== 'transfer' && tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
+      if (tx.type === 'transfer') {
+        if (tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
+        if (tx.transfer_wallet_id) balances.set(tx.transfer_wallet_id, (balances.get(tx.transfer_wallet_id) ?? 0) + tx.amount)
+      }
+    })
+    return balances
+  }, [wallets, transactions])
+
   const moneyIn = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const moneyOut = transactions.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0)
   const cannotSaveTransfer = type === 'transfer' && (wallets.length < 2 || !walletId || !transferWalletId || walletId === transferWalletId)
   const sortedTransactions = useMemo(
     () => {
-      let visibleTransactions = selectedCategory
-        ? transactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
-        : transactions
+      // Hide system-generated change transfers from the main list
+      let visibleTransactions = transactions.filter(tx => !tx.is_system_generated)
+      if (selectedCategory) visibleTransactions = visibleTransactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         visibleTransactions = visibleTransactions.filter(tx =>
@@ -188,6 +204,9 @@ export function Transactions() {
     setInstallmentTotal('')
     setEndDate('')
     setShowAdvanced(false)
+    setCashEnabled(false)
+    setCashTendered('')
+    setChangeWalletId('')
     if (wallets[0]) setWalletId(wallets[0].id)
     if (wallets[1]) setTransferWalletId(wallets[1].id)
   }
@@ -217,34 +236,96 @@ export function Transactions() {
     if (!description.trim()) { toast.error('Please enter a merchant name'); return }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return }
     if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) { toast.error('Select two different wallets for a transfer'); return }
-    const selectedCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
-    if (type !== 'transfer' && (!selectedCategory || !walletId)) return
+    const txCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
+    if (type !== 'transfer' && (!txCategory || !walletId)) return
+
+    // Cash change validation
+    const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
+    if (cashEnabled && type === 'expense' && (!Number.isFinite(parsedTendered) || parsedTendered < parsedAmount)) {
+      toast.error('Cash given must be at least the expense amount')
+      return
+    }
+
     const baseAmount = money.toBase(parsedAmount, inputCurrency)
+    const baseTendered = cashEnabled ? money.toBase(parsedTendered, inputCurrency) : 0
+    const baseChange = Math.max(0, baseTendered - baseAmount)
     const parsedInstallments = parseInt(installmentTotal.replace(/[^\d]/g, ''), 10)
+
     const payload = {
       description: description.trim(),
       amount: baseAmount,
       original_amount: parsedAmount,
       original_currency: inputCurrency,
       type,
-      category: type === 'transfer' ? 'Transfer' : selectedCategory,
+      category: type === 'transfer' ? 'Transfer' : txCategory,
       wallet_id: walletId || null,
       transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
       recurring_rule_id: editingTransaction?.recurring_rule_id ?? null,
       recurring_due_date: editingTransaction?.recurring_due_date ?? null,
       date,
       needs_review: false,
+      cash_tendered: cashEnabled && baseTendered > 0 ? baseTendered : null,
     }
 
     const editingTx = editingTransaction
-    setIsFormOpen(false)  // optimistic close — no double-click needed
+    setIsFormOpen(false)
     resetForm()
     try {
       if (editingTx) {
         await updateTransaction.mutateAsync({ id: editingTx.id, ...payload })
+        // Recalculate linked change transfer if it exists
+        const prevLinkedId = editingTx.linked_transaction_id
+        if (cashEnabled && baseChange > 0 && changeWalletId) {
+          const changePayload = {
+            amount: baseChange,
+            original_amount: parsedTendered - parsedAmount,
+            original_currency: inputCurrency,
+            wallet_id: walletId || null,
+            transfer_wallet_id: changeWalletId,
+            date,
+          }
+          if (prevLinkedId) {
+            await updateTransaction.mutateAsync({ id: prevLinkedId, ...changePayload })
+          } else {
+            await addTransaction.mutateAsync({
+              description: `Change — ${description.trim()}`,
+              ...changePayload,
+              type: 'transfer',
+              category: 'Transfer',
+              recurring_rule_id: null,
+              recurring_due_date: null,
+              needs_review: false,
+              is_system_generated: true,
+              linked_transaction_id: editingTx.id,
+              cash_tendered: null,
+            })
+          }
+        } else if (prevLinkedId) {
+          await del.mutateAsync(prevLinkedId)
+        }
         toast.success('Transaction updated')
       } else {
-        await addTransaction.mutateAsync(payload)
+        const savedTx = await addTransaction.mutateAsync(payload)
+        // Create system-generated change transfer when cash given > expense
+        if (cashEnabled && baseChange > 0 && changeWalletId && savedTx?.id) {
+          await addTransaction.mutateAsync({
+            description: `Change — ${description.trim()}`,
+            amount: baseChange,
+            original_amount: parsedTendered - parsedAmount,
+            original_currency: inputCurrency,
+            type: 'transfer',
+            category: 'Transfer',
+            wallet_id: walletId || null,
+            transfer_wallet_id: changeWalletId,
+            recurring_rule_id: null,
+            recurring_due_date: null,
+            date,
+            needs_review: false,
+            is_system_generated: true,
+            linked_transaction_id: savedTx.id,
+            cash_tendered: null,
+          })
+        }
         if (isRecurring) {
           const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
           await addRecurringRule.mutateAsync({
@@ -253,7 +334,7 @@ export function Transactions() {
             original_amount: parsedAmount,
             original_currency: inputCurrency,
             type,
-            category: type === 'transfer' ? 'Transfer' : selectedCategory,
+            category: type === 'transfer' ? 'Transfer' : txCategory,
             wallet_id: walletId || null,
             transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
             start_date: date,
@@ -265,7 +346,7 @@ export function Transactions() {
             active: !completedAtStart,
           })
         }
-        toast.success('Transaction added')
+        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · NT$${parsedTendered - parsedAmount} change to pouch` : 'Transaction added')
       }
     } catch {
       toast.error('Failed to save transaction')
@@ -276,11 +357,17 @@ export function Transactions() {
     setDeleteTarget(tx)
   }
 
-  const confirmDeleteTransaction = () => {
+  const confirmDeleteTransaction = async () => {
     if (!deleteTarget) return
-    del.mutate(deleteTarget.id)
-    toast.success('Transaction deleted')
+    const linkedId = deleteTarget.linked_transaction_id
     setDeleteTarget(null)
+    try {
+      await del.mutateAsync(deleteTarget.id)
+      if (linkedId) await del.mutateAsync(linkedId)
+      toast.success('Transaction deleted')
+    } catch {
+      toast.error('Failed to delete transaction')
+    }
   }
 
   const handleGenerateDue = () => {
@@ -537,7 +624,7 @@ export function Transactions() {
                 {type !== 'transfer' ? (
                   <div>
                     <Label className="text-sm font-bold text-foreground">Wallet</Label>
-                    <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
+                    <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => { setWalletId(event.target.value); setCashEnabled(false); setCashTendered(''); setChangeWalletId('') }}>
                       {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
                       {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                     </select>
@@ -558,6 +645,134 @@ export function Transactions() {
                     </div>
                   </div>
                 )}
+
+                {/* Cash Change Assistant — expense + cash wallet only */}
+                {type === 'expense' && wallets.find(w => w.id === walletId)?.type === 'cash' && (() => {
+                  const selectedWallet = wallets.find(w => w.id === walletId)!
+                  const parsedExpense = parseNumberInput(amount)
+                  const parsedTendered = parseNumberInput(cashTendered)
+                  const changeAmount = cashEnabled && Number.isFinite(parsedTendered) && parsedTendered > parsedExpense ? parsedTendered - parsedExpense : 0
+                  const isUnderpay = cashEnabled && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedExpense
+                  const otherWallets = wallets.filter(w => w.id !== walletId)
+                  const walletCurrentBal = walletBalances.get(walletId) ?? 0
+                  const changeWalletBal = walletBalances.get(changeWalletId) ?? 0
+                  const showChips = selectedWallet.currency === 'TWD' && inputCurrency === 'TWD'
+                  const twdChips = [100, 500, 1000].filter(n => !Number.isFinite(parsedExpense) || parsedExpense <= 0 || n >= parsedExpense)
+                  const validTender = Number.isFinite(parsedTendered) && parsedTendered >= parsedExpense && parsedTendered > 0
+
+                  return (
+                    <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
+                      <label className="flex cursor-pointer items-center justify-between gap-4">
+                        <span>
+                          <span className="block text-sm font-extrabold text-foreground">Cash Change Assistant</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">Track the bill given and change received</span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          aria-label="Enable cash change"
+                          className="h-5 w-5 accent-primary"
+                          checked={cashEnabled}
+                          onChange={e => {
+                            setCashEnabled(e.target.checked)
+                            if (e.target.checked && !changeWalletId) {
+                              const coinPouch = otherWallets.find(w => w.cash_role === 'coins')
+                              const anyCash = otherWallets.find(w => w.type === 'cash')
+                              setChangeWalletId(coinPouch?.id ?? anyCash?.id ?? '')
+                            }
+                            if (!e.target.checked) setCashTendered('')
+                          }}
+                        />
+                      </label>
+
+                      {cashEnabled && (
+                        <div className="mt-4 space-y-4">
+                          <div>
+                            <Label className="text-xs font-bold text-muted-foreground">Cash given ({inputCurrency})</Label>
+                            <Input
+                              aria-label="Cash given"
+                              className="mt-2 bg-secondary"
+                              inputMode="decimal"
+                              value={cashTendered}
+                              onChange={e => setCashTendered(formatNumberInput(e.target.value))}
+                              placeholder="Amount you handed over"
+                            />
+                            {showChips && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setCashTendered(parsedExpense > 0 ? String(parsedExpense) : '')}
+                                  className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
+                                >
+                                  Exact
+                                </button>
+                                {twdChips.map(chip => (
+                                  <button
+                                    key={chip}
+                                    type="button"
+                                    onClick={() => setCashTendered(String(chip))}
+                                    className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTendered === chip ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
+                                  >
+                                    NT${chip.toLocaleString()}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {isUnderpay && (
+                              <p className="mt-2 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
+                            )}
+                          </div>
+
+                          {changeAmount > 0 && (
+                            <div>
+                              <Label className="text-xs font-bold text-muted-foreground">
+                                Change ({money.format(changeAmount, inputCurrency)}) goes to
+                              </Label>
+                              <select
+                                aria-label="Change destination wallet"
+                                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                                value={changeWalletId}
+                                onChange={e => setChangeWalletId(e.target.value)}
+                              >
+                                <option value="">Keep in same wallet (no transfer)</option>
+                                {otherWallets.map(w => (
+                                  <option key={w.id} value={w.id}>
+                                    {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          {validTender && (
+                            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                              <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Balance preview</p>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">{selectedWallet.name}</span>
+                                  <span className="font-extrabold text-foreground">
+                                    {money.formatDisplay(walletCurrentBal)} → {money.formatDisplay(walletCurrentBal - money.toBase(parsedTendered, inputCurrency))}
+                                  </span>
+                                </div>
+                                {changeAmount > 0 && changeWalletId && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeWalletId)?.name}</span>
+                                    <span className="font-extrabold text-foreground">
+                                      {money.formatDisplay(changeWalletBal)} → {money.formatDisplay(changeWalletBal + money.toBase(changeAmount, inputCurrency))}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                                  <span className="text-muted-foreground">Expense recorded</span>
+                                  <span className="font-extrabold text-primary">{money.format(parsedExpense, inputCurrency)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* Recurring */}
                 {!editingTransaction && (
@@ -840,7 +1055,14 @@ export function Transactions() {
                         {tx.needs_review && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />}
                         <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{tx.category}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {tx.category}
+                        {tx.cash_tendered && tx.cash_tendered > 0 && (
+                          <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                            Cash · {money.formatDisplay(tx.cash_tendered)} given
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
                       {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
@@ -895,6 +1117,11 @@ export function Transactions() {
                       <TableCell className="text-muted-foreground">
                         {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
                         {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
+                        {tx.cash_tendered && tx.cash_tendered > 0 && (
+                          <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                            Cash
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
                         {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}

@@ -601,10 +601,32 @@ export function Dashboard() {
           <Card>
             <CardHeader><CardTitle className="text-xl">Net worth</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
-                <span className="text-sm text-muted-foreground">Wallet cash</span>
-                <strong className="text-foreground">{fmt(cashBalance)}</strong>
-              </div>
+              {wallets.some(w => w.type === 'cash' && w.cash_role) ? (
+                <>
+                  {wallets.filter(w => w.type === 'cash').map(w => (
+                    <div key={w.id} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{w.name}</span>
+                        {w.cash_role && (
+                          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                            {w.cash_role === 'notes' ? 'Notes' : w.cash_role === 'coins' ? 'Coins' : w.cash_role === 'mixed' ? 'Mixed' : 'Digital'}
+                          </span>
+                        )}
+                      </div>
+                      <strong className="text-sm text-foreground">{fmt(walletBalances.get(w.id) ?? 0)}</strong>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-2">
+                    <span className="text-xs font-bold text-muted-foreground">Total physical cash</span>
+                    <strong className="text-sm text-foreground">{fmt(cashBalance)}</strong>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
+                  <span className="text-sm text-muted-foreground">Wallet cash</span>
+                  <strong className="text-foreground">{fmt(cashBalance)}</strong>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
                 <span className="text-sm text-muted-foreground">Invested</span>
                 <strong className="text-foreground">{fmt(invested)}</strong>

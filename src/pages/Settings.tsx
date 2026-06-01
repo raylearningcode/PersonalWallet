@@ -24,7 +24,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
-import type { Wallet } from '@/types'
+import type { CashRole, Wallet } from '@/types'
 import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
 
 const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
@@ -90,6 +90,7 @@ export function Settings() {
   const [newCategory, setNewCategory] = useState('')
   const [walletName, setWalletName] = useState('')
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
+  const [walletCashRole, setWalletCashRole] = useState<CashRole | ''>('')
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
@@ -242,9 +243,16 @@ export function Settings() {
   const handleAddWallet = async () => {
     const name = walletName.trim()
     if (!name) return
-    await addWallet.mutateAsync({ name, type: walletType, balance: 0, currency: baseCurrency })
+    await addWallet.mutateAsync({
+      name,
+      type: walletType,
+      balance: 0,
+      currency: baseCurrency,
+      cash_role: walletType === 'cash' && walletCashRole ? walletCashRole : null,
+    })
     setWalletName('')
     setWalletType('cash')
+    setWalletCashRole('')
     toast.success('Wallet added')
   }
 
@@ -533,7 +541,7 @@ export function Settings() {
                 aria-label="Wallet type"
                 className="h-10 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                 value={walletType}
-                onChange={event => setWalletType(event.target.value as Wallet['type'])}
+                onChange={event => { setWalletType(event.target.value as Wallet['type']); setWalletCashRole('') }}
               >
                 <option value="cash">Cash</option>
                 <option value="bank">Bank</option>
@@ -544,6 +552,21 @@ export function Settings() {
               </select>
               <Button onClick={handleAddWallet} disabled={addWallet.isPending}>Add wallet</Button>
             </div>
+            {walletType === 'cash' && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-muted-foreground">Cash role:</span>
+                {([['', 'General'], ['notes', 'Notes / Wallet'], ['coins', 'Coins / Pouch'], ['mixed', 'Mixed']] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setWalletCashRole(val as CashRole | '')}
+                    className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${walletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="max-h-[320px] overflow-y-auto space-y-5 pr-1">
               {walletGroups.map(group => (
                 <div key={group.type}>
@@ -583,7 +606,14 @@ export function Settings() {
                           </>
                         ) : (
                           <>
-                            <span className="min-w-0 flex-1 truncate font-bold text-foreground">{wallet.name}</span>
+                            <span className="min-w-0 flex-1 truncate font-bold text-foreground">
+                              {wallet.name}
+                              {wallet.cash_role && (
+                                <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                                  {wallet.cash_role === 'notes' ? 'Notes' : wallet.cash_role === 'coins' ? 'Coins' : wallet.cash_role === 'mixed' ? 'Mixed' : 'Digital'}
+                                </span>
+                              )}
+                            </span>
                             <span className="shrink-0 font-extrabold text-foreground">{money.formatBase(walletBalances.get(wallet.id) ?? 0)}</span>
                             <button
                               aria-label={`Rename ${wallet.name} wallet`}

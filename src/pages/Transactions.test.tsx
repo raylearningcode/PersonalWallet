@@ -56,7 +56,7 @@ const mockTransactions = [{
 
 vi.mock('@/lib/queries', () => ({
   useTransactions: () => ({ data: mockTransactions }),
-  useDeleteTransaction: () => ({ mutate: deleteTransaction }),
+  useDeleteTransaction: () => ({ mutate: deleteTransaction, mutateAsync: deleteTransaction }),
   useMarkReviewed: () => ({ mutate: vi.fn() }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
   useUpdateTransaction: () => ({ mutateAsync: updateTransaction, isPending: false }),
