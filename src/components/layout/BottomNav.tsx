@@ -19,7 +19,10 @@ export function BottomNav({
   hidden?: boolean
 }) {
   return (
-    <nav className={`fixed inset-x-0 bottom-0 z-40 flex h-[60px] items-stretch border-t border-border bg-background/97 backdrop-blur-md lg:hidden transition-transform duration-300 ${hidden ? 'translate-y-full' : 'translate-y-0'}`}>
+    <nav
+      className={`fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-border bg-background/97 backdrop-blur-md lg:hidden transition-transform duration-300 ${hidden ? 'translate-y-full' : 'translate-y-0'}`}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: 'calc(60px + env(safe-area-inset-bottom))' }}
+    >
       {navItems.slice(0, 2).map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}

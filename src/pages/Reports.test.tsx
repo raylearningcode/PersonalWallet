@@ -45,7 +45,7 @@ describe('Reports', () => {
 
     // Current month (June 2026) has no mock data — empty state
     expect(screen.getByText('June 2026')).toBeInTheDocument()
-    expect(screen.getByText('No expense data in this range.')).toBeInTheDocument()
+    expect(screen.getByText(/No expense data for this period\./)).toBeInTheDocument()
     // Go back to May 2026 where mock transactions exist
     fireEvent.click(screen.getByRole('button', { name: 'Previous period' }))
     expect(screen.getByText('May 2026')).toBeInTheDocument()

@@ -431,7 +431,13 @@ export function Reports() {
         </CardHeader>
         <CardContent className="px-2 pb-4 sm:px-6">
           {rangeTx.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No data for this period.</p>
+            <div className="py-10 text-center">
+              <p className="text-sm text-muted-foreground">No transactions for {periodLabel}.</p>
+              <div className="mt-3 flex justify-center gap-2">
+                <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => { handleRangeChange('month'); setPeriodDate(new Date()) }}>This month</button>
+                <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => handleRangeChange('year')}>This year</button>
+              </div>
+            </div>
           ) : (
             <>
               <p className="mb-2 px-2 text-xs text-muted-foreground">Tap a bar to see transactions for that period</p>
@@ -555,16 +561,37 @@ export function Reports() {
                     <span className="text-sm font-bold text-muted-foreground">{Math.round((amount / activeTotal) * 100)}%</span>
                   </button>
                 )) : (
-                  <div>
-                    <p className="text-sm text-muted-foreground">No {mode} data in this range.</p>
-                    {mode === 'income' && (
-                      <button
-                        className="mt-2 text-xs font-bold text-primary hover:underline"
-                        onClick={() => handleModeChange('expense')}
-                      >
-                        Switch to expense view →
-                      </button>
-                    )}
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      No {mode} data for this period.
+                      {mode === 'income' ? ' Try switching to expense view.' : ' Try a different date range.'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {mode === 'income' && (
+                        <button
+                          className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                          onClick={() => handleModeChange('expense')}
+                        >
+                          Show expenses →
+                        </button>
+                      )}
+                      {range !== 'month' && (
+                        <button
+                          className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                          onClick={() => { handleRangeChange('month'); setPeriodDate(new Date()) }}
+                        >
+                          This month
+                        </button>
+                      )}
+                      {range !== 'year' && (
+                        <button
+                          className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                          onClick={() => handleRangeChange('year')}
+                        >
+                          This year
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -594,7 +621,31 @@ export function Reports() {
                 </div>
               </div>
             )) : (
-              <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">No category data yet.</p>
+              <div className="space-y-3 rounded-2xl bg-secondary p-5">
+                <p className="text-sm text-muted-foreground">
+                  No {mode} data for {periodLabel}. Try switching the date range or adding a transaction.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => { handleRangeChange('month'); setPeriodDate(new Date()) }}
+                  >
+                    This month
+                  </button>
+                  <button
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => { handleRangeChange('year'); setPeriodDate(new Date()) }}
+                  >
+                    This year
+                  </button>
+                  <button
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => { setRange('week'); setPeriodDate(new Date()); setSelectedCategory(null); setClickedBucket(null) }}
+                  >
+                    This week
+                  </button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

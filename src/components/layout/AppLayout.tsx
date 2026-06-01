@@ -5,13 +5,25 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAuthSession } from '@/lib/queries'
 import { getQueue } from '@/lib/offlineCache'
 import { processSyncQueue } from '@/lib/syncQueue'
-import { toast } from 'sonner'
+import { toast, Toaster } from 'sonner'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { MoreSheet } from './MoreSheet'
 import { QuickAddSheet } from './QuickAddSheet'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 import { NotificationsSheet } from './NotificationsSheet'
+
+function ResponsiveToaster() {
+  const isDesktop = useIsDesktop()
+  return (
+    <Toaster
+      richColors
+      position={isDesktop ? 'top-right' : 'bottom-center'}
+      offset={isDesktop ? '24px' : '80px'}
+    />
+  )
+}
 
 export function AppLayout() {
   const qc = useQueryClient()
@@ -27,6 +39,12 @@ export function AppLayout() {
   const [offline, setOffline] = useState(() => !navigator.onLine)
   const [syncing, setSyncing] = useState(false)
   const isGuest = session === null
+
+  useEffect(() => {
+    const handler = () => setProfileOpen(true)
+    window.addEventListener('finpath-open-profile', handler)
+    return () => window.removeEventListener('finpath-open-profile', handler)
+  }, [])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -78,8 +96,12 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      <ResponsiveToaster />
       <Sidebar profileOpen={profileOpen} onProfileOpenChange={setProfileOpen} />
-      <main className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-24 sm:px-6 lg:ml-[240px] lg:w-[calc(100vw-275px)] lg:max-w-[1440px] lg:px-0 lg:py-6 lg:pb-8 lg:pr-8">
+      <main
+        className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-28 sm:px-6 lg:ml-[240px] lg:w-[calc(100vw-275px)] lg:max-w-[1440px] lg:px-0 lg:py-6 lg:pb-8 lg:pr-8"
+        style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
+      >
         {offline && (
           <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-3">
             <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />
