@@ -47,6 +47,7 @@ interface Props {
 export function AllocationEditor({ value, onChange, onSave, isSaving }: Props) {
   const total = value.reduce((sum, item) => sum + item.pct, 0)
   const isValid = total === 100
+  const remaining = 100 - total
 
   const update = (index: number, field: keyof AllocationItem, val: string | number) => {
     onChange(value.map((item, i) => i === index ? { ...item, [field]: val } : item))
@@ -58,73 +59,85 @@ export function AllocationEditor({ value, onChange, onSave, isSaving }: Props) {
   }
 
   const add = () => {
-    onChange([...value, { name: '', pct: 0, color: '#6c63ff' }])
+    const fillPct = Math.max(0, Math.min(remaining, 10))
+    onChange([...value, { name: '', pct: fillPct, color: '#6c63ff' }])
   }
 
   return (
     <div className="flex flex-col gap-5 sm:flex-row">
       <AllocationDonut items={value} />
-      <div className="flex flex-1 flex-col gap-2">
-        <div className="max-h-[200px] space-y-1.5 overflow-y-auto pr-1">
+      <div className="flex flex-1 flex-col gap-3">
+        {/* Total indicator */}
+        <div className="flex items-center justify-between">
+          <span className={`text-xs font-extrabold ${isValid ? 'text-primary' : total > 100 ? 'text-[#FF8388]' : 'text-[#FFCF73]'}`}>
+            {isValid
+              ? '✓ 100% allocated'
+              : total < 100
+                ? `${remaining}% remaining to allocate`
+                : `${total - 100}% over — reduce allocations`}
+          </span>
+          <span className="text-xs text-muted-foreground">{total}% total</span>
+        </div>
+
+        {/* Slider rows */}
+        <div className="space-y-3">
           {value.map((item, i) => (
-            <div key={i} className="grid grid-cols-[minmax(0,1fr)_28px_56px_18px] items-center gap-1.5">
-              <Input
-                aria-label="Asset name"
-                className="h-7 rounded-lg bg-secondary px-2 text-xs font-bold"
-                placeholder="Name"
-                value={item.name}
-                onChange={e => update(i, 'name', e.target.value)}
-              />
+            <div key={i} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label="Asset color"
+                  className="h-6 w-6 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                  value={item.color}
+                  onChange={e => update(i, 'color', e.target.value)}
+                />
+                <Input
+                  aria-label="Asset name"
+                  className="h-7 flex-1 rounded-lg bg-secondary px-2 text-xs font-bold"
+                  placeholder="Asset name"
+                  value={item.name}
+                  onChange={e => update(i, 'name', e.target.value)}
+                />
+                <span className="w-9 text-right text-xs font-extrabold text-foreground">{item.pct}%</span>
+                <button
+                  onClick={() => remove(i)}
+                  disabled={value.length <= 1}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-30"
+                  aria-label={`Remove ${item.name || 'asset'}`}
+                >
+                  ×
+                </button>
+              </div>
               <input
-                type="color"
-                aria-label="Asset color"
-                className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                value={item.color}
-                onChange={e => update(i, 'color', e.target.value)}
-              />
-              <Input
-                type="number"
-                aria-label="Allocation percent"
-                className="h-7 rounded-lg bg-secondary px-2 text-right text-xs font-bold"
+                type="range"
+                aria-label={`${item.name || 'Asset'} allocation percent`}
                 min={0}
                 max={100}
+                step={1}
                 value={item.pct}
                 onChange={e => update(i, 'pct', Number(e.target.value))}
+                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-current"
+                style={{ accentColor: item.color }}
               />
-              <button
-                onClick={() => remove(i)}
-                disabled={value.length <= 1}
-                className="text-sm text-destructive disabled:opacity-30"
-                aria-label="Remove asset"
-              >
-                x
-              </button>
             </div>
           ))}
         </div>
+
         <button
           onClick={add}
           className="text-left text-xs font-bold text-primary hover:underline"
         >
           + Add asset
         </button>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <span className={`text-xs font-bold ${isValid ? 'text-green-400' : 'text-amber-400'}`}>
-            {isValid
-              ? '100% OK'
-              : total < 100
-                ? `${total}% - needs ${100 - total}% more`
-                : `${total}% - reduce by ${total - 100}%`}
-          </span>
-          <Button
-            size="sm"
-            className="h-7 px-4 text-xs"
-            onClick={onSave}
-            disabled={!isValid || isSaving}
-          >
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
-        </div>
+
+        <Button
+          size="sm"
+          className="h-10 w-full"
+          onClick={onSave}
+          disabled={!isValid || isSaving}
+        >
+          {isSaving ? 'Saving…' : 'Save allocation'}
+        </Button>
       </div>
     </div>
   )

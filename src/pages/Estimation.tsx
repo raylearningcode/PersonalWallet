@@ -372,6 +372,42 @@ export function Estimation() {
         )
       })()}
 
+      {monthlyIncome > 0 && (
+        <div className={`mb-8 rounded-2xl border px-5 py-4 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} forecast
+          </p>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Income</span>
+              <span className="font-extrabold text-primary">{money.formatDisplay(monthlyIncome)}/mo</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Fixed expenses</span>
+              <span className="font-extrabold text-[#FF8388]">−{money.formatDisplay(monthlyExpenses)}/mo</span>
+            </div>
+            {wishlistTotal > 0 && (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">Wishlist total</span>
+                <span className="font-bold text-muted-foreground">{money.formatDisplay(wishlistTotal)}</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-3 border-t border-border pt-3">
+            {monthlyIncome >= monthlyExpenses + (wishlistTotal > 0 ? wishlistTotal : 0) ? (
+              <p className="font-extrabold text-primary">✓ Affordable — surplus of {money.formatDisplay(monthlyIncome - monthlyExpenses - wishlistTotal)}/mo after everything</p>
+            ) : monthlyIncome >= monthlyExpenses ? (
+              <div>
+                <p className="font-extrabold text-[#FFCF73]">⚡ Expenses covered — wishlist needs {money.formatDisplay(monthlyExpenses + wishlistTotal - monthlyIncome)} more/mo</p>
+                {wishlistTotal > 0 && <p className="mt-1 text-xs text-muted-foreground">Save {money.formatDisplay(monthlyExpenses + wishlistTotal - monthlyIncome)}/mo for {Math.ceil(wishlistTotal / Math.max(1, monthlyIncome - monthlyExpenses))} months to afford wishlist</p>}
+              </div>
+            ) : (
+              <p className="font-extrabold text-[#FF8388]">✗ Expenses exceed income by {money.formatDisplay(monthlyExpenses - monthlyIncome)}/mo — reduce expenses or increase income</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {(monthlyIncome > 0 || monthlyExpenses > 0 || actualThisMonth.income > 0 || actualThisMonth.expenses > 0) && (
         <Card className="mb-6">
           <CardHeader>
