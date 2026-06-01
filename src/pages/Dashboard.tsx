@@ -272,6 +272,26 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Low wallet balance warning */}
+      {!walletPending && (() => {
+        const negative = wallets.filter(w => (walletBalances.get(w.id) ?? 0) < 0)
+        if (negative.length === 0) return null
+        return (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/5 px-5 py-4">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[#FF8388]" />
+            <div className="flex-1">
+              <p className="font-bold text-[#FF8388]">{negative.length === 1 ? 'Wallet balance below zero' : 'Wallets below zero'}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {negative.map(w => `${w.name} (${fmt(walletBalances.get(w.id) ?? 0)})`).join(', ')} — check for missing income entries.
+              </p>
+            </div>
+            <Button asChild size="sm" variant="secondary" className="shrink-0">
+              <Link to="/transactions">Review</Link>
+            </Button>
+          </div>
+        )
+      })()}
+
       {/* Review queue banner */}
       {reviewCount > 0 && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">

@@ -583,7 +583,9 @@ export function Reports() {
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-extrabold text-foreground">{name}</p>
-                    <p className="text-xs text-muted-foreground">{categoryCounts[name] ?? 0} transaction{(categoryCounts[name] ?? 0) !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {categoryCounts[name] ?? 0} transaction{(categoryCounts[name] ?? 0) !== 1 ? 's' : ''} · avg {money.formatDisplay(Math.round(amount / Math.max(1, categoryCounts[name] ?? 1)))}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
