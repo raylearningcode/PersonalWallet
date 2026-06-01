@@ -418,6 +418,40 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Upcoming bills (mobile — next 3 within 14 days) */}
+      {upcomingBills.length > 0 && (() => {
+        const in14 = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10)
+        const imminent = upcomingBills.filter(r => r.next_due_date <= in14).slice(0, 3)
+        if (imminent.length === 0) return null
+        return (
+          <div className="mb-6 lg:hidden">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <h2 className="text-lg font-extrabold text-foreground">Upcoming bills</h2>
+              <Link to="/subscriptions" className="text-sm font-bold text-primary hover:underline">View all →</Link>
+            </div>
+            <div className="space-y-2">
+              {imminent.map(r => {
+                const daysAway = Math.ceil((new Date(r.next_due_date).getTime() - Date.now()) / 86_400_000)
+                return (
+                  <Link key={r.id} to="/subscriptions" className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-foreground">{r.description}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{r.next_due_date}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="text-sm font-extrabold text-foreground">{money.formatDisplay(r.amount)}</span>
+                      <span className={`text-xs font-bold ${daysAway <= 0 ? 'text-[#FF8388]' : daysAway <= 3 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
+                        {daysAway <= 0 ? 'Today' : daysAway === 1 ? 'Tomorrow' : `${daysAway}d`}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Mobile Insights row */}
       {transactions.length > 0 && (
         <div className="mb-6 lg:hidden">
