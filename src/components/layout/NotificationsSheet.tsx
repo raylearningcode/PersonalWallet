@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTransactions, useBudgetCategories, useRecurringRules, useGoals } from '@/lib/queries'
 import { computeNotifications } from '@/lib/notifications'
 import { useMoney } from '@/lib/currency'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Bell, AlertTriangle, Clock, Target, BellOff } from 'lucide-react'
 
@@ -21,6 +22,7 @@ export function NotificationsSheet() {
   const criticalCount = notifications.filter(n => n.severity === 'critical').length
   const badgeCount = notifications.length
 
+  const isDesktop = useIsDesktop()
   if (badgeCount === 0) return null
 
   const iconMap = {
@@ -52,7 +54,7 @@ export function NotificationsSheet() {
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-full max-w-sm">
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm' : 'max-h-[80dvh] overflow-y-auto rounded-t-3xl'}>
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />

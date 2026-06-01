@@ -32,8 +32,9 @@ describe('Reports', () => {
   it('switches report range between week, month, and year', () => {
     render(<Reports />)
 
-    expect(screen.getByRole('button', { name: 'Week' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Month' }))
+    // Range buttons appear in both the header and the mobile sticky bar
+    expect(screen.getAllByRole('button', { name: 'Week' }).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Month' })[0])
     expect(screen.getByText('Spending by category')).toBeInTheDocument()
     expect(screen.getByText('Category breakdown')).toBeInTheDocument()
     expect(screen.getAllByText('Food').length).toBeGreaterThan(0)
@@ -43,14 +44,14 @@ describe('Reports', () => {
   it('moves between specific reporting periods', () => {
     render(<Reports />)
 
-    // Current month (June 2026) has no mock data — empty state
-    expect(screen.getByText('June 2026')).toBeInTheDocument()
+    // Period label appears in both the header and the mobile sticky bar
+    expect(screen.getAllByText('June 2026').length).toBeGreaterThan(0)
     expect(screen.getByText(/No expense data for this period\./)).toBeInTheDocument()
     // Go back to May 2026 where mock transactions exist
-    fireEvent.click(screen.getByRole('button', { name: 'Previous period' }))
-    expect(screen.getByText('May 2026')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Previous period' })[0])
+    expect(screen.getAllByText('May 2026').length).toBeGreaterThan(0)
     // Go forward again
-    fireEvent.click(screen.getByRole('button', { name: 'Next period' }))
-    expect(screen.getByText('June 2026')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next period' })[0])
+    expect(screen.getAllByText('June 2026').length).toBeGreaterThan(0)
   })
 })

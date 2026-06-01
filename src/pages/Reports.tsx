@@ -379,6 +379,26 @@ export function Reports() {
           </div>
         )}
       />
+      {/* Mobile sticky period bar */}
+      <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden">
+        <div className="flex items-center justify-between gap-2">
+          <button aria-label="Previous period" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>
+          <span className="flex-1 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
+          <button aria-label="Next period" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>
+          <div className="flex rounded-full border border-border bg-secondary p-0.5">
+            {(['week', 'month', 'year'] as ReportRange[]).map(item => (
+              <button
+                key={item}
+                className={`rounded-full px-3 py-1 text-xs font-extrabold transition-colors ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                onClick={() => handleRangeChange(item)}
+              >
+                {RANGE_LABELS[item]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Savings rate" value={`${savingsRate}%`} sub={`${RANGE_LABELS[range]} view`} badgeVariant="success" />
         <StatCard label={range === 'week' ? 'Daily avg.' : range === 'year' ? 'Monthly avg.' : 'Spent'} value={money.formatDisplay(avgSpend)} sub="Expense pace" />
