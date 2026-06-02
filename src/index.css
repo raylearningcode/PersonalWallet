@@ -92,3 +92,18 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   filter: invert(0.9);
   background: hsl(var(--muted));
 }
+
+/* Print stylesheet for Export PDF */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  body::before { display: none; }
+  nav, [data-radix-dialog-overlay], .mobile-bottom-nav { display: none !important; }
+  .bg-background { background: white !important; }
+  .bg-card, .bg-secondary { background: #f9f9f9 !important; }
+  .text-foreground, .text-muted-foreground { color: #111 !important; }
+  .border-border { border-color: #ddd !important; }
+  .text-primary { color: #16a34a !important; }
+}

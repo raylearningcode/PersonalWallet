@@ -93,7 +93,7 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
             type="button"
             aria-label="Open profile and account settings"
             onClick={openProfile}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground active:scale-95"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground active:scale-95"
           >
             {avatarInitial ? avatarInitial : <User className="h-4 w-4" />}
           </button>
