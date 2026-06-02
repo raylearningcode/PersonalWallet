@@ -203,6 +203,21 @@ export function Subscriptions() {
     })
   }
 
+  const openEdit = (rule: RecurringRule) => {
+    setEditTarget(rule)
+    setEditForm({
+      description: rule.description,
+      amount: String(rule.original_amount ?? rule.amount),
+      currency: rule.original_currency ?? money.displayCurrency,
+      type: rule.type as 'expense' | 'income',
+      frequency: rule.frequency,
+      category: rule.category,
+      walletId: rule.wallet_id ?? '',
+      startDate: rule.start_date,
+      logFirstPayment: false,
+    })
+  }
+
   const handleEdit = async () => {
     if (!detailRule) return
     const amount = parseNumberInput(editForm.amount)
