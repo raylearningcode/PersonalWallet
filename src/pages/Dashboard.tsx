@@ -491,6 +491,23 @@ export function Dashboard() {
                 <span className="shrink-0 text-xs font-bold text-primary">Reports →</span>
               </Link>
             )}
+            {(() => {
+              const nextBill = recurringRules
+                .filter(r => r.active && r.type === 'expense')
+                .sort((a, b) => (a.next_due_date ?? '').localeCompare(b.next_due_date ?? ''))[0]
+              if (!nextBill || !nextBill.next_due_date) return null
+              const daysAway = Math.ceil((new Date(nextBill.next_due_date).getTime() - Date.now()) / 86_400_000)
+              if (daysAway > 30 || daysAway < 0) return null
+              return (
+                <Link to="/transactions?tab=recurring" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
+                  <span className="text-lg">📅</span>
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    <span className="font-bold text-foreground">{nextBill.description}</span> renews in {daysAway} day{daysAway !== 1 ? 's' : ''} — {money.formatDisplay(nextBill.amount)}.
+                  </p>
+                  <span className="shrink-0 text-xs font-bold text-primary">Bills →</span>
+                </Link>
+              )
+            })()}
           </div>
         </div>
       )}
