@@ -420,6 +420,22 @@ export function Reports() {
             ))}
           </div>
         </div>
+        <div className="mt-1.5 flex gap-2 overflow-x-auto pb-0.5">
+          {[
+            { label: 'This month', action: () => { handleRangeChange('month'); setPeriodDate(new Date()) } },
+            { label: 'Last month', action: () => { handleRangeChange('month'); const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); setPeriodDate(d) } },
+            { label: 'This year', action: () => { handleRangeChange('year'); setPeriodDate(new Date()) } },
+            { label: 'All time', action: () => handleRangeChange('all') },
+          ].map(({ label, action }) => (
+            <button
+              key={label}
+              onClick={action}
+              className="shrink-0 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold text-muted-foreground hover:text-foreground"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">

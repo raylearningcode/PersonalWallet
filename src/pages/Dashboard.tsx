@@ -458,34 +458,38 @@ export function Dashboard() {
           <h2 className="mb-3 text-lg font-extrabold text-foreground">Insights</h2>
           <div className="space-y-2">
             {safeToSpend > 0 && daysLeft > 0 && (
-              <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+              <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
                 <span className="text-lg">💡</span>
-                <p className="text-sm text-muted-foreground">
+                <p className="flex-1 text-sm text-muted-foreground">
                   You can spend <span className="font-bold text-foreground">{money.formatDisplay(safeToSpend / daysLeft)}</span> per day for the rest of the month.
                 </p>
-              </div>
+                <span className="shrink-0 text-xs font-bold text-primary">Budget →</span>
+              </Link>
             )}
             {topSpending.name && (
-              <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+              <Link to="/reports" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
                 <span className="text-lg">📊</span>
-                <p className="text-sm text-muted-foreground">
+                <p className="flex-1 text-sm text-muted-foreground">
                   Top spend: <span className="font-bold text-foreground">{topSpending.name}</span> — {money.formatDisplay(topSpending.amount)} this year.
                 </p>
-              </div>
+                <span className="shrink-0 text-xs font-bold text-primary">Reports →</span>
+              </Link>
             )}
             {overPaceInsight && !overPaceInsight.message.includes('undefined') && (
-              <div className="flex items-center gap-3 rounded-2xl border border-[#FFCF73]/20 bg-[#FFCF73]/5 px-4 py-3">
+              <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-[#FFCF73]/20 bg-[#FFCF73]/5 px-4 py-3 transition-colors hover:border-[#FFCF73]/40 active:scale-[0.99]">
                 <span className="text-lg">⚡</span>
-                <p className="text-sm text-muted-foreground">{overPaceInsight.message}</p>
-              </div>
+                <p className="flex-1 text-sm text-muted-foreground">{overPaceInsight.message}</p>
+                <span className="shrink-0 text-xs font-bold text-[#FFCF73]">Fix →</span>
+              </Link>
             )}
             {savingsRate > 0 && (
-              <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+              <Link to="/reports" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
                 <span className="text-lg">🎯</span>
-                <p className="text-sm text-muted-foreground">
+                <p className="flex-1 text-sm text-muted-foreground">
                   Saving <span className="font-bold text-foreground">{savingsRate}%</span> of income this year.
                 </p>
-              </div>
+                <span className="shrink-0 text-xs font-bold text-primary">Reports →</span>
+              </Link>
             )}
           </div>
         </div>
