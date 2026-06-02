@@ -164,10 +164,19 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
   const handleSave = async () => {
     const parsedAmount = parseNumberInput(amount)
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return
-    if (cannotSaveTransfer) return
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    if (cannotSaveTransfer) {
+      toast.error('Select two different wallets for a transfer')
+      return
+    }
     const selectedCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
-    if (type !== 'transfer' && !walletId) return
+    if (type !== 'transfer' && !walletId) {
+      toast.error('Please select a wallet')
+      return
+    }
 
     // Cash validation
     const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
