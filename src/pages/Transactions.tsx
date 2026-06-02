@@ -1940,6 +1940,17 @@ export function Transactions() {
                       </div>
                     )}
                   </div>
+
+                  {/* Merchant search shortcut */}
+                  {tx.type !== 'transfer' && (
+                    <button
+                      type="button"
+                      className="mt-3 w-full rounded-xl border border-border bg-secondary/50 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary active:scale-[0.99]"
+                      onClick={() => { setDetailTx(null); setSearchQuery(tx.description); setFilter('all') }}
+                    >
+                      Search all "{tx.description}" transactions →
+                    </button>
+                  )}
                 </div>
 
                 {/* Action buttons */}

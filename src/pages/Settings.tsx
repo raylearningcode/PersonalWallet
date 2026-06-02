@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
 import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
 import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
+import { parseNumberInput, formatNumberInput } from '@/lib/numberInput'
 
 const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
 type SettingsTab = typeof tabs[number]
@@ -134,6 +135,7 @@ export function Settings() {
   const [walletName, setWalletName] = useState('')
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
   const [walletCashRole, setWalletCashRole] = useState<CashRole | ''>('')
+  const [walletInitBalance, setWalletInitBalance] = useState('')
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
@@ -290,17 +292,19 @@ export function Settings() {
   const handleAddWallet = async () => {
     const name = walletName.trim()
     if (!name) return
+    const initBalance = walletInitBalance ? money.toBase(parseNumberInput(walletInitBalance), money.displayCurrency) : 0
     try {
       await addWallet.mutateAsync({
         name,
         type: walletType,
-        balance: 0,
+        balance: initBalance,
         currency: baseCurrency,
         cash_role: walletType === 'cash' && walletCashRole ? walletCashRole : null,
       })
       setWalletName('')
       setWalletType('cash')
       setWalletCashRole('')
+      setWalletInitBalance('')
       toast.success('Wallet added')
     } catch {
       toast.error('Failed to add wallet — please try again')
@@ -727,14 +731,23 @@ export function Settings() {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
                 <Input
                   aria-label="Wallet name"
-                  className="flex-1 bg-background"
+                  className="bg-background"
                   value={walletName}
                   onChange={event => setWalletName(event.target.value)}
                   onKeyDown={event => event.key === 'Enter' && handleAddWallet()}
                   placeholder={`Name — e.g. ${WALLET_NAME_HINTS[walletType] ?? 'My wallet'}`}
+                />
+                <Input
+                  aria-label="Initial balance (optional)"
+                  className="bg-background sm:w-32"
+                  value={walletInitBalance}
+                  onChange={e => setWalletInitBalance(formatNumberInput(e.target.value))}
+                  onKeyDown={event => event.key === 'Enter' && handleAddWallet()}
+                  placeholder="Balance (opt.)"
+                  inputMode="decimal"
                 />
                 <Button onClick={handleAddWallet} disabled={addWallet.isPending || !walletName.trim()}>Add wallet</Button>
               </div>

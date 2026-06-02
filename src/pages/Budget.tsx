@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDaysRemainingInMonth } from '@/lib/financeOs'
+import { formatDate } from '@/lib/utils'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
@@ -807,6 +808,40 @@ export function Budget() {
                     Delete
                   </button>
                 </div>
+
+                {/* Recent transactions in this category */}
+                {(() => {
+                  const catTx = expenseTransactions
+                    .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period, periodDate))
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .slice(0, 4)
+                  if (catTx.length === 0) return null
+                  return (
+                    <div className="mt-6 border-t border-border pt-6">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-sm font-extrabold text-foreground">Recent transactions</p>
+                        <Link
+                          to={`/transactions`}
+                          onClick={() => setSheetCat(null)}
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          View all →
+                        </Link>
+                      </div>
+                      <div className="space-y-1.5">
+                        {catTx.map(tx => (
+                          <div key={tx.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-3 py-2.5 text-sm">
+                            <div className="min-w-0">
+                              <p className="truncate font-bold text-foreground">{tx.description}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(tx.date)}</p>
+                            </div>
+                            <span className="shrink-0 tabular-nums font-extrabold text-[#FF8388]">−{fmt(tx.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             )
           })()}
