@@ -7,7 +7,7 @@ import {
   useAddBudgetCategory,
   useDeleteBudgetCategory,
 } from '@/lib/queries'
-import { Lightbulb, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Lightbulb, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -419,9 +419,9 @@ export function Budget() {
                   type="button"
                   aria-label="Add budget category"
                   onClick={() => { setShowAdd(true); setTimeout(() => addNameInputRef.current?.focus(), 80) }}
-                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-secondary text-lg font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-secondary text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
                 >
-                  +
+                  <Plus className="h-4 w-4" />
                 </button>
               )}
             </div>

@@ -390,7 +390,7 @@ export function Reports() {
               <span className="min-w-[118px] px-3 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
               {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
             </div>
-            {!isCurrentPeriod && range !== 'all' && (
+            {!isCurrentPeriod && (
               <button
                 onClick={() => setPeriodDate(new Date())}
                 className="rounded-full border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
