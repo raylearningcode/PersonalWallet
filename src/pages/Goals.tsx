@@ -461,12 +461,19 @@ export function Goals() {
                         <p className="text-sm font-bold text-primary">Goal reached!</p>
                       </div>
                     ) : (
-                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        <span>{money.formatDisplay(remaining)} remaining</span>
-                        {daysLeft !== null && (
-                          <span className={daysLeft <= 0 ? 'font-bold text-[#FF8388]' : daysLeft < 14 ? 'font-bold text-[#FFCF73]' : ''}>
-                            {daysLeft > 0 ? `${daysLeft}d left` : 'Deadline passed'}
-                          </span>
+                      <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap gap-3">
+                          <span>{money.formatDisplay(remaining)} remaining</span>
+                          {daysLeft !== null && (
+                            <span className={daysLeft <= 0 ? 'font-bold text-[#FF8388]' : daysLeft < 14 ? 'font-bold text-[#FFCF73]' : ''}>
+                              {daysLeft > 0 ? `${daysLeft}d left` : 'Deadline passed'}
+                            </span>
+                          )}
+                        </div>
+                        {daysLeft !== null && daysLeft > 0 && remaining > 0 && (
+                          <p className="font-bold text-foreground">
+                            Need {money.formatDisplay(Math.ceil(remaining / (daysLeft / 30)))}/month
+                          </p>
                         )}
                       </div>
                     )}
