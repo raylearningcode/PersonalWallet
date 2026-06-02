@@ -665,10 +665,14 @@ export function Settings() {
         {wallets.some(w => w.type === 'cash') && (
           <div className="mb-6 rounded-2xl border border-border bg-card p-5">
             <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">Cash preferences</p>
-            <p className="mt-2 text-sm font-bold text-foreground">NT$50 coin routing</p>
-            <p className="mt-1 text-xs text-muted-foreground">Where should NT$50 change go after a cash payment?</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {([['coins', 'Coin pouch (default)', 'NT$50 goes to your coin pouch with smaller coins'], ['notes', 'Main wallet', 'NT$50 stays in your notes wallet alongside NT$100+']] as const).map(([val, label, desc]) => (
+            <p className="mt-2 text-sm font-bold text-foreground">Change routing</p>
+            <p className="mt-1 text-xs text-muted-foreground">Choose how FinPath splits NT$ change after a cash payment.</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {([
+                ['coins', 'Coin pouch', 'NT$50 goes to your coin pouch with smaller coins.'],
+                ['notes', 'Main wallet', 'NT$50 stays in your notes wallet alongside NT$100+.'],
+                ['all-coins', 'All change to pouch', 'Every NT$ of change routes to the coin pouch.'],
+              ] as const).map(([val, label, desc]) => (
                 <button
                   key={val}
                   type="button"

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculateCashChange, splitTwdChange } from './cashChange'
+import { calculateCashChange, splitChangeByPolicy, splitTwdChange } from './cashChange'
 
 describe('calculateCashChange', () => {
   it('returns valid change when tendered > amount', () => {
@@ -29,6 +29,41 @@ describe('calculateCashChange', () => {
   it('handles zero tendered', () => {
     const result = calculateCashChange(50, 0)
     expect(result.valid).toBe(false)
+  })
+
+  it('rejects non-finite amounts', () => {
+    expect(calculateCashChange(Number.NaN, 100)).toEqual({ valid: false, change: 0 })
+    expect(calculateCashChange(75, Number.POSITIVE_INFINITY)).toEqual({ valid: false, change: 0 })
+  })
+})
+
+describe('splitChangeByPolicy', () => {
+  it('routes all TWD change to coins when policy is all-coins', () => {
+    const { bills, coins } = splitChangeByPolicy(250, { currency: 'TWD', routeFiftyCoinTo: 'all-coins' })
+
+    expect(bills).toBe(0)
+    expect(coins).toBe(250)
+  })
+
+  it('uses notes routing when policy sends NT$50 to notes', () => {
+    const { bills, coins } = splitChangeByPolicy(175, { currency: 'TWD', routeFiftyCoinTo: 'notes' })
+
+    expect(bills).toBe(150)
+    expect(coins).toBe(25)
+  })
+
+  it('routes non-TWD change as one destination amount', () => {
+    const { bills, coins } = splitChangeByPolicy(12.5, { currency: 'USD', routeFiftyCoinTo: 'coins' })
+
+    expect(bills).toBe(0)
+    expect(coins).toBe(12.5)
+  })
+
+  it('never returns negative change buckets', () => {
+    const { bills, coins } = splitChangeByPolicy(-25, { currency: 'TWD', routeFiftyCoinTo: 'coins' })
+
+    expect(bills).toBe(0)
+    expect(coins).toBe(0)
   })
 })
 
