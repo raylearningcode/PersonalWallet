@@ -446,7 +446,7 @@ export function Budget() {
                                     <span className="truncate font-bold text-foreground">{cat.name}</span>
                                   </div>
                                   <div className="flex shrink-0 items-center gap-2">
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">
                                       {fmt(cat.spent)} / {fmt(cat.yearly_allocated)}
                                     </span>
                                     <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>

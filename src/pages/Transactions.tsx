@@ -1433,7 +1433,7 @@ export function Transactions() {
                           ) : null
                         })()}
                       </div>
-                      <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
+                      <span className={`shrink-0 tabular-nums text-sm font-extrabold whitespace-nowrap ${txAmountColor(tx.amount, tx.type)}`}>
                         {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
                       </span>
                     </div>

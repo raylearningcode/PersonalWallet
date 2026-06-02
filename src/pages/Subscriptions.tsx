@@ -329,32 +329,36 @@ export function Subscriptions() {
                 <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">Paused</span>
               )}
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {rule.category} · {FREQ_LABELS[rule.frequency]}{walletName ? ` · ${walletName}` : ''}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+              <span>{rule.category}</span>
+              {walletName && <><span>·</span><span>{walletName}</span></>}
+            </div>
+            <div className="mt-1.5 flex items-center gap-2">
+              {rule.active ? (
+                <span className={`text-xs font-bold ${days <= 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
+                  {days === 0
+                    ? 'Due today'
+                    : days > 0
+                    ? `Next: ${new Date(rule.next_due_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+                    : 'Overdue'}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Paused · next charge disabled</span>
+              )}
+              {rule.installment_total && (
+                <span className="text-xs text-muted-foreground">{rule.installment_paid}/{rule.installment_total} installments</span>
+              )}
+            </div>
           </div>
           <div className="flex shrink-0 items-start gap-2">
             <div className="text-right">
-              <p className={`font-extrabold ${txAmountColor(rule.original_amount ?? rule.amount, rule.type)}`}>
+              <p className={`tabular-nums font-extrabold ${txAmountColor(rule.original_amount ?? rule.amount, rule.type)}`}>
                 {txAmountSign(rule.original_amount ?? rule.amount, rule.type)}{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">{FREQ_LABELS[rule.frequency].toLowerCase()}</p>
             </div>
             <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
-        </div>
-
-        <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-          {rule.active ? (
-            <span className={`font-bold ${days <= 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-foreground'}`}>
-              {days === 0 ? 'Due today' : days > 0 ? `Due in ${days}d` : 'Overdue'}
-            </span>
-          ) : (
-            <span>Paused</span>
-          )}
-          {rule.installment_total && (
-            <span>{rule.installment_paid} / {rule.installment_total} installments</span>
-          )}
         </div>
 
         {(isUnused || hasNeverPaid) && (

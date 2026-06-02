@@ -924,9 +924,14 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                     )}
 
                     {changeAmount > 0 && otherWallets.length === 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Add a coin pouch wallet in Settings to route change automatically.
-                      </p>
+                      <Link
+                        to="/settings?section=wallets"
+                        onClick={handleClose}
+                        className="flex items-center justify-between rounded-xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-3 py-2.5 text-xs font-bold text-[#FFCF73] hover:bg-[#FFCF73]/10"
+                      >
+                        <span>⚠ Set up a coin pouch wallet to route change automatically</span>
+                        <span className="ml-2 shrink-0">Settings →</span>
+                      </Link>
                     )}
                   </div>
                 )}

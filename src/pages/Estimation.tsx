@@ -591,8 +591,9 @@ export function Estimation() {
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
                 <select aria-label="Wishlist type" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
-                  <option value="Want">Want</option>
                   <option value="Need">Need</option>
+                  <option value="Want">Want</option>
+                  <option value="Later">Later</option>
                   <option value="Work">Work</option>
                   <option value="Travel">Travel</option>
                   <option value="Gift">Gift</option>
@@ -630,6 +631,7 @@ export function Estimation() {
                         <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
                           item.type === 'Need' ? 'bg-primary/15 text-primary' :
                           item.type === 'Want' ? 'bg-[#FFCF73]/20 text-[#FFCF73]' :
+                          item.type === 'Later' ? 'bg-muted text-muted-foreground' :
                           item.type === 'Work' ? 'bg-[#93C5FD]/20 text-[#93C5FD]' :
                           item.type === 'Travel' ? 'bg-[#C4AEFF]/20 text-[#C4AEFF]' :
                           item.type === 'Gift' ? 'bg-[#FADBEA]/50 text-[#FADBEA]' :
