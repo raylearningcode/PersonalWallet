@@ -1219,6 +1219,9 @@ export function Transactions() {
               {rows.map(tx => {
                 const isSelected = selectedIds.has(tx.id)
                 const txWallet = wallets.find(w => w.id === tx.wallet_id)
+                const linkedChange = tx.cash_tendered && tx.cash_tendered > 0
+                  ? transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated)
+                  : []
                 return (
                   <button
                     key={tx.id}
@@ -1242,15 +1245,17 @@ export function Transactions() {
                           {categoryColorMap.has(tx.category) && (
                             <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
                           )}
-                          <span className="truncate">
-                            {tx.category}{txWallet ? ` · ${txWallet.name}` : ''}
-                            {tx.cash_tendered && tx.cash_tendered > 0 && (
-                              <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                                Cash
-                              </span>
-                            )}
-                          </span>
+                          <span className="truncate">{tx.category}{txWallet ? ` · ${txWallet.name}` : ''}</span>
                         </div>
+                        {linkedChange.length > 0 && (() => {
+                          const changeAmt = tx.cash_tendered! - (tx.original_amount ?? tx.amount)
+                          const changeWallet = wallets.find(w => w.id === linkedChange[0].wallet_id)
+                          return changeAmt > 0 ? (
+                            <p className="mt-1 text-[11px] text-muted-foreground/70">
+                              Cash {money.format(tx.cash_tendered!, tx.original_currency ?? money.baseCurrency)} · change {money.format(changeAmt, tx.original_currency ?? money.baseCurrency)}{changeWallet ? ` → ${changeWallet.name}` : ''}
+                            </p>
+                          ) : null
+                        })()}
                       </div>
                       <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
                         {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
