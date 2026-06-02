@@ -79,6 +79,8 @@ export function Transactions() {
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
+  const longPressRef = useRef(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const { data: transactions = [], isPending: txPending } = useTransactions(filter)
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
@@ -1240,7 +1242,17 @@ export function Transactions() {
                     key={tx.id}
                     type="button"
                     className={`w-full rounded-xl border px-4 py-3 text-left transition-colors active:scale-[0.99] ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary hover:border-border/80 hover:bg-muted/30'}`}
-                    onClick={selectMode ? () => toggleSelectId(tx.id) : () => setDetailTx(tx)}
+                    onPointerDown={() => {
+                      longPressRef.current = false
+                      longPressTimer.current = setTimeout(() => {
+                        longPressRef.current = true
+                        if (!selectMode) { setSelectMode(true); setSelectedIds(new Set()) }
+                        setSelectedIds(prev => { const next = new Set(prev); next.add(tx.id); return next })
+                      }, 400)
+                    }}
+                    onPointerUp={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }}
+                    onPointerLeave={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }}
+                    onClick={() => { if (longPressRef.current) { longPressRef.current = false; return } selectMode ? toggleSelectId(tx.id) : setDetailTx(tx) }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
