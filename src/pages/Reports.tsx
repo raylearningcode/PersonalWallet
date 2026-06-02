@@ -353,9 +353,9 @@ export function Reports() {
         action={(
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center rounded-full border border-border bg-secondary p-1">
-              {range !== 'all' && <button aria-label="Previous period" className="h-9 w-9 rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>}
+              {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>}
               <span className="min-w-[118px] px-3 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-              {range !== 'all' && <button aria-label="Next period" className="h-9 w-9 rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
+              {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
             </div>
             <div className="flex rounded-full border border-border bg-secondary p-1">
               {(['week', 'month', 'year', 'all'] as ReportRange[]).map(item => (
@@ -371,7 +371,7 @@ export function Reports() {
             {wallets.length > 0 && (
               <select
                 aria-label="Filter by wallet"
-                className="h-9 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                className="h-11 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                 value={selectedWalletId}
                 onChange={e => { setSelectedWalletId(e.target.value); setSelectedCategory(null) }}
               >

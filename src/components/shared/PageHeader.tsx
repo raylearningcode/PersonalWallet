@@ -83,7 +83,7 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
           {onSearchChange !== undefined && (
             <input
               aria-label="Search"
-              className="h-8 w-36 rounded-full border border-border bg-[#111b31] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+              className="h-9 w-36 rounded-full border border-border bg-[#111b31] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
               placeholder="Search…"
               value={searchValue ?? ''}
               onChange={e => onSearchChange(e.target.value)}

@@ -607,7 +607,7 @@ export function Settings() {
                     key={val}
                     type="button"
                     onClick={() => setWalletCashRole(val as CashRole | '')}
-                    className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${walletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${walletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
                   >
                     {label}
                   </button>

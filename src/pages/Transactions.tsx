@@ -1497,7 +1497,7 @@ export function Transactions() {
                         <span className="text-sm font-bold text-[#FFCF73]">Needs review</span>
                         <button
                           type="button"
-                          className="rounded-full bg-[#FFCF73]/15 px-3 py-1 text-xs font-bold text-[#FFCF73]"
+                          className="rounded-full bg-[#FFCF73]/15 px-4 py-2 text-xs font-bold text-[#FFCF73] active:scale-95"
                           onClick={() => { handleMarkReviewed(tx.id); setDetailTx(null) }}
                         >
                           Mark reviewed
