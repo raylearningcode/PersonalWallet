@@ -369,7 +369,8 @@ export function Subscriptions() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">New subscription</CardTitle>
               <button
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Close new subscription form"
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
                 onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.displayCurrency)) }}
               >
                 <X className="h-4 w-4" />
