@@ -12,3 +12,10 @@ Wallet_Tracker/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+
+# Capacitor native build artifacts
+android/app/build/
+android/.gradle/
+ios/App/build/
+ios/App/Pods/
+ios/.xcode.env.local
