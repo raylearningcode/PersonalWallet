@@ -278,7 +278,7 @@ export function Goals() {
         <StatCard
           label="Goals set"
           value={String(goals.length)}
-          sub={urgentGoals > 0 ? `⚡ ${urgentGoals} urgent · ${completedGoals} done` : behindGoals > 0 ? `⚠ ${behindGoals} behind · ${completedGoals} done` : `${completedGoals} completed`}
+          sub={urgentGoals > 0 ? `${urgentGoals} urgent · ${completedGoals} done` : behindGoals > 0 ? `${behindGoals} behind · ${completedGoals} done` : `${completedGoals} completed`}
           badgeVariant={urgentGoals > 0 ? 'danger' : behindGoals > 0 ? 'warning' : 'success'}
         />
         <StatCard label="Total target" value={money.formatDisplay(totalTarget)} sub="Across all goals" />
