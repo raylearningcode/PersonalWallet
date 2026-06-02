@@ -47,6 +47,8 @@ vi.mock('@/lib/currency', () => ({
     displayCurrency: 'IDR',
     formatDisplay: (n: number) => `Rp ${new Intl.NumberFormat('en-US').format(n)}`,
     format: (n: number) => `Rp ${new Intl.NumberFormat('en-US').format(n)}`,
+    fromBase: (n: number) => n,
+    toBase: (n: number) => n,
   }),
 }))
 
@@ -72,7 +74,10 @@ describe('Budget', () => {
     renderBudget()
     const dailyBtn = screen.getByRole('button', { name: 'Daily' })
     fireEvent.click(dailyBtn)
-    expect(screen.getAllByText('Daily').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Daily left').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remaining' }))
+    expect(screen.getAllByText('Remaining').length).toBeGreaterThan(0)
   })
 
   it('opens add category form when + button is clicked', () => {
@@ -93,6 +98,17 @@ describe('Budget', () => {
     renderBudget()
     const foodBtn = screen.getByRole('button', { name: /Open Food budget details/i })
     expect(foodBtn).toHaveClass('lg:grid')
-    expect(foodBtn).toHaveClass('lg:grid-cols-[minmax(160px,1fr)_140px_140px_88px_160px_32px]')
+    expect(foodBtn).toHaveClass('lg:grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px]')
+  })
+
+  it('opens budget editing in a compact desktop side panel', () => {
+    renderBudget()
+    fireEvent.click(screen.getByRole('button', { name: /Open Food budget details/i }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveClass('inset-y-0')
+    expect(dialog).toHaveClass('right-0')
+    expect(dialog).toHaveClass('max-w-xl')
+    expect(dialog).not.toHaveClass('inset-x-0')
   })
 })

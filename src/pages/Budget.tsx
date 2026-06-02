@@ -23,6 +23,7 @@ import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDaysRemainingInMonth } from '@/lib/financeOs'
 import { formatDate } from '@/lib/utils'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
@@ -95,6 +96,7 @@ function ColorBar({ value, color }: { value: number; color: string }) {
 export function Budget() {
   const money = useMoney()
   const fmt = money.formatDisplay
+  const isDesktop = useIsDesktop()
   const { data: categories = [], isPending: catPending, isError: catError, refetch: catRefetch } = useBudgetCategories()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
@@ -304,6 +306,12 @@ export function Budget() {
 
   const closestPct = closestToCap ? getCategoryUsedPct(closestToCap.spent, closestToCap.yearly_allocated) : 0
 
+  const allocationHeaders = viewMode === 'daily'
+    ? ['Daily left', 'Left']
+    : viewMode === 'remaining'
+    ? ['Remaining', 'Budget']
+    : ['Spent', 'Budget']
+
   return (
     <div>
       <PageHeader
@@ -454,7 +462,17 @@ export function Budget() {
               <>
                 {activeBudgets.length > 0 && (
                   <div className="space-y-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
+                    <div className="flex items-end justify-between gap-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
+                      <div className="hidden flex-1 grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] items-center gap-4 px-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/70 lg:grid">
+                        <span>Category</span>
+                        <span>{allocationHeaders[0]}</span>
+                        <span>{allocationHeaders[1]}</span>
+                        <span>Progress</span>
+                        <span>Status</span>
+                        <span />
+                      </div>
+                    </div>
                     {(() => {
                       const grouped = groupCategories(activeBudgets)
                       const showGroups = grouped.length > 1
@@ -470,13 +488,21 @@ export function Budget() {
                               ? (cat.yearly_allocated - cat.spent) / daysLeft
                               : null
                             const overPace = pct > monthPct
+                            const primaryValue = viewMode === 'daily'
+                              ? (catDailyAllowance !== null ? fmt(catDailyAllowance) : '—')
+                              : viewMode === 'remaining'
+                              ? fmt(Math.max(0, cat.yearly_allocated - cat.spent))
+                              : fmt(cat.spent)
+                            const secondaryValue = viewMode === 'daily'
+                              ? fmt(Math.max(0, cat.yearly_allocated - cat.spent))
+                              : fmt(cat.yearly_allocated)
 
                             return (
                               <button
                                 key={cat.id}
                                 type="button"
                                 onClick={() => openSheet(cat)}
-                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1fr)_140px_140px_88px_160px_32px] lg:items-center lg:gap-4 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
+                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] lg:items-center lg:gap-4 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
                                 aria-label={`Open ${cat.name} budget details`}
                               >
                                 <div className="mb-2 flex items-center justify-between gap-2 text-sm lg:contents">
@@ -484,8 +510,8 @@ export function Budget() {
                                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
                                     <span className="truncate font-bold text-foreground">{cat.name}</span>
                                   </div>
-                                  <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{fmt(cat.spent)}</span>
-                                  <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{fmt(cat.yearly_allocated)}</span>
+                                  <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{primaryValue}</span>
+                                  <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{secondaryValue}</span>
                                   <div className="flex shrink-0 items-center gap-2 lg:hidden">
                                     <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">{fmt(cat.spent)} / {fmt(cat.yearly_allocated)}</span>
                                     <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>{pct}%</span>
@@ -697,7 +723,12 @@ export function Budget() {
 
       {/* Category detail sheet */}
       <Sheet open={!!sheetCat} onOpenChange={open => { if (!open) setSheetCat(null) }}>
-        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+        <SheetContent
+          side={isDesktop ? 'right' : 'bottom'}
+          className={isDesktop
+            ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0 sm:max-w-xl'
+            : 'max-h-[90dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}
+        >
           {sheetCat && (() => {
             const cat = sheetCat
             const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
