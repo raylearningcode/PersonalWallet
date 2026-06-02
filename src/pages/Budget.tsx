@@ -94,7 +94,7 @@ function ColorBar({ value, color }: { value: number; color: string }) {
 export function Budget() {
   const money = useMoney()
   const fmt = money.formatDisplay
-  const { data: categories = [], isPending: catPending } = useBudgetCategories()
+  const { data: categories = [], isPending: catPending, isError: catError, refetch: catRefetch } = useBudgetCategories()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
   const addCategory = useAddBudgetCategory()
@@ -399,6 +399,18 @@ export function Budget() {
                   <Skeleton className="h-2 w-full" />
                 </div>
               ))
+            ) : catError ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary px-6 py-10 text-center">
+                <p className="text-base font-bold text-foreground">Could not load budget</p>
+                <p className="mt-1 text-sm text-muted-foreground">Your local data is safe. Try refreshing.</p>
+                <button
+                  type="button"
+                  onClick={() => catRefetch()}
+                  className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+                >
+                  Retry
+                </button>
+              </div>
             ) : categoriesWithSpent.length > 0 ? (
               <>
                 {activeBudgets.length > 0 && (
@@ -444,20 +456,27 @@ export function Budget() {
                                   </div>
                                 </div>
                                 <ColorBar value={pct} color={barColor} />
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {viewMode === 'monthly' && (
-                                    <>{pct}% used · {overPace ? '⚡ Over pace' : '✓ On track'}</>
-                                  )}
-                                  {viewMode === 'daily' && cat.budget_period === 'monthly' && catDailyAllowance !== null && daysLeft > 0 && (
-                                    <span className="text-primary">Daily guide: {fmt(catDailyAllowance)}/day</span>
-                                  )}
-                                  {viewMode === 'daily' && (cat.budget_period !== 'monthly' || catDailyAllowance === null || daysLeft === 0) && (
-                                    <>{pct}% used · {daysLeft === 0 ? 'Month ends today' : 'No daily data'}</>
+                                <div className="mt-1.5 flex items-center gap-2">
+                                  {pct === 0 ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">No spending</span>
+                                  ) : pct >= 100 ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400">Over budget</span>
+                                  ) : pct >= 90 ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400">Near limit</span>
+                                  ) : pct >= 70 ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-400">Watch spending</span>
+                                  ) : overPace ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-400">Over pace</span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">On track</span>
                                   )}
                                   {viewMode === 'remaining' && (
-                                    <>Remaining: <span className="font-bold text-foreground">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))}</span> · {overPace ? '⚡ Over pace' : '✓ On track'}</>
+                                    <span className="text-[11px] text-muted-foreground">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))} left</span>
                                   )}
-                                </p>
+                                  {viewMode === 'daily' && cat.budget_period === 'monthly' && catDailyAllowance !== null && daysLeft > 0 && (
+                                    <span className="text-[11px] text-muted-foreground">{fmt(catDailyAllowance)}/day</span>
+                                  )}
+                                </div>
                               </button>
                             )
                           })}

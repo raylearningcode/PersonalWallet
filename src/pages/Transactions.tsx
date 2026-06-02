@@ -90,7 +90,7 @@ export function Transactions() {
   const generatedDueRef = useRef(false)
   const longPressRef = useRef(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>(null)
-  const { data: transactions = [], isPending: txPending } = useTransactions(filter)
+  const { data: transactions = [], isPending: txPending, isError: txError, refetch: txRefetch } = useTransactions(filter)
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
@@ -1356,6 +1356,18 @@ export function Transactions() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : txError ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary px-6 py-12 text-center">
+            <p className="text-base font-bold text-foreground">Could not load transactions</p>
+            <p className="mt-1 text-sm text-muted-foreground">Your local data is safe. Try refreshing.</p>
+            <button
+              type="button"
+              onClick={() => txRefetch()}
+              className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+            >
+              Retry
+            </button>
           </div>
         ) : groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
           <div key={date} className="mb-6 last:mb-0">

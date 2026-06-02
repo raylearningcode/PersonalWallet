@@ -55,6 +55,7 @@ const emptyAddForm = (currency = '') => ({
   category: '',
   walletId: '',
   startDate: new Date().toISOString().slice(0, 10),
+  endDate: '' as string,
   logFirstPayment: true,
 })
 
@@ -198,7 +199,8 @@ export function Subscriptions() {
       frequency: rule.frequency,
       category: rule.category,
       walletId: rule.wallet_id ?? '',
-      startDate: rule.start_date,
+      startDate: rule.next_due_date ?? rule.start_date,
+      endDate: rule.end_date ?? '',
       logFirstPayment: false,
     })
   }
@@ -213,13 +215,14 @@ export function Subscriptions() {
       frequency: rule.frequency,
       category: rule.category,
       walletId: rule.wallet_id ?? '',
-      startDate: rule.start_date,
+      startDate: rule.next_due_date ?? rule.start_date,
+      endDate: rule.end_date ?? '',
       logFirstPayment: false,
     })
   }
 
   const handleEdit = async () => {
-    if (!detailRule) return
+    if (!editTarget) return
     const amount = parseNumberInput(editForm.amount)
     if (!editForm.description.trim() || amount <= 0) {
       toast.error('Description and amount are required')
@@ -227,10 +230,9 @@ export function Subscriptions() {
     }
     const category = editForm.category || (editForm.type === 'income' ? 'Income' : 'Subscriptions')
     const currency = editForm.currency || money.displayCurrency
-    const id = editTarget!.id
     try {
       await updateRule.mutateAsync({
-        id,
+        id: editTarget.id,
         description: editForm.description.trim(),
         amount: money.toBase(amount, currency),
         original_amount: amount,
@@ -239,7 +241,8 @@ export function Subscriptions() {
         category,
         wallet_id: editForm.walletId || null,
         frequency: editForm.frequency,
-        next_due_date: nextDueFrom(editForm.startDate, editForm.frequency),
+        next_due_date: editForm.startDate,
+        end_date: editForm.endDate || null,
       })
       setEditTarget(null)
       setEditForm(emptyAddForm(money.displayCurrency))
@@ -459,6 +462,24 @@ export function Subscriptions() {
                   <option value="">— none —</option>
                   {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Next due date</Label>
+                <Input
+                  type="date"
+                  className="mt-1.5 bg-secondary text-sm"
+                  value={editForm.startDate}
+                  onChange={e => setEditField('startDate', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">End date <span className="font-normal opacity-60">(optional)</span></Label>
+                <Input
+                  type="date"
+                  className="mt-1.5 bg-secondary text-sm"
+                  value={editForm.endDate ?? ''}
+                  onChange={e => setEditField('endDate', e.target.value)}
+                />
               </div>
             </div>
             <div className="flex gap-2">

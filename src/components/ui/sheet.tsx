@@ -18,7 +18,7 @@ SheetOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const sideClasses = {
   top: 'inset-x-0 top-0 border-b',
-  bottom: 'inset-x-0 bottom-0 border-t',
+  bottom: 'inset-x-0 bottom-0 border-t rounded-t-2xl',
   left: 'inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm',
   right: 'inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm',
 }
@@ -34,10 +34,15 @@ const SheetContent = React.forwardRef<
       className={cn('fixed z-50 gap-4 bg-background p-6 shadow-lg', sideClasses[side], className)}
       {...props}
     >
+      {side === 'bottom' && (
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+      )}
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
+      <DialogPrimitive.Close
+        aria-label="Close"
+        className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+      >
+        <X className="h-5 w-5" />
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </SheetPortal>

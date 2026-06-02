@@ -77,6 +77,7 @@ export function Goals() {
   const [contributeWalletId, setContributeWalletId] = useState('')
   const [contributeRepeat, setContributeRepeat] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null)
+  const [duplicateTarget, setDuplicateTarget] = useState<Goal | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
 
@@ -235,20 +236,27 @@ export function Goals() {
     }
   }
 
-  const handleDuplicateGoal = async (goal: Goal) => {
+  const handleDuplicateGoal = (goal: Goal) => {
+    setDuplicateTarget(goal)
+  }
+
+  const confirmDuplicate = async (keepProgress: boolean) => {
+    if (!duplicateTarget) return
     try {
       await addGoal.mutateAsync({
-        name: `${goal.name} (copy)`,
-        target_amount: goal.target_amount,
-        current_amount: 0,
-        deadline: goal.deadline,
-        color: goal.color,
-        category: goal.category,
-        notes: goal.notes,
+        name: `${duplicateTarget.name} (copy)`,
+        target_amount: duplicateTarget.target_amount,
+        current_amount: keepProgress ? duplicateTarget.current_amount : 0,
+        deadline: duplicateTarget.deadline,
+        color: duplicateTarget.color,
+        category: duplicateTarget.category,
+        notes: duplicateTarget.notes,
       })
       toast.success('Goal duplicated')
     } catch {
       toast.error('Failed to duplicate goal')
+    } finally {
+      setDuplicateTarget(null)
     }
   }
 
@@ -377,7 +385,32 @@ export function Goals() {
                   value={form.deadline}
                   onChange={e => setField('deadline', e.target.value)}
                 />
-                <p className="mt-1 text-[10px] text-muted-foreground/60">You can type the date directly or use the calendar icon</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[
+                    { label: '+3 mo', months: 3 },
+                    { label: '+6 mo', months: 6 },
+                    { label: '+1 yr', months: 12 },
+                    { label: 'End of year', endOfYear: true },
+                  ].map(shortcut => {
+                    const target = new Date()
+                    if (shortcut.endOfYear) {
+                      target.setMonth(11); target.setDate(31)
+                    } else {
+                      target.setMonth(target.getMonth() + (shortcut.months ?? 0))
+                    }
+                    const value = target.toISOString().slice(0, 10)
+                    return (
+                      <button
+                        key={shortcut.label}
+                        type="button"
+                        onClick={() => setField('deadline', value)}
+                        className="rounded-full border border-border bg-secondary px-2.5 py-1 text-[11px] font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary active:scale-95"
+                      >
+                        {shortcut.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Color</Label>
@@ -698,6 +731,40 @@ export function Goals() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
+
+      {duplicateTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/75 px-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-[1.3rem] border border-border bg-card p-5 shadow-2xl">
+            <h2 className="text-lg font-extrabold text-foreground">Duplicate goal?</h2>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">
+              Copy <span className="font-bold text-foreground">{duplicateTarget.name}</span>. Keep saved progress or start fresh?
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => confirmDuplicate(false)}
+                className="w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+              >
+                Reset to 0
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmDuplicate(true)}
+                className="w-full rounded-xl border border-border bg-secondary py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-muted active:opacity-80"
+              >
+                Keep current progress ({money.formatDisplay(duplicateTarget.current_amount)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDuplicateTarget(null)}
+                className="w-full py-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

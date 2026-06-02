@@ -14,13 +14,15 @@ const FALLBACK_USD_RATES: Rates = {
 }
 
 export function formatCurrency(amount: number, currency: string): string {
+  const isWhole = Number.isInteger(amount)
   const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
     maximumFractionDigits: currency === 'IDR' ? 0 : 2,
-    minimumFractionDigits: currency === 'IDR' ? 0 : 2,
+    minimumFractionDigits: currency === 'IDR' ? 0 : isWhole ? 0 : 2,
   }).format(amount)
-  return formatted.replace('IDR', 'Rp')
+  // Normalize any non-breaking spaces from Intl output, then replace IDR prefix
+  return formatted.replace(/ | /g, ' ').replace('IDR', 'Rp')
 }
 
 export function formatCompact(amount: number, currency: string): string {
@@ -29,7 +31,6 @@ export function formatCompact(amount: number, currency: string): string {
   const prefix = currency === 'IDR' ? 'Rp ' : `${currency} `
   if (abs >= 1_000_000_000_000) return `${sign}${prefix}${(abs / 1_000_000_000_000).toFixed(1)}T`
   if (abs >= 1_000_000_000) return `${sign}${prefix}${(abs / 1_000_000_000).toFixed(1)}B`
-  if (abs >= 1_000_000) return `${sign}${prefix}${(abs / 1_000_000).toFixed(1)}M`
   if (abs >= 10_000) return `${sign}${prefix}${(abs / 1_000).toFixed(0)}K`
   return formatCurrency(amount, currency)
 }
