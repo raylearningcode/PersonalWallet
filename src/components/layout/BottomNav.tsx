@@ -46,7 +46,7 @@ export function BottomNav({
 
   return (
     <nav
-      className={`fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-border bg-background/97 backdrop-blur-md lg:hidden transition-transform duration-300 ${hidden ? 'translate-y-full' : 'translate-y-0'}`}
+      className={`fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-border bg-background/97 backdrop-blur-md lg:hidden transition-transform duration-300 ${hidden ? 'translate-y-full pointer-events-none' : 'translate-y-0'}`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: 'calc(64px + env(safe-area-inset-bottom))' }}
     >
       {navItems.slice(0, 2).map(({ to, label, icon: Icon }) => (

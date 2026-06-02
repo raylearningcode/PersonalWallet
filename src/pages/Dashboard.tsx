@@ -12,7 +12,7 @@ import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
 import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
 import { computeStreak } from '@/lib/streak'
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart } from 'lucide-react'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart, Zap, Calendar } from 'lucide-react'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -481,7 +481,7 @@ export function Dashboard() {
           <div className="space-y-2">
             {safeToSpend > 0 && daysLeft > 0 && (
               <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
-                <span className="text-lg">💡</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Lightbulb className="h-4 w-4 text-primary" /></span>
                 <p className="flex-1 text-sm text-muted-foreground">
                   You can spend <span className="font-bold text-foreground">{money.formatDisplay(safeToSpend / daysLeft)}</span> per day for the rest of the month.
                 </p>
@@ -490,7 +490,7 @@ export function Dashboard() {
             )}
             {topSpending.name && (
               <Link to="/reports" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
-                <span className="text-lg">📊</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent/10"><BarChart2 className="h-4 w-4 text-accent" /></span>
                 <p className="flex-1 text-sm text-muted-foreground">
                   Top spend: <span className="font-bold text-foreground">{topSpending.name}</span> — {money.formatDisplay(topSpending.amount)} this year.
                 </p>
@@ -499,14 +499,14 @@ export function Dashboard() {
             )}
             {overPaceInsight && !overPaceInsight.message.includes('undefined') && (
               <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-[#FFCF73]/20 bg-[#FFCF73]/5 px-4 py-3 transition-colors hover:border-[#FFCF73]/40 active:scale-[0.99]">
-                <span className="text-lg">⚡</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFCF73]/15"><Zap className="h-4 w-4 text-[#FFCF73]" /></span>
                 <p className="flex-1 text-sm text-muted-foreground">{overPaceInsight.message}</p>
                 <span className="shrink-0 text-xs font-bold text-[#FFCF73]">Fix →</span>
               </Link>
             )}
             {savingsRate > 0 && (
               <Link to="/reports" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
-                <span className="text-lg">🎯</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Target className="h-4 w-4 text-primary" /></span>
                 <p className="flex-1 text-sm text-muted-foreground">
                   Saving <span className="font-bold text-foreground">{savingsRate}%</span> of income this year.
                 </p>
@@ -526,7 +526,7 @@ export function Dashboard() {
               if (!monthlyNeeded || monthlyNeeded <= 0) return null
               return (
                 <Link to="/goals" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
-                  <span className="text-lg">🆘</span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-destructive/10"><AlertTriangle className="h-4 w-4 text-destructive" /></span>
                   <p className="flex-1 text-sm text-muted-foreground">
                     Emergency fund needs <span className="font-bold text-foreground">{money.formatDisplay(monthlyNeeded)}/month</span> to reach goal.
                   </p>
@@ -548,7 +548,7 @@ export function Dashboard() {
               if (!nearLimit) return null
               return (
                 <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-[#FFCF73]/20 bg-[#FFCF73]/5 px-4 py-3 transition-colors hover:border-[#FFCF73]/40 active:scale-[0.99]">
-                  <span className="text-lg">⚠️</span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFCF73]/15"><AlertTriangle className="h-4 w-4 text-[#FFCF73]" /></span>
                   <p className="flex-1 text-sm text-muted-foreground">
                     <span className="font-bold text-foreground">{nearLimit.name}</span> is at {nearLimit.pct}% of its monthly budget.
                   </p>
@@ -565,7 +565,7 @@ export function Dashboard() {
               if (daysAway > 30 || daysAway < 0) return null
               return (
                 <Link to="/transactions?tab=recurring" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
-                  <span className="text-lg">📅</span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent/10"><Calendar className="h-4 w-4 text-accent" /></span>
                   <p className="flex-1 text-sm text-muted-foreground">
                     <span className="font-bold text-foreground">{nextBill.description}</span> renews in {daysAway} day{daysAway !== 1 ? 's' : ''} — {money.formatDisplay(nextBill.amount)}.
                   </p>

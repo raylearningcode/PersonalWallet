@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
-import { Download, Upload, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Upload, FileText } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all'
@@ -378,9 +378,9 @@ export function Reports() {
         action={(
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center rounded-full border border-border bg-secondary p-1">
-              {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>}
+              {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
               <span className="min-w-[118px] px-3 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-              {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
+              {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
             </div>
             <div className="flex rounded-full border border-border bg-secondary p-1">
               {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
