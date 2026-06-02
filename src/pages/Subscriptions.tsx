@@ -106,6 +106,29 @@ export function Subscriptions() {
     [income]
   )
 
+  const monthlyOutlook = useMemo(() => {
+    const now = new Date()
+    return [0, 1, 2].map(offset => {
+      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+      const y = d.getFullYear()
+      const m = d.getMonth()
+      const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      const dueRules = expenses.filter(r => {
+        if (!r.active) return false
+        if (r.frequency === 'monthly' || r.frequency === 'weekly' || r.frequency === 'daily') return true
+        // yearly: check if due in this calendar month
+        const next = new Date(r.next_due_date)
+        const nextYear = next.getFullYear()
+        const nextMonth = next.getMonth()
+        if (nextYear === y && nextMonth === m) return true
+        const prevYear = new Date(next.getFullYear() - 1, next.getMonth(), 1)
+        return prevYear.getFullYear() === y && prevYear.getMonth() === m
+      })
+      const total = dueRules.reduce((sum, r) => sum + r.amount * (FREQ_MONTHS[r.frequency] ?? 1), 0)
+      return { label, total, count: dueRules.length }
+    })
+  }, [expenses])
+
   const nextRenewal = useMemo(() => {
     const upcoming = expenses.filter(r => r.active).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))
     return upcoming[0] ?? null
@@ -488,6 +511,22 @@ export function Subscriptions() {
           sub={nextRenewal ? `${nextRenewal.next_due_date} · ${money.formatDisplay(nextRenewal.amount)}` : 'No active subscriptions'}
         />
       </div>
+
+      {/* 3-month expense outlook */}
+      {expenses.some(r => r.active) && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-lg font-extrabold text-foreground">3-month outlook</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {monthlyOutlook.map(({ label, total, count }) => (
+              <div key={label} className="rounded-2xl border border-border bg-secondary px-4 py-3">
+                <p className="text-xs font-bold text-muted-foreground">{label}</p>
+                <p className="mt-1 text-base font-extrabold text-foreground">{money.formatDisplay(total)}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{count} bill{count !== 1 ? 's' : ''}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Upcoming bills timeline */}
       {expenses.filter(r => r.active && daysUntil(r.next_due_date) <= 30).length > 0 && (
