@@ -127,8 +127,6 @@ export function Reports() {
   const totalIncome = incomeTx.reduce((sum, tx) => sum + tx.amount, 0)
   const totalExpenses = expenseTx.reduce((sum, tx) => sum + tx.amount, 0)
   const savingsRate = calculateSavingsRate(totalIncome, totalExpenses)
-  const avgSpend = range === 'year' ? Math.round(totalExpenses / 12) : range === 'week' ? Math.round(totalExpenses / 7) : totalExpenses
-
   const prevTotalIncome = prevRangeTx.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
   const prevTotalExpenses = prevRangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer').reduce((sum, tx) => sum + tx.amount, 0)
   const incomeDiff = diffLabel(totalIncome, prevTotalIncome)

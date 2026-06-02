@@ -172,7 +172,7 @@ export function AppLayout() {
           <h2 className="mb-1 text-lg font-extrabold text-foreground">Quick add</h2>
           <p className="mb-5 text-sm text-muted-foreground">What do you want to record?</p>
           <div className="space-y-2">
-            {QUICK_ACTIONS.map(({ type, label, description, color, Icon, to }) => (
+            {QUICK_ACTIONS.map(({ type, label, description, color, Icon, to, cash }) => (
               <button
                 key={type}
                 type="button"

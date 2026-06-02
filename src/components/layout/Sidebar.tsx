@@ -197,10 +197,10 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
           </div>
 
           {/* Display currency badge */}
-          {settings?.display_currency && (
+          {settings?.currency && (
             <div className="mb-4 flex items-center gap-2 rounded-xl bg-secondary/50 px-3 py-2">
               <span className="text-xs text-muted-foreground">Display currency:</span>
-              <span className="text-xs font-extrabold text-foreground">{settings.display_currency}</span>
+              <span className="text-xs font-extrabold text-foreground">{settings.currency}</span>
             </div>
           )}
 

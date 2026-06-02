@@ -28,7 +28,7 @@ import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { splitTwdChange, getFiftyCoinRouting } from '@/lib/cashChange'
-import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
+import type { RecurringFrequency, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 
@@ -556,7 +556,7 @@ export function Transactions() {
   const bulkExportCSV = () => {
     const selected = sortedTransactions.filter(tx => selectedIds.has(tx.id))
     if (selected.length === 0) return
-    const headers = ['Date', 'Description', 'Category', 'Type', 'Amount', 'Currency', 'Wallet', 'Note']
+    const headers = ['Date', 'Description', 'Category', 'Type', 'Amount', 'Currency', 'Wallet']
     const rows = selected.map(tx => {
       const w = wallets.find(wl => wl.id === tx.wallet_id)
       return [
@@ -567,7 +567,6 @@ export function Transactions() {
         money.fromBase(tx.amount, tx.original_currency ?? money.baseCurrency).toFixed(2),
         tx.original_currency ?? money.baseCurrency,
         w?.name ?? '',
-        `"${(tx.note ?? '').replace(/"/g, '""')}"`,
       ]
     })
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
