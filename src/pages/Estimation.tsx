@@ -637,9 +637,9 @@ export function Estimation() {
                         }`}>{item.type}</span>
                       </div>
                       <div className="flex shrink-0 gap-1">
-                        <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} title="Convert to goal" disabled={addGoal.isPending}><Target className="h-4 w-4" /></button>
-                        <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => startEditWishlist(item.id)} title="Edit"><Pencil className="h-4 w-4" /></button>
-                        <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })} title="Remove"><X className="h-4 w-4" /></button>
+                        <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} aria-label="Convert to goal" disabled={addGoal.isPending}><Target className="h-4 w-4" /></button>
+                        <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => startEditWishlist(item.id)} aria-label="Edit"><Pencil className="h-4 w-4" /></button>
+                        <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })} aria-label="Remove"><X className="h-4 w-4" /></button>
                       </div>
                     </div>
                     <p className="mt-3 text-lg font-extrabold text-primary">{money.formatDisplay(item.amount)}</p>
@@ -729,8 +729,8 @@ function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>
               </select>
-              <button className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={onEditSave} title="Save"><Check className="h-4 w-4" /></button>
-              <button className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border" onClick={onEditCancel} title="Cancel"><X className="h-4 w-4" /></button>
+              <button aria-label="Save" className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={onEditSave}><Check className="h-4 w-4" /></button>
+              <button aria-label="Cancel" className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border" onClick={onEditCancel}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">Editing · amounts in {displayCurrency}</p>
           </div>
@@ -742,8 +742,8 @@ function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount
           </div>
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-foreground">{fmt(item.amount)}</span>
-            <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => onEditStart(item.id)} title="Edit"><Pencil className="h-4 w-4" /></button>
-            <button className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => onDelete(item.id, item.name)} title="Remove"><X className="h-4 w-4" /></button>
+            <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => onEditStart(item.id)} aria-label="Edit"><Pencil className="h-4 w-4" /></button>
+            <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => onDelete(item.id, item.name)} aria-label="Remove"><X className="h-4 w-4" /></button>
           </div>
         </div>
         )
