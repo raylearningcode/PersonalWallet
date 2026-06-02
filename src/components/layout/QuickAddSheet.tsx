@@ -98,8 +98,8 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   }, [open, initialType, initialCash, money.displayCurrency, wallets])
 
   const merchantSuggestion = useMemo(
-    () => getMerchantSuggestion(description, transactions),
-    [description, transactions]
+    () => type === 'transfer' ? null : getMerchantSuggestion(description, transactions),
+    [description, transactions, type]
   )
 
   const selectedWallet = wallets.find(w => w.id === walletId) ?? null
@@ -600,15 +600,17 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 />
               </div>
 
-              {/* Merchant name */}
+              {/* Description */}
               <div>
-                <Label className="text-sm font-bold text-foreground">Merchant name</Label>
+                <Label className="text-sm font-bold text-foreground">
+                  {type === 'transfer' ? 'Transfer note' : 'Merchant name'}
+                </Label>
                 <Input
-                  aria-label="Description"
+                  aria-label={type === 'transfer' ? 'Transfer note' : 'Description'}
                   className="mt-2 bg-secondary"
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="Enter a merchant name (optional)"
+                  placeholder={type === 'transfer' ? 'Optional note' : 'Enter a merchant name (optional)'}
                 />
                 {merchantSuggestion && (
                   <button

@@ -476,46 +476,51 @@ export function Budget() {
                                 key={cat.id}
                                 type="button"
                                 onClick={() => openSheet(cat)}
-                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995]"
+                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1fr)_140px_140px_88px_160px_32px] lg:items-center lg:gap-4 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
                                 aria-label={`Open ${cat.name} budget details`}
                               >
-                                <div className="mb-2 flex items-center justify-between gap-2 text-sm">
+                                <div className="mb-2 flex items-center justify-between gap-2 text-sm lg:contents">
                                   <div className="flex min-w-0 items-center gap-2">
                                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
                                     <span className="truncate font-bold text-foreground">{cat.name}</span>
                                   </div>
-                                  <div className="flex shrink-0 items-center gap-2">
-                                    <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">
-                                      {fmt(cat.spent)} / {fmt(cat.yearly_allocated)}
-                                    </span>
-                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
-                                      {pct}%
-                                    </span>
+                                  <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{fmt(cat.spent)}</span>
+                                  <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{fmt(cat.yearly_allocated)}</span>
+                                  <div className="flex shrink-0 items-center gap-2 lg:hidden">
+                                    <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">{fmt(cat.spent)} / {fmt(cat.yearly_allocated)}</span>
+                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>{pct}%</span>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 </div>
-                                <ColorBar value={pct} color={barColor} />
-                                <div className="mt-1.5 flex items-center gap-2">
+                                <div className="lg:hidden"><ColorBar value={pct} color={barColor} /></div>
+                                <div className="hidden items-center gap-2 lg:flex">
+                                  <div className="min-w-0 flex-1"><ColorBar value={pct} color={barColor} /></div>
+                                  <span className={`w-9 text-right text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                                    {pct}%
+                                  </span>
+                                </div>
+                                <div className="mt-1.5 flex items-center gap-2 lg:mt-0 lg:min-w-0">
                                   {pct === 0 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">No spending</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground lg:truncate">No spending</span>
                                   ) : pct >= 100 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400">Over budget</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400 lg:truncate">Over budget</span>
                                   ) : pct >= 90 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400">Near limit</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400 lg:truncate">Near limit</span>
                                   ) : pct >= 70 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-400">Watch spending</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-400 lg:truncate">Watch spending</span>
                                   ) : overPace ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-400">Over pace</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-400 lg:truncate">Over pace</span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">On track</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary lg:truncate">On track</span>
                                   )}
                                   {viewMode === 'remaining' && (
-                                    <span className="text-[11px] text-muted-foreground">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))} left</span>
+                                    <span className="text-[11px] text-muted-foreground lg:hidden">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))} left</span>
                                   )}
                                   {viewMode === 'daily' && cat.budget_period === 'monthly' && catDailyAllowance !== null && daysLeft > 0 && (
-                                    <span className="text-[11px] text-muted-foreground">{fmt(catDailyAllowance)}/day</span>
+                                    <span className="text-[11px] text-muted-foreground lg:hidden">{fmt(catDailyAllowance)}/day</span>
                                   )}
                                 </div>
+                                <ChevronRight className="hidden h-4 w-4 justify-self-end text-muted-foreground lg:block" />
                               </button>
                             )
                           })}

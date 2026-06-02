@@ -218,8 +218,8 @@ export function Transactions() {
     ? Math.round((selectedCategoryTotal / selectedCategoryBudget) * 100)
     : 0
   const merchantSuggestion = useMemo(
-    () => getMerchantSuggestion(description, transactions),
-    [description, transactions]
+    () => type === 'transfer' ? null : getMerchantSuggestion(description, transactions),
+    [description, transactions, type]
   )
   const upcomingRecurringRules = useMemo(
     () => [...recurringRules].sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 6),
@@ -776,10 +776,18 @@ export function Transactions() {
               <p className="mt-1 text-xs text-muted-foreground">{inputCurrency}</p>
             </div>
 
-            {/* Merchant — always visible */}
+            {/* Description */}
             <div>
-              <Label className="text-sm font-bold text-foreground">Merchant name</Label>
-              <Input aria-label="Description" className="mt-2 bg-secondary" value={description} onChange={event => setDescription(event.target.value)} placeholder="Enter a merchant name" />
+              <Label className="text-sm font-bold text-foreground">
+                {type === 'transfer' ? 'Transfer note' : 'Merchant name'}
+              </Label>
+              <Input
+                aria-label={type === 'transfer' ? 'Transfer note' : 'Description'}
+                className="mt-2 bg-secondary"
+                value={description}
+                onChange={event => setDescription(event.target.value)}
+                placeholder={type === 'transfer' ? 'Optional note' : 'Enter a merchant name'}
+              />
               {merchantSuggestion && !editingTransaction && (
                 <button
                   type="button"

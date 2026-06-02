@@ -88,4 +88,11 @@ describe('Budget', () => {
     expect(foodBtn).toBeInTheDocument()
     expect(foodBtn.tagName).toBe('BUTTON')
   })
+
+  it('uses dense desktop allocation rows instead of mobile-only card rows', () => {
+    renderBudget()
+    const foodBtn = screen.getByRole('button', { name: /Open Food budget details/i })
+    expect(foodBtn).toHaveClass('lg:grid')
+    expect(foodBtn).toHaveClass('lg:grid-cols-[minmax(160px,1fr)_140px_140px_88px_160px_32px]')
+  })
 })
