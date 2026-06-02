@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { parseNumberInput } from '@/lib/numberInput'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { toast } from 'sonner'
-import { Plus, Pause, Play, Trash2, RefreshCw, X, ChevronRight } from 'lucide-react'
+import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
 
 const FREQ_LABELS: Record<string, string> = {
@@ -75,6 +75,7 @@ export function Subscriptions() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState(() => emptyAddForm(money.displayCurrency))
   const [detailRule, setDetailRule] = useState<RecurringRule | null>(null)
+  const [editTarget, setEditTarget] = useState<RecurringRule | null>(null)
   const [editForm, setEditForm] = useState(() => emptyAddForm(money.displayCurrency))
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
   const [expenseSort, setExpenseSort] = useState<ExpenseSort>('due-date')
@@ -211,8 +212,7 @@ export function Subscriptions() {
     }
     const category = editForm.category || (editForm.type === 'income' ? 'Income' : 'Subscriptions')
     const currency = editForm.currency || money.displayCurrency
-    const id = detailRule.id
-    setDetailRule(null)
+    const id = editTarget!.id
     try {
       await updateRule.mutateAsync({
         id,
@@ -226,6 +226,8 @@ export function Subscriptions() {
         frequency: editForm.frequency,
         next_due_date: nextDueFrom(editForm.startDate, editForm.frequency),
       })
+      setEditTarget(null)
+      setEditForm(emptyAddForm(money.displayCurrency))
       toast.success('Subscription updated')
     } catch {
       toast.error('Failed to update subscription')
@@ -297,11 +299,10 @@ export function Subscriptions() {
     const isUnused = rule.active && rule.type !== 'income' && (daysSinceLastPaid === null ? false : daysSinceLastPaid > 60)
     const hasNeverPaid = rule.active && rule.type !== 'income' && !lastPaid
     return (
-      <button
-        type="button"
-        onClick={() => openDetail(rule)}
-        className={`w-full rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995] ${rule.active ? '' : 'opacity-60'}`}
+      <div
+        className={`w-full rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 ${rule.active ? '' : 'opacity-60'}`}
       >
+        <button type="button" onClick={() => openDetail(rule)} className="w-full text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -345,7 +346,115 @@ export function Subscriptions() {
             </span>
           </div>
         )}
-      </button>
+
+        </button>
+        <div className="mt-3 flex gap-2">
+          <button
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
+              rule.active
+                ? 'bg-muted text-muted-foreground hover:text-foreground'
+                : 'bg-primary/10 text-primary hover:bg-primary/20'
+            }`}
+            onClick={() => togglePause(rule)}
+            disabled={updateRule.isPending}
+            title={rule.active ? 'Pause — stops automatic renewal until resumed' : 'Resume — restarts automatic renewal from next due date'}
+          >
+            {rule.active ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            {rule.active ? 'Pause' : 'Resume'}
+          </button>
+          <button
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+            onClick={() => { if (editTarget?.id === rule.id) { setEditTarget(null); setEditForm(emptyAddForm()) } else openEdit(rule) }}
+            disabled={updateRule.isPending}
+          >
+            <Pencil className="h-3 w-3" />
+            Edit
+          </button>
+          <button
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-[#FF8388] disabled:opacity-40"
+            onClick={() => setDeleteTarget(rule)}
+            disabled={deleteRule.isPending}
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete
+          </button>
+        </div>
+
+        {editTarget?.id === rule.id && (
+          <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
+            <p className="text-xs font-bold text-muted-foreground">Edit subscription</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Name</Label>
+                <Input className="mt-1.5 bg-secondary text-sm" value={editForm.description} onChange={e => setEditField('description', e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Amount</Label>
+                <div className="mt-1.5 flex gap-2">
+                  <select
+                    className="h-10 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                    value={editForm.currency}
+                    onChange={e => setEditField('currency', e.target.value)}
+                  >
+                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <MoneyInput className="flex-1 bg-secondary text-sm" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Type</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Frequency</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Category</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
+                  <option value="">— auto —</option>
+                  {categories.length > 0 && (
+                    <>
+                      <optgroup label="Your categories">
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </optgroup>
+                      <optgroup label="Common">
+                        {COMMON_SUB_CATEGORIES.filter(s => !categories.some(c => c.name.toLowerCase() === s.toLowerCase())).map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </optgroup>
+                    </>
+                  )}
+                  {categories.length === 0 && COMMON_SUB_CATEGORIES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Wallet</Label>
+                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
+                  <option value="">— none —</option>
+                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleEdit} disabled={updateRule.isPending}>
+                {updateRule.isPending ? 'Saving…' : 'Save changes'}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { setEditTarget(null); setEditForm(emptyAddForm()) }}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </div>
     )
   }
 

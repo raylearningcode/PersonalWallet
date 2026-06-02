@@ -9,6 +9,7 @@ import {
   useWallets,
   useRecurringRules,
   useAddRecurringRule,
+  useUpdateRecurringRule,
   useRunDueRecurringRules,
   useMarkReviewed,
 } from '@/lib/queries'
@@ -28,7 +29,7 @@ import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { splitTwdChange, getFiftyCoinRouting } from '@/lib/cashChange'
-import type { RecurringFrequency, Transaction } from '@/types'
+import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 
@@ -54,8 +55,15 @@ export function Transactions() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
+  const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
   const [dateFrom, setDateFrom] = useState(getMonthStart)
   const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
+  const [ruleDescription, setRuleDescription] = useState('')
+  const [ruleAmount, setRuleAmount] = useState('')
+  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
+  const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
+  const [ruleNextDueDate, setRuleNextDueDate] = useState('')
+  const [ruleEndDate, setRuleEndDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
@@ -90,6 +98,7 @@ export function Transactions() {
   const updateTransaction = useUpdateTransaction()
   const del = useDeleteTransaction()
   const addRecurringRule = useAddRecurringRule()
+  const updateRecurringRule = useUpdateRecurringRule()
   const runDueRecurringRules = useRunDueRecurringRules()
   const markReviewed = useMarkReviewed()
 
@@ -117,6 +126,16 @@ export function Transactions() {
       },
     })
   }, [recurringRules, runDueRecurringRules])
+
+  useEffect(() => {
+    if (!editingRule) return
+    setRuleDescription(editingRule.description)
+    setRuleAmount(String(editingRule.original_amount ?? editingRule.amount))
+    setRuleInputCurrency(editingRule.original_currency ?? money.displayCurrency)
+    setRuleFrequency(editingRule.frequency)
+    setRuleNextDueDate(editingRule.next_due_date)
+    setRuleEndDate(editingRule.end_date ?? '')
+  }, [editingRule, money.displayCurrency])
 
   const walletBalances = useMemo(() => {
     const balances = new Map(wallets.map(w => [w.id, w.balance ?? 0]))
@@ -591,6 +610,28 @@ export function Transactions() {
     setSelectedIds(new Set())
   }
 
+  const handleSaveRule = async () => {
+    if (!editingRule) return
+    const amount = parseNumberInput(ruleAmount)
+    if (!ruleDescription.trim() || amount <= 0) { toast.error('Description and amount are required'); return }
+    try {
+      await updateRecurringRule.mutateAsync({
+        id: editingRule.id,
+        description: ruleDescription.trim(),
+        amount: amount,
+        original_amount: amount,
+        original_currency: ruleInputCurrency,
+        frequency: ruleFrequency,
+        next_due_date: ruleNextDueDate || editingRule.next_due_date,
+        end_date: ruleEndDate || null,
+      })
+      setEditingRule(null)
+      toast.success('Rule updated')
+    } catch {
+      toast.error('Failed to update rule')
+    }
+  }
+
   // Month navigator
   const _today = new Date()
   const navYear = dateFrom ? parseInt(dateFrom.slice(0, 4)) : _today.getFullYear()
@@ -1055,6 +1096,66 @@ export function Transactions() {
               {editingTransaction ? 'Save transaction' : 'Add transaction'}
             </Button>
             <Button variant="secondary" className="mt-2 w-full" onClick={() => setIsFormOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
+        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 sm:max-w-md sm:p-6">
+          <SheetHeader className="mb-6 text-left">
+            <SheetTitle>Edit recurring rule</SheetTitle>
+            <SheetDescription>Update the schedule or amount for this recurring payment.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-5">
+            <div>
+              <Label className="text-sm font-bold text-foreground">Description</Label>
+              <Input aria-label="Rule description" className="mt-2 bg-secondary" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} />
+            </div>
+            <div className="flex gap-3">
+              <div className="w-28 shrink-0">
+                <Label className="text-sm font-bold text-foreground">Currency</Label>
+                <select
+                  aria-label="Rule currency"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  value={ruleInputCurrency}
+                  onChange={e => setRuleInputCurrency(e.target.value)}
+                >
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="flex-1">
+                <Label className="text-sm font-bold text-foreground">Amount</Label>
+                <Input aria-label="Rule amount" className="mt-2 bg-secondary" inputMode="decimal" value={ruleAmount} onChange={e => setRuleAmount(formatNumberInput(e.target.value))} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">Frequency</Label>
+              <select
+                aria-label="Rule frequency"
+                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                value={ruleFrequency}
+                onChange={e => setRuleFrequency(e.target.value as RecurringFrequency)}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">Next due date</Label>
+              <Input aria-label="Rule next due date" className="mt-2 bg-secondary" type="date" value={ruleNextDueDate} onChange={e => setRuleNextDueDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-bold text-foreground">End date (optional)</Label>
+              <Input aria-label="Rule end date" className="mt-2 bg-secondary" type="date" value={ruleEndDate} onChange={e => setRuleEndDate(e.target.value)} />
+            </div>
+            <Button className="mt-4 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
+              Save rule
+            </Button>
+            <Button variant="secondary" className="mt-2 w-full" onClick={() => setEditingRule(null)}>
               Cancel
             </Button>
           </div>
