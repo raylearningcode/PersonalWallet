@@ -588,6 +588,32 @@ export function Settings() {
 
       {/* Wallets tab */}
       {effectiveTab === 'wallets' && (
+        <>
+        {/* Cash setup guide — shown when no cash wallets have a role yet */}
+        {wallets.length > 0 && !wallets.some(w => w.type === 'cash' && w.cash_role) && (
+          <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-primary">Cash setup guide</p>
+            <p className="mt-2 text-sm font-bold text-foreground">Set up your cash wallets for automatic change routing</p>
+            <p className="mt-1 text-xs text-muted-foreground">When you pay cash, FinPath can automatically split change into bills and coins. To enable this, create two cash wallets and assign roles:</p>
+            <div className="mt-3 space-y-2">
+              {[
+                { step: '1', title: 'Main cash wallet', desc: 'Your physical wallet — stores NT$100+ bills. Set role to "Notes / Wallet".', done: wallets.some(w => w.type === 'cash' && w.cash_role === 'notes') },
+                { step: '2', title: 'Coin pouch', desc: 'Your coin pouch — receives change under NT$100. Set role to "Coins / Pouch".', done: wallets.some(w => w.type === 'cash' && w.cash_role === 'coins') },
+                { step: '3', title: 'Record a cash payment', desc: 'Enable "Paid with cash" in Quick Add and enter the bill you gave.', done: false },
+              ].map(({ step, title, desc, done }) => (
+                <div key={step} className={`flex items-start gap-3 rounded-xl px-3 py-2.5 ${done ? 'bg-primary/10' : 'bg-secondary/60'}`}>
+                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                    {done ? '✓' : step}
+                  </span>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-bold ${done ? 'text-primary' : 'text-foreground'}`}>{title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Wallets</CardTitle>
@@ -732,6 +758,7 @@ export function Settings() {
             </div>
           </CardContent>
         </Card>
+        </>
       )}
 
       {/* Categories tab */}
