@@ -10,7 +10,33 @@ import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { AllocationEditor } from '@/components/investing/AllocationEditor'
 import { toast } from 'sonner'
+import { BookOpen, ChevronDown } from 'lucide-react'
 import type { AllocationItem } from '@/types'
+
+const GLOSSARY_DISMISSED_KEY = 'finpath_investing_glossary_dismissed'
+
+const GLOSSARY_ITEMS = [
+  {
+    term: 'ETF',
+    color: '#A9F5C7',
+    definition: 'Exchange-Traded Fund — a basket of stocks (or bonds) you buy as one unit. Low cost, diversified, and traded like a stock. A global index ETF (e.g. VT, VWRA) gives you ownership in thousands of companies at once.',
+  },
+  {
+    term: 'Bonds',
+    color: '#93C5FD',
+    definition: 'Loans you give to governments or companies in exchange for regular interest payments. Lower potential return than stocks, but less volatile. Good for stability and capital preservation.',
+  },
+  {
+    term: 'Risk',
+    color: '#FFD276',
+    definition: 'The chance your investment goes up OR down. Higher expected return = higher risk. Aggressive portfolios can drop 30–50% in a crash but recover over time. Conservative portfolios drop less but grow slower.',
+  },
+  {
+    term: 'Compound growth',
+    color: '#C4AEFF',
+    definition: 'Earnings on your earnings. If you earn 8%/year, next year you earn 8% on a larger base. Over 20+ years this compounds dramatically — the chart above shows this curve.',
+  },
+]
 
 type SimulatorValues = {
   monthlyContribution: number
@@ -100,6 +126,8 @@ export function Investing() {
   const [draft, setDraft] = useState<SimulatorValues>({
     monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
   })
+  const [glossaryDismissed, setGlossaryDismissed] = useState(() => localStorage.getItem(GLOSSARY_DISMISSED_KEY) === '1')
+  const [glossaryOpen, setGlossaryOpen] = useState(false)
   const [contributionFrequency, setContributionFrequency] = useState<ContributionFrequency>('monthly')
   const [contributionCurrency, setContributionCurrency] = useState(savedContributionCurrency)
   const [targetCurrency, setTargetCurrency] = useState(savedTargetCurrency)
@@ -377,6 +405,47 @@ export function Investing() {
           </CardContent>
         </Card>
       </div>
+
+      {!glossaryDismissed && (
+        <div className="mb-6 rounded-2xl border border-border bg-secondary">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+            onClick={() => setGlossaryOpen(o => !o)}
+            aria-expanded={glossaryOpen}
+          >
+            <div className="flex items-center gap-3">
+              <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+              <span className="font-extrabold text-foreground">Investing basics</span>
+              <span className="text-xs text-muted-foreground">New to investing? Tap to learn key terms.</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); localStorage.setItem(GLOSSARY_DISMISSED_KEY, '1'); setGlossaryDismissed(true) }}
+                className="shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Dismiss investing basics"
+              >
+                Dismiss
+              </button>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${glossaryOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+          {glossaryOpen && (
+            <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 lg:grid-cols-4">
+              {GLOSSARY_ITEMS.map(item => (
+                <div key={item.term} className="rounded-xl border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="font-extrabold text-foreground">{item.term}</span>
+                  </div>
+                  <p className="text-xs leading-5 text-muted-foreground">{item.definition}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <Card>
         <CardHeader>

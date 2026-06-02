@@ -80,8 +80,13 @@ export function Subscriptions() {
   const [expenseSort, setExpenseSort] = useState<ExpenseSort>('due-date')
   const [searchQuery, setSearchQuery] = useState('')
 
+  const installments = useMemo(
+    () => rules.filter(r => r.type !== 'income' && r.installment_total != null && r.installment_total > 0)
+      .sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)),
+    [rules]
+  )
   const expenses = useMemo(
-    () => rules.filter(r => r.type !== 'income').sort((a, b) => {
+    () => rules.filter(r => r.type !== 'income' && !(r.installment_total != null && r.installment_total > 0)).sort((a, b) => {
       if (a.active !== b.active) return b.active ? 1 : -1
       return a.next_due_date.localeCompare(b.next_due_date)
     }),
@@ -569,6 +574,50 @@ export function Subscriptions() {
             )}
           </CardContent>
         </Card>
+
+        {installments.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-xl">Installments / Cicilan</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">{installments.length} active payment plan{installments.length !== 1 ? 's' : ''}</p>
+              </div>
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+              {installments.map(rule => {
+                const paidPct = rule.installment_total ? Math.round((rule.installment_paid / rule.installment_total) * 100) : 0
+                const remaining = rule.installment_total ? rule.installment_total - rule.installment_paid : 0
+                return (
+                  <button
+                    key={rule.id}
+                    type="button"
+                    onClick={() => openDetail(rule)}
+                    className={`w-full rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 ${rule.active ? '' : 'opacity-60'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-extrabold text-foreground">{rule.description}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{rule.category} · {FREQ_LABELS[rule.frequency]}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-extrabold text-foreground">{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}/installment</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{rule.installment_paid} of {rule.installment_total} paid</p>
+                      </div>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${paidPct}%` }} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className={`font-bold ${paidPct === 100 ? 'text-primary' : 'text-foreground'}`}>{paidPct}% complete</span>
+                      <span>{remaining > 0 ? `${remaining} payment${remaining !== 1 ? 's' : ''} left` : '✓ Fully paid'}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">

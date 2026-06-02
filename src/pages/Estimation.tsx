@@ -634,6 +634,11 @@ export function Estimation() {
                       </div>
                     </div>
                     <p className="mt-3 text-lg font-extrabold text-primary">{money.formatDisplay(item.amount)}</p>
+                    {monthlyIncome > monthlyExpenses && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Save {Math.ceil(item.amount / (monthlyIncome - monthlyExpenses))} month{Math.ceil(item.amount / (monthlyIncome - monthlyExpenses)) !== 1 ? 's' : ''} of surplus ({money.formatDisplay(monthlyIncome - monthlyExpenses)}/mo)
+                      </p>
+                    )}
                     {item.note && <p className="mt-2 text-sm text-muted-foreground">{item.note}</p>}
                   </div>
                   )
