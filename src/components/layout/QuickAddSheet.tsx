@@ -378,7 +378,7 @@ export function QuickAddSheet({ open, onClose, initialType }: { open: boolean; o
                       <span>Set up now →</span>
                     </Link>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className={`flex flex-wrap gap-2 ${categories.length > 10 ? 'max-h-28 overflow-y-auto' : ''}`}>
                       {categories.map(c => (
                         <button
                           key={c.id}
