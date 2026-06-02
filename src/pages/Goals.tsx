@@ -590,7 +590,7 @@ export function Goals() {
                         onValueChange={setContributeAmount}
                       />
                       <Button
-                        className="h-12 w-full"
+                        className="h-14 w-full"
                         onClick={handleContribute}
                         disabled={updateGoal.isPending || addTransaction.isPending || !contributeAmount}
                       >

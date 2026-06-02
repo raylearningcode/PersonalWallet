@@ -934,7 +934,7 @@ export function QuickAddSheet({ open, onClose, initialType }: { open: boolean; o
               <Link
                 to="/settings"
                 onClick={onClose}
-                className="flex h-12 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+                className="flex h-14 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
               >
                 Add a wallet to get started →
               </Link>
@@ -942,13 +942,13 @@ export function QuickAddSheet({ open, onClose, initialType }: { open: boolean; o
               <Link
                 to="/budget"
                 onClick={onClose}
-                className="flex h-12 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+                className="flex h-14 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
               >
                 Add a budget category first →
               </Link>
             ) : (
               <Button
-                className="h-12 w-full text-base font-extrabold"
+                className="h-14 w-full text-base font-extrabold"
                 onClick={handleSave}
                 disabled={
                   addTransaction.isPending ||

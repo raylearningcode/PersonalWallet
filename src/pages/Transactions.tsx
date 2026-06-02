@@ -1516,21 +1516,21 @@ export function Transactions() {
                 <div className="sticky bottom-0 border-t border-border bg-background px-6 py-4">
                   <div className="flex gap-2">
                     <Button
-                      className="h-12 flex-1 gap-2"
+                      className="h-14 flex-1 gap-2"
                       variant="secondary"
                       onClick={() => { setDetailTx(null); openEditForm(tx) }}
                     >
                       <Pencil size={15} />Edit
                     </Button>
                     <Button
-                      className="h-12 flex-1 gap-2"
+                      className="h-14 flex-1 gap-2"
                       variant="secondary"
                       onClick={() => { handleDuplicateTransaction(tx); setDetailTx(null) }}
                     >
                       <Copy size={15} />Duplicate
                     </Button>
                     <Button
-                      className="h-12 w-12 shrink-0 gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      className="h-14 w-14 shrink-0 gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                       variant="ghost"
                       onClick={() => { setDetailTx(null); handleDeleteTransaction(tx) }}
                       aria-label="Delete transaction"
