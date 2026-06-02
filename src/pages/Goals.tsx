@@ -12,7 +12,7 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Bookmark, ChevronRight, Plus, Pencil, Trash2, Target, TrendingUp } from 'lucide-react'
+import { Bookmark, ChevronRight, Plus, Pencil, Trash2, Target, TrendingUp, Copy } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
 import type { Goal } from '@/types'
 
@@ -427,7 +427,7 @@ export function Goals() {
                             </span>
                           )}
                         </div>
-                        <h3 className="mt-2 truncate text-lg font-extrabold text-foreground">{goal.name}</h3>
+                        <h3 className="mt-2 line-clamp-2 text-lg font-extrabold text-foreground">{goal.name}</h3>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <button
@@ -621,6 +621,14 @@ export function Goals() {
                       onClick={() => { setSheetGoal(null); startEdit(g) }}
                     >
                       <Pencil className="h-4 w-4" />Edit
+                    </Button>
+                    <Button
+                      className="h-14 px-4 gap-2"
+                      variant="secondary"
+                      onClick={() => { setSheetGoal(null); handleDuplicateGoal(g) }}
+                      aria-label="Duplicate goal"
+                    >
+                      <Copy className="h-4 w-4" />
                     </Button>
                     <Button
                       className="h-14 px-5 gap-2 border border-red-500/30 bg-red-500/10 text-[#FF8388] hover:bg-red-500/20"
