@@ -16,6 +16,7 @@ import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
+import { splitTwdChange, getFiftyCoinRouting } from '@/lib/cashChange'
 import { scanReceipt, getGeminiKey } from '@/lib/gemini'
 import { ScanLine, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
@@ -206,8 +207,9 @@ export function QuickAddSheet({ open, onClose, initialType }: { open: boolean; o
       if (cashEnabled && baseChange > 0 && savedTx?.id) {
         const isTWD = inputCurrency === 'TWD'
         const rawChange = parsedTendered - parsedAmount
-        const billsChangeAmt = isTWD ? Math.floor(rawChange / 100) * 100 : 0
-        const coinsChangeAmt = isTWD ? rawChange % 100 : rawChange
+        const { bills: billsChangeAmt, coins: coinsChangeAmt } = isTWD
+          ? splitTwdChange(rawChange, getFiftyCoinRouting())
+          : { bills: 0, coins: rawChange }
         let firstChangeTxId: string | undefined
 
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
@@ -503,8 +505,9 @@ export function QuickAddSheet({ open, onClose, initialType }: { open: boolean; o
                   ? parsedTenderedVal - parsedExpense : 0
                 const isUnderpay = cashEnabled && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > 0 && parsedTenderedVal < parsedExpense
                 const isTWD = inputCurrency === 'TWD' || selectedWallet?.currency === 'TWD'
-                const billsChange = isTWD ? Math.floor(changeAmount / 100) * 100 : 0
-                const coinsChange = isTWD ? changeAmount % 100 : changeAmount
+                const { bills: billsChange, coins: coinsChange } = isTWD
+                  ? splitTwdChange(changeAmount, getFiftyCoinRouting())
+                  : { bills: 0, coins: changeAmount }
                 const twdChips = [100, 500, 1000].filter(n => !parsedExpense || parsedExpense <= 0 || n >= parsedExpense)
 
                 return (

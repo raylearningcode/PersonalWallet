@@ -26,6 +26,7 @@ import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
 import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
+import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
 
 const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
 type SettingsTab = typeof tabs[number]
@@ -122,6 +123,7 @@ export function Settings() {
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
   const [geminiKey, setGeminiKey] = useState(() => getGeminiKey() ?? '')
   const [showGeminiKey, setShowGeminiKey] = useState(false)
+  const [fiftyCoinRouting, setFiftyCoinRoutingState] = useState<FiftyCoinRouting>(() => getFiftyCoinRouting())
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
     id: string
@@ -625,6 +627,26 @@ export function Settings() {
                     <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {wallets.some(w => w.type === 'cash') && (
+          <div className="mb-6 rounded-2xl border border-border bg-card p-5">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">Cash preferences</p>
+            <p className="mt-2 text-sm font-bold text-foreground">NT$50 coin routing</p>
+            <p className="mt-1 text-xs text-muted-foreground">Where should NT$50 change go after a cash payment?</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {([['coins', 'Coin pouch (default)', 'NT$50 goes to your coin pouch with smaller coins'], ['notes', 'Main wallet', 'NT$50 stays in your notes wallet alongside NT$100+']] as const).map(([val, label, desc]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => { setFiftyCoinRoutingState(val); setFiftyCoinRouting(val) }}
+                  className={`flex-1 min-w-0 rounded-xl border px-4 py-3 text-left transition-colors ${fiftyCoinRouting === val ? 'border-primary bg-primary/10' : 'border-border bg-secondary hover:border-primary/40'}`}
+                >
+                  <p className={`text-sm font-bold ${fiftyCoinRouting === val ? 'text-primary' : 'text-foreground'}`}>{label}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
+                </button>
               ))}
             </div>
           </div>

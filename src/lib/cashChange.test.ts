@@ -32,14 +32,14 @@ describe('calculateCashChange', () => {
   })
 })
 
-describe('splitTwdChange', () => {
+describe('splitTwdChange (coins routing — default)', () => {
   it('splits NT$25 into 0 bills and 25 coins', () => {
     const { bills, coins } = splitTwdChange(25)
     expect(bills).toBe(0)
     expect(coins).toBe(25)
   })
 
-  it('splits NT$250 into 200 bills and 50 coins', () => {
+  it('splits NT$250 into 200 bills and 50 coins (NT$50 → coin pouch)', () => {
     const { bills, coins } = splitTwdChange(250)
     expect(bills).toBe(200)
     expect(coins).toBe(50)
@@ -64,16 +64,46 @@ describe('splitTwdChange', () => {
   })
 
   it('NT$75 expense with NT$100 tendered → NT$25 coin transfer', () => {
-    const { change } = { change: 100 - 75 }
-    const { bills, coins } = splitTwdChange(change)
+    const { bills, coins } = splitTwdChange(100 - 75)
     expect(bills).toBe(0)
     expect(coins).toBe(25)
   })
 
   it('NT$750 expense with NT$1000 tendered → NT$200 bill + NT$50 coin', () => {
-    const { change } = { change: 1000 - 750 }
-    const { bills, coins } = splitTwdChange(change)
+    const { bills, coins } = splitTwdChange(1000 - 750)
     expect(bills).toBe(200)
     expect(coins).toBe(50)
+  })
+})
+
+describe('splitTwdChange (notes routing — NT$50 stays in main wallet)', () => {
+  it('NT$250 change → 250 bills, 0 coins when NT$50 routes to notes', () => {
+    const { bills, coins } = splitTwdChange(250, 'notes')
+    expect(bills).toBe(250)
+    expect(coins).toBe(0)
+  })
+
+  it('NT$350 change → 350 bills, 0 coins when NT$50 routes to notes', () => {
+    const { bills, coins } = splitTwdChange(350, 'notes')
+    expect(bills).toBe(350)
+    expect(coins).toBe(0)
+  })
+
+  it('NT$175 change → 150 bills, 25 coins when NT$50 routes to notes', () => {
+    const { bills, coins } = splitTwdChange(175, 'notes')
+    expect(bills).toBe(150)
+    expect(coins).toBe(25)
+  })
+
+  it('NT$25 change → 0 bills, 25 coins even when routing notes (sub-50)', () => {
+    const { bills, coins } = splitTwdChange(25, 'notes')
+    expect(bills).toBe(0)
+    expect(coins).toBe(25)
+  })
+
+  it('NT$100 change → 100 bills, 0 coins', () => {
+    const { bills, coins } = splitTwdChange(100, 'notes')
+    expect(bills).toBe(100)
+    expect(coins).toBe(0)
   })
 })

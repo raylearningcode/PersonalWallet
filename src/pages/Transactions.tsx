@@ -27,6 +27,7 @@ import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
+import { splitTwdChange, getFiftyCoinRouting } from '@/lib/cashChange'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -290,8 +291,9 @@ export function Transactions() {
         if (cashEnabled && baseChange > 0) {
           const isTWDEdit = inputCurrency === 'TWD'
           const rawChangeEdit = parsedTendered - parsedAmount
-          const billsChangeEdit = isTWDEdit ? Math.floor(rawChangeEdit / 100) * 100 : 0
-          const coinsChangeEdit = isTWDEdit ? rawChangeEdit % 100 : rawChangeEdit
+          const { bills: billsChangeEdit, coins: coinsChangeEdit } = isTWDEdit
+            ? splitTwdChange(rawChangeEdit, getFiftyCoinRouting())
+            : { bills: 0, coins: rawChangeEdit }
           let firstEditChangeTxId: string | undefined
           if (isTWDEdit && billsChangeEdit > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
             const ct = await addTransaction.mutateAsync({
@@ -349,8 +351,9 @@ export function Transactions() {
         if (cashEnabled && baseChange > 0 && savedTx?.id) {
           const isTWD = inputCurrency === 'TWD'
           const rawChange = parsedTendered - parsedAmount
-          const billsChangeAmt = isTWD ? Math.floor(rawChange / 100) * 100 : 0
-          const coinsChangeAmt = isTWD ? rawChange % 100 : rawChange
+          const { bills: billsChangeAmt, coins: coinsChangeAmt } = isTWD
+            ? splitTwdChange(rawChange, getFiftyCoinRouting())
+            : { bills: 0, coins: rawChange }
           let firstChangeTxId: string | undefined
 
           // Bills transfer (only if destination != spending wallet and there are bills)
@@ -760,8 +763,9 @@ export function Transactions() {
                   const walletCurrentBal = walletBalances.get(walletId) ?? 0
                   const showChips = selectedWallet.currency === 'TWD' && inputCurrency === 'TWD'
                   const isTWD = inputCurrency === 'TWD'
-                  const billsChange = isTWD ? Math.floor(changeAmount / 100) * 100 : 0
-                  const coinsChange = isTWD ? changeAmount % 100 : changeAmount
+                  const { bills: billsChange, coins: coinsChange } = isTWD
+                    ? splitTwdChange(changeAmount, getFiftyCoinRouting())
+                    : { bills: 0, coins: changeAmount }
                   const hasBills = billsChange > 0
                   const hasCoins = coinsChange > 0
                   const twdChips = [100, 500, 1000].filter(n => !Number.isFinite(parsedExpense) || parsedExpense <= 0 || n >= parsedExpense)
