@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -549,6 +549,34 @@ export function Transactions() {
     const toReview = sortedTransactions.filter(tx => selectedIds.has(tx.id) && tx.needs_review)
     for (const tx of toReview) markReviewed.mutate(tx.id)
     if (toReview.length > 0) toast.success(`${toReview.length} marked as reviewed`)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const bulkExportCSV = () => {
+    const selected = sortedTransactions.filter(tx => selectedIds.has(tx.id))
+    if (selected.length === 0) return
+    const headers = ['Date', 'Description', 'Category', 'Type', 'Amount', 'Currency', 'Wallet', 'Note']
+    const rows = selected.map(tx => {
+      const w = wallets.find(wl => wl.id === tx.wallet_id)
+      return [
+        tx.date,
+        `"${(tx.description ?? '').replace(/"/g, '""')}"`,
+        tx.category,
+        tx.type,
+        money.fromBase(tx.amount, tx.original_currency ?? money.baseCurrency).toFixed(2),
+        tx.original_currency ?? money.baseCurrency,
+        w?.name ?? '',
+        `"${(tx.note ?? '').replace(/"/g, '""')}"`,
+      ]
+    })
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `finpath-selected-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    toast.success(`${selected.length} transaction${selected.length !== 1 ? 's' : ''} exported`)
     setSelectMode(false)
     setSelectedIds(new Set())
   }
@@ -1407,6 +1435,14 @@ export function Transactions() {
               >
                 <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
                 Reviewed
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={bulkExportCSV}
+              >
+                <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                Export
               </Button>
               <Button
                 size="sm"
