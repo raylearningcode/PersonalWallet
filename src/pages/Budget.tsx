@@ -7,7 +7,7 @@ import {
   useAddBudgetCategory,
   useDeleteBudgetCategory,
 } from '@/lib/queries'
-import { Lightbulb, ChevronRight } from 'lucide-react'
+import { Lightbulb, ChevronLeft, ChevronRight } from 'lucide-react'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -117,6 +117,7 @@ export function Budget() {
     })
   }
 
+  const [periodDate, setPeriodDate] = useState(() => { const d = new Date(); d.setDate(1); return d })
   const [showAdd, setShowAdd] = useState(false)
   const [addName, setAddName] = useState('')
   const [addAmount, setAddAmount] = useState('')
@@ -136,11 +137,13 @@ export function Budget() {
     }
   }, [showAdd])
 
-  const currentYear = String(new Date().getFullYear())
-  const now = new Date()
-  const daysLeft = getDaysRemainingInMonth()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const monthPct = Math.round((now.getDate() / daysInMonth) * 100)
+  const today = new Date()
+  const isCurrentMonth = periodDate.getFullYear() === today.getFullYear() && periodDate.getMonth() === today.getMonth()
+  const isPastMonth = periodDate < new Date(today.getFullYear(), today.getMonth(), 1)
+  const currentYear = String(periodDate.getFullYear())
+  const daysInMonth = new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 0).getDate()
+  const daysLeft = isCurrentMonth ? getDaysRemainingInMonth() : (isPastMonth ? 0 : daysInMonth)
+  const monthPct = isCurrentMonth ? Math.round((today.getDate() / daysInMonth) * 100) : (isPastMonth ? 100 : 0)
   const expenseTransactions = transactions.filter(
     t => t.type !== 'income' && t.type !== 'transfer' && t.date.startsWith(currentYear)
   )
@@ -150,13 +153,13 @@ export function Budget() {
       ...cat,
       budget_period: cat.budget_period ?? 'yearly',
       spent: expenseTransactions
-        .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period ?? 'yearly'))
+        .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period ?? 'yearly', periodDate))
         .reduce((s, t) => s + t.amount, 0),
     })),
     [categories, expenseTransactions]
   )
 
-  const monthsElapsed = now.getMonth() + 1
+  const monthsElapsed = periodDate.getMonth() + 1
   // Normalize all categories to a monthly equivalent so monthly and yearly budgets can be summed fairly
   const totalAllocated = useMemo(() => categoriesWithSpent.reduce((s, c) => {
     return s + (c.budget_period === 'yearly' ? c.yearly_allocated / 12 : c.yearly_allocated)
@@ -166,7 +169,7 @@ export function Budget() {
   }, 0), [categoriesWithSpent, monthsElapsed])
   const remaining = totalAllocated - totalSpent
 
-  const daysElapsed = now.getDate()
+  const daysElapsed = isCurrentMonth ? today.getDate() : (isPastMonth ? daysInMonth : 0)
   const forecasts = useMemo(() => categoriesWithSpent
     .filter(cat => cat.budget_period === 'monthly' && cat.yearly_allocated > 0 && cat.spent > 0 && daysElapsed > 0)
     .map(cat => {
@@ -313,6 +316,41 @@ export function Budget() {
           ) : undefined
         }
       />
+      {/* Month navigator */}
+      <div className="mb-5 flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
+        <button
+          type="button"
+          aria-label="Previous month"
+          onClick={() => setPeriodDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="text-center">
+          <p className="text-sm font-extrabold text-foreground">
+            {periodDate.toLocaleString('en', { month: 'long', year: 'numeric' })}
+          </p>
+          {!isCurrentMonth && (
+            <button
+              type="button"
+              onClick={() => setPeriodDate(new Date())}
+              className="mt-0.5 text-xs text-primary hover:underline"
+            >
+              Back to current
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          aria-label="Next month"
+          onClick={() => setPeriodDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+          disabled={isCurrentMonth}
+          className={`flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background transition-colors ${isCurrentMonth ? 'cursor-not-allowed opacity-30' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Blended monthly equivalent'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(hasData ? remaining : 0) : 'Safe inside active periods'} badgeVariant="success" />
@@ -332,7 +370,7 @@ export function Budget() {
         </div>
       )}
 
-      {forecasts.length > 0 && (
+      {isCurrentMonth && forecasts.length > 0 && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Month forecast</CardTitle>

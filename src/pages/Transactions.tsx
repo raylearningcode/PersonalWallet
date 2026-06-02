@@ -88,10 +88,12 @@ export function Transactions() {
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const [filterWalletId, setFilterWalletId] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const longPressRef = useRef(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>(null)
+  const swipeRef = useRef<{ activeId: string | null; startX: number; startY: number; dx: number; isSwipe: boolean; wasSwipe: boolean }>({ activeId: null, startX: 0, startY: 0, dx: 0, isSwipe: false, wasSwipe: false })
   const { data: transactions = [], isPending: txPending, isError: txError, refetch: txRefetch } = useTransactions(filter)
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
@@ -116,6 +118,10 @@ export function Transactions() {
   useEffect(() => {
     setInputCurrency(current => current || money.displayCurrency)
   }, [money.displayCurrency])
+
+  useEffect(() => {
+    if (selectMode) setSwipeOpenId(null)
+  }, [selectMode])
 
   useEffect(() => {
     if (generatedDueRef.current || recurringRules.length === 0) return
@@ -1508,55 +1514,118 @@ export function Transactions() {
                   ? transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated)
                   : []
                 return (
-                  <button
-                    key={tx.id}
-                    type="button"
-                    className={`w-full rounded-xl border px-4 py-3 text-left transition-colors active:scale-[0.99] ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary hover:border-border/80 hover:bg-muted/30'}`}
-                    onPointerDown={() => {
-                      longPressRef.current = false
-                      longPressTimer.current = setTimeout(() => {
-                        longPressRef.current = true
-                        if (!selectMode) { setSelectMode(true); setSelectedIds(new Set()) }
-                        setSelectedIds(prev => { const next = new Set(prev); next.add(tx.id); return next })
-                      }, 400)
-                    }}
-                    onPointerUp={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }}
-                    onPointerLeave={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }}
-                    onClick={() => { if (longPressRef.current) { longPressRef.current = false; return } selectMode ? toggleSelectId(tx.id) : setDetailTx(tx) }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          {selectMode ? (
-                            isSelected
-                              ? <CheckSquare className="h-4 w-4 shrink-0 text-primary" />
-                              : <Square className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          ) : tx.needs_review ? (
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />
-                          ) : null}
-                          <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          {categoryColorMap.has(tx.category) && (
-                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
-                          )}
-                          <span className="truncate">{tx.category}{txWallet ? ` · ${txWallet.name}` : ''} · {formatDate(tx.date)}</span>
-                        </div>
-                        {linkedChange.length > 0 && (() => {
-                          const changeAmt = tx.cash_tendered! - (tx.original_amount ?? tx.amount)
-                          const changeWallet = wallets.find(w => w.id === linkedChange[0].wallet_id)
-                          return changeAmt > 0 ? (
-                            <p className="mt-1 text-[11px] text-muted-foreground/70">
-                              Cash {money.format(tx.cash_tendered!, tx.original_currency ?? money.baseCurrency)} · change {money.format(changeAmt, tx.original_currency ?? money.baseCurrency)}{changeWallet ? ` → ${changeWallet.name}` : ''}
-                            </p>
-                          ) : null
-                        })()}
+                  <div key={tx.id} className="relative overflow-hidden rounded-xl">
+                    {/* Swipe-to-reveal actions */}
+                    {!selectMode && (
+                      <div className="absolute inset-y-0 right-0 flex items-stretch">
+                        <button
+                          type="button"
+                          aria-label="Edit"
+                          className="flex w-[60px] items-center justify-center bg-accent/80 text-accent-foreground"
+                          onClick={() => { setSwipeOpenId(null); openEditForm(tx) }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete"
+                          className="flex w-[60px] items-center justify-center bg-destructive text-destructive-foreground"
+                          onClick={() => { setSwipeOpenId(null); handleDeleteTransaction(tx) }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                      <span className={`shrink-0 tabular-nums text-sm font-extrabold whitespace-nowrap ${txAmountColor(tx.amount, tx.type)}`}>
-                        {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
-                      </span>
-                    </div>
-                  </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`relative z-10 w-full rounded-xl border px-4 py-3 text-left transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary hover:border-border/80 hover:bg-muted/30'}`}
+                      style={{
+                        transform: swipeOpenId === tx.id ? 'translateX(-120px)' : 'translateX(0px)',
+                        transition: 'transform 0.2s ease-out',
+                      }}
+                      onPointerDown={(e) => {
+                        if (swipeOpenId && swipeOpenId !== tx.id) setSwipeOpenId(null)
+                        longPressRef.current = false
+                        longPressTimer.current = setTimeout(() => {
+                          longPressRef.current = true
+                          if (!selectMode) { setSelectMode(true); setSelectedIds(new Set()) }
+                          setSelectedIds(prev => { const next = new Set(prev); next.add(tx.id); return next })
+                        }, 400)
+                        swipeRef.current = { activeId: tx.id, startX: e.clientX, startY: e.clientY, dx: 0, isSwipe: false, wasSwipe: false }
+                      }}
+                      onPointerMove={(e) => {
+                        if (swipeRef.current.activeId !== tx.id || selectMode) return
+                        const dx = e.clientX - swipeRef.current.startX
+                        const dy = e.clientY - swipeRef.current.startY
+                        if (!swipeRef.current.isSwipe) {
+                          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+                          if (Math.abs(dx) >= Math.abs(dy)) {
+                            swipeRef.current.isSwipe = true
+                            if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+                            e.currentTarget.setPointerCapture(e.pointerId)
+                          } else {
+                            swipeRef.current.activeId = null
+                            return
+                          }
+                        }
+                        swipeRef.current.dx = dx
+                        const base = swipeOpenId === tx.id ? -120 : 0
+                        e.currentTarget.style.transform = `translateX(${Math.min(0, Math.max(-120, base + dx))}px)`
+                        e.currentTarget.style.transition = 'none'
+                      }}
+                      onPointerUp={() => {
+                        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+                        if (swipeRef.current.isSwipe) {
+                          swipeRef.current.wasSwipe = true
+                          const { dx } = swipeRef.current
+                          const isOpen = swipeOpenId === tx.id
+                          swipeRef.current.activeId = null
+                          swipeRef.current.isSwipe = false
+                          setSwipeOpenId(isOpen ? (dx > 40 ? null : tx.id) : (dx < -40 ? tx.id : null))
+                        }
+                      }}
+                      onPointerLeave={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }}
+                      onClick={() => {
+                        if (swipeRef.current.wasSwipe) { swipeRef.current.wasSwipe = false; return }
+                        if (swipeOpenId === tx.id) { setSwipeOpenId(null); return }
+                        if (longPressRef.current) { longPressRef.current = false; return }
+                        selectMode ? toggleSelectId(tx.id) : setDetailTx(tx)
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            {selectMode ? (
+                              isSelected
+                                ? <CheckSquare className="h-4 w-4 shrink-0 text-primary" />
+                                : <Square className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            ) : tx.needs_review ? (
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />
+                            ) : null}
+                            <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            {categoryColorMap.has(tx.category) && (
+                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
+                            )}
+                            <span className="truncate">{tx.category}{txWallet ? ` · ${txWallet.name}` : ''} · {formatDate(tx.date)}</span>
+                          </div>
+                          {linkedChange.length > 0 && (() => {
+                            const changeAmt = tx.cash_tendered! - (tx.original_amount ?? tx.amount)
+                            const changeWallet = wallets.find(w => w.id === linkedChange[0].wallet_id)
+                            return changeAmt > 0 ? (
+                              <p className="mt-1 text-[11px] text-muted-foreground/70">
+                                Cash {money.format(tx.cash_tendered!, tx.original_currency ?? money.baseCurrency)} · change {money.format(changeAmt, tx.original_currency ?? money.baseCurrency)}{changeWallet ? ` → ${changeWallet.name}` : ''}
+                              </p>
+                            ) : null
+                          })()}
+                        </div>
+                        <span className={`shrink-0 tabular-nums text-sm font-extrabold whitespace-nowrap ${txAmountColor(tx.amount, tx.type)}`}>
+                          {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
                 )
               })}
             </div>}
