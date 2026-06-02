@@ -1245,7 +1245,7 @@ export function Transactions() {
                           {categoryColorMap.has(tx.category) && (
                             <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
                           )}
-                          <span className="truncate">{tx.category}{txWallet ? ` · ${txWallet.name}` : ''}</span>
+                          <span className="truncate">{tx.category}{txWallet ? ` · ${txWallet.name}` : ''} · {formatDate(tx.date)}</span>
                         </div>
                         {linkedChange.length > 0 && (() => {
                           const changeAmt = tx.cash_tendered! - (tx.original_amount ?? tx.amount)
