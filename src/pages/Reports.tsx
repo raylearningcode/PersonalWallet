@@ -554,7 +554,7 @@ export function Reports() {
             <div className="mt-4 rounded-2xl border border-border bg-secondary/60 p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-extrabold text-foreground">{clickedBucket} — {bucketTx.length} transaction{bucketTx.length !== 1 ? 's' : ''}</p>
-                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" title="Close" className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">✕</button>
+                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">✕</button>
               </div>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {bucketTx.map(tx => (
