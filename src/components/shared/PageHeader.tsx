@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { User } from 'lucide-react'
 import { useAppSettings } from '@/lib/queries'
 
 interface PageHeaderProps {
@@ -36,8 +37,10 @@ function useScrollHide() {
 
 export function PageHeader({ title, subtitle, action, searchValue, onSearchChange }: PageHeaderProps) {
   const { data: settings } = useAppSettings()
-  const avatarInitial = (settings?.user_name || settings?.email || 'FinPath').slice(0, 1).toUpperCase()
+  const avatarInitial = (settings?.user_name || settings?.email || '').slice(0, 1).toUpperCase()
   const scrolledDown = useScrollHide()
+
+  const openProfile = () => window.dispatchEvent(new CustomEvent('finpath-open-profile'))
 
   return (
     <div className="mb-8">
@@ -59,9 +62,14 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
               onChange={e => onSearchChange(e.target.value)}
             />
           )}
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-primary-foreground sm:h-12 sm:w-12">
-            {avatarInitial}
-          </div>
+          <button
+            type="button"
+            aria-label="Open profile and account settings"
+            onClick={openProfile}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-primary-foreground transition-opacity hover:opacity-80 active:scale-95 sm:h-12 sm:w-12"
+          >
+            {avatarInitial ? avatarInitial : <User className="h-5 w-5" />}
+          </button>
           {action}
         </div>
       </div>
@@ -75,15 +83,20 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
           {onSearchChange !== undefined && (
             <input
               aria-label="Search"
-              className="h-8 w-36 rounded-full border border-border bg-[#111b31] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+              className="h-9 w-36 rounded-full border border-border bg-[#111b31] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
               placeholder="Search…"
               value={searchValue ?? ''}
               onChange={e => onSearchChange(e.target.value)}
             />
           )}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">
-            {avatarInitial}
-          </div>
+          <button
+            type="button"
+            aria-label="Open profile and account settings"
+            onClick={openProfile}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground active:scale-95"
+          >
+            {avatarInitial ? avatarInitial : <User className="h-4 w-4" />}
+          </button>
         </div>
       </div>
     </div>

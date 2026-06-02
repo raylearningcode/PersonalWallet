@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   useTransactions,
   useDeleteTransaction,
@@ -10,7 +10,6 @@ import {
   useRecurringRules,
   useAddRecurringRule,
   useUpdateRecurringRule,
-  useDeleteRecurringRule,
   useRunDueRecurringRules,
   useMarkReviewed,
 } from '@/lib/queries'
@@ -22,13 +21,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown, SlidersHorizontal, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
+import { splitTwdChange, getFiftyCoinRouting } from '@/lib/cashChange'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -55,7 +55,6 @@ export function Transactions() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
-  const [deleteRuleTarget, setDeleteRuleTarget] = useState<RecurringRule | null>(null)
   const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
   const [dateFrom, setDateFrom] = useState(getMonthStart)
   const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
@@ -84,9 +83,18 @@ export function Transactions() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [bulkCategorySheet, setBulkCategorySheet] = useState(false)
+  const [bulkCategoryTarget, setBulkCategoryTarget] = useState('')
+  const [detailTx, setDetailTx] = useState<Transaction | null>(null)
+  const [filterWalletId, setFilterWalletId] = useState('')
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
-  const { data: transactions = [], isPending: txPending } = useTransactions(filter)
+  const longPressRef = useRef(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>(null)
+  const swipeRef = useRef<{ activeId: string | null; startX: number; startY: number; dx: number; isSwipe: boolean; wasSwipe: boolean }>({ activeId: null, startX: 0, startY: 0, dx: 0, isSwipe: false, wasSwipe: false })
+  const { data: transactions = [], isPending: txPending, isError: txError, refetch: txRefetch } = useTransactions(filter)
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
@@ -95,7 +103,6 @@ export function Transactions() {
   const del = useDeleteTransaction()
   const addRecurringRule = useAddRecurringRule()
   const updateRecurringRule = useUpdateRecurringRule()
-  const deleteRecurringRule = useDeleteRecurringRule()
   const runDueRecurringRules = useRunDueRecurringRules()
   const markReviewed = useMarkReviewed()
 
@@ -113,6 +120,10 @@ export function Transactions() {
   }, [money.displayCurrency])
 
   useEffect(() => {
+    if (selectMode) setSwipeOpenId(null)
+  }, [selectMode])
+
+  useEffect(() => {
     if (generatedDueRef.current || recurringRules.length === 0) return
     const today = new Date().toISOString().slice(0, 10)
     if (!recurringRules.some(rule => rule.active && rule.next_due_date <= today)) return
@@ -123,6 +134,16 @@ export function Transactions() {
       },
     })
   }, [recurringRules, runDueRecurringRules])
+
+  useEffect(() => {
+    if (!editingRule) return
+    setRuleDescription(editingRule.description)
+    setRuleAmount(String(editingRule.original_amount ?? editingRule.amount))
+    setRuleInputCurrency(editingRule.original_currency ?? money.displayCurrency)
+    setRuleFrequency(editingRule.frequency)
+    setRuleNextDueDate(editingRule.next_due_date)
+    setRuleEndDate(editingRule.end_date ?? '')
+  }, [editingRule, money.displayCurrency])
 
   const walletBalances = useMemo(() => {
     const balances = new Map(wallets.map(w => [w.id, w.balance ?? 0]))
@@ -147,15 +168,23 @@ export function Transactions() {
       if (selectedCategory) visibleTransactions = visibleTransactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
-        visibleTransactions = visibleTransactions.filter(tx =>
-          tx.description.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q)
-        )
+        visibleTransactions = visibleTransactions.filter(tx => {
+          if (tx.description.toLowerCase().includes(q)) return true
+          if (tx.category.toLowerCase().includes(q)) return true
+          if (tx.date.includes(q)) return true
+          const displayAmt = money.fromBase(tx.amount).toString()
+          if (displayAmt.includes(q)) return true
+          const wallet = wallets.find(w => w.id === tx.wallet_id)
+          if (wallet?.name.toLowerCase().includes(q)) return true
+          return false
+        })
       }
       if (dateFrom) visibleTransactions = visibleTransactions.filter(tx => tx.date >= dateFrom)
       if (dateTo) visibleTransactions = visibleTransactions.filter(tx => tx.date <= dateTo)
+      if (filterWalletId) visibleTransactions = visibleTransactions.filter(tx => tx.wallet_id === filterWalletId || tx.transfer_wallet_id === filterWalletId)
       return [...visibleTransactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`))
     },
-    [selectedCategory, transactions, searchQuery, dateFrom, dateTo]
+    [selectedCategory, transactions, searchQuery, dateFrom, dateTo, filterWalletId]
   )
   const expenseCategoryTotals = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>()
@@ -172,6 +201,12 @@ export function Transactions() {
     })
     return [...groups.entries()]
   }, [sortedTransactions])
+  const categoryColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    categories.forEach(c => map.set(c.name, c.color))
+    return map
+  }, [categories])
+
   const selectedCategoryTotal = selectedCategory
     ? expenseCategoryTotals.find(([name]) => name === selectedCategory)?.[1].total ?? 0
     : 0
@@ -243,7 +278,7 @@ export function Transactions() {
 
   const handleSaveTransaction = async () => {
     const parsedAmount = parseNumberInput(amount)
-    if (!description.trim()) { toast.error('Please enter a merchant name'); return }
+    if (!description.trim() && type !== 'transfer') { toast.error('Please enter a merchant name'); return }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return }
     if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) { toast.error('Select two different wallets for a transfer'); return }
     const txCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
@@ -262,7 +297,7 @@ export function Transactions() {
     const parsedInstallments = parseInt(installmentTotal.replace(/[^\d]/g, ''), 10)
 
     const payload = {
-      description: description.trim(),
+      description: description.trim() || (type === 'transfer' ? 'Transfer' : ''),
       amount: baseAmount,
       original_amount: parsedAmount,
       original_currency: inputCurrency,
@@ -291,8 +326,9 @@ export function Transactions() {
         if (cashEnabled && baseChange > 0) {
           const isTWDEdit = inputCurrency === 'TWD'
           const rawChangeEdit = parsedTendered - parsedAmount
-          const billsChangeEdit = isTWDEdit ? Math.floor(rawChangeEdit / 100) * 100 : 0
-          const coinsChangeEdit = isTWDEdit ? rawChangeEdit % 100 : rawChangeEdit
+          const { bills: billsChangeEdit, coins: coinsChangeEdit } = isTWDEdit
+            ? splitTwdChange(rawChangeEdit, getFiftyCoinRouting())
+            : { bills: 0, coins: rawChangeEdit }
           let firstEditChangeTxId: string | undefined
           if (isTWDEdit && billsChangeEdit > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
             const ct = await addTransaction.mutateAsync({
@@ -350,8 +386,9 @@ export function Transactions() {
         if (cashEnabled && baseChange > 0 && savedTx?.id) {
           const isTWD = inputCurrency === 'TWD'
           const rawChange = parsedTendered - parsedAmount
-          const billsChangeAmt = isTWD ? Math.floor(rawChange / 100) * 100 : 0
-          const coinsChangeAmt = isTWD ? rawChange % 100 : rawChange
+          const { bills: billsChangeAmt, coins: coinsChangeAmt } = isTWD
+            ? splitTwdChange(rawChange, getFiftyCoinRouting())
+            : { bills: 0, coins: rawChange }
           let firstChangeTxId: string | undefined
 
           // Bills transfer (only if destination != spending wallet and there are bills)
@@ -462,17 +499,6 @@ export function Transactions() {
     })
   }
 
-  const handleToggleRule = (rule: RecurringRule) => {
-    updateRecurringRule.mutate({ id: rule.id, active: !rule.active })
-  }
-
-  const confirmDeleteRule = () => {
-    if (!deleteRuleTarget) return
-    deleteRecurringRule.mutate(deleteRuleTarget.id)
-    toast.success('Recurring rule removed')
-    setDeleteRuleTarget(null)
-  }
-
   const handleDuplicateTransaction = async (tx: Transaction) => {
     await addTransaction.mutateAsync({
       description: tx.description,
@@ -494,35 +520,6 @@ export function Transactions() {
   const handleMarkReviewed = (id: string) => {
     markReviewed.mutate(id)
     toast.success('Marked as reviewed')
-  }
-
-  const openEditRule = (rule: RecurringRule) => {
-    setEditingRule(rule)
-    setRuleDescription(rule.description)
-    setRuleAmount(String(rule.original_amount))
-    setRuleInputCurrency(rule.original_currency)
-    setRuleFrequency(rule.frequency)
-    setRuleNextDueDate(rule.next_due_date)
-    setRuleEndDate(rule.end_date ?? '')
-  }
-
-  const handleSaveRule = async () => {
-    if (!editingRule) return
-    const parsedAmount = parseNumberInput(ruleAmount)
-    if (!ruleDescription.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return
-    const baseAmount = money.toBase(parsedAmount, ruleInputCurrency)
-    await updateRecurringRule.mutateAsync({
-      id: editingRule.id,
-      description: ruleDescription.trim(),
-      amount: baseAmount,
-      original_amount: parsedAmount,
-      original_currency: ruleInputCurrency,
-      frequency: ruleFrequency,
-      next_due_date: ruleNextDueDate,
-      end_date: ruleEndDate || null,
-    })
-    toast.success('Recurring rule updated')
-    setEditingRule(null)
   }
 
   const handleAddCandidateAsRule = async (candidate: ReturnType<typeof getRecurringCandidates>[0]) => {
@@ -591,6 +588,66 @@ export function Transactions() {
     setSelectedIds(new Set())
   }
 
+  const bulkExportCSV = () => {
+    const selected = sortedTransactions.filter(tx => selectedIds.has(tx.id))
+    if (selected.length === 0) return
+    const headers = ['Date', 'Description', 'Category', 'Type', 'Amount', 'Currency', 'Wallet']
+    const rows = selected.map(tx => {
+      const w = wallets.find(wl => wl.id === tx.wallet_id)
+      return [
+        tx.date,
+        `"${(tx.description ?? '').replace(/"/g, '""')}"`,
+        tx.category,
+        tx.type,
+        money.fromBase(tx.amount, tx.original_currency ?? money.baseCurrency).toFixed(2),
+        tx.original_currency ?? money.baseCurrency,
+        w?.name ?? '',
+      ]
+    })
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `finpath-selected-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    toast.success(`${selected.length} transaction${selected.length !== 1 ? 's' : ''} exported`)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const bulkChangeCategory = async () => {
+    if (!bulkCategoryTarget) return
+    const toUpdate = sortedTransactions.filter(tx => selectedIds.has(tx.id))
+    for (const tx of toUpdate) await updateTransaction.mutateAsync({ id: tx.id, category: bulkCategoryTarget })
+    toast.success(`Category updated on ${toUpdate.length} transaction${toUpdate.length !== 1 ? 's' : ''}`)
+    setBulkCategorySheet(false)
+    setBulkCategoryTarget('')
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const handleSaveRule = async () => {
+    if (!editingRule) return
+    const amount = parseNumberInput(ruleAmount)
+    if (!ruleDescription.trim() || amount <= 0) { toast.error('Description and amount are required'); return }
+    try {
+      await updateRecurringRule.mutateAsync({
+        id: editingRule.id,
+        description: ruleDescription.trim(),
+        amount: amount,
+        original_amount: amount,
+        original_currency: ruleInputCurrency,
+        frequency: ruleFrequency,
+        next_due_date: ruleNextDueDate || editingRule.next_due_date,
+        end_date: ruleEndDate || null,
+      })
+      setEditingRule(null)
+      toast.success('Rule updated')
+    } catch {
+      toast.error('Failed to update rule')
+    }
+  }
+
   // Month navigator
   const _today = new Date()
   const navYear = dateFrom ? parseInt(dateFrom.slice(0, 4)) : _today.getFullYear()
@@ -598,6 +655,36 @@ export function Transactions() {
   const isAllTime = !dateFrom && !dateTo
   const isOnCurrentMonth = navYear === _today.getFullYear() && navMonth === _today.getMonth() + 1
   const monthLabel = new Date(navYear, navMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  const activeFilterCount = (filterWalletId ? 1 : 0) + (isAllTime ? 1 : 0)
+
+  const applyDatePreset = (preset: string) => {
+    const d = new Date()
+    const y = d.getFullYear(), m = d.getMonth() + 1
+    if (preset === 'this-week') {
+      const day = d.getDay()
+      const mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+      setDateFrom(mon.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10))
+    } else if (preset === 'this-month') {
+      setDateFrom(`${y}-${String(m).padStart(2, '0')}-01`); setDateTo(getLastDay(y, m))
+    } else if (preset === 'last-month') {
+      const lm = new Date(y, m - 2, 1); const ly = lm.getFullYear(), lmo = lm.getMonth() + 1
+      setDateFrom(`${ly}-${String(lmo).padStart(2, '0')}-01`); setDateTo(getLastDay(ly, lmo))
+    } else if (preset === 'last-3-months') {
+      const start = new Date(y, m - 4, 1)
+      setDateFrom(start.toISOString().slice(0, 10)); setDateTo(getLastDay(y, m))
+    } else if (preset === 'this-year') {
+      setDateFrom(`${y}-01-01`); setDateTo(`${y}-12-31`)
+    } else if (preset === 'all-time') {
+      setDateFrom(''); setDateTo('')
+    }
+  }
+
+  const resetFilters = () => {
+    const d = new Date()
+    setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1))
+    setFilterWalletId('')
+  }
 
   const goToPrevMonth = () => {
     const d = new Date(navYear, navMonth - 2, 1)
@@ -701,7 +788,7 @@ export function Transactions() {
                     if (merchantSuggestion.wallet_id) setWalletId(merchantSuggestion.wallet_id)
                     setType(merchantSuggestion.type === 'income' || merchantSuggestion.type === 'transfer' ? merchantSuggestion.type : 'expense')
                   }}
-                  title="Fills in category, wallet, and type from last time you used this merchant"
+                  aria-label="Use last merchant suggestion — fills in category, wallet, and type"
                 >
                   Last time: {merchantSuggestion.category}
                   {merchantSuggestion.wallet_id && wallets.find(w => w.id === merchantSuggestion.wallet_id) && (
@@ -790,8 +877,9 @@ export function Transactions() {
                   const walletCurrentBal = walletBalances.get(walletId) ?? 0
                   const showChips = selectedWallet.currency === 'TWD' && inputCurrency === 'TWD'
                   const isTWD = inputCurrency === 'TWD'
-                  const billsChange = isTWD ? Math.floor(changeAmount / 100) * 100 : 0
-                  const coinsChange = isTWD ? changeAmount % 100 : changeAmount
+                  const { bills: billsChange, coins: coinsChange } = isTWD
+                    ? splitTwdChange(changeAmount, getFiftyCoinRouting())
+                    : { bills: 0, coins: changeAmount }
                   const hasBills = billsChange > 0
                   const hasCoins = coinsChange > 0
                   const twdChips = [100, 500, 1000].filter(n => !Number.isFinite(parsedExpense) || parsedExpense <= 0 || n >= parsedExpense)
@@ -863,7 +951,7 @@ export function Transactions() {
                               <p className="mt-2 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
                             )}
                             {!isUnderpay && Number.isFinite(parsedTendered) && parsedTendered > 0 && walletCurrentBal < money.toBase(parsedTendered, inputCurrency) && (
-                              <p className="mt-2 text-xs font-bold text-[#FFCF73]">⚠ Wallet balance {money.formatBase(walletCurrentBal)} may be lower than cash given</p>
+                              <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#FFCF73]"><AlertTriangle className="h-3 w-3 shrink-0" /> Wallet balance {money.formatBase(walletCurrentBal)} may be lower than cash given</p>
                             )}
                           </div>
 
@@ -1154,37 +1242,44 @@ export function Transactions() {
               <h2 className="text-lg font-extrabold text-foreground">Recurring / cicilan</h2>
               <p className="mt-1 text-xs font-bold text-muted-foreground">Auto-generates due payments without duplicates.</p>
             </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleGenerateDue}
-              disabled={runDueRecurringRules.isPending}
-              title={nextDueRule ? `Next due: ${nextDueRule.description} on ${nextDueRule.next_due_date}` : 'No upcoming rules'}
-            >
-              Generate due transactions
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleGenerateDue}
+                disabled={runDueRecurringRules.isPending}
+                aria-label={nextDueRule ? `Generate due recurring transactions — next: ${nextDueRule.description} on ${nextDueRule.next_due_date}` : 'Generate due recurring transactions — no upcoming rules'}
+              >
+                Generate due
+              </Button>
+              <Button asChild size="sm" variant="secondary">
+                <Link to="/subscriptions">Manage →</Link>
+              </Button>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {upcomingRecurringRules.map(rule => (
-              <div key={rule.id} className={`rounded-2xl border p-4 ${rule.active ? 'border-border bg-secondary' : 'border-border/60 bg-secondary/50 opacity-70'}`}>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="min-w-0 truncate font-extrabold text-foreground">{rule.description}</p>
-                  <p className="shrink-0 text-sm font-bold text-primary">{rule.frequency}</p>
+              <Link
+                key={rule.id}
+                to="/subscriptions"
+                className={`flex items-center justify-between gap-3 rounded-2xl border p-4 transition-colors hover:border-primary/30 hover:bg-primary/5 ${rule.active ? 'border-border bg-secondary' : 'border-border/60 bg-secondary/50 opacity-70'}`}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="min-w-0 truncate font-extrabold text-foreground">{rule.description}</p>
+                    {!rule.active && <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">Paused</span>}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{rule.category} · next {rule.next_due_date}</p>
+                  <p className="mt-0.5 text-sm font-bold text-foreground">
+                    {money.format(rule.original_amount, rule.original_currency)}
+                    {rule.original_currency !== money.baseCurrency && <span className="ml-2 text-xs text-muted-foreground">~ {money.formatBase(rule.amount)}</span>}
+                  </p>
+                  {rule.installment_total && (
+                    <p className="mt-0.5 text-xs font-bold text-muted-foreground">{rule.installment_paid}/{rule.installment_total} paid</p>
+                  )}
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">{rule.category} - next {rule.next_due_date}</p>
-                <p className="mt-1 text-sm font-bold text-foreground">
-                  {money.format(rule.original_amount, rule.original_currency)}
-                  {rule.original_currency !== money.baseCurrency && <span className="ml-2 text-xs text-muted-foreground">~ {money.formatBase(rule.amount)}</span>}
-                </p>
-                {rule.installment_total && (
-                  <p className="mt-1 text-xs font-bold text-muted-foreground">{rule.installment_paid}/{rule.installment_total} paid</p>
-                )}
-                <div className="mt-3 flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => handleToggleRule(rule)}>{rule.active ? 'Pause' : 'Resume'}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => openEditRule(rule)}><Pencil size={13} className="mr-1" />Edit</Button>
-                  <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => setDeleteRuleTarget(rule)}>Delete</Button>
-                </div>
-              </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
             ))}
           </div>
           {recurringCandidates.length > 0 && (
@@ -1263,7 +1358,7 @@ export function Transactions() {
         <div className="mb-5 flex items-center gap-1">
           <button
             onClick={goToPrevMonth}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -1279,11 +1374,19 @@ export function Transactions() {
           <button
             onClick={goToNextMonth}
             disabled={isOnCurrentMonth || isAllTime}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
+          {!isAllTime && !isOnCurrentMonth && (
+            <button
+              onClick={() => { setDateFrom(getMonthStart()); setDateTo(getLastDay(new Date().getFullYear(), new Date().getMonth() + 1)) }}
+              className="ml-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
+            >
+              This month
+            </button>
+          )}
           {!isAllTime && (
             <button
               onClick={() => { setDateFrom(''); setDateTo('') }}
@@ -1292,7 +1395,93 @@ export function Transactions() {
               All
             </button>
           )}
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            aria-label="Open filters"
+            className={`relative ml-1 flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${activeFilterCount > 0 ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-extrabold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+          <SheetContent side="bottom" className="overflow-y-auto border-border bg-background pb-8">
+            <SheetHeader className="mb-5 text-left">
+              <SheetTitle>Filters</SheetTitle>
+              <SheetDescription>Narrow down by date range or wallet.</SheetDescription>
+            </SheetHeader>
+            <div className="space-y-6">
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Quick range</p>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ['this-week', 'This week'],
+                    ['this-month', 'This month'],
+                    ['last-month', 'Last month'],
+                    ['last-3-months', 'Last 3 months'],
+                    ['this-year', 'This year'],
+                    ['all-time', 'All time'],
+                  ] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => applyDatePreset(key)}
+                      className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground active:scale-95"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Custom date range</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="mb-1 text-[11px] text-muted-foreground">From</p>
+                    <Input type="date" className="bg-secondary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] text-muted-foreground">To</p>
+                    <Input type="date" className="bg-secondary" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+              {wallets.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Wallet</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFilterWalletId('')}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${!filterWalletId ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                    >
+                      All wallets
+                    </button>
+                    {wallets.map(w => (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => setFilterWalletId(w.id)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${filterWalletId === w.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {w.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <Button variant="secondary" className="flex-1" onClick={() => { resetFilters(); setIsFilterOpen(false) }}>Reset</Button>
+                <Button className="flex-1" onClick={() => setIsFilterOpen(false)}>Apply</Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {txPending ? (
           <div className="space-y-3">
@@ -1308,6 +1497,18 @@ export function Transactions() {
               </div>
             ))}
           </div>
+        ) : txError ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary px-6 py-12 text-center">
+            <p className="text-base font-bold text-foreground">Could not load transactions</p>
+            <p className="mt-1 text-sm text-muted-foreground">Your local data is safe. Try refreshing.</p>
+            <button
+              type="button"
+              onClick={() => txRefetch()}
+              className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+            >
+              Retry
+            </button>
+          </div>
         ) : groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
           <div key={date} className="mb-6 last:mb-0">
             <h3 className="mb-3 text-sm font-extrabold text-primary">{formatDate(date)}</h3>
@@ -1316,61 +1517,122 @@ export function Transactions() {
             {!isDesktop && <div className="flex flex-col gap-2">
               {rows.map(tx => {
                 const isSelected = selectedIds.has(tx.id)
+                const txWallet = wallets.find(w => w.id === tx.wallet_id)
+                const linkedChange = tx.cash_tendered && tx.cash_tendered > 0
+                  ? transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated)
+                  : []
                 return (
-                  <div
-                    key={tx.id}
-                    className={`rounded-xl border px-4 py-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-border bg-[#FFCF73]/5' : 'border-border bg-secondary'} ${selectMode ? 'cursor-pointer' : ''}`}
-                    onClick={selectMode ? () => toggleSelectId(tx.id) : undefined}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          {selectMode ? (
-                            isSelected
-                              ? <CheckSquare className="h-4 w-4 shrink-0 text-primary" />
-                              : <Square className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          ) : tx.needs_review ? (
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />
-                          ) : null}
-                          <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
-                        </div>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {tx.category}
-                          {tx.cash_tendered && tx.cash_tendered > 0 && (
-                            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                              Cash · {money.formatDisplay(tx.cash_tendered)} given
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
-                        {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
-                      </span>
-                    </div>
+                  <div key={tx.id} className="relative overflow-hidden rounded-xl">
+                    {/* Swipe-to-reveal actions */}
                     {!selectMode && (
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <p className="text-xs text-muted-foreground">
-                          {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
-                          {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && ` ~ ${money.formatBase(tx.amount)}`}
-                        </p>
-                        <div className="flex gap-1">
-                          {tx.needs_review && (
-                            <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
-                              <CheckCircle size={17} />
-                            </Button>
-                          )}
-                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
-                            <Copy size={17} />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
-                            <Pencil size={17} />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
-                            <Trash2 size={17} />
-                          </Button>
-                        </div>
+                      <div className="absolute inset-y-0 right-0 flex items-stretch">
+                        <button
+                          type="button"
+                          aria-label="Edit"
+                          className="flex w-[60px] items-center justify-center bg-accent/80 text-accent-foreground"
+                          onClick={() => { setSwipeOpenId(null); openEditForm(tx) }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete"
+                          className="flex w-[60px] items-center justify-center bg-destructive text-destructive-foreground"
+                          onClick={() => { setSwipeOpenId(null); handleDeleteTransaction(tx) }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     )}
+                    <button
+                      type="button"
+                      className={`relative z-10 w-full rounded-xl border px-4 py-3 text-left transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary hover:border-border/80 hover:bg-muted/30'}`}
+                      style={{
+                        transform: swipeOpenId === tx.id ? 'translateX(-120px)' : 'translateX(0px)',
+                        transition: 'transform 0.2s ease-out',
+                      }}
+                      onPointerDown={(e) => {
+                        if (swipeOpenId && swipeOpenId !== tx.id) setSwipeOpenId(null)
+                        longPressRef.current = false
+                        longPressTimer.current = setTimeout(() => {
+                          longPressRef.current = true
+                          if (!selectMode) { setSelectMode(true); setSelectedIds(new Set()) }
+                          setSelectedIds(prev => { const next = new Set(prev); next.add(tx.id); return next })
+                        }, 400)
+                        swipeRef.current = { activeId: tx.id, startX: e.clientX, startY: e.clientY, dx: 0, isSwipe: false, wasSwipe: false }
+                      }}
+                      onPointerMove={(e) => {
+                        if (swipeRef.current.activeId !== tx.id || selectMode) return
+                        const dx = e.clientX - swipeRef.current.startX
+                        const dy = e.clientY - swipeRef.current.startY
+                        if (!swipeRef.current.isSwipe) {
+                          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+                          if (Math.abs(dx) >= Math.abs(dy)) {
+                            swipeRef.current.isSwipe = true
+                            if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+                            e.currentTarget.setPointerCapture(e.pointerId)
+                          } else {
+                            swipeRef.current.activeId = null
+                            return
+                          }
+                        }
+                        swipeRef.current.dx = dx
+                        const base = swipeOpenId === tx.id ? -120 : 0
+                        e.currentTarget.style.transform = `translateX(${Math.min(0, Math.max(-120, base + dx))}px)`
+                        e.currentTarget.style.transition = 'none'
+                      }}
+                      onPointerUp={() => {
+                        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+                        if (swipeRef.current.isSwipe) {
+                          swipeRef.current.wasSwipe = true
+                          const { dx } = swipeRef.current
+                          const isOpen = swipeOpenId === tx.id
+                          swipeRef.current.activeId = null
+                          swipeRef.current.isSwipe = false
+                          setSwipeOpenId(isOpen ? (dx > 40 ? null : tx.id) : (dx < -40 ? tx.id : null))
+                        }
+                      }}
+                      onPointerLeave={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }}
+                      onClick={() => {
+                        if (swipeRef.current.wasSwipe) { swipeRef.current.wasSwipe = false; return }
+                        if (swipeOpenId === tx.id) { setSwipeOpenId(null); return }
+                        if (longPressRef.current) { longPressRef.current = false; return }
+                        selectMode ? toggleSelectId(tx.id) : setDetailTx(tx)
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            {selectMode ? (
+                              isSelected
+                                ? <CheckSquare className="h-4 w-4 shrink-0 text-primary" />
+                                : <Square className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            ) : tx.needs_review ? (
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" title="Needs review" />
+                            ) : null}
+                            <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            {categoryColorMap.has(tx.category) && (
+                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
+                            )}
+                            <span className="truncate">{tx.category}{txWallet ? ` · ${txWallet.name}` : ''} · {formatDate(tx.date)}</span>
+                          </div>
+                          {linkedChange.length > 0 && (() => {
+                            const changeAmt = tx.cash_tendered! - (tx.original_amount ?? tx.amount)
+                            const changeWallet = wallets.find(w => w.id === linkedChange[0].wallet_id)
+                            return changeAmt > 0 ? (
+                              <p className="mt-1 text-[11px] text-muted-foreground/70">
+                                Cash {money.format(tx.cash_tendered!, tx.original_currency ?? money.baseCurrency)} · change {money.format(changeAmt, tx.original_currency ?? money.baseCurrency)}{changeWallet ? ` → ${changeWallet.name}` : ''}
+                              </p>
+                            ) : null
+                          })()}
+                        </div>
+                        <span className={`shrink-0 tabular-nums text-sm font-extrabold whitespace-nowrap ${txAmountColor(tx.amount, tx.type)}`}>
+                          {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                        </span>
+                      </div>
+                    </button>
                   </div>
                 )
               })}
@@ -1426,17 +1688,17 @@ export function Transactions() {
                           <TableCell className="w-[124px]">
                             <div className="flex justify-end gap-1">
                               {tx.needs_review && (
-                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                                <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
                                   <CheckCircle size={15} />
                                 </Button>
                               )}
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
                                 <Copy size={15} />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
                                 <Pencil size={15} />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
                                 <Trash2 size={15} />
                               </Button>
                             </div>
@@ -1454,47 +1716,113 @@ export function Transactions() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
               <ReceiptText size={28} className="text-muted-foreground/50" />
             </div>
-            <div>
-              <p className="font-semibold text-foreground">No transactions yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Add your first income or expense to get started.</p>
-            </div>
-            <Button onClick={openAddForm} className="gap-2">
-              <Plus size={16} />
-              Add transaction
-            </Button>
+            {(searchQuery || filterWalletId || selectedCategory) ? (
+              <div>
+                <p className="font-semibold text-foreground">No transactions found</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {searchQuery ? `No results for "${searchQuery}"` : filterWalletId ? 'No transactions for this wallet in this period' : `No "${selectedCategory}" transactions in this period`}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setFilterWalletId(''); setSelectedCategory(null) }}
+                  className="mt-3 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="font-semibold text-foreground">No transactions yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Add your first income or expense to get started.</p>
+              </div>
+            )}
+            {!searchQuery && !filterWalletId && !selectedCategory && (
+              <Button onClick={openAddForm} className="gap-2">
+                <Plus size={16} />
+                Add transaction
+              </Button>
+            )}
           </div>
         )}
       </div>
       {/* Bulk action bar — shown when items are selected */}
       {selectMode && selectedIds.size > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 shadow-lg sm:px-6">
-          <span className="text-sm font-extrabold text-foreground">{selectedIds.size} selected</span>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={bulkMarkReviewed}
-              disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
-            >
-              <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-              Mark reviewed
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
-              onClick={() => setBulkDeleteConfirm(true)}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Delete
-            </Button>
-            <Button size="sm" variant="secondary" onClick={toggleSelectMode}>
-              <X className="mr-1.5 h-3.5 w-3.5" />
-              Cancel
-            </Button>
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card px-4 py-3 shadow-lg sm:px-6" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-extrabold text-foreground">{selectedIds.size} selected</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => { setBulkCategoryTarget(categories[0]?.name ?? ''); setBulkCategorySheet(true) }}
+                disabled={categories.length === 0}
+              >
+                <Tag className="mr-1.5 h-3.5 w-3.5" />
+                Recategorize
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={bulkMarkReviewed}
+                disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
+              >
+                <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                Reviewed
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={bulkExportCSV}
+              >
+                <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                Export
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                onClick={() => setBulkDeleteConfirm(true)}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Delete
+              </Button>
+              <Button size="sm" variant="secondary" onClick={toggleSelectMode}>
+                <X className="mr-1.5 h-3.5 w-3.5" />
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Bulk recategorize sheet */}
+      <Sheet open={bulkCategorySheet} onOpenChange={open => { if (!open) setBulkCategorySheet(false) }}>
+        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background px-6 pb-10 pt-6">
+          <SheetHeader className="mb-5">
+            <SheetTitle>Recategorize {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
+            <SheetDescription>Choose a new category for all selected transactions.</SheetDescription>
+          </SheetHeader>
+          <div className="mb-5 flex flex-wrap gap-2">
+            {categories.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setBulkCategoryTarget(c.name)}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-colors ${bulkCategoryTarget === c.name ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+              >
+                {c.color && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />}
+                {c.name}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-3">
+            <Button className="flex-1" onClick={bulkChangeCategory} disabled={!bulkCategoryTarget}>
+              Apply to {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}
+            </Button>
+            <Button variant="secondary" onClick={() => setBulkCategorySheet(false)}>Cancel</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget ? `Delete ${deleteTarget.description}?` : ''}
@@ -1503,19 +1831,168 @@ export function Transactions() {
         onConfirm={confirmDeleteTransaction}
       />
       <ConfirmDialog
-        open={Boolean(deleteRuleTarget)}
-        title={deleteRuleTarget ? `Delete recurring rule for ${deleteRuleTarget.description}?` : ''}
-        description="Existing generated transactions stay in history. Only future automatic payments stop."
-        onCancel={() => setDeleteRuleTarget(null)}
-        onConfirm={confirmDeleteRule}
-      />
-      <ConfirmDialog
         open={bulkDeleteConfirm}
         title={`Delete ${selectedIds.size} transaction${selectedIds.size === 1 ? '' : 's'}?`}
         description="This permanently removes all selected transactions and any linked change transfers."
         onCancel={() => setBulkDeleteConfirm(false)}
         onConfirm={confirmBulkDelete}
       />
+
+      {/* Transaction detail sheet (mobile) */}
+      <Sheet open={!!detailTx} onOpenChange={open => { if (!open) setDetailTx(null) }}>
+        <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+          {detailTx && (() => {
+            const tx = detailTx
+            const wallet = wallets.find(w => w.id === tx.wallet_id)
+            const transferWallet = wallets.find(w => w.id === tx.transfer_wallet_id)
+            const changeAmount = tx.cash_tendered && tx.cash_tendered > 0 ? tx.cash_tendered - (tx.original_amount ?? tx.amount) : 0
+            const linkedChangeTx = transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated)
+            return (
+              <div>
+                <div className="px-6 pb-4 pt-2">
+                  <SheetHeader className="mb-4 text-left">
+                    <SheetTitle className="text-base font-extrabold">{tx.description}</SheetTitle>
+                    <SheetDescription className="sr-only">Transaction details</SheetDescription>
+                  </SheetHeader>
+
+                  {/* Amount hero */}
+                  <div className="mb-5 text-center">
+                    <p className={`text-4xl font-extrabold tracking-tight ${txAmountColor(tx.amount, tx.type)}`}>
+                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                    </p>
+                    {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                      </p>
+                    )}
+                    <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${tx.type === 'income' ? 'bg-green-500/15 text-green-400' : tx.type === 'expense' ? 'bg-red-500/15 text-red-400' : 'bg-blue-500/15 text-blue-400'}`}>
+                      {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
+                    </span>
+                  </div>
+
+                  {/* Detail rows */}
+                  <div className="space-y-0 divide-y divide-border rounded-2xl border border-border bg-secondary/50">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Date</span>
+                      <span className="text-sm font-bold text-foreground">{formatDate(tx.date)}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Category</span>
+                      <div className="flex items-center gap-1.5">
+                        {categoryColorMap.has(tx.category) && (
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
+                        )}
+                        <span className="text-sm font-bold text-foreground">{tx.category}</span>
+                      </div>
+                    </div>
+                    {wallet && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <WalletIcon size={13} />Wallet
+                        </span>
+                        <span className="text-sm font-bold text-foreground">{wallet.name}</span>
+                      </div>
+                    )}
+                    {transferWallet && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <ArrowRightLeft size={13} />Transfer to
+                        </span>
+                        <span className="text-sm font-bold text-foreground">{transferWallet.name}</span>
+                      </div>
+                    )}
+                    {tx.cash_tendered && tx.cash_tendered > 0 && (
+                      <>
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <Banknote size={13} />Cash given
+                          </span>
+                          <span className="text-sm font-bold text-foreground">{money.format(tx.cash_tendered, tx.original_currency ?? money.baseCurrency)}</span>
+                        </div>
+                        {changeAmount > 0 && (
+                          <div className="flex items-center justify-between px-4 py-3">
+                            <span className="text-sm text-muted-foreground">Change</span>
+                            <span className="text-sm font-bold text-primary">{money.format(changeAmount, tx.original_currency ?? money.baseCurrency)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {tx.is_system_generated && (
+                      <div className="px-4 py-3">
+                        <p className="text-xs text-muted-foreground">Auto-generated change transfer</p>
+                      </div>
+                    )}
+                    {linkedChangeTx.length > 0 && (
+                      <div className="px-4 py-3">
+                        <p className="mb-1 text-xs text-muted-foreground">Change routed to:</p>
+                        {linkedChangeTx.map(ct => {
+                          const ctWallet = wallets.find(w => w.id === ct.wallet_id)
+                          return (
+                            <p key={ct.id} className="text-xs font-bold text-foreground">
+                              {money.format(ct.original_amount ?? ct.amount, ct.original_currency ?? money.baseCurrency)} → {ctWallet?.name ?? 'wallet'}
+                            </p>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {tx.needs_review && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="text-sm font-bold text-[#FFCF73]">Needs review</span>
+                        <button
+                          type="button"
+                          className="rounded-full bg-[#FFCF73]/15 px-4 py-2 text-xs font-bold text-[#FFCF73] active:scale-95"
+                          onClick={() => { handleMarkReviewed(tx.id); setDetailTx(null) }}
+                        >
+                          Mark reviewed
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Merchant search shortcut */}
+                  {tx.type !== 'transfer' && (
+                    <button
+                      type="button"
+                      className="mt-3 w-full rounded-xl border border-border bg-secondary/50 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary active:scale-[0.99]"
+                      onClick={() => { setDetailTx(null); setSearchQuery(tx.description); setFilter('all') }}
+                    >
+                      Search all "{tx.description}" transactions →
+                    </button>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="sticky bottom-0 border-t border-border bg-background px-6 py-4">
+                  <div className="flex gap-2">
+                    <Button
+                      className="h-14 flex-1 gap-2"
+                      variant="secondary"
+                      onClick={() => { setDetailTx(null); openEditForm(tx) }}
+                    >
+                      <Pencil size={15} />Edit
+                    </Button>
+                    <Button
+                      className="h-14 flex-1 gap-2"
+                      variant="secondary"
+                      onClick={() => { handleDuplicateTransaction(tx); setDetailTx(null) }}
+                    >
+                      <Copy size={15} />Duplicate
+                    </Button>
+                    <Button
+                      className="h-14 w-14 shrink-0 gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      variant="ghost"
+                      onClick={() => { setDetailTx(null); handleDeleteTransaction(tx) }}
+                      aria-label="Delete transaction"
+                    >
+                      <Trash2 size={17} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

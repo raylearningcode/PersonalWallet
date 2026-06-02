@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useBudgetCategories, useTransactions, useAddTransaction, useWallets } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
@@ -9,24 +10,37 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
-import { Download, Upload, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Upload, FileText, TrendingUp, TrendingDown, X } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-type ReportRange = 'week' | 'month' | 'year'
+type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all'
 type ReportMode = 'expense' | 'income'
 
 const RANGE_LABELS: Record<ReportRange, string> = {
   week: 'Week',
   month: 'Month',
+  '3months': '3 months',
   year: 'Year',
+  all: 'All time',
 }
 
 const categoryColors = ['#A9F5C7', '#FADBEA', '#FFF7B5', '#D9E8FF', '#F8DCDC', '#C4AEFF', '#FFD276']
 
-function getRangeBounds(range: ReportRange, periodDate: Date) {
+function getRangeBounds(range: ReportRange, periodDate: Date, allTxDates?: string[]) {
+  if (range === 'all') {
+    if (allTxDates && allTxDates.length > 0) {
+      const sorted = [...allTxDates].sort()
+      return { start: new Date(sorted[0]), end: new Date(Date.now() + 86_400_000) }
+    }
+    return { start: new Date(0), end: new Date(Date.now() + 86_400_000) }
+  }
   if (range === 'year') {
     const start = new Date(periodDate.getFullYear(), 0, 1)
     return { start, end: new Date(periodDate.getFullYear() + 1, 0, 1) }
+  }
+  if (range === '3months') {
+    const start = new Date(periodDate.getFullYear(), periodDate.getMonth() - 2, 1)
+    return { start, end: new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 1) }
   }
   if (range === 'month') {
     const start = new Date(periodDate.getFullYear(), periodDate.getMonth(), 1)
@@ -42,9 +56,13 @@ function getRangeBounds(range: ReportRange, periodDate: Date) {
 }
 
 function addPeriod(date: Date, range: ReportRange, direction: -1 | 1) {
+  if (range === 'all') return date
   const next = new Date(date)
   if (range === 'year') next.setFullYear(date.getFullYear() + direction)
-  else if (range === 'month') {
+  else if (range === '3months') {
+    next.setDate(1)
+    next.setMonth(date.getMonth() + direction * 3)
+  } else if (range === 'month') {
     next.setDate(1) // avoid day-overflow (e.g. May 31 − 1 month → April 31 → May 1)
     next.setMonth(date.getMonth() + direction)
   } else next.setDate(date.getDate() + direction * 7)
@@ -52,7 +70,12 @@ function addPeriod(date: Date, range: ReportRange, direction: -1 | 1) {
 }
 
 function formatPeriodLabel(range: ReportRange, date: Date) {
+  if (range === 'all') return 'All time'
   if (range === 'year') return String(date.getFullYear())
+  if (range === '3months') {
+    const start = new Date(date.getFullYear(), date.getMonth() - 2, 1)
+    return `${start.toLocaleDateString('en-US', { month: 'short' })} – ${date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+  }
   if (range === 'month') return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const { start, end } = getRangeBounds(range, date)
   const finalDay = new Date(end)
@@ -84,7 +107,8 @@ export function Reports() {
   const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate), [periodDate, range])
+  const allTxDates = useMemo(() => transactions.map(t => t.date), [transactions])
+  const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate, allTxDates), [periodDate, range, allTxDates])
   const periodLabel = formatPeriodLabel(range, periodDate)
 
   const internalMovesTx = useMemo(() => transactions.filter(tx => {
@@ -102,7 +126,7 @@ export function Reports() {
   }), [rangeEnd, rangeStart, transactions, selectedWalletId])
 
   const prevDate = useMemo(() => addPeriod(periodDate, range, -1), [periodDate, range])
-  const { start: prevStart, end: prevEnd } = useMemo(() => getRangeBounds(range, prevDate), [prevDate, range])
+  const { start: prevStart, end: prevEnd } = useMemo(() => getRangeBounds(range, prevDate, allTxDates), [prevDate, range, allTxDates])
   const prevRangeTx = useMemo(() => transactions.filter(tx => {
     const txDate = new Date(tx.date)
     return txDate >= prevStart && txDate < prevEnd
@@ -115,8 +139,6 @@ export function Reports() {
   const totalIncome = incomeTx.reduce((sum, tx) => sum + tx.amount, 0)
   const totalExpenses = expenseTx.reduce((sum, tx) => sum + tx.amount, 0)
   const savingsRate = calculateSavingsRate(totalIncome, totalExpenses)
-  const avgSpend = range === 'year' ? Math.round(totalExpenses / 12) : range === 'week' ? Math.round(totalExpenses / 7) : totalExpenses
-
   const prevTotalIncome = prevRangeTx.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
   const prevTotalExpenses = prevRangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer').reduce((sum, tx) => sum + tx.amount, 0)
   const incomeDiff = diffLabel(totalIncome, prevTotalIncome)
@@ -144,14 +166,18 @@ export function Reports() {
   const topCategory = categoryTotals[0]?.[0] ?? '—'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
 
-  const periodSummary = useMemo(() => {
-    const items: string[] = []
-    if (incomeDiff) items.push(`Income ${incomeDiff.up ? 'increased' : 'decreased'} by ${Math.abs(incomeDiff.pct)}% vs previous ${RANGE_LABELS[range].toLowerCase()}`)
-    if (expenseDiff) items.push(`Expenses ${expenseDiff.up ? 'increased' : 'decreased'} by ${Math.abs(expenseDiff.pct)}% vs previous ${RANGE_LABELS[range].toLowerCase()}`)
-    if (savingsRate > 0) items.push(`Savings rate this period: ${savingsRate}%`)
-    if (topCategory !== '—') items.push(`Top spending category: ${topCategory} (${categoryTotals[0] ? Math.round((categoryTotals[0][1] / activeTotal) * 100) : 0}% of total)`)
-    return items
-  }, [incomeDiff, expenseDiff, savingsRate, topCategory, range, categoryTotals, activeTotal])
+
+  const walletActivity = useMemo(() => {
+    if (wallets.length === 0) return []
+    return wallets.map(w => {
+      const wIncome = rangeTx.filter(t => t.type === 'income' && t.wallet_id === w.id).reduce((s, t) => s + t.amount, 0)
+      const wExpenses = rangeTx.filter(t => t.type !== 'income' && t.type !== 'transfer' && t.wallet_id === w.id).reduce((s, t) => s + t.amount, 0)
+      const wTransferIn = rangeTx.filter(t => t.type === 'transfer' && t.transfer_wallet_id === w.id).reduce((s, t) => s + t.amount, 0)
+      const wTransferOut = rangeTx.filter(t => t.type === 'transfer' && t.wallet_id === w.id).reduce((s, t) => s + t.amount, 0)
+      const net = wIncome - wExpenses + wTransferIn - wTransferOut
+      return { wallet: w, income: wIncome, expenses: wExpenses, net }
+    }).filter(wa => wa.income > 0 || wa.expenses > 0)
+  }, [wallets, rangeTx])
 
   const trendData = useMemo(() => {
     const toStr = (d: Date) => d.toISOString().slice(0, 10)
@@ -176,6 +202,21 @@ export function Reports() {
       }
       return weeks
     }
+    if (range === '3months') {
+      return Array.from({ length: 3 }, (_, i) => {
+        const mStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + i, 1)
+        const mEnd = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + i + 1, 1)
+        return { label: mStart.toLocaleDateString('en-GB', { month: 'short' }), ...bucket(rangeTx.filter(t => t.date >= toStr(mStart) && t.date < toStr(mEnd))) }
+      })
+    }
+    if (range === 'all') {
+      const years = Array.from(new Set(rangeTx.map(t => t.date.slice(0, 4)))).sort()
+      if (years.length === 0) return []
+      return years.map(yr => ({
+        label: yr,
+        ...bucket(rangeTx.filter(t => t.date.startsWith(yr))),
+      }))
+    }
     return Array.from({ length: 12 }, (_, i) => {
       const mStart = new Date(rangeStart.getFullYear(), i, 1)
       const mEnd = new Date(rangeStart.getFullYear(), i + 1, 1)
@@ -199,6 +240,13 @@ export function Reports() {
     } else if (range === 'month') {
       bucketStart = new Date(rangeStart); bucketStart.setDate(rangeStart.getDate() + idx * 7)
       bucketEnd = new Date(bucketStart); bucketEnd.setDate(bucketStart.getDate() + 7)
+    } else if (range === '3months') {
+      bucketStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + idx, 1)
+      bucketEnd = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + idx + 1, 1)
+    } else if (range === 'all') {
+      const yr = clickedBucket
+      bucketStart = new Date(`${yr}-01-01`)
+      bucketEnd = new Date(`${String(Number(yr) + 1)}-01-01`)
     } else {
       bucketStart = new Date(rangeStart.getFullYear(), idx, 1)
       bucketEnd = new Date(rangeStart.getFullYear(), idx + 1, 1)
@@ -322,6 +370,14 @@ export function Reports() {
     toast.success('CSV exported successfully')
   }
 
+  const today = new Date()
+  const isCurrentPeriod = range === 'all' || (() => {
+    if (range === 'year') return periodDate.getFullYear() === today.getFullYear()
+    if (range === 'month') return periodDate.getFullYear() === today.getFullYear() && periodDate.getMonth() === today.getMonth()
+    if (range === '3months') return periodDate.getFullYear() === today.getFullYear() && periodDate.getMonth() === today.getMonth()
+    return periodDate.toDateString() === today.toDateString()
+  })()
+
   return (
     <div>
       <PageHeader
@@ -330,12 +386,20 @@ export function Reports() {
         action={(
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center rounded-full border border-border bg-secondary p-1">
-              <button aria-label="Previous period" className="h-9 w-9 rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>
+              {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
               <span className="min-w-[118px] px-3 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-              <button aria-label="Next period" className="h-9 w-9 rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>
+              {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
             </div>
+            {!isCurrentPeriod && (
+              <button
+                onClick={() => setPeriodDate(new Date())}
+                className="rounded-full border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
+              >
+                Back to current
+              </button>
+            )}
             <div className="flex rounded-full border border-border bg-secondary p-1">
-              {(['week', 'month', 'year'] as ReportRange[]).map(item => (
+              {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
                 <button
                   key={item}
                   className={`rounded-full px-4 py-2 text-sm font-extrabold ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
@@ -348,7 +412,7 @@ export function Reports() {
             {wallets.length > 0 && (
               <select
                 aria-label="Filter by wallet"
-                className="h-9 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                className="h-11 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                 value={selectedWalletId}
                 onChange={e => { setSelectedWalletId(e.target.value); setSelectedCategory(null) }}
               >
@@ -379,9 +443,47 @@ export function Reports() {
           </div>
         )}
       />
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-        <StatCard label="Savings rate" value={`${savingsRate}%`} sub={`${RANGE_LABELS[range]} view`} badgeVariant="success" />
-        <StatCard label={range === 'week' ? 'Daily avg.' : range === 'year' ? 'Monthly avg.' : 'Spent'} value={money.formatDisplay(avgSpend)} sub="Expense pace" />
+      {/* Mobile sticky period bar */}
+      <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden">
+        <div className="flex items-center justify-between gap-2">
+          {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
+          <span className="flex-1 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
+          {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
+          <div className="flex rounded-full border border-border bg-secondary p-0.5">
+            {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
+              <button
+                key={item}
+                className={`rounded-full px-2 py-1 text-xs font-extrabold transition-colors ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                onClick={() => handleRangeChange(item)}
+              >
+                {item === 'all' ? 'All' : item === '3months' ? '3M' : RANGE_LABELS[item]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-1.5 flex gap-2 overflow-x-auto pb-0.5">
+          {[
+            { label: 'This month', action: () => { handleRangeChange('month'); setPeriodDate(new Date()) } },
+            { label: 'Last month', action: () => { handleRangeChange('month'); const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); setPeriodDate(d) } },
+            { label: 'Last 3 months', action: () => { handleRangeChange('3months'); setPeriodDate(new Date()) } },
+            { label: 'This year', action: () => { handleRangeChange('year'); setPeriodDate(new Date()) } },
+            { label: 'All time', action: () => handleRangeChange('all') },
+          ].map(({ label, action }) => (
+            <button
+              key={label}
+              onClick={action}
+              className="shrink-0 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold text-muted-foreground hover:text-foreground"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+        <StatCard label="Income" value={money.formatDisplay(totalIncome)} sub={`${incomeTx.length} transactions`} badgeVariant="success" />
+        <StatCard label="Expenses" value={money.formatDisplay(totalExpenses)} sub={`${expenseTx.length} transactions`} badgeVariant="warning" />
+        <StatCard label="Saved" value={money.formatDisplay(totalIncome - totalExpenses)} sub={`${savingsRate}% savings rate`} badgeVariant={totalIncome >= totalExpenses ? 'success' : 'danger'} />
         <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 && categoryTotals.length > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No data yet'} badgeVariant="warning" />
       </div>
 
@@ -393,8 +495,8 @@ export function Reports() {
             <div className="mt-2 flex items-end gap-3">
               <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalIncome)}</span>
               {incomeDiff && (
-                <span className={`mb-0.5 text-sm font-bold ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
-                  {incomeDiff.up ? '▲' : '▼'} {Math.abs(incomeDiff.pct)}%
+                <span className={`mb-0.5 flex items-center gap-0.5 text-sm font-bold ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
+                  {incomeDiff.up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />} {Math.abs(incomeDiff.pct)}%
                 </span>
               )}
             </div>
@@ -405,8 +507,8 @@ export function Reports() {
             <div className="mt-2 flex items-end gap-3">
               <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalExpenses)}</span>
               {expenseDiff && (
-                <span className={`mb-0.5 text-sm font-bold ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
-                  {expenseDiff.up ? '▲' : '▼'} {Math.abs(expenseDiff.pct)}%
+                <span className={`mb-0.5 flex items-center gap-0.5 text-sm font-bold ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
+                  {expenseDiff.up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />} {Math.abs(expenseDiff.pct)}%
                 </span>
               )}
             </div>
@@ -426,12 +528,23 @@ export function Reports() {
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            {range === 'week' ? 'Daily breakdown' : range === 'month' ? 'Weekly breakdown' : 'Monthly breakdown'} for {periodLabel}
+            {range === 'week' ? 'Daily breakdown' : range === 'month' ? 'Weekly breakdown' : range === 'all' ? 'Yearly breakdown' : 'Monthly breakdown'} for {periodLabel}
           </p>
         </CardHeader>
         <CardContent className="px-2 pb-4 sm:px-6">
           {rangeTx.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No data for this period.</p>
+            <div className="py-10 text-center">
+              <p className="text-sm text-muted-foreground">No transactions in this period.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Try a different period or add a transaction.</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => { handleRangeChange('month'); setPeriodDate(new Date()) }}>This month</button>
+                <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => { handleRangeChange('year'); setPeriodDate(new Date()) }}>This year</button>
+                <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => handleRangeChange('all')}>All time</button>
+              </div>
+              <Link to="/transactions" className="mt-4 inline-block rounded-full bg-primary px-5 py-2 text-xs font-extrabold text-primary-foreground hover:bg-primary/90">
+                Add transaction
+              </Link>
+            </div>
           ) : (
             <>
               <p className="mb-2 px-2 text-xs text-muted-foreground">Tap a bar to see transactions for that period</p>
@@ -470,7 +583,7 @@ export function Reports() {
             <div className="mt-4 rounded-2xl border border-border bg-secondary/60 p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-extrabold text-foreground">{clickedBucket} — {bucketTx.length} transaction{bucketTx.length !== 1 ? 's' : ''}</p>
-                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" title="Close" className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">✕</button>
+                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"><X className="h-4 w-4" /></button>
               </div>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {bucketTx.map(tx => (
@@ -490,18 +603,48 @@ export function Reports() {
         </CardContent>
       </Card>
 
-      {/* Narrative summary */}
-      {periodSummary.length > 0 && (
-        <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period summary</p>
-          <ul className="mt-3 space-y-1.5">
-            {periodSummary.map((line, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                {line}
-              </li>
-            ))}
-          </ul>
+      {/* Period review metric cards */}
+      {(incomeDiff || expenseDiff || savingsRate > 0 || topCategory !== '—') && (
+        <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period review</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {incomeDiff && (
+              <div className="rounded-xl bg-secondary/60 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Income</p>
+                <p className={`mt-1 flex items-center gap-1 text-xl font-extrabold tabular-nums ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
+                  {incomeDiff.up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />} {Math.abs(incomeDiff.pct)}%
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">vs prev {RANGE_LABELS[range].toLowerCase()}</p>
+              </div>
+            )}
+            {expenseDiff && (
+              <div className="rounded-xl bg-secondary/60 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Expenses</p>
+                <p className={`mt-1 flex items-center gap-1 text-xl font-extrabold tabular-nums ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
+                  {expenseDiff.up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />} {Math.abs(expenseDiff.pct)}%
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">vs prev {RANGE_LABELS[range].toLowerCase()}</p>
+              </div>
+            )}
+            {savingsRate > 0 && (
+              <div className="rounded-xl bg-secondary/60 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Savings rate</p>
+                <p className={`mt-1 text-xl font-extrabold tabular-nums ${savingsRate >= 20 ? 'text-primary' : savingsRate >= 10 ? 'text-[#FFCF73]' : 'text-[#FF8388]'}`}>
+                  {savingsRate}%
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{savingsRate >= 20 ? 'Great job' : savingsRate >= 10 ? 'Getting there' : 'Below target'}</p>
+              </div>
+            )}
+            {topCategory !== '—' && (
+              <div className="rounded-xl bg-secondary/60 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Top category</p>
+                <p className="mt-1 truncate text-sm font-extrabold text-foreground">{topCategory}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  {categoryTotals[0] ? Math.round((categoryTotals[0][1] / activeTotal) * 100) : 0}% of total spend
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -516,7 +659,7 @@ export function Reports() {
                     key={item}
                     className={`rounded-full px-5 py-2 text-sm font-extrabold capitalize transition-colors ${mode === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     onClick={() => handleModeChange(item)}
-                    title={`Show ${item} breakdown`}
+                    aria-label={`Show ${item} breakdown`}
                   >
                     {item}
                   </button>
@@ -538,7 +681,7 @@ export function Reports() {
                     className="mb-2 flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
                     onClick={() => setSelectedCategory(null)}
                   >
-                    ✕ Clear filter: {selectedCategory}
+                    <X className="h-3 w-3" /> Clear filter: {selectedCategory}
                   </button>
                 )}
                 {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
@@ -546,7 +689,7 @@ export function Reports() {
                     key={name}
                     className={`flex w-full items-center justify-between gap-4 rounded-xl px-2 py-1.5 transition-colors ${selectedCategory === name ? 'bg-secondary' : 'hover:bg-secondary/60'}`}
                     onClick={() => setSelectedCategory(selectedCategory === name ? null : name)}
-                    title={`Filter transactions by ${name}`}
+                    aria-label={`Filter transactions by ${name}`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />
@@ -555,16 +698,37 @@ export function Reports() {
                     <span className="text-sm font-bold text-muted-foreground">{Math.round((amount / activeTotal) * 100)}%</span>
                   </button>
                 )) : (
-                  <div>
-                    <p className="text-sm text-muted-foreground">No {mode} data in this range.</p>
-                    {mode === 'income' && (
-                      <button
-                        className="mt-2 text-xs font-bold text-primary hover:underline"
-                        onClick={() => handleModeChange('expense')}
-                      >
-                        Switch to expense view →
-                      </button>
-                    )}
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      No {mode} data for this period.
+                      {mode === 'income' ? ' Try switching to expense view.' : ' Try a different date range.'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {mode === 'income' && (
+                        <button
+                          className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                          onClick={() => handleModeChange('expense')}
+                        >
+                          Show expenses →
+                        </button>
+                      )}
+                      {range !== 'month' && (
+                        <button
+                          className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                          onClick={() => { handleRangeChange('month'); setPeriodDate(new Date()) }}
+                        >
+                          This month
+                        </button>
+                      )}
+                      {range !== 'year' && (
+                        <button
+                          className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                          onClick={() => handleRangeChange('year')}
+                        >
+                          This year
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -594,7 +758,37 @@ export function Reports() {
                 </div>
               </div>
             )) : (
-              <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">No category data yet.</p>
+              <div className="space-y-3 rounded-2xl bg-secondary p-5">
+                <p className="text-sm text-muted-foreground">
+                  No {mode} data for {periodLabel}. Try switching the date range or adding a transaction.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => { handleRangeChange('month'); setPeriodDate(new Date()) }}
+                  >
+                    This month
+                  </button>
+                  <button
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => { handleRangeChange('year'); setPeriodDate(new Date()) }}
+                  >
+                    This year
+                  </button>
+                  <button
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => { setRange('week'); setPeriodDate(new Date()); setSelectedCategory(null); setClickedBucket(null) }}
+                  >
+                    This week
+                  </button>
+                  <button
+                    className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/10"
+                    onClick={() => { handleRangeChange('all'); setPeriodDate(new Date()) }}
+                  >
+                    All time
+                  </button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -644,6 +838,31 @@ export function Reports() {
                 </div>
               )
             })}
+          </CardContent>
+        </Card>
+      )}
+
+      {walletActivity.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Wallet activity</CardTitle>
+            <p className="text-sm text-muted-foreground">Money flow per wallet during this period.</p>
+          </CardHeader>
+          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+            {walletActivity.map(({ wallet, income, expenses, net }) => (
+              <div key={wallet.id} className="rounded-2xl border border-border bg-secondary px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-extrabold text-foreground">{wallet.name}</p>
+                  <span className={`text-sm font-extrabold ${net >= 0 ? 'text-primary' : 'text-[#FF8388]'}`}>
+                    {net >= 0 ? '+' : ''}{money.formatDisplay(net)}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex gap-4 text-xs text-muted-foreground">
+                  {income > 0 && <span>In: <span className="font-bold text-primary">{money.formatDisplay(income)}</span></span>}
+                  {expenses > 0 && <span>Out: <span className="font-bold text-[#FF8388]">{money.formatDisplay(expenses)}</span></span>}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

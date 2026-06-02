@@ -1,17 +1,33 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Calculator, RefreshCw, Settings, Target, TrendingUp } from 'lucide-react'
+import { BarChart2, Calculator, RefreshCw, Settings, Target, TrendingUp, Wallet } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
 
-const MORE_NAV = [
-  { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
-  { to: '/subscriptions', label: 'Subs', Icon: RefreshCw, color: '#FADBEA' },
-  { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
-  { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
-  { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
-  { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
+const MORE_NAV_GROUPS = [
+  {
+    label: 'Plan',
+    items: [
+      { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
+      { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
+      { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
+    ],
+  },
+  {
+    label: 'Track',
+    items: [
+      { to: '/subscriptions', label: 'Recurring', Icon: RefreshCw, color: '#FADBEA' },
+      { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+      { to: '/settings?section=wallets', label: 'Wallets', Icon: Wallet, color: '#A9F5C7' },
+    ],
+  },
+  {
+    label: 'Manage',
+    items: [
+      { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
+    ],
+  },
 ]
 
 interface MoreSheetProps {
@@ -51,32 +67,40 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-10">
-        {/* Handle bar */}
-        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-muted" />
-
         <h2 className="mb-5 text-lg font-extrabold text-foreground">More</h2>
 
-        {/* App-style icon grid */}
-        <div className="mb-6 grid grid-cols-3 gap-4">
-          {MORE_NAV.map(({ to, label, Icon, color }) => (
-            <button
-              key={to}
-              onClick={() => handleNav(to)}
-              className="flex flex-col items-center gap-2 rounded-2xl p-3 transition-colors active:scale-95 hover:bg-secondary"
-            >
-              <div
-                className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
-                style={{ backgroundColor: color + '33', border: `1.5px solid ${color}55` }}
-              >
-                <Icon className="h-6 w-6" style={{ color }} />
+        {/* Grouped navigation */}
+        <div className="mb-6 space-y-5">
+          {MORE_NAV_GROUPS.map(group => (
+            <div key={group.label}>
+              <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">{group.label}</p>
+              <div className="grid grid-cols-3 gap-3">
+                {group.items.map(({ to, label, Icon, color }) => (
+                  <button
+                    key={to}
+                    onClick={() => handleNav(to)}
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 transition-colors active:scale-95 hover:bg-secondary"
+                  >
+                    <div
+                      className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
+                      style={{ backgroundColor: color + '33', border: `1.5px solid ${color}55` }}
+                    >
+                      <Icon className="h-6 w-6" style={{ color }} />
+                    </div>
+                    <span className="text-xs font-bold text-foreground">{label}</span>
+                  </button>
+                ))}
               </div>
-              <span className="text-xs font-bold text-foreground">{label}</span>
-            </button>
+            </div>
           ))}
         </div>
 
         {/* Goal progress card */}
-        <div className="rounded-2xl border border-border bg-card px-5 py-4">
+        <button
+          type="button"
+          onClick={() => handleNav('/goals')}
+          className="w-full rounded-2xl border border-border bg-card px-5 py-4 text-left transition-colors active:bg-secondary/60"
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Current goal</p>
@@ -90,7 +114,7 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
               style={{ width: `${goalPct}%` }}
             />
           </div>
-        </div>
+        </button>
       </SheetContent>
     </Sheet>
   )

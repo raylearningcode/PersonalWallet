@@ -7,21 +7,22 @@ import {
   useAddBudgetCategory,
   useDeleteBudgetCategory,
 } from '@/lib/queries'
-import { Lightbulb } from 'lucide-react'
+import { Lightbulb, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod } from '@/lib/budget'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, Trash2, X } from 'lucide-react'
 import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDaysRemainingInMonth } from '@/lib/financeOs'
+import { formatDate } from '@/lib/utils'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
@@ -33,14 +34,43 @@ const PRESET_COLORS = [
   '#64748B', '#A16207',
 ]
 
+const CATEGORY_GROUPS: { label: string; keywords: string[] }[] = [
+  { label: 'Food & Drink', keywords: ['food', 'drink', 'eat', 'lunch', 'dinner', 'breakfast', 'grocery', 'groceries', 'restaurant', 'cafe', 'coffee', 'meal', 'snack'] },
+  { label: 'Transport', keywords: ['transport', 'transit', 'travel', 'car', 'fuel', 'gas', 'petrol', 'parking', 'taxi', 'uber', 'commute', 'bus', 'train', 'toll'] },
+  { label: 'Home & Living', keywords: ['rent', 'home', 'housing', 'utilities', 'electric', 'electricity', 'water', 'internet', 'cleaning', 'furnish', 'maintenance', 'household'] },
+  { label: 'Health', keywords: ['health', 'medical', 'doctor', 'pharmacy', 'gym', 'fitness', 'sport', 'wellness', 'dental', 'medicine'] },
+  { label: 'Entertainment', keywords: ['entertainment', 'streaming', 'games', 'game', 'movie', 'music', 'netflix', 'spotify', 'hobby', 'fun', 'leisure', 'cinema'] },
+  { label: 'Education', keywords: ['education', 'learning', 'course', 'book', 'school', 'tuition', 'study', 'training', 'subscription'] },
+  { label: 'Shopping', keywords: ['shopping', 'clothes', 'clothing', 'fashion', 'beauty', 'cosmetic', 'gadget', 'phone', 'electronics'] },
+]
+
+function getCategoryGroup(name: string): string {
+  const lower = name.toLowerCase()
+  for (const { label, keywords } of CATEGORY_GROUPS) {
+    if (keywords.some(k => lower.includes(k))) return label
+  }
+  return 'Other'
+}
+
+function groupCategories<T extends { name: string }>(cats: T[]): { group: string; items: T[] }[] {
+  const map = new Map<string, T[]>()
+  for (const cat of cats) {
+    const g = getCategoryGroup(cat.name)
+    if (!map.has(g)) map.set(g, [])
+    map.get(g)!.push(cat)
+  }
+  return Array.from(map.entries()).map(([group, items]) => ({ group, items }))
+}
+
 function ColorSwatch({ color, selected, onClick }: { color: string; selected: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
-      className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
+      aria-label={`Select color ${color}`}
+      aria-pressed={selected}
+      className={`h-11 w-11 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
       style={{ backgroundColor: color }}
       onClick={onClick}
-      title={color}
     />
   )
 }
@@ -65,19 +95,30 @@ function ColorBar({ value, color }: { value: number; color: string }) {
 export function Budget() {
   const money = useMoney()
   const fmt = money.formatDisplay
-  const { data: categories = [], isPending: catPending } = useBudgetCategories()
+  const { data: categories = [], isPending: catPending, isError: catError, refetch: catRefetch } = useBudgetCategories()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
   const addCategory = useAddBudgetCategory()
   const deleteCategory = useDeleteBudgetCategory()
 
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState<{ yearly_allocated: number; budget_period: BudgetPeriod; color: string }>({
+  type CatWithSpent = (typeof categoriesWithSpent)[0]
+  const [sheetCat, setSheetCat] = useState<CatWithSpent | null>(null)
+  const [sheetDraft, setSheetDraft] = useState<{ yearly_allocated: number; budget_period: BudgetPeriod; color: string }>({
     yearly_allocated: 0,
     budget_period: 'monthly',
     color: '#6c63ff',
   })
 
+  const openSheet = (cat: CatWithSpent) => {
+    setSheetCat(cat)
+    setSheetDraft({
+      yearly_allocated: Number(money.fromBase(cat.yearly_allocated, money.displayCurrency).toFixed(2)),
+      budget_period: cat.budget_period,
+      color: cat.color,
+    })
+  }
+
+  const [periodDate, setPeriodDate] = useState(() => { const d = new Date(); d.setDate(1); return d })
   const [showAdd, setShowAdd] = useState(false)
   const [addName, setAddName] = useState('')
   const [addAmount, setAddAmount] = useState('')
@@ -97,11 +138,13 @@ export function Budget() {
     }
   }, [showAdd])
 
-  const currentYear = String(new Date().getFullYear())
-  const now = new Date()
-  const daysLeft = getDaysRemainingInMonth()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const monthPct = Math.round((now.getDate() / daysInMonth) * 100)
+  const today = new Date()
+  const isCurrentMonth = periodDate.getFullYear() === today.getFullYear() && periodDate.getMonth() === today.getMonth()
+  const isPastMonth = periodDate < new Date(today.getFullYear(), today.getMonth(), 1)
+  const currentYear = String(periodDate.getFullYear())
+  const daysInMonth = new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 0).getDate()
+  const daysLeft = isCurrentMonth ? getDaysRemainingInMonth() : (isPastMonth ? 0 : daysInMonth)
+  const monthPct = isCurrentMonth ? Math.round((today.getDate() / daysInMonth) * 100) : (isPastMonth ? 100 : 0)
   const expenseTransactions = transactions.filter(
     t => t.type !== 'income' && t.type !== 'transfer' && t.date.startsWith(currentYear)
   )
@@ -111,13 +154,13 @@ export function Budget() {
       ...cat,
       budget_period: cat.budget_period ?? 'yearly',
       spent: expenseTransactions
-        .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period ?? 'yearly'))
+        .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period ?? 'yearly', periodDate))
         .reduce((s, t) => s + t.amount, 0),
     })),
     [categories, expenseTransactions]
   )
 
-  const monthsElapsed = now.getMonth() + 1
+  const monthsElapsed = periodDate.getMonth() + 1
   // Normalize all categories to a monthly equivalent so monthly and yearly budgets can be summed fairly
   const totalAllocated = useMemo(() => categoriesWithSpent.reduce((s, c) => {
     return s + (c.budget_period === 'yearly' ? c.yearly_allocated / 12 : c.yearly_allocated)
@@ -127,7 +170,7 @@ export function Budget() {
   }, 0), [categoriesWithSpent, monthsElapsed])
   const remaining = totalAllocated - totalSpent
 
-  const daysElapsed = now.getDate()
+  const daysElapsed = isCurrentMonth ? today.getDate() : (isPastMonth ? daysInMonth : 0)
   const forecasts = useMemo(() => categoriesWithSpent
     .filter(cat => cat.budget_period === 'monthly' && cat.yearly_allocated > 0 && cat.spent > 0 && daysElapsed > 0)
     .map(cat => {
@@ -144,6 +187,7 @@ export function Budget() {
   const hasData = categories.length > 0
 
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [viewMode, setViewMode] = useState<'monthly' | 'daily' | 'remaining'>('monthly')
 
   const spendingSuggestions = useMemo(() => {
     const now = new Date()
@@ -170,30 +214,22 @@ export function Budget() {
       .slice(0, 6)
   }, [transactions, categories])
 
-  const startEdit = (id: string, yearly_allocated: number, budget_period: BudgetPeriod, color: string) => {
-    setEditingId(id)
-    setEditDraft({ yearly_allocated: Number(money.fromBase(yearly_allocated, money.displayCurrency).toFixed(2)), budget_period, color })
-  }
-
-  const cancelEdit = () => setEditingId(null)
-
-  const saveEdit = async () => {
-    if (!editingId) return
-    if (editDraft.yearly_allocated < 0) {
+  const saveSheet = async () => {
+    if (!sheetCat) return
+    if (sheetDraft.yearly_allocated < 0) {
       toast.error('Budget must be zero or greater')
       return
     }
-    const id = editingId
-    setEditingId(null) // optimistic close — no double-click needed
+    const id = sheetCat.id
+    setSheetCat(null)
     try {
       await updateCategory.mutateAsync({
         id,
-        ...editDraft,
-        yearly_allocated: money.toBase(editDraft.yearly_allocated, money.displayCurrency),
+        ...sheetDraft,
+        yearly_allocated: money.toBase(sheetDraft.yearly_allocated, money.displayCurrency),
       })
       toast.success('Category updated')
     } catch {
-      setEditingId(id) // reopen on failure
       toast.error('Failed to update category')
     }
   }
@@ -281,6 +317,41 @@ export function Budget() {
           ) : undefined
         }
       />
+      {/* Month navigator */}
+      <div className="mb-5 flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
+        <button
+          type="button"
+          aria-label="Previous month"
+          onClick={() => setPeriodDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="text-center">
+          <p className="text-sm font-extrabold text-foreground">
+            {periodDate.toLocaleString('en', { month: 'long', year: 'numeric' })}
+          </p>
+          {!isCurrentMonth && (
+            <button
+              type="button"
+              onClick={() => setPeriodDate(new Date())}
+              className="mt-0.5 text-xs text-primary hover:underline"
+            >
+              Back to current
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          aria-label="Next month"
+          onClick={() => setPeriodDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+          disabled={isCurrentMonth}
+          className={`flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background transition-colors ${isCurrentMonth ? 'cursor-not-allowed opacity-30' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Blended monthly equivalent'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(hasData ? remaining : 0) : 'Safe inside active periods'} badgeVariant="success" />
@@ -300,7 +371,7 @@ export function Budget() {
         </div>
       )}
 
-      {forecasts.length > 0 && (
+      {isCurrentMonth && forecasts.length > 0 && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Month forecast</CardTitle>
@@ -327,7 +398,35 @@ export function Budget() {
       )}
 
       <Card>
-        <CardHeader><CardTitle className="text-xl">Category allocation</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-xl">Category allocation</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-xl border border-border bg-secondary p-0.5 text-xs font-bold">
+                {(['monthly', 'daily', 'remaining'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setViewMode(mode)}
+                    className={`rounded-lg px-3 py-1.5 transition-colors ${viewMode === mode ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {mode === 'monthly' ? 'Monthly' : mode === 'daily' ? 'Daily' : 'Remaining'}
+                  </button>
+                ))}
+              </div>
+              {!showAdd && (
+                <button
+                  type="button"
+                  aria-label="Add budget category"
+                  onClick={() => { setShowAdd(true); setTimeout(() => addNameInputRef.current?.focus(), 80) }}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-secondary text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
         <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
             {catPending ? (
               Array.from({ length: 4 }).map((_, i) => (
@@ -339,237 +438,126 @@ export function Budget() {
                   <Skeleton className="h-2 w-full" />
                 </div>
               ))
+            ) : catError ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary px-6 py-10 text-center">
+                <p className="text-base font-bold text-foreground">Could not load budget</p>
+                <p className="mt-1 text-sm text-muted-foreground">Your local data is safe. Try refreshing.</p>
+                <button
+                  type="button"
+                  onClick={() => catRefetch()}
+                  className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+                >
+                  Retry
+                </button>
+              </div>
             ) : categoriesWithSpent.length > 0 ? (
               <>
                 {activeBudgets.length > 0 && (
                   <div className="space-y-4">
                     <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
-                    {activeBudgets.map(cat => {
-                      const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
-                      const barColor = getBarColor(pct, cat.color)
-                      const isEditing = editingId === cat.id
-                      const catDailyAllowance = cat.yearly_allocated > cat.spent && daysLeft > 0
-                        ? (cat.yearly_allocated - cat.spent) / daysLeft
-                        : null
-                      const overPace = pct > monthPct
+                    {(() => {
+                      const grouped = groupCategories(activeBudgets)
+                      const showGroups = grouped.length > 1
+                      return grouped.map(({ group, items }) => (
+                        <div key={group} className="space-y-4">
+                          {showGroups && (
+                            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
+                          )}
+                          {items.map(cat => {
+                            const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
+                            const barColor = getBarColor(pct, cat.color)
+                            const catDailyAllowance = cat.yearly_allocated > cat.spent && daysLeft > 0
+                              ? (cat.yearly_allocated - cat.spent) / daysLeft
+                              : null
+                            const overPace = pct > monthPct
 
-                      if (isEditing) {
-                        return (
-                          <div key={cat.id} className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-foreground">{cat.name}</span>
-                              <div className="flex gap-2">
-                                <Button size="sm" className="h-7 px-3 text-xs" onClick={saveEdit} disabled={updateCategory.isPending}>
-                                  <Check className="mr-1 h-3.5 w-3.5" />
-                                  Save
-                                </Button>
-                                <Button size="sm" variant="secondary" className="h-7 px-3 text-xs" onClick={cancelEdit} aria-label="Cancel edit">
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                              <div>
-                                <p className="mb-1 text-xs text-muted-foreground">Budget amount ({money.displayCurrency})</p>
-                                <Input
-                                  aria-label="Budget amount"
-                                  inputMode="decimal"
-                                  className="h-8 bg-secondary text-sm font-bold"
-                                  value={formatNumberInput(editDraft.yearly_allocated)}
-                                  onChange={e => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
-                                />
-                              </div>
-                              <div>
-                                <p className="mb-1 text-xs text-muted-foreground">Period</p>
-                                <select
-                                  aria-label="Budget period"
-                                  className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                                  value={editDraft.budget_period}
-                                  onChange={e => setEditDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
-                                >
-                                  <option value="monthly">Monthly</option>
-                                  <option value="yearly">Yearly</option>
-                                </select>
-                              </div>
-                              <div>
-                                <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
-                                <div className="mb-2 flex flex-wrap gap-1">
-                                  {PRESET_COLORS.map(c => (
-                                    <ColorSwatch key={c} color={c} selected={editDraft.color === c} onClick={() => setEditDraft(d => ({ ...d, color: c }))} />
-                                  ))}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
-                                  <input
-                                    type="text"
-                                    aria-label="Category color hex"
-                                    className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
-                                    value={editDraft.color}
-                                    onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setEditDraft(d => ({ ...d, color: e.target.value })) }}
-                                  />
-                                  <input
-                                    type="color"
-                                    aria-label="Category color picker"
-                                    className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                                    value={editDraft.color.length === 7 ? editDraft.color : '#6c63ff'}
-                                    onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Spent this {editDraft.budget_period}: {fmt(cat.spent)}
-                            </p>
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <div key={cat.id}>
-                          <div className="mb-2 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                            <span className="font-bold text-foreground">{cat.name}</span>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span className="text-xs text-muted-foreground">
-                                {fmt(cat.spent)} of {fmt(cat.yearly_allocated)} {cat.budget_period}
-                              </span>
-                              <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
-                                {pct}%
-                              </span>
+                            return (
                               <button
-                                onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-muted-foreground hover:text-foreground"
-                                aria-label={`Edit ${cat.name}`}
-                                title={`Edit ${cat.name} budget`}
+                                key={cat.id}
+                                type="button"
+                                onClick={() => openSheet(cat)}
+                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995]"
+                                aria-label={`Open ${cat.name} budget details`}
                               >
-                                <Pencil className="h-3.5 w-3.5" />
+                                <div className="mb-2 flex items-center justify-between gap-2 text-sm">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                    <span className="truncate font-bold text-foreground">{cat.name}</span>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">
+                                      {fmt(cat.spent)} / {fmt(cat.yearly_allocated)}
+                                    </span>
+                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                                      {pct}%
+                                    </span>
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                </div>
+                                <ColorBar value={pct} color={barColor} />
+                                <div className="mt-1.5 flex items-center gap-2">
+                                  {pct === 0 ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">No spending</span>
+                                  ) : pct >= 100 ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400">Over budget</span>
+                                  ) : pct >= 90 ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400">Near limit</span>
+                                  ) : pct >= 70 ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-400">Watch spending</span>
+                                  ) : overPace ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-400">Over pace</span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">On track</span>
+                                  )}
+                                  {viewMode === 'remaining' && (
+                                    <span className="text-[11px] text-muted-foreground">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))} left</span>
+                                  )}
+                                  {viewMode === 'daily' && cat.budget_period === 'monthly' && catDailyAllowance !== null && daysLeft > 0 && (
+                                    <span className="text-[11px] text-muted-foreground">{fmt(catDailyAllowance)}/day</span>
+                                  )}
+                                </div>
                               </button>
-                              <button
-                                onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
-                                disabled={deleteCategory.isPending}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-xs text-destructive hover:text-red-300 disabled:opacity-50"
-                                aria-label={`Delete ${cat.name}`}
-                                title={`Delete ${cat.name} budget`}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          <ColorBar value={pct} color={barColor} />
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {pct}% used · {daysLeft === 0 ? 'Month ends today' : `${monthPct}% of month passed`} · {overPace ? '⚡ Over pace' : '✓ On track'}
-                            {catDailyAllowance !== null && daysLeft > 0 && cat.budget_period === 'monthly' && (
-                              <span className="ml-2 text-primary">· {fmt(catDailyAllowance)}/day left</span>
-                            )}
-                          </p>
+                            )
+                          })}
                         </div>
-                      )
-                    })}
+                      ))
+                    })()}
                   </div>
                 )}
-                {noBudget.length > 0 && (
-                  <div className="space-y-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">No budget set</p>
-                    {noBudget.map(cat => {
-                      const isEditing = editingId === cat.id
-
-                      if (isEditing) {
-                        return (
-                          <div key={cat.id} className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-foreground">{cat.name}</span>
-                              <div className="flex gap-2">
-                                <Button size="sm" className="h-7 px-3 text-xs" onClick={saveEdit} disabled={updateCategory.isPending}>
-                                  <Check className="mr-1 h-3.5 w-3.5" />
-                                  Save
-                                </Button>
-                                <Button size="sm" variant="secondary" className="h-7 px-3 text-xs" onClick={cancelEdit} aria-label="Cancel edit">
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                              <div>
-                                <p className="mb-1 text-xs text-muted-foreground">Budget amount ({money.displayCurrency})</p>
-                                <Input
-                                  aria-label="Budget amount"
-                                  inputMode="decimal"
-                                  className="h-8 bg-secondary text-sm font-bold"
-                                  value={formatNumberInput(editDraft.yearly_allocated)}
-                                  onChange={e => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
-                                />
-                              </div>
-                              <div>
-                                <p className="mb-1 text-xs text-muted-foreground">Period</p>
-                                <select
-                                  aria-label="Budget period"
-                                  className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                                  value={editDraft.budget_period}
-                                  onChange={e => setEditDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
-                                >
-                                  <option value="monthly">Monthly</option>
-                                  <option value="yearly">Yearly</option>
-                                </select>
-                              </div>
-                              <div>
-                                <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
-                                <div className="mb-2 flex flex-wrap gap-1">
-                                  {PRESET_COLORS.map(c => (
-                                    <ColorSwatch key={c} color={c} selected={editDraft.color === c} onClick={() => setEditDraft(d => ({ ...d, color: c }))} />
-                                  ))}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: editDraft.color }} />
-                                  <input
-                                    type="text"
-                                    aria-label="Category color hex"
-                                    className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
-                                    value={editDraft.color}
-                                    onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setEditDraft(d => ({ ...d, color: e.target.value })) }}
-                                  />
-                                  <input
-                                    type="color"
-                                    aria-label="Category color picker"
-                                    className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                                    value={editDraft.color.length === 7 ? editDraft.color : '#6c63ff'}
-                                    onChange={e => setEditDraft(d => ({ ...d, color: e.target.value }))}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Spent this {editDraft.budget_period}: {fmt(cat.spent)}
-                            </p>
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <div key={cat.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3">
-                          <span className="font-bold text-foreground">{cat.name}</span>
-                          <div className="flex items-center gap-2">
+                {noBudget.length > 0 && (() => {
+                  const grouped = groupCategories(noBudget)
+                  const showGroups = grouped.length > 1
+                  return (
+                    <div className="space-y-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">No budget set</p>
+                      {grouped.map(({ group, items }) => (
+                        <div key={group} className="space-y-2">
+                          {showGroups && (
+                            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
+                          )}
+                          {items.map(cat => (
                             <button
-                              onClick={() => startEdit(cat.id, cat.yearly_allocated, cat.budget_period, cat.color)}
-                              className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground hover:text-foreground"
-                              aria-label={`Edit ${cat.name}`}
-                              title={`Edit ${cat.name}`}
+                              key={cat.id}
+                              type="button"
+                              onClick={() => openSheet(cat)}
+                              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995]"
+                              aria-label={`Open ${cat.name} details`}
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                <span className="truncate font-bold text-foreground">{cat.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>No budget</span>
+                                <ChevronRight className="h-4 w-4" />
+                              </div>
                             </button>
-                            <button
-                              onClick={() => setDeleteTarget({ id: cat.id, name: cat.name })}
-                              disabled={deleteCategory.isPending}
-                              className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-xs text-destructive hover:text-red-300 disabled:opacity-50"
-                              aria-label={`Delete ${cat.name}`}
-                              title={`Delete ${cat.name}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                          ))}
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )
+                })()}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -607,7 +595,7 @@ export function Budget() {
                         </div>
                         <Button
                           size="sm"
-                          className="h-7 text-xs"
+                          className="h-9 text-xs"
                           onClick={() => handleApplySuggestion(s.name, s.monthlyAvg)}
                           disabled={addCategory.isPending}
                         >
@@ -626,7 +614,7 @@ export function Budget() {
                 <Input
                   ref={addNameInputRef}
                   aria-label="Category name"
-                  className="h-8 bg-secondary text-sm"
+                  className="bg-secondary text-sm"
                   placeholder="Category name"
                   value={addName}
                   onChange={e => setAddName(e.target.value)}
@@ -635,14 +623,14 @@ export function Budget() {
                   <Input
                     aria-label="Budget amount"
                     inputMode="decimal"
-                    className="h-8 min-w-0 flex-1 bg-secondary text-sm font-bold"
+                    className="min-w-0 flex-1 bg-secondary text-sm font-bold"
                     placeholder={`Budget amount (${money.displayCurrency})`}
                     value={addAmount}
                     onChange={e => setAddAmount(formatNumberInput(e.target.value))}
                   />
                   <select
                     aria-label="New category budget period"
-                    className="h-8 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                    className="h-11 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                     value={addPeriod}
                     onChange={e => setAddPeriod(e.target.value as BudgetPeriod)}
                   >
@@ -658,28 +646,28 @@ export function Budget() {
                     ))}
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
+                    <div className="h-8 w-8 shrink-0 rounded-full border border-border" style={{ backgroundColor: addColor }} />
                     <input
                       type="text"
                       aria-label="Category color hex"
-                      className="h-7 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+                      className="h-9 w-24 rounded-md border border-input bg-secondary px-2 font-mono text-sm text-foreground outline-none focus:border-primary"
                       value={addColor}
                       onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setAddColor(e.target.value) }}
                     />
                     <input
                       type="color"
                       aria-label="Category color picker"
-                      className="h-7 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                      className="h-9 w-9 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
                       value={addColor.length === 7 ? addColor : '#6c63ff'}
                       onChange={e => setAddColor(e.target.value)}
                     />
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button className="h-8 flex-1 text-xs" onClick={handleAdd} disabled={addCategory.isPending}>
+                  <Button className="h-10 flex-1 text-sm" onClick={handleAdd} disabled={addCategory.isPending}>
                     Add category
                   </Button>
-                  <Button variant="secondary" className="h-8 text-xs" onClick={() => setShowAdd(false)}>
+                  <Button variant="secondary" className="h-10 text-sm" onClick={() => setShowAdd(false)}>
                     Cancel
                   </Button>
                 </div>
@@ -701,6 +689,164 @@ export function Budget() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDeleteSelected}
       />
+
+      {/* Category detail sheet */}
+      <Sheet open={!!sheetCat} onOpenChange={open => { if (!open) setSheetCat(null) }}>
+        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+          {sheetCat && (() => {
+            const cat = sheetCat
+            const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
+            const barColor = getBarColor(pct, cat.color)
+            const leftAmt = Math.max(0, cat.yearly_allocated - cat.spent)
+            return (
+              <div className="px-6 pb-10 pt-6">
+                <SheetHeader className="mb-6 pb-0">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-extrabold text-background" style={{ backgroundColor: cat.color }}>
+                      {cat.name.slice(0, 1)}
+                    </div>
+                    <div className="min-w-0">
+                      <SheetTitle className="text-xl">{cat.name}</SheetTitle>
+                      <p className="text-xs text-muted-foreground capitalize">{cat.budget_period} budget</p>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                {/* Stats row */}
+                {cat.yearly_allocated > 0 && (
+                  <div className="mb-5 grid grid-cols-3 gap-3">
+                    <div className="rounded-2xl bg-secondary p-3 text-center">
+                      <p className="text-xs text-muted-foreground">Spent</p>
+                      <p className="mt-0.5 truncate text-sm font-extrabold text-foreground">{fmt(cat.spent)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-secondary p-3 text-center">
+                      <p className="text-xs text-muted-foreground">Budget</p>
+                      <p className="mt-0.5 truncate text-sm font-extrabold text-foreground">{fmt(cat.yearly_allocated)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-secondary p-3 text-center">
+                      <p className="text-xs text-muted-foreground">Left</p>
+                      <p className={`mt-0.5 truncate text-sm font-extrabold ${leftAmt === 0 ? 'text-red-400' : 'text-primary'}`}>{fmt(leftAmt)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Progress bar */}
+                {cat.yearly_allocated > 0 && (
+                  <div className="mb-6">
+                    <ColorBar value={pct} color={barColor} />
+                    <p className="mt-1.5 text-right text-xs font-bold text-muted-foreground">{pct}% used</p>
+                  </div>
+                )}
+
+                {/* Edit form */}
+                <div className="mb-6 space-y-4">
+                  <p className="text-sm font-extrabold text-foreground">Edit budget</p>
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">Amount ({money.displayCurrency})</p>
+                    <Input
+                      aria-label="Budget amount"
+                      inputMode="decimal"
+                      className="bg-secondary text-sm font-bold"
+                      value={formatNumberInput(sheetDraft.yearly_allocated)}
+                      onChange={e => setSheetDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">Period</p>
+                    <select
+                      aria-label="Budget period"
+                      className="h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                      value={sheetDraft.budget_period}
+                      onChange={e => setSheetDraft(d => ({ ...d, budget_period: e.target.value as BudgetPeriod }))}
+                    >
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                    </select>
+                  </div>
+                  <div>
+                    <p className="mb-1.5 text-xs text-muted-foreground">Color</p>
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {PRESET_COLORS.map(c => (
+                        <ColorSwatch key={c} color={c} selected={sheetDraft.color === c} onClick={() => setSheetDraft(d => ({ ...d, color: c }))} />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 shrink-0 rounded-full border border-border" style={{ backgroundColor: sheetDraft.color }} />
+                      <input
+                        type="text"
+                        aria-label="Color hex"
+                        className="h-9 w-28 rounded-md border border-input bg-secondary px-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+                        value={sheetDraft.color}
+                        onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setSheetDraft(d => ({ ...d, color: e.target.value })) }}
+                      />
+                      <input
+                        type="color"
+                        aria-label="Color picker"
+                        className="h-9 w-9 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                        value={sheetDraft.color.length === 7 ? sheetDraft.color : '#6c63ff'}
+                        onChange={e => setSheetDraft(d => ({ ...d, color: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={saveSheet}
+                    disabled={updateCategory.isPending}
+                    className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-primary font-extrabold text-primary-foreground disabled:opacity-60"
+                  >
+                    Save changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setDeleteTarget({ id: cat.id, name: cat.name }); setSheetCat(null) }}
+                    className="flex h-14 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10 px-5 font-bold text-red-400 hover:bg-red-500/20"
+                  >
+                    Delete
+                  </button>
+                </div>
+
+                {/* Recent transactions in this category */}
+                {(() => {
+                  const catTx = expenseTransactions
+                    .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period, periodDate))
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .slice(0, 4)
+                  if (catTx.length === 0) return null
+                  return (
+                    <div className="mt-6 border-t border-border pt-6">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-sm font-extrabold text-foreground">Recent transactions</p>
+                        <Link
+                          to={`/transactions`}
+                          onClick={() => setSheetCat(null)}
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          View all →
+                        </Link>
+                      </div>
+                      <div className="space-y-1.5">
+                        {catTx.map(tx => (
+                          <div key={tx.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-3 py-2.5 text-sm">
+                            <div className="min-w-0">
+                              <p className="truncate font-bold text-foreground">{tx.description}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(tx.date)}</p>
+                            </div>
+                            <span className="shrink-0 tabular-nums font-extrabold text-[#FF8388]">−{fmt(tx.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            )
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

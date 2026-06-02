@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { parseNumberInput } from '@/lib/numberInput'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { toast } from 'sonner'
-import { Plus, Pause, Play, Trash2, RefreshCw, X, Pencil } from 'lucide-react'
+import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight, AlertTriangle, Check } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
 
 const FREQ_LABELS: Record<string, string> = {
@@ -54,6 +55,7 @@ const emptyAddForm = (currency = '') => ({
   category: '',
   walletId: '',
   startDate: new Date().toISOString().slice(0, 10),
+  endDate: '' as string,
   logFirstPayment: true,
 })
 
@@ -73,14 +75,20 @@ export function Subscriptions() {
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState(() => emptyAddForm(money.displayCurrency))
+  const [detailRule, setDetailRule] = useState<RecurringRule | null>(null)
   const [editTarget, setEditTarget] = useState<RecurringRule | null>(null)
   const [editForm, setEditForm] = useState(() => emptyAddForm(money.displayCurrency))
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
   const [expenseSort, setExpenseSort] = useState<ExpenseSort>('due-date')
   const [searchQuery, setSearchQuery] = useState('')
 
+  const installments = useMemo(
+    () => rules.filter(r => r.type !== 'income' && r.installment_total != null && r.installment_total > 0)
+      .sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)),
+    [rules]
+  )
   const expenses = useMemo(
-    () => rules.filter(r => r.type !== 'income').sort((a, b) => {
+    () => rules.filter(r => r.type !== 'income' && !(r.installment_total != null && r.installment_total > 0)).sort((a, b) => {
       if (a.active !== b.active) return b.active ? 1 : -1
       return a.next_due_date.localeCompare(b.next_due_date)
     }),
@@ -99,6 +107,29 @@ export function Subscriptions() {
     () => income.filter(r => r.active).reduce((sum, r) => sum + r.amount * (FREQ_MONTHS[r.frequency] ?? 1), 0),
     [income]
   )
+
+  const monthlyOutlook = useMemo(() => {
+    const now = new Date()
+    return [0, 1, 2].map(offset => {
+      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+      const y = d.getFullYear()
+      const m = d.getMonth()
+      const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      const dueRules = expenses.filter(r => {
+        if (!r.active) return false
+        if (r.frequency === 'monthly' || r.frequency === 'weekly' || r.frequency === 'daily') return true
+        // yearly: check if due in this calendar month
+        const next = new Date(r.next_due_date)
+        const nextYear = next.getFullYear()
+        const nextMonth = next.getMonth()
+        if (nextYear === y && nextMonth === m) return true
+        const prevYear = new Date(next.getFullYear() - 1, next.getMonth(), 1)
+        return prevYear.getFullYear() === y && prevYear.getMonth() === m
+      })
+      const total = dueRules.reduce((sum, r) => sum + r.amount * (FREQ_MONTHS[r.frequency] ?? 1), 0)
+      return { label, total, count: dueRules.length }
+    })
+  }, [expenses])
 
   const nextRenewal = useMemo(() => {
     const upcoming = expenses.filter(r => r.active).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))
@@ -144,6 +175,7 @@ export function Subscriptions() {
       await deleteRule.mutateAsync(deleteTarget.id)
       toast.success('Subscription deleted')
       setDeleteTarget(null)
+      setDetailRule(null)
     } catch {
       toast.error('Failed to delete subscription')
     }
@@ -157,6 +189,22 @@ export function Subscriptions() {
     setEditForm(f => ({ ...f, [key]: value }))
   }
 
+  const openDetail = (rule: RecurringRule) => {
+    setDetailRule(rule)
+    setEditForm({
+      description: rule.description,
+      amount: String(rule.original_amount ?? rule.amount),
+      currency: rule.original_currency ?? money.displayCurrency,
+      type: rule.type as 'expense' | 'income',
+      frequency: rule.frequency,
+      category: rule.category,
+      walletId: rule.wallet_id ?? '',
+      startDate: rule.next_due_date ?? rule.start_date,
+      endDate: rule.end_date ?? '',
+      logFirstPayment: false,
+    })
+  }
+
   const openEdit = (rule: RecurringRule) => {
     setEditTarget(rule)
     setEditForm({
@@ -167,7 +215,8 @@ export function Subscriptions() {
       frequency: rule.frequency,
       category: rule.category,
       walletId: rule.wallet_id ?? '',
-      startDate: rule.start_date,
+      startDate: rule.next_due_date ?? rule.start_date,
+      endDate: rule.end_date ?? '',
       logFirstPayment: false,
     })
   }
@@ -192,11 +241,12 @@ export function Subscriptions() {
         category,
         wallet_id: editForm.walletId || null,
         frequency: editForm.frequency,
-        next_due_date: nextDueFrom(editForm.startDate, editForm.frequency),
+        next_due_date: editForm.startDate,
+        end_date: editForm.endDate || null,
       })
-      toast.success('Subscription updated')
       setEditTarget(null)
       setEditForm(emptyAddForm(money.displayCurrency))
+      toast.success('Subscription updated')
     } catch {
       toast.error('Failed to update subscription')
     }
@@ -267,7 +317,10 @@ export function Subscriptions() {
     const isUnused = rule.active && rule.type !== 'income' && (daysSinceLastPaid === null ? false : daysSinceLastPaid > 60)
     const hasNeverPaid = rule.active && rule.type !== 'income' && !lastPaid
     return (
-      <div className={`rounded-2xl border border-border bg-secondary p-4 transition-opacity ${rule.active ? '' : 'opacity-60'}`}>
+      <div
+        className={`w-full rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 ${rule.active ? '' : 'opacity-60'}`}
+      >
+        <button type="button" onClick={() => openDetail(rule)} className="w-full text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -276,45 +329,48 @@ export function Subscriptions() {
                 <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">Paused</span>
               )}
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {rule.category} · {FREQ_LABELS[rule.frequency]}{walletName ? ` · ${walletName}` : ''}
-              {rule.frequency !== 'monthly' && (
-                <span className="ml-1 text-muted-foreground/70">
-                  · ≈ {money.formatDisplay(Math.round(getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)))}/mo · {money.formatDisplay(Math.round(getYearlyImpact(rule.original_amount ?? rule.amount, rule.frequency)))}/yr
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+              <span>{rule.category}</span>
+              {walletName && <><span>·</span><span>{walletName}</span></>}
+            </div>
+            <div className="mt-1.5 flex items-center gap-2">
+              {rule.active ? (
+                <span className={`text-xs font-bold ${days <= 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
+                  {days === 0
+                    ? 'Due today'
+                    : days > 0
+                    ? `Next: ${new Date(rule.next_due_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+                    : 'Overdue'}
                 </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Paused · next charge disabled</span>
               )}
-            </p>
+              {rule.installment_total && (
+                <span className="text-xs text-muted-foreground">{rule.installment_paid}/{rule.installment_total} installments</span>
+              )}
+            </div>
           </div>
-          <div className="shrink-0 text-right">
-            <p className={`font-extrabold ${txAmountColor(rule.original_amount ?? rule.amount, rule.type)}`}>
-              {txAmountSign(rule.original_amount ?? rule.amount, rule.type)}{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{FREQ_LABELS[rule.frequency].toLowerCase()}</p>
+          <div className="flex shrink-0 items-start gap-2">
+            <div className="text-right">
+              <p className={`tabular-nums font-extrabold ${txAmountColor(rule.original_amount ?? rule.amount, rule.type)}`}>
+                {txAmountSign(rule.original_amount ?? rule.amount, rule.type)}{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{FREQ_LABELS[rule.frequency].toLowerCase()}</p>
+            </div>
+            <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-          {rule.active ? (
-            <span className={`font-bold ${days <= 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-foreground'}`}>
-              Next: {rule.next_due_date} {days === 0 ? '(today)' : days > 0 ? `(${days}d)` : '(overdue)'}
-            </span>
-          ) : (
-            <span>Paused since {rule.next_due_date}</span>
-          )}
-          {lastPaid && <span>Last paid: {lastPaid}</span>}
-          {rule.installment_total && (
-            <span>{rule.installment_paid} / {rule.installment_total} installments</span>
-          )}
         </div>
 
         {(isUnused || hasNeverPaid) && (
           <div className="mt-2 flex items-center gap-1.5 rounded-xl bg-[#FFCF73]/10 px-3 py-1.5">
+            <AlertTriangle className="h-3 w-3 shrink-0 text-[#FFCF73]" />
             <span className="text-xs font-bold text-[#FFCF73]">
-              {hasNeverPaid ? '⚠ No payments recorded' : `⚠ No activity for ${daysSinceLastPaid}d — still needed?`}
+              {hasNeverPaid ? 'No payments recorded' : `No activity for ${daysSinceLastPaid}d — still needed?`}
             </span>
           </div>
         )}
 
+        </button>
         <div className="mt-3 flex gap-2">
           <button
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
@@ -412,6 +468,24 @@ export function Subscriptions() {
                   {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Next due date</Label>
+                <Input
+                  type="date"
+                  className="mt-1.5 bg-secondary text-sm"
+                  value={editForm.startDate}
+                  onChange={e => setEditField('startDate', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">End date <span className="font-normal opacity-60">(optional)</span></Label>
+                <Input
+                  type="date"
+                  className="mt-1.5 bg-secondary text-sm"
+                  value={editForm.endDate ?? ''}
+                  onChange={e => setEditField('endDate', e.target.value)}
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={handleEdit} disabled={updateRule.isPending}>
@@ -428,8 +502,8 @@ export function Subscriptions() {
   return (
     <div>
       <PageHeader
-        title="Subscriptions"
-        subtitle="Monitor recurring payments and income streams, pause or cancel unwanted subscriptions."
+        title="Recurring"
+        subtitle="Monitor bills, income streams, and subscriptions. Pause or cancel unwanted recurring payments."
         action={
           !showAddForm ? (
             <Button className="gap-2" onClick={() => setShowAddForm(true)}>
@@ -445,7 +519,8 @@ export function Subscriptions() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">New subscription</CardTitle>
               <button
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Close new subscription form"
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
                 onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.displayCurrency)) }}
               >
                 <X className="h-4 w-4" />
@@ -467,7 +542,7 @@ export function Subscriptions() {
                 <Label className="text-xs text-muted-foreground">Amount *</Label>
                 <div className="mt-2 flex gap-2">
                   <select
-                    className="h-10 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                    className="h-11 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
                     value={addForm.currency}
                     onChange={e => setField('currency', e.target.value)}
                   >
@@ -484,7 +559,7 @@ export function Subscriptions() {
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={addForm.type}
                   onChange={e => setField('type', e.target.value as 'expense' | 'income')}
                 >
@@ -498,7 +573,7 @@ export function Subscriptions() {
               <div>
                 <Label className="text-xs text-muted-foreground">Frequency</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={addForm.frequency}
                   onChange={e => setField('frequency', e.target.value as RecurringFrequency)}
                 >
@@ -511,7 +586,7 @@ export function Subscriptions() {
               <div>
                 <Label className="text-xs text-muted-foreground">Category</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={addForm.category}
                   onChange={e => setField('category', e.target.value)}
                 >
@@ -536,7 +611,7 @@ export function Subscriptions() {
               <div>
                 <Label className="text-xs text-muted-foreground">Wallet</Label>
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
                   value={addForm.walletId}
                   onChange={e => setField('walletId', e.target.value)}
                 >
@@ -588,6 +663,50 @@ export function Subscriptions() {
         />
       </div>
 
+      {/* 3-month expense outlook */}
+      {expenses.some(r => r.active) && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-lg font-extrabold text-foreground">3-month outlook</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {monthlyOutlook.map(({ label, total, count }) => (
+              <div key={label} className="rounded-2xl border border-border bg-secondary px-4 py-3">
+                <p className="text-xs font-bold text-muted-foreground">{label}</p>
+                <p className="mt-1 text-base font-extrabold text-foreground">{money.formatDisplay(total)}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{count} bill{count !== 1 ? 's' : ''}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming bills timeline */}
+      {expenses.filter(r => r.active && daysUntil(r.next_due_date) <= 30).length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-lg font-extrabold text-foreground">Due in 30 days</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {expenses
+              .filter(r => r.active && daysUntil(r.next_due_date) >= 0 && daysUntil(r.next_due_date) <= 30)
+              .sort((a, b) => daysUntil(a.next_due_date) - daysUntil(b.next_due_date))
+              .map(rule => {
+                const days = daysUntil(rule.next_due_date)
+                return (
+                  <div
+                    key={rule.id}
+                    className={`flex shrink-0 flex-col rounded-2xl border px-4 py-3 ${days === 0 ? 'border-[#FF8388]/30 bg-[#FF8388]/5' : days <= 3 ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary'}`}
+                    style={{ minWidth: 160 }}
+                  >
+                    <p className="truncate text-sm font-extrabold text-foreground">{rule.description}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{money.formatDisplay(rule.original_amount ?? rule.amount)}</p>
+                    <p className={`mt-auto pt-2 text-xs font-bold ${days === 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-primary'}`}>
+                      {days === 0 ? 'Due today' : `In ${days}d`}
+                    </p>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -612,7 +731,7 @@ export function Subscriptions() {
                   ))}
                   <select
                     aria-label="Sort subscriptions"
-                    className="ml-auto h-7 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
+                    className="ml-auto h-9 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
                     value={expenseSort}
                     onChange={e => setExpenseSort(e.target.value as ExpenseSort)}
                   >
@@ -624,7 +743,7 @@ export function Subscriptions() {
                 </div>
                 <input
                   aria-label="Search subscriptions"
-                  className="h-9 w-full rounded-xl border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  className="h-11 w-full rounded-xl border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   placeholder="Search by name or category…"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
@@ -645,6 +764,50 @@ export function Subscriptions() {
             )}
           </CardContent>
         </Card>
+
+        {installments.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-xl">Installments / Cicilan</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">{installments.length} active payment plan{installments.length !== 1 ? 's' : ''}</p>
+              </div>
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+              {installments.map(rule => {
+                const paidPct = rule.installment_total ? Math.round((rule.installment_paid / rule.installment_total) * 100) : 0
+                const remaining = rule.installment_total ? rule.installment_total - rule.installment_paid : 0
+                return (
+                  <button
+                    key={rule.id}
+                    type="button"
+                    onClick={() => openDetail(rule)}
+                    className={`w-full rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 ${rule.active ? '' : 'opacity-60'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-extrabold text-foreground">{rule.description}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{rule.category} · {FREQ_LABELS[rule.frequency]}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-extrabold text-foreground">{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}/installment</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{rule.installment_paid} of {rule.installment_total} paid</p>
+                      </div>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${paidPct}%` }} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className={`font-bold ${paidPct === 100 ? 'text-primary' : 'text-foreground'}`}>{paidPct}% complete</span>
+                      {remaining > 0 ? <span>{remaining} payment{remaining !== 1 ? 's' : ''} left</span> : <span className="flex items-center gap-1 text-primary font-bold"><Check className="h-3 w-3" /> Fully paid</span>}
+                    </div>
+                  </button>
+                )
+              })}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -676,6 +839,157 @@ export function Subscriptions() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
+
+      {/* Recurring rule detail sheet */}
+      <Sheet open={!!detailRule} onOpenChange={open => { if (!open) setDetailRule(null) }}>
+        <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+          {detailRule && (() => {
+            const rule = detailRule
+            const days = daysUntil(rule.next_due_date)
+            const lastPaid = lastPaidDate(rule)
+            const walletName = rule.wallet_id ? wallets.find(w => w.id === rule.wallet_id)?.name : null
+            const monthlyImpact = getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)
+            const yearlyImpact = getYearlyImpact(rule.original_amount ?? rule.amount, rule.frequency)
+            return (
+              <div className="px-6 pb-10 pt-6">
+                <SheetHeader className="mb-5 pb-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <SheetTitle className="text-xl">{rule.description}</SheetTitle>
+                      <p className="text-xs text-muted-foreground">{rule.category} · {FREQ_LABELS[rule.frequency]}</p>
+                    </div>
+                    <p className={`shrink-0 text-2xl font-extrabold ${txAmountColor(rule.original_amount ?? rule.amount, rule.type)}`}>
+                      {txAmountSign(rule.original_amount ?? rule.amount, rule.type)}{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
+                    </p>
+                  </div>
+                </SheetHeader>
+
+                {/* Stats grid */}
+                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl bg-secondary p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Next due</p>
+                    <p className={`mt-0.5 text-sm font-extrabold ${days <= 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-foreground'}`}>
+                      {days === 0 ? 'Today' : days > 0 ? `${days}d` : 'Overdue'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-secondary p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Per month</p>
+                    <p className="mt-0.5 text-sm font-extrabold text-foreground">{money.formatDisplay(Math.round(monthlyImpact))}</p>
+                  </div>
+                  <div className="rounded-2xl bg-secondary p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Per year</p>
+                    <p className="mt-0.5 text-sm font-extrabold text-foreground">{money.formatDisplay(Math.round(yearlyImpact))}</p>
+                  </div>
+                  <div className="rounded-2xl bg-secondary p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Last paid</p>
+                    <p className="mt-0.5 text-sm font-extrabold text-foreground">{lastPaid ?? '—'}</p>
+                  </div>
+                </div>
+
+                {walletName && (
+                  <p className="mb-4 text-xs text-muted-foreground">Wallet: <span className="font-bold text-foreground">{walletName}</span></p>
+                )}
+
+                {/* Edit form */}
+                <div className="mb-5 space-y-4">
+                  <p className="text-sm font-extrabold text-foreground">Edit</p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Name</Label>
+                      <Input className="mt-1.5 bg-secondary" value={editForm.description} onChange={e => setEditField('description', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Amount</Label>
+                      <div className="mt-1.5 flex gap-2">
+                        <select
+                          className="h-11 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                          value={editForm.currency}
+                          onChange={e => setEditField('currency', e.target.value)}
+                        >
+                          {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <MoneyInput className="flex-1 bg-secondary" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Type</Label>
+                      <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Frequency</Label>
+                      <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Category</Label>
+                      <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
+                        <option value="">— auto —</option>
+                        {categories.length > 0 && (
+                          <>
+                            <optgroup label="Your categories">
+                              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            </optgroup>
+                            <optgroup label="Common">
+                              {COMMON_SUB_CATEGORIES.filter(s => !categories.some(c => c.name.toLowerCase() === s.toLowerCase())).map(s => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </optgroup>
+                          </>
+                        )}
+                        {categories.length === 0 && COMMON_SUB_CATEGORIES.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Wallet</Label>
+                      <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
+                        <option value="">— none —</option>
+                        {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleEdit}
+                    disabled={updateRule.isPending}
+                    className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-primary font-extrabold text-primary-foreground disabled:opacity-60"
+                  >
+                    {updateRule.isPending ? 'Saving…' : 'Save changes'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => { await togglePause(rule); setDetailRule(r => r ? { ...r, active: !r.active } : r) }}
+                    disabled={updateRule.isPending}
+                    className={`flex h-14 items-center justify-center gap-1.5 rounded-2xl px-5 font-bold disabled:opacity-60 ${rule.active ? 'border border-border bg-secondary text-muted-foreground' : 'bg-primary/10 text-primary'}`}
+                  >
+                    {rule.active ? <><Pause className="h-4 w-4" /> Pause</> : <><Play className="h-4 w-4" /> Resume</>}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Delete subscription"
+                    onClick={() => { setDeleteTarget(rule); setDetailRule(null) }}
+                    className="flex h-14 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10 px-5 font-bold text-red-400 hover:bg-red-500/20"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

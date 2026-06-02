@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals, useAuthSession } from '@/lib/queries'
 import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { StatCard } from '@/components/shared/StatCard'
@@ -12,13 +12,14 @@ import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
 import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
 import { computeStreak } from '@/lib/streak'
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart } from 'lucide-react'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart, Zap, Calendar, ChevronUp, ChevronDown, Lock } from 'lucide-react'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function Dashboard() {
   const money = useMoney()
   const fmt = money.formatDisplay
+  const navigate = useNavigate()
   const [showDetails, setShowDetails] = useState(false)
   const { data: transactions = [], isPending: txPending } = useTransactions()
   const { data: investConfig } = useInvestmentConfig()
@@ -204,6 +205,12 @@ export function Dashboard() {
     [transactions]
   )
 
+  const categoryColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    categories.forEach(c => map.set(c.name, c.color))
+    return map
+  }, [categories])
+
   const savingsRateVariant = savingsRate >= 20 ? 'success' : savingsRate > 0 ? 'warning' : 'danger'
 
   const topGoals = useMemo(
@@ -307,6 +314,28 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Wallet balance strip — mobile only */}
+      {!walletPending && wallets.length > 0 && (
+        <div className="relative mb-5 -mx-4 lg:hidden">
+          <div className="flex gap-3 overflow-x-auto px-4 pb-1 scrollbar-none">
+            {wallets.map(w => {
+              const bal = walletBalances.get(w.id) ?? 0
+              return (
+                <Link
+                  key={w.id}
+                  to="/settings?section=wallets"
+                  className="flex min-w-[110px] shrink-0 flex-col rounded-2xl border border-border bg-card px-3 py-3 transition-colors hover:border-primary/30"
+                >
+                  <span className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{w.name}</span>
+                  <span className={`mt-1.5 text-sm font-extrabold tabular-nums whitespace-nowrap ${bal < 0 ? 'text-[#FF8388]' : 'text-foreground'}`}>{fmt(bal)}</span>
+                </Link>
+              )
+            })}
+          </div>
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent" />
+        </div>
+      )}
+
       {/* Hero stat cards — 2×2 on mobile, 4-col on desktop */}
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6">
         {(txPending || walletPending || catPending) ? (
@@ -319,10 +348,10 @@ export function Dashboard() {
           ))
         ) : (
           <>
-            <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" />
-            <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : daysLeft === 0 ? 'Month ends today' : `${daysLeft} days left`} badgeVariant="warning" />
-            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : daysLeft === 1 ? 'Based on budgets · 1 day left' : `Based on budgets · ${daysLeft} days left`} />
-            <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} />
+            <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" to="/settings?section=wallets" />
+            <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : daysLeft === 0 ? 'Month ends today' : `${daysLeft} days left`} badgeVariant="warning" to="/transactions" />
+            <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : daysLeft > 0 ? `${daysLeft} days left` : 'Based on budgets'} to="/budget" />
+            <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} to="/reports" />
           </>
         )}
       </div>
@@ -332,7 +361,7 @@ export function Dashboard() {
         <div className="mb-6 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3">
           <Flame className="h-5 w-5 shrink-0 text-primary" />
           <div>
-            <p className="text-sm font-extrabold text-primary">{streak.current}-day logging streak 🔥</p>
+            <p className="text-sm font-extrabold text-primary">{streak.current}-day logging streak</p>
             <p className="text-xs text-muted-foreground">
               {streak.current === streak.longest ? 'Personal best!' : `Best: ${streak.longest} days`} · Keep recording daily to stay on track.
             </p>
@@ -349,20 +378,27 @@ export function Dashboard() {
             <h2 className="text-lg font-extrabold text-foreground">Recent</h2>
             <Link to="/transactions" className="text-sm font-bold text-primary hover:underline">View all →</Link>
           </div>
-          <div className="rounded-2xl border border-border bg-card">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
             {recentTransactions.map((tx, i) => (
-              <div
+              <button
                 key={tx.id}
-                className={`flex items-center justify-between gap-4 px-4 py-3.5 ${i < recentTransactions.length - 1 ? 'border-b border-border' : ''}`}
+                type="button"
+                onClick={() => navigate('/transactions')}
+                className={`flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-colors active:bg-secondary/50 ${i < recentTransactions.length - 1 ? 'border-b border-border' : ''}`}
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
-                  <p className="text-xs text-muted-foreground">{tx.category} · {tx.date}</p>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {categoryColorMap.has(tx.category) && (
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
+                    )}
+                    <span className="truncate">{tx.category} · {tx.date}</span>
+                  </div>
                 </div>
                 <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
                   {txAmountSign(tx.amount, tx.type)}{fmt(tx.amount)}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -391,7 +427,7 @@ export function Dashboard() {
               return (
                 <Link key={goal.id} to="/goals" className="flex items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-foreground">{goal.name}</p>
+                    <p className="line-clamp-1 text-sm font-bold text-foreground">{goal.name}</p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
                     </div>
@@ -404,14 +440,176 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Upcoming bills (mobile — next 3 within 14 days) */}
+      {upcomingBills.length > 0 && (() => {
+        const in14 = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10)
+        const imminent = upcomingBills.filter(r => r.next_due_date <= in14).slice(0, 3)
+        if (imminent.length === 0) return null
+        return (
+          <div className="mb-6 lg:hidden">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <h2 className="text-lg font-extrabold text-foreground">Upcoming bills</h2>
+              <Link to="/subscriptions" className="text-sm font-bold text-primary hover:underline">View all →</Link>
+            </div>
+            <div className="space-y-2">
+              {imminent.map(r => {
+                const daysAway = Math.ceil((new Date(r.next_due_date).getTime() - Date.now()) / 86_400_000)
+                return (
+                  <Link key={r.id} to="/subscriptions" className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-foreground">{r.description}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{r.next_due_date}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="text-sm font-extrabold text-foreground">{money.formatDisplay(r.amount)}</span>
+                      <span className={`text-xs font-bold ${daysAway <= 0 ? 'text-[#FF8388]' : daysAway <= 3 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
+                        {daysAway <= 0 ? 'Today' : daysAway === 1 ? 'Tomorrow' : `${daysAway}d`}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Mobile Insights row */}
+      {transactions.length > 0 && (
+        <div className="mb-6 lg:hidden">
+          <h2 className="mb-3 text-lg font-extrabold text-foreground">Insights</h2>
+          <div className="space-y-2">
+            {safeToSpend > 0 && daysLeft > 0 && (
+              <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Lightbulb className="h-4 w-4 text-primary" /></span>
+                <p className="flex-1 text-sm text-muted-foreground">
+                  You can spend <span className="font-bold text-foreground">{money.formatDisplay(safeToSpend / daysLeft)}</span> per day for the rest of the month.
+                </p>
+                <span className="shrink-0 text-xs font-bold text-primary">Budget →</span>
+              </Link>
+            )}
+            {topSpending.name && (
+              <Link to="/reports" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent/10"><BarChart2 className="h-4 w-4 text-accent" /></span>
+                <p className="flex-1 text-sm text-muted-foreground">
+                  Top spend: <span className="font-bold text-foreground">{topSpending.name}</span> — {money.formatDisplay(topSpending.amount)} this year.
+                </p>
+                <span className="shrink-0 text-xs font-bold text-primary">Reports →</span>
+              </Link>
+            )}
+            {overPaceInsight && !overPaceInsight.message.includes('undefined') && (
+              <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-[#FFCF73]/20 bg-[#FFCF73]/5 px-4 py-3 transition-colors hover:border-[#FFCF73]/40 active:scale-[0.99]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFCF73]/15"><Zap className="h-4 w-4 text-[#FFCF73]" /></span>
+                <p className="flex-1 text-sm text-muted-foreground">{overPaceInsight.message}</p>
+                <span className="shrink-0 text-xs font-bold text-[#FFCF73]">Fix →</span>
+              </Link>
+            )}
+            {savingsRate > 0 && (
+              <Link to="/reports" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Target className="h-4 w-4 text-primary" /></span>
+                <p className="flex-1 text-sm text-muted-foreground">
+                  Saving <span className="font-bold text-foreground">{savingsRate}%</span> of income this year.
+                </p>
+                <span className="shrink-0 text-xs font-bold text-primary">Reports →</span>
+              </Link>
+            )}
+            {(() => {
+              const efGoal = goals.find(g =>
+                g.current_amount < g.target_amount &&
+                /emergency|dana darurat/i.test(g.name + ' ' + (g.category ?? ''))
+              )
+              if (!efGoal) return null
+              const remaining = efGoal.target_amount - efGoal.current_amount
+              const monthlyNeeded = efGoal.deadline
+                ? Math.ceil(remaining / Math.max(1, Math.ceil((new Date(efGoal.deadline).getTime() - Date.now()) / (30 * 86_400_000))))
+                : null
+              if (!monthlyNeeded || monthlyNeeded <= 0) return null
+              return (
+                <Link to="/goals" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-destructive/10"><AlertTriangle className="h-4 w-4 text-destructive" /></span>
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    Emergency fund needs <span className="font-bold text-foreground">{money.formatDisplay(monthlyNeeded)}/month</span> to reach goal.
+                  </p>
+                  <span className="shrink-0 text-xs font-bold text-primary">Goals →</span>
+                </Link>
+              )
+            })()}
+            {(() => {
+              const nearLimit = categories
+                .filter(c => c.yearly_allocated > 0)
+                .map(c => {
+                  const budget = c.budget_period === 'monthly' ? c.yearly_allocated : c.yearly_allocated / 12
+                  const spent = monthlyTx.filter(t => t.type !== 'income' && t.type !== 'transfer' && t.category === c.name).reduce((s, t) => s + t.amount, 0)
+                  const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0
+                  return { name: c.name, pct, budget, spent }
+                })
+                .filter(c => c.pct >= 80 && c.pct < 100)
+                .sort((a, b) => b.pct - a.pct)[0]
+              if (!nearLimit) return null
+              return (
+                <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-[#FFCF73]/20 bg-[#FFCF73]/5 px-4 py-3 transition-colors hover:border-[#FFCF73]/40 active:scale-[0.99]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFCF73]/15"><AlertTriangle className="h-4 w-4 text-[#FFCF73]" /></span>
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    <span className="font-bold text-foreground">{nearLimit.name}</span> is at {nearLimit.pct}% of its monthly budget.
+                  </p>
+                  <span className="shrink-0 text-xs font-bold text-[#FFCF73]">Budget →</span>
+                </Link>
+              )
+            })()}
+            {(() => {
+              const nextBill = recurringRules
+                .filter(r => r.active && r.type === 'expense')
+                .sort((a, b) => (a.next_due_date ?? '').localeCompare(b.next_due_date ?? ''))[0]
+              if (!nextBill || !nextBill.next_due_date) return null
+              const daysAway = Math.ceil((new Date(nextBill.next_due_date).getTime() - Date.now()) / 86_400_000)
+              if (daysAway > 30 || daysAway < 0) return null
+              return (
+                <Link to="/subscriptions" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent/10"><Calendar className="h-4 w-4 text-accent" /></span>
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    <span className="font-bold text-foreground">{nextBill.description}</span> renews in {daysAway} day{daysAway !== 1 ? 's' : ''} — {money.formatDisplay(nextBill.amount)}.
+                  </p>
+                  <span className="shrink-0 text-xs font-bold text-primary">Bills →</span>
+                </Link>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Deep tools row (mobile) */}
+      {!isNewUser && (
+        <div className="mb-6 lg:hidden">
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { to: '/reports', label: 'Reports', color: '#93C5FD', Icon: BarChart2 },
+              { to: '/investing', label: 'Investing', color: '#FFD276', Icon: TrendingUp },
+              { to: '/estimation', label: 'Planning', color: '#C4AEFF', Icon: PieChart },
+            ] as const).map(({ to, label, color, Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-secondary py-3 transition-colors active:scale-95 hover:border-primary/30"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: color + '30' }}>
+                  <Icon className="h-4 w-4" style={{ color }} />
+                </span>
+                <span className="text-xs font-bold text-foreground">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mobile expand toggle */}
       <div className="mb-6 flex justify-center lg:hidden">
         <button
           type="button"
           onClick={() => setShowDetails(v => !v)}
-          className="rounded-full border border-border bg-secondary px-6 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+          className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-6 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
         >
-          {showDetails ? '▲ See less' : '▼ See full dashboard'}
+          {showDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          {showDetails ? 'Less' : 'More insights'}
         </button>
       </div>
 
@@ -722,7 +920,7 @@ export function Dashboard() {
                     <Link key={i} to={ev.kind === 'bill' ? '/subscriptions' : '/goals'} className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 transition-colors hover:opacity-80 ${ev.kind === 'bill' ? 'bg-secondary' : 'bg-primary/5 border border-primary/10'}`}>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs">{ev.kind === 'bill' ? '💳' : '🎯'}</span>
+                          {ev.kind === 'bill' ? <RefreshCw className="h-3 w-3 shrink-0 text-muted-foreground" /> : <Target className="h-3 w-3 shrink-0 text-primary" />}
                           <p className="truncate text-sm font-bold text-foreground">{ev.label}</p>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">{ev.date} · {ev.sub}</p>
@@ -769,7 +967,7 @@ export function Dashboard() {
                       type="button"
                       aria-label="Dismiss AI Insights card"
                       onClick={() => { localStorage.setItem('finpath_ai_dismissed', '1'); setAiCardDismissed(true) }}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -793,7 +991,7 @@ export function Dashboard() {
                         'Generate your monthly financial summary',
                       ].map(text => (
                         <div key={text} className="flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2">
-                          <span className="text-sm">🔒</span>
+                          <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">{text}</span>
                         </div>
                       ))}

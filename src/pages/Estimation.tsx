@@ -11,7 +11,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, X, Lightbulb, Target } from 'lucide-react'
+import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
@@ -39,7 +39,8 @@ export function Estimation() {
   const addGoal = useAddGoal()
   const { data: plans } = useEstimationPlans()
   const { data: transactions = [] } = useTransactions()
-  const initialized = useRef(false)
+  const [planningDate, setPlanningDate] = useState(() => { const d = new Date(); d.setDate(1); return d })
+  const loadedMonth = useRef('')
 
   const [incomeItems, setIncomeItems] = useState<EstimateItem[]>([])
   const [expenseItems, setExpenseItems] = useState<EstimateItem[]>([])
@@ -71,10 +72,15 @@ export function Estimation() {
   const [planningTipDismissed, setPlanningTipDismissed] = useState(() => localStorage.getItem(PLANNING_TIP_KEY) === '1')
 
   useEffect(() => {
-    if (initialized.current || !plans) return
-    initialized.current = true
-    const now = new Date()
-    const current = plans.find(p => p.month === now.getMonth() + 1 && p.year === now.getFullYear())
+    if (!plans) return
+    const monthKey = `${planningDate.getFullYear()}-${planningDate.getMonth() + 1}`
+    if (loadedMonth.current === monthKey) return
+    loadedMonth.current = monthKey
+    const current = plans.find(p => p.month === planningDate.getMonth() + 1 && p.year === planningDate.getFullYear())
+    setNotes('')
+    setIncomeItems([])
+    setExpenseItems([])
+    setWishlistItems([])
     if (!current?.notes) return
     try {
       const parsed = JSON.parse(current.notes) as {
@@ -90,11 +96,10 @@ export function Estimation() {
     } catch {
       setNotes(current.notes)
     }
-  }, [plans])
+  }, [plans, planningDate])
 
   const actualThisMonth = useMemo(() => {
-    const now = new Date()
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const monthStr = `${planningDate.getFullYear()}-${String(planningDate.getMonth() + 1).padStart(2, '0')}`
     const monthTx = transactions.filter(t => t.date.startsWith(monthStr))
     return {
       income: monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
@@ -119,8 +124,8 @@ export function Estimation() {
     const mi = newIncome.reduce((s, i) => s + (i.period === 'monthly' ? i.amount : i.amount / 12), 0)
     const me = newExpense.reduce((s, i) => s + (i.period === 'monthly' ? i.amount : i.amount / 12), 0)
     await upsert.mutateAsync({
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
+      month: planningDate.getMonth() + 1,
+      year: planningDate.getFullYear(),
       estimated_income: mi,
       fixed_expenses: me,
       variable_estimate: 0,
@@ -303,6 +308,46 @@ export function Estimation() {
           </div>
         )}
       />
+      {/* Month navigator */}
+      {(() => {
+        const today = new Date()
+        const isCurrentMonth = planningDate.getFullYear() === today.getFullYear() && planningDate.getMonth() === today.getMonth()
+        return (
+          <div className="mb-5 flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
+            <button
+              type="button"
+              aria-label="Previous month"
+              onClick={() => setPlanningDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="text-center">
+              <p className="text-sm font-extrabold text-foreground">
+                {planningDate.toLocaleString('en', { month: 'long', year: 'numeric' })}
+              </p>
+              {!isCurrentMonth && (
+                <button
+                  type="button"
+                  onClick={() => setPlanningDate(new Date())}
+                  className="mt-0.5 text-xs text-primary hover:underline"
+                >
+                  Back to current
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              aria-label="Next month"
+              onClick={() => setPlanningDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )
+      })()}
+
       {!planningTipDismissed && (
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
           <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -316,7 +361,7 @@ export function Estimation() {
           <button
             type="button"
             onClick={() => { localStorage.setItem(PLANNING_TIP_KEY, '1'); setPlanningTipDismissed(true) }}
-            className="shrink-0 rounded-full px-3 py-1 text-xs font-bold text-primary hover:bg-primary/10"
+            className="shrink-0 rounded-full px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10 active:scale-95"
           >
             Got it
           </button>
@@ -372,6 +417,42 @@ export function Estimation() {
         )
       })()}
 
+      {monthlyIncome > 0 && (
+        <div className={`mb-8 rounded-2xl border px-5 py-4 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            {planningDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} forecast
+          </p>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Income</span>
+              <span className="font-extrabold text-primary">{money.formatDisplay(monthlyIncome)}/mo</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Fixed expenses</span>
+              <span className="font-extrabold text-[#FF8388]">−{money.formatDisplay(monthlyExpenses)}/mo</span>
+            </div>
+            {wishlistTotal > 0 && (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">Wishlist total</span>
+                <span className="font-bold text-muted-foreground">{money.formatDisplay(wishlistTotal)}</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-3 border-t border-border pt-3">
+            {monthlyIncome >= monthlyExpenses + (wishlistTotal > 0 ? wishlistTotal : 0) ? (
+              <p className="flex items-center gap-1.5 font-extrabold text-primary"><Check className="h-4 w-4 shrink-0" /> Affordable — surplus of {money.formatDisplay(monthlyIncome - monthlyExpenses - wishlistTotal)}/mo after everything</p>
+            ) : monthlyIncome >= monthlyExpenses ? (
+              <div>
+                <p className="flex items-center gap-1.5 font-extrabold text-[#FFCF73]"><Zap className="h-4 w-4 shrink-0" /> Expenses covered — wishlist needs {money.formatDisplay(monthlyExpenses + wishlistTotal - monthlyIncome)} more/mo</p>
+                {wishlistTotal > 0 && <p className="mt-1 text-xs text-muted-foreground">Save {money.formatDisplay(monthlyExpenses + wishlistTotal - monthlyIncome)}/mo for {Math.ceil(wishlistTotal / Math.max(1, monthlyIncome - monthlyExpenses))} months to afford wishlist</p>}
+              </div>
+            ) : (
+              <p className="flex items-center gap-1.5 font-extrabold text-[#FF8388]"><X className="h-4 w-4 shrink-0" /> Expenses exceed income by {money.formatDisplay(monthlyExpenses - monthlyIncome)}/mo — reduce expenses or increase income</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {(monthlyIncome > 0 || monthlyExpenses > 0 || actualThisMonth.income > 0 || actualThisMonth.expenses > 0) && (
         <Card className="mb-6">
           <CardHeader>
@@ -395,8 +476,8 @@ export function Estimation() {
                         <p className="text-xl font-extrabold text-foreground">{money.formatDisplay(row.actual)}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">actual · planned {money.formatDisplay(row.planned)}</p>
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${isGood ? 'bg-primary/10 text-primary' : 'bg-[#FF8388]/10 text-[#FF8388]'}`}>
-                        {variance > 0 ? '+' : ''}{money.formatDisplay(Math.abs(variance))} {variance > 0 ? '▲' : '▼'} ({pct}%)
+                      <span className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-extrabold ${isGood ? 'bg-primary/10 text-primary' : 'bg-[#FF8388]/10 text-[#FF8388]'}`}>
+                        {variance > 0 ? '+' : ''}{money.formatDisplay(Math.abs(variance))} {variance > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />} ({pct}%)
                       </span>
                     </div>
                   </div>
@@ -437,8 +518,11 @@ export function Estimation() {
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-7">
         <Card>
           <CardHeader className="pb-0">
-            <CardTitle className="text-xl">Income sources</CardTitle>
-            <p className="text-sm text-muted-foreground">Add where money is expected to come from.</p>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">1</span>
+              <CardTitle className="text-xl">Income sources</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">How much money will come in?</p>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
             <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
@@ -452,7 +536,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
-                <select aria-label="Income period" className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={incomePeriod} onChange={event => setIncomePeriod(event.target.value as EstimatePeriod)}>
+                <select aria-label="Income period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={incomePeriod} onChange={event => setIncomePeriod(event.target.value as EstimatePeriod)}>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
                 </select>
@@ -480,8 +564,11 @@ export function Estimation() {
         </Card>
         <Card>
           <CardHeader className="pb-0">
-            <CardTitle className="text-xl">Expected expenses</CardTitle>
-            <p className="text-sm text-muted-foreground">Add rent, bills, subscriptions, food, trips, and other planned costs.</p>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">2</span>
+              <CardTitle className="text-xl">Expected expenses</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">What fixed expenses are expected this month?</p>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
             <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
@@ -495,7 +582,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
-                <select aria-label="Expense period" className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={expensePeriod} onChange={event => setExpensePeriod(event.target.value as EstimatePeriod)}>
+                <select aria-label="Expense period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={expensePeriod} onChange={event => setExpensePeriod(event.target.value as EstimatePeriod)}>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
                 </select>
@@ -527,8 +614,11 @@ export function Estimation() {
           <CardHeader className="pb-0">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <CardTitle className="text-xl">Wishlist</CardTitle>
-                <p className="text-sm text-muted-foreground">Track what the item is for, expected cost, and a small note.</p>
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">3</span>
+                  <CardTitle className="text-xl">Wishlist</CardTitle>
+                </div>
+                <p className="text-sm text-muted-foreground">What do you want to buy or save for?</p>
               </div>
               <p className="text-sm font-extrabold text-primary">{money.formatDisplay(wishlistTotal)}</p>
             </div>
@@ -545,9 +635,10 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
-                <select aria-label="Wishlist type" className="mt-2 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
-                  <option value="Want">Want</option>
+                <select aria-label="Wishlist type" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
                   <option value="Need">Need</option>
+                  <option value="Want">Want</option>
+                  <option value="Later">Later</option>
                   <option value="Work">Work</option>
                   <option value="Travel">Travel</option>
                   <option value="Gift">Gift</option>
@@ -585,6 +676,7 @@ export function Estimation() {
                         <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
                           item.type === 'Need' ? 'bg-primary/15 text-primary' :
                           item.type === 'Want' ? 'bg-[#FFCF73]/20 text-[#FFCF73]' :
+                          item.type === 'Later' ? 'bg-muted text-muted-foreground' :
                           item.type === 'Work' ? 'bg-[#93C5FD]/20 text-[#93C5FD]' :
                           item.type === 'Travel' ? 'bg-[#C4AEFF]/20 text-[#C4AEFF]' :
                           item.type === 'Gift' ? 'bg-[#FADBEA]/50 text-[#FADBEA]' :
@@ -592,12 +684,17 @@ export function Estimation() {
                         }`}>{item.type}</span>
                       </div>
                       <div className="flex shrink-0 gap-1">
-                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} title="Convert to goal" disabled={addGoal.isPending}><Target className="h-3.5 w-3.5" /></button>
-                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => startEditWishlist(item.id)} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })} title="Remove"><X className="h-3.5 w-3.5" /></button>
+                        <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => convertToGoal(item)} aria-label="Convert to goal" disabled={addGoal.isPending}><Target className="h-4 w-4" /></button>
+                        <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => startEditWishlist(item.id)} aria-label="Edit"><Pencil className="h-4 w-4" /></button>
+                        <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => setDeleteTarget({ list: 'wishlist', id: item.id, name: item.name })} aria-label="Remove"><X className="h-4 w-4" /></button>
                       </div>
                     </div>
                     <p className="mt-3 text-lg font-extrabold text-primary">{money.formatDisplay(item.amount)}</p>
+                    {monthlyIncome > monthlyExpenses && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Save {Math.ceil(item.amount / (monthlyIncome - monthlyExpenses))} month{Math.ceil(item.amount / (monthlyIncome - monthlyExpenses)) !== 1 ? 's' : ''} of surplus ({money.formatDisplay(monthlyIncome - monthlyExpenses)}/mo)
+                      </p>
+                    )}
                     {item.note && <p className="mt-2 text-sm text-muted-foreground">{item.note}</p>}
                   </div>
                   )
@@ -673,14 +770,14 @@ function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount
         editingId === item.id ? (
           <div key={item.id} className="space-y-2 rounded-2xl border border-primary/30 bg-secondary px-4 py-3">
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.5fr)_minmax(100px,0.45fr)_auto_auto] items-center gap-2">
-              <Input className="h-8 bg-card text-sm" value={editName} onChange={e => onEditNameChange(e.target.value)} placeholder="Name" />
-              <Input className="h-8 bg-card text-sm" inputMode="decimal" value={editAmount} onChange={e => onEditAmountChange(e.target.value)} placeholder="Amount" />
-              <select className="h-8 rounded-md border border-input bg-card px-2 text-xs font-bold text-foreground outline-none" value={editPeriod} onChange={e => onEditPeriodChange(e.target.value)}>
+              <Input className="h-10 bg-card text-sm" value={editName} onChange={e => onEditNameChange(e.target.value)} placeholder="Name" />
+              <Input className="h-10 bg-card text-sm" inputMode="decimal" value={editAmount} onChange={e => onEditAmountChange(e.target.value)} placeholder="Amount" />
+              <select className="h-10 rounded-md border border-input bg-card px-2 text-xs font-bold text-foreground outline-none" value={editPeriod} onChange={e => onEditPeriodChange(e.target.value)}>
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>
               </select>
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={onEditSave} title="Save"><Check className="h-3.5 w-3.5" /></button>
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border" onClick={onEditCancel} title="Cancel"><X className="h-3.5 w-3.5" /></button>
+              <button aria-label="Save" className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={onEditSave}><Check className="h-4 w-4" /></button>
+              <button aria-label="Cancel" className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border" onClick={onEditCancel}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">Editing · amounts in {displayCurrency}</p>
           </div>
@@ -692,8 +789,8 @@ function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount
           </div>
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-foreground">{fmt(item.amount)}</span>
-            <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => onEditStart(item.id)} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
-            <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => onDelete(item.id, item.name)} title="Remove"><X className="h-3.5 w-3.5" /></button>
+            <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => onEditStart(item.id)} aria-label="Edit"><Pencil className="h-4 w-4" /></button>
+            <button className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-[#FF8388]" onClick={() => onDelete(item.id, item.name)} aria-label="Remove"><X className="h-4 w-4" /></button>
           </div>
         </div>
         )

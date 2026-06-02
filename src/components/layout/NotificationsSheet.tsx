@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTransactions, useBudgetCategories, useRecurringRules, useGoals } from '@/lib/queries'
 import { computeNotifications } from '@/lib/notifications'
 import { useMoney } from '@/lib/currency'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Bell, AlertTriangle, Clock, Target, BellOff } from 'lucide-react'
 
@@ -21,6 +22,7 @@ export function NotificationsSheet() {
   const criticalCount = notifications.filter(n => n.severity === 'critical').length
   const badgeCount = notifications.length
 
+  const isDesktop = useIsDesktop()
   if (badgeCount === 0) return null
 
   const iconMap = {
@@ -43,7 +45,7 @@ export function NotificationsSheet() {
         type="button"
         aria-label={`${badgeCount} notification${badgeCount === 1 ? '' : 's'}`}
         onClick={() => setOpen(true)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+        className="relative flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
       >
         <Bell className="h-4 w-4" />
         <span className={`absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-extrabold text-primary-foreground ${criticalCount > 0 ? 'bg-red-500' : 'bg-[#FFCF73]'}`}>
@@ -52,7 +54,7 @@ export function NotificationsSheet() {
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-full max-w-sm">
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm' : 'max-h-[80dvh] overflow-y-auto rounded-t-3xl'}>
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />

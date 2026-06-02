@@ -10,7 +10,33 @@ import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { AllocationEditor } from '@/components/investing/AllocationEditor'
 import { toast } from 'sonner'
+import { BookOpen, ChevronDown } from 'lucide-react'
 import type { AllocationItem } from '@/types'
+
+const GLOSSARY_DISMISSED_KEY = 'finpath_investing_glossary_dismissed'
+
+const GLOSSARY_ITEMS = [
+  {
+    term: 'ETF',
+    color: '#A9F5C7',
+    definition: 'Exchange-Traded Fund — a basket of stocks (or bonds) you buy as one unit. Low cost, diversified, and traded like a stock. A global index ETF (e.g. VT, VWRA) gives you ownership in thousands of companies at once.',
+  },
+  {
+    term: 'Bonds',
+    color: '#93C5FD',
+    definition: 'Loans you give to governments or companies in exchange for regular interest payments. Lower potential return than stocks, but less volatile. Good for stability and capital preservation.',
+  },
+  {
+    term: 'Risk',
+    color: '#FFD276',
+    definition: 'The chance your investment goes up OR down. Higher expected return = higher risk. Aggressive portfolios can drop 30–50% in a crash but recover over time. Conservative portfolios drop less but grow slower.',
+  },
+  {
+    term: 'Compound growth',
+    color: '#C4AEFF',
+    definition: 'Earnings on your earnings. If you earn 8%/year, next year you earn 8% on a larger base. Over 20+ years this compounds dramatically — the chart above shows this curve.',
+  },
+]
 
 type SimulatorValues = {
   monthlyContribution: number
@@ -100,6 +126,8 @@ export function Investing() {
   const [draft, setDraft] = useState<SimulatorValues>({
     monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
   })
+  const [glossaryDismissed, setGlossaryDismissed] = useState(() => localStorage.getItem(GLOSSARY_DISMISSED_KEY) === '1')
+  const [glossaryOpen, setGlossaryOpen] = useState(false)
   const [contributionFrequency, setContributionFrequency] = useState<ContributionFrequency>('monthly')
   const [contributionCurrency, setContributionCurrency] = useState(savedContributionCurrency)
   const [targetCurrency, setTargetCurrency] = useState(savedTargetCurrency)
@@ -264,19 +292,22 @@ export function Investing() {
                 <p className="mt-2 text-sm text-muted-foreground">Enter monthly contribution and expected return, then run the simulation.</p>
               </div>
             ) : (
-              <div className="flex items-end justify-between gap-2" style={{ height: '200px' }}>
+              <div className="flex items-stretch justify-between gap-1" style={{ height: '200px' }}>
                 {chartData.map((point) => (
-                  <div key={point.year} className="flex flex-1 flex-col items-center gap-1.5">
-                    <button
-                      type="button"
+                  <button
+                    key={point.year}
+                    type="button"
+                    className="flex flex-1 flex-col items-center justify-end gap-1.5 pb-1"
+                    onClick={() => setDuration(point.year)}
+                    aria-label={`Use ${point.year} year duration`}
+                    title={`${point.year} years: ${money.formatDisplay(point.value)}`}
+                  >
+                    <div
                       className={`w-full max-w-[20px] rounded-full transition-colors ${point.year === draft.durationYears ? 'bg-primary' : 'bg-muted hover:bg-muted/60'}`}
                       style={{ height: `${Math.max(8, (point.value / maxValue) * 168)}px` }}
-                      onClick={() => setDuration(point.year)}
-                      aria-label={`Use ${point.year} year duration`}
-                      title={`${point.year} years: ${money.formatDisplay(point.value)}`}
                     />
                     <span className={`text-[9px] font-bold leading-none sm:text-[10px] ${point.year === draft.durationYears ? 'text-primary' : 'text-muted-foreground'}`}>{point.year}y</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -309,10 +340,10 @@ export function Investing() {
               </p>
             </div>
             <div>
-              <Label className="text-[11px] text-muted-foreground">Contribution currency</Label>
+              <Label className="text-xs text-muted-foreground">Contribution currency</Label>
               <select
                 aria-label="Contribution currency"
-                className="mt-1 h-8 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
                 value={contributionCurrency}
                 onChange={event => setContributionCurrency(event.target.value)}
               >
@@ -320,10 +351,10 @@ export function Investing() {
               </select>
             </div>
             <div>
-              <Label className="text-[11px] text-muted-foreground">Contribution frequency</Label>
+              <Label className="text-xs text-muted-foreground">Contribution frequency</Label>
               <select
                 aria-label="Contribution frequency"
-                className="mt-1 h-8 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
                 value={contributionFrequency}
                 onChange={event => setContributionFrequency(event.target.value as ContributionFrequency)}
               >
@@ -351,20 +382,20 @@ export function Investing() {
               [`Initial capital (${money.baseCurrency})`, 'initialCapital', formatNumberInput(draft.initialCapital)],
             ] as [string, keyof SimulatorValues, string][]).map(([label, key, value]) => (
               <div key={key}>
-                <Label className="text-[11px] text-muted-foreground">{label}</Label>
+                <Label className="text-xs text-muted-foreground">{label}</Label>
                 <Input
                   aria-label={key === 'monthlyContribution' ? 'Monthly contribution' : key === 'targetPortfolio' ? 'Target portfolio' : key === 'initialCapital' ? 'Initial capital' : label}
-                  className="mt-1 h-8 rounded-xl bg-secondary text-sm font-extrabold"
+                  className="mt-1 h-11 rounded-xl bg-secondary text-sm font-extrabold"
                   value={value}
                   onChange={event => updateDraft(key, event.target.value)}
                 />
               </div>
             ))}
             <div>
-              <Label className="text-[11px] text-muted-foreground">Target portfolio currency</Label>
+              <Label className="text-xs text-muted-foreground">Target portfolio currency</Label>
               <select
                 aria-label="Target portfolio currency"
-                className="mt-1 h-8 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-input bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
                 value={targetCurrency}
                 onChange={event => setTargetCurrency(event.target.value)}
               >
@@ -374,6 +405,47 @@ export function Investing() {
           </CardContent>
         </Card>
       </div>
+
+      {!glossaryDismissed && (
+        <div className="mb-6 rounded-2xl border border-border bg-secondary">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+            onClick={() => setGlossaryOpen(o => !o)}
+            aria-expanded={glossaryOpen}
+          >
+            <div className="flex items-center gap-3">
+              <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+              <span className="font-extrabold text-foreground">Investing basics</span>
+              <span className="text-xs text-muted-foreground">New to investing? Tap to learn key terms.</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); localStorage.setItem(GLOSSARY_DISMISSED_KEY, '1'); setGlossaryDismissed(true) }}
+                className="shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Dismiss investing basics"
+              >
+                Dismiss
+              </button>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${glossaryOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+          {glossaryOpen && (
+            <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 lg:grid-cols-4">
+              {GLOSSARY_ITEMS.map(item => (
+                <div key={item.term} className="rounded-xl border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="font-extrabold text-foreground">{item.term}</span>
+                  </div>
+                  <p className="text-xs leading-5 text-muted-foreground">{item.definition}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <Card>
         <CardHeader>

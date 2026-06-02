@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink } from 'react-router-dom'
-import { BarChart3, Calculator, CreditCard, LayoutDashboard, PieChart, RefreshCw, Settings, Target, TrendingUp, User } from 'lucide-react'
-import { useGoals, useAuthSession, useSignIn, useSignUp, useSignOut } from '@/lib/queries'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { BarChart3, Calculator, CreditCard, HardDrive, LayoutDashboard, PieChart, RefreshCw, Settings, Shield, Target, TrendingUp, User, Coins } from 'lucide-react'
+import { useGoals, useAuthSession, useSignIn, useSignUp, useSignOut, useAppSettings } from '@/lib/queries'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,7 @@ const navItems = [
   { to: '/budget', label: 'Budget', icon: PieChart },
   { to: '/goals', label: 'Goals', icon: Target },
   { to: '/estimation', label: 'Planning', icon: Calculator },
-  { to: '/subscriptions', label: 'Subscriptions', icon: RefreshCw },
+  { to: '/subscriptions', label: 'Recurring', icon: RefreshCw },
   { to: '/investing', label: 'Investing', icon: TrendingUp },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -28,9 +28,11 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
 }) {
   const { data: goals = [] } = useGoals()
   const { data: session } = useAuthSession()
+  const { data: settings } = useAppSettings()
   const signIn = useSignIn()
   const signUp = useSignUp()
   const signOut = useSignOut()
+  const navigate = useNavigate()
 
   const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
   const [authEmail, setAuthEmail] = useState('')
@@ -154,61 +156,94 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
         </div>
       </aside>
 
-      {/* Auth sheet */}
+      {/* Auth/Profile sheet */}
       <Sheet open={profileOpen} onOpenChange={onProfileOpenChange}>
         <SheetContent side="left" className="w-80 border-border bg-background p-6">
           <SheetHeader className="mb-6">
             <SheetTitle>Account</SheetTitle>
           </SheetHeader>
-          {session ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-2xl border border-border bg-secondary p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">
-                  {userInitial}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-foreground">{session.user.email}</p>
-                  <p className="text-xs text-primary">Signed in</p>
-                </div>
-              </div>
+
+          {/* Account info card */}
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border bg-secondary p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">
+              {userInitial ?? <User className="h-4 w-4" />}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-foreground">{session?.user?.email ?? 'Guest mode'}</p>
+              <p className={`text-xs ${session ? 'text-primary' : 'text-muted-foreground'}`}>
+                {session ? 'Synced to cloud' : 'Data stored locally only'}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick links */}
+          <div className="mb-4 space-y-1">
+            {[
+              { icon: Coins, label: 'Currency & wallets', href: '/settings?section=wallets' },
+              { icon: Shield, label: 'Security & PIN', href: '/settings?section=security' },
+              { icon: HardDrive, label: 'Backup & export', href: '/settings?section=backup' },
+              { icon: Settings, label: 'All settings', href: '/settings' },
+            ].map(({ icon: Icon, label, href }) => (
+              <button
+                key={href}
+                type="button"
+                onClick={() => { navigate(href); onProfileOpenChange(false) }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
+              >
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Display currency badge */}
+          {settings?.currency && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl bg-secondary/50 px-3 py-2">
+              <span className="text-xs text-muted-foreground">Display currency:</span>
+              <span className="text-xs font-extrabold text-foreground">{settings.currency}</span>
+            </div>
+          )}
+
+          <div className="border-t border-border pt-4">
+            {session ? (
               <Button variant="secondary" className="w-full" onClick={handleSignOut} disabled={signOut.isPending}>
                 Log out
               </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Sign in to sync your data across devices and avoid losing it.</p>
-              <div>
-                <Label className="text-xs text-muted-foreground">Email</Label>
-                <Input
-                  className="mt-1.5 bg-secondary"
-                  type="email"
-                  value={authEmail}
-                  onChange={e => setAuthEmail(e.target.value)}
-                  placeholder="you@example.com"
-                />
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Sign in to sync your data across devices.</p>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Email</Label>
+                  <Input
+                    className="mt-1.5 bg-secondary"
+                    type="email"
+                    value={authEmail}
+                    onChange={e => setAuthEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Password</Label>
+                  <Input
+                    className="mt-1.5 bg-secondary"
+                    type="password"
+                    value={authPassword}
+                    onChange={e => setAuthPassword(e.target.value)}
+                    placeholder="Password"
+                    onKeyDown={e => e.key === 'Enter' && handleSignIn()}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button className="w-full" onClick={handleSignIn} disabled={signIn.isPending}>
+                    {signIn.isPending ? 'Signing in…' : 'Sign in'}
+                  </Button>
+                  <Button variant="secondary" className="w-full" onClick={handleSignUp} disabled={signUp.isPending}>
+                    {signUp.isPending ? 'Creating account…' : 'Create account'}
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Password</Label>
-                <Input
-                  className="mt-1.5 bg-secondary"
-                  type="password"
-                  value={authPassword}
-                  onChange={e => setAuthPassword(e.target.value)}
-                  placeholder="Password"
-                  onKeyDown={e => e.key === 'Enter' && handleSignIn()}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Button className="w-full" onClick={handleSignIn} disabled={signIn.isPending}>
-                  {signIn.isPending ? 'Signing in…' : 'Sign in'}
-                </Button>
-                <Button variant="secondary" className="w-full" onClick={handleSignUp} disabled={signUp.isPending}>
-                  {signUp.isPending ? 'Creating account…' : 'Create account'}
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </SheetContent>
       </Sheet>
     </>
