@@ -128,6 +128,7 @@ export function Settings() {
   const [backupText, setBackupText] = useState('')
   const backupFileRef = useRef<HTMLInputElement>(null)
   const [backupPreview, setBackupPreview] = useState<null | { wallets: number; categories: number; transactions: number; rules: number; parsed: unknown }>(null)
+  const [lastExportDate, setLastExportDate] = useState(() => localStorage.getItem('finpath_last_export') ?? '')
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
   const [geminiKey, setGeminiKey] = useState(() => getGeminiKey() ?? '')
@@ -349,6 +350,9 @@ export function Settings() {
     a.download = `finpath-backup-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
+    const today = new Date().toISOString().slice(0, 10)
+    localStorage.setItem('finpath_last_export', today)
+    setLastExportDate(today)
     toast.success('Backup downloaded')
   }
 
@@ -1006,6 +1010,54 @@ export function Settings() {
 
       {/* Backup & Export tab */}
       {effectiveTab === 'backup' && (
+        <>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Data Safety</CardTitle>
+            <p className="text-sm text-muted-foreground">Your data privacy and backup status at a glance.</p>
+          </CardHeader>
+          <CardContent className="px-5 pb-6 sm:px-8 sm:pb-8">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {[
+                {
+                  label: 'Storage',
+                  value: session ? 'Cloud (Supabase)' : 'This device only',
+                  status: session ? 'ok' : 'info',
+                  icon: session ? '☁️' : '📱',
+                },
+                {
+                  label: 'Last backup',
+                  value: lastExportDate ? new Date(lastExportDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never',
+                  status: lastExportDate ? 'ok' : 'warn',
+                  icon: '💾',
+                },
+                {
+                  label: 'PIN lock',
+                  value: pinEnabled ? 'Enabled' : 'Off',
+                  status: pinEnabled ? 'ok' : 'info',
+                  icon: '🔒',
+                },
+                {
+                  label: 'Cloud sync',
+                  value: session ? 'Active' : 'Off (guest mode)',
+                  status: session ? 'ok' : 'info',
+                  icon: '🔄',
+                },
+              ].map(item => (
+                <div key={item.label} className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${item.status === 'warn' ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary'}`}>
+                  <span className="text-xl">{item.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    <p className={`truncate text-sm font-bold ${item.status === 'warn' ? 'text-[#FFCF73]' : item.status === 'ok' ? 'text-primary' : 'text-foreground'}`}>{item.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {!lastExportDate && (
+              <p className="mt-3 text-xs text-[#FFCF73]">⚠ No backup created yet. Export your data to keep it safe.</p>
+            )}
+          </CardContent>
+        </Card>
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Backup and restore</CardTitle>
@@ -1094,6 +1146,7 @@ export function Settings() {
             )}
           </CardContent>
         </Card>
+        </>
       )}
 
       <ConfirmDialog

@@ -160,9 +160,16 @@ export function Transactions() {
       if (selectedCategory) visibleTransactions = visibleTransactions.filter(tx => tx.category === selectedCategory && tx.type !== 'income' && tx.type !== 'transfer')
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
-        visibleTransactions = visibleTransactions.filter(tx =>
-          tx.description.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q)
-        )
+        visibleTransactions = visibleTransactions.filter(tx => {
+          if (tx.description.toLowerCase().includes(q)) return true
+          if (tx.category.toLowerCase().includes(q)) return true
+          if (tx.date.includes(q)) return true
+          const displayAmt = money.fromBase(tx.amount).toString()
+          if (displayAmt.includes(q)) return true
+          const wallet = wallets.find(w => w.id === tx.wallet_id)
+          if (wallet?.name.toLowerCase().includes(q)) return true
+          return false
+        })
       }
       if (dateFrom) visibleTransactions = visibleTransactions.filter(tx => tx.date >= dateFrom)
       if (dateTo) visibleTransactions = visibleTransactions.filter(tx => tx.date <= dateTo)
