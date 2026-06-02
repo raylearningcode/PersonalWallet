@@ -1379,6 +1379,14 @@ export function Transactions() {
           >
             <ChevronRight className="h-4 w-4" />
           </button>
+          {!isAllTime && !isOnCurrentMonth && (
+            <button
+              onClick={() => { setDateFrom(getMonthStart()); setDateTo(getLastDay(new Date().getFullYear(), new Date().getMonth() + 1)) }}
+              className="ml-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
+            >
+              This month
+            </button>
+          )}
           {!isAllTime && (
             <button
               onClick={() => { setDateFrom(''); setDateTo('') }}

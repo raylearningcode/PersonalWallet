@@ -564,7 +564,7 @@ export function Dashboard() {
               const daysAway = Math.ceil((new Date(nextBill.next_due_date).getTime() - Date.now()) / 86_400_000)
               if (daysAway > 30 || daysAway < 0) return null
               return (
-                <Link to="/transactions?tab=recurring" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
+                <Link to="/subscriptions" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent/10"><Calendar className="h-4 w-4 text-accent" /></span>
                   <p className="flex-1 text-sm text-muted-foreground">
                     <span className="font-bold text-foreground">{nextBill.description}</span> renews in {daysAway} day{daysAway !== 1 ? 's' : ''} — {money.formatDisplay(nextBill.amount)}.
