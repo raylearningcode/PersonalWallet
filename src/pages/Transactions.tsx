@@ -1639,14 +1639,32 @@ export function Transactions() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
               <ReceiptText size={28} className="text-muted-foreground/50" />
             </div>
-            <div>
-              <p className="font-semibold text-foreground">No transactions yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Add your first income or expense to get started.</p>
-            </div>
-            <Button onClick={openAddForm} className="gap-2">
-              <Plus size={16} />
-              Add transaction
-            </Button>
+            {(searchQuery || filterWalletId || selectedCategory) ? (
+              <div>
+                <p className="font-semibold text-foreground">No transactions found</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {searchQuery ? `No results for "${searchQuery}"` : filterWalletId ? 'No transactions for this wallet in this period' : `No "${selectedCategory}" transactions in this period`}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setFilterWalletId(''); setSelectedCategory(null) }}
+                  className="mt-3 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="font-semibold text-foreground">No transactions yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Add your first income or expense to get started.</p>
+              </div>
+            )}
+            {!searchQuery && !filterWalletId && !selectedCategory && (
+              <Button onClick={openAddForm} className="gap-2">
+                <Plus size={16} />
+                Add transaction
+              </Button>
+            )}
           </div>
         )}
       </div>
