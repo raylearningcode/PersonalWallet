@@ -355,7 +355,7 @@ export function Goals() {
                   {GOAL_COLORS.map(c => (
                     <button
                       key={c}
-                      className={`h-8 w-8 rounded-full transition-transform active:scale-95 ${form.color === c ? 'scale-125 ring-2 ring-foreground ring-offset-2 ring-offset-background' : ''}`}
+                      className={`h-10 w-10 rounded-full transition-transform active:scale-95 ${form.color === c ? 'scale-125 ring-2 ring-foreground ring-offset-2 ring-offset-background' : ''}`}
                       style={{ backgroundColor: c }}
                       onClick={() => setField('color', c)}
                     />

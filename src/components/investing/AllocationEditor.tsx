@@ -87,7 +87,7 @@ export function AllocationEditor({ value, onChange, onSave, isSaving }: Props) {
                 <input
                   type="color"
                   aria-label="Asset color"
-                  className="h-8 w-8 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                  className="h-11 w-11 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
                   value={item.color}
                   onChange={e => update(i, 'color', e.target.value)}
                 />
@@ -102,7 +102,7 @@ export function AllocationEditor({ value, onChange, onSave, isSaving }: Props) {
                 <button
                   onClick={() => remove(i)}
                   disabled={value.length <= 1}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-30"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-30"
                   aria-label={`Remove ${item.name || 'asset'}`}
                 >
                   ×

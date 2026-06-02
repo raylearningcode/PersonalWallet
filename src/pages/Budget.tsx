@@ -65,7 +65,7 @@ function ColorSwatch({ color, selected, onClick }: { color: string; selected: bo
   return (
     <button
       type="button"
-      className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
+      className={`h-10 w-10 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
       style={{ backgroundColor: color }}
       onClick={onClick}
       title={color}
@@ -379,7 +379,7 @@ export function Budget() {
                   type="button"
                   aria-label="Add budget category"
                   onClick={() => { setShowAdd(true); setTimeout(() => addNameInputRef.current?.focus(), 80) }}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary text-lg font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-secondary text-lg font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
                 >
                   +
                 </button>
