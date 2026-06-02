@@ -513,6 +513,28 @@ export function Dashboard() {
               )
             })()}
             {(() => {
+              const nearLimit = categories
+                .filter(c => c.yearly_allocated > 0)
+                .map(c => {
+                  const budget = c.budget_period === 'monthly' ? c.yearly_allocated : c.yearly_allocated / 12
+                  const spent = monthlyTx.filter(t => t.type !== 'income' && t.type !== 'transfer' && t.category === c.name).reduce((s, t) => s + t.amount, 0)
+                  const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0
+                  return { name: c.name, pct, budget, spent }
+                })
+                .filter(c => c.pct >= 80 && c.pct < 100)
+                .sort((a, b) => b.pct - a.pct)[0]
+              if (!nearLimit) return null
+              return (
+                <Link to="/budget" className="flex items-center gap-3 rounded-2xl border border-[#FFCF73]/20 bg-[#FFCF73]/5 px-4 py-3 transition-colors hover:border-[#FFCF73]/40 active:scale-[0.99]">
+                  <span className="text-lg">⚠️</span>
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    <span className="font-bold text-foreground">{nearLimit.name}</span> is at {nearLimit.pct}% of its monthly budget.
+                  </p>
+                  <span className="shrink-0 text-xs font-bold text-[#FFCF73]">Budget →</span>
+                </Link>
+              )
+            })()}
+            {(() => {
               const nextBill = recurringRules
                 .filter(r => r.active && r.type === 'expense')
                 .sort((a, b) => (a.next_due_date ?? '').localeCompare(b.next_due_date ?? ''))[0]
