@@ -473,8 +473,11 @@ export function Estimation() {
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-7">
         <Card>
           <CardHeader className="pb-0">
-            <CardTitle className="text-xl">Income sources</CardTitle>
-            <p className="text-sm text-muted-foreground">Add where money is expected to come from.</p>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">1</span>
+              <CardTitle className="text-xl">Income sources</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">How much money will come in?</p>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
             <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
@@ -516,8 +519,11 @@ export function Estimation() {
         </Card>
         <Card>
           <CardHeader className="pb-0">
-            <CardTitle className="text-xl">Expected expenses</CardTitle>
-            <p className="text-sm text-muted-foreground">Add rent, bills, subscriptions, food, trips, and other planned costs.</p>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">2</span>
+              <CardTitle className="text-xl">Expected expenses</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">What fixed expenses are expected this month?</p>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
             <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
@@ -563,8 +569,11 @@ export function Estimation() {
           <CardHeader className="pb-0">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <CardTitle className="text-xl">Wishlist</CardTitle>
-                <p className="text-sm text-muted-foreground">Track what the item is for, expected cost, and a small note.</p>
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">3</span>
+                  <CardTitle className="text-xl">Wishlist</CardTitle>
+                </div>
+                <p className="text-sm text-muted-foreground">What do you want to buy or save for?</p>
               </div>
               <p className="text-sm font-extrabold text-primary">{money.formatDisplay(wishlistTotal)}</p>
             </div>

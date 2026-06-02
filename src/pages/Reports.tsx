@@ -438,9 +438,10 @@ export function Reports() {
         </div>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-        <StatCard label="Savings rate" value={`${savingsRate}%`} sub={`${RANGE_LABELS[range]} view`} badgeVariant="success" />
-        <StatCard label={range === 'week' ? 'Daily avg.' : range === 'year' ? 'Monthly avg.' : 'Spent'} value={money.formatDisplay(avgSpend)} sub="Expense pace" />
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+        <StatCard label="Income" value={money.formatDisplay(totalIncome)} sub={`${incomeTx.length} transactions`} badgeVariant="success" />
+        <StatCard label="Expenses" value={money.formatDisplay(totalExpenses)} sub={`${expenseTx.length} transactions`} badgeVariant="warning" />
+        <StatCard label="Saved" value={money.formatDisplay(totalIncome - totalExpenses)} sub={`${savingsRate}% savings rate`} badgeVariant={totalIncome >= totalExpenses ? 'success' : 'danger'} />
         <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 && categoryTotals.length > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No data yet'} badgeVariant="warning" />
       </div>
 
