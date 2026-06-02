@@ -370,6 +370,14 @@ export function Reports() {
     toast.success('CSV exported successfully')
   }
 
+  const today = new Date()
+  const isCurrentPeriod = range === 'all' || (() => {
+    if (range === 'year') return periodDate.getFullYear() === today.getFullYear()
+    if (range === 'month') return periodDate.getFullYear() === today.getFullYear() && periodDate.getMonth() === today.getMonth()
+    if (range === '3months') return periodDate.getFullYear() === today.getFullYear() && periodDate.getMonth() === today.getMonth()
+    return periodDate.toDateString() === today.toDateString()
+  })()
+
   return (
     <div>
       <PageHeader
@@ -382,6 +390,14 @@ export function Reports() {
               <span className="min-w-[118px] px-3 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
               {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
             </div>
+            {!isCurrentPeriod && range !== 'all' && (
+              <button
+                onClick={() => setPeriodDate(new Date())}
+                className="rounded-full border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
+              >
+                Back to current
+              </button>
+            )}
             <div className="flex rounded-full border border-border bg-secondary p-1">
               {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
                 <button
