@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -86,6 +86,8 @@ export function Transactions() {
   const [bulkCategorySheet, setBulkCategorySheet] = useState(false)
   const [bulkCategoryTarget, setBulkCategoryTarget] = useState('')
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
+  const [filterWalletId, setFilterWalletId] = useState('')
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const longPressRef = useRef(false)
@@ -173,9 +175,10 @@ export function Transactions() {
       }
       if (dateFrom) visibleTransactions = visibleTransactions.filter(tx => tx.date >= dateFrom)
       if (dateTo) visibleTransactions = visibleTransactions.filter(tx => tx.date <= dateTo)
+      if (filterWalletId) visibleTransactions = visibleTransactions.filter(tx => tx.wallet_id === filterWalletId || tx.transfer_wallet_id === filterWalletId)
       return [...visibleTransactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`))
     },
-    [selectedCategory, transactions, searchQuery, dateFrom, dateTo]
+    [selectedCategory, transactions, searchQuery, dateFrom, dateTo, filterWalletId]
   )
   const expenseCategoryTotals = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>()
@@ -646,6 +649,36 @@ export function Transactions() {
   const isAllTime = !dateFrom && !dateTo
   const isOnCurrentMonth = navYear === _today.getFullYear() && navMonth === _today.getMonth() + 1
   const monthLabel = new Date(navYear, navMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  const activeFilterCount = (filterWalletId ? 1 : 0) + (isAllTime ? 1 : 0)
+
+  const applyDatePreset = (preset: string) => {
+    const d = new Date()
+    const y = d.getFullYear(), m = d.getMonth() + 1
+    if (preset === 'this-week') {
+      const day = d.getDay()
+      const mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+      setDateFrom(mon.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10))
+    } else if (preset === 'this-month') {
+      setDateFrom(`${y}-${String(m).padStart(2, '0')}-01`); setDateTo(getLastDay(y, m))
+    } else if (preset === 'last-month') {
+      const lm = new Date(y, m - 2, 1); const ly = lm.getFullYear(), lmo = lm.getMonth() + 1
+      setDateFrom(`${ly}-${String(lmo).padStart(2, '0')}-01`); setDateTo(getLastDay(ly, lmo))
+    } else if (preset === 'last-3-months') {
+      const start = new Date(y, m - 4, 1)
+      setDateFrom(start.toISOString().slice(0, 10)); setDateTo(getLastDay(y, m))
+    } else if (preset === 'this-year') {
+      setDateFrom(`${y}-01-01`); setDateTo(`${y}-12-31`)
+    } else if (preset === 'all-time') {
+      setDateFrom(''); setDateTo('')
+    }
+  }
+
+  const resetFilters = () => {
+    const d = new Date()
+    setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1))
+    setFilterWalletId('')
+  }
 
   const goToPrevMonth = () => {
     const d = new Date(navYear, navMonth - 2, 1)
@@ -1348,7 +1381,93 @@ export function Transactions() {
               All
             </button>
           )}
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            aria-label="Open filters"
+            className={`relative ml-1 flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${activeFilterCount > 0 ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-extrabold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+          <SheetContent side="bottom" className="overflow-y-auto border-border bg-background pb-8">
+            <SheetHeader className="mb-5 text-left">
+              <SheetTitle>Filters</SheetTitle>
+              <SheetDescription>Narrow down by date range or wallet.</SheetDescription>
+            </SheetHeader>
+            <div className="space-y-6">
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Quick range</p>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ['this-week', 'This week'],
+                    ['this-month', 'This month'],
+                    ['last-month', 'Last month'],
+                    ['last-3-months', 'Last 3 months'],
+                    ['this-year', 'This year'],
+                    ['all-time', 'All time'],
+                  ] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => applyDatePreset(key)}
+                      className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground active:scale-95"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Custom date range</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="mb-1 text-[11px] text-muted-foreground">From</p>
+                    <Input type="date" className="bg-secondary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] text-muted-foreground">To</p>
+                    <Input type="date" className="bg-secondary" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+              {wallets.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Wallet</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFilterWalletId('')}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${!filterWalletId ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                    >
+                      All wallets
+                    </button>
+                    {wallets.map(w => (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => setFilterWalletId(w.id)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${filterWalletId === w.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {w.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <Button variant="secondary" className="flex-1" onClick={() => { resetFilters(); setIsFilterOpen(false) }}>Reset</Button>
+                <Button className="flex-1" onClick={() => setIsFilterOpen(false)}>Apply</Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {txPending ? (
           <div className="space-y-3">
