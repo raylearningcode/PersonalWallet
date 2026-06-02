@@ -405,7 +405,7 @@ export function Dashboard() {
               return (
                 <Link key={goal.id} to="/goals" className="flex items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-foreground">{goal.name}</p>
+                    <p className="line-clamp-1 text-sm font-bold text-foreground">{goal.name}</p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
                     </div>
