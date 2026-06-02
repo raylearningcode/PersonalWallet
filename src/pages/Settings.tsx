@@ -115,6 +115,7 @@ export function Settings() {
   const [editingWalletCashRole, setEditingWalletCashRole] = useState<CashRole | ''>('')
   const [backupText, setBackupText] = useState('')
   const backupFileRef = useRef<HTMLInputElement>(null)
+  const [backupPreview, setBackupPreview] = useState<null | { wallets: number; categories: number; transactions: number; rules: number; parsed: unknown }>(null)
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
   const [geminiKey, setGeminiKey] = useState(() => getGeminiKey() ?? '')
@@ -342,7 +343,23 @@ export function Settings() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = ev => setBackupText((ev.target?.result as string) ?? '')
+    reader.onload = ev => {
+      const text = (ev.target?.result as string) ?? ''
+      setBackupText(text)
+      try {
+        const parsed = JSON.parse(text)
+        setBackupPreview({
+          wallets: (parsed.wallets ?? []).length,
+          categories: (parsed.budget_categories ?? []).length,
+          transactions: (parsed.transactions ?? []).length,
+          rules: (parsed.budget_rules ?? []).length,
+          parsed,
+        })
+      } catch {
+        setBackupPreview(null)
+        toast.error('Invalid backup file — could not parse JSON')
+      }
+    }
     reader.readAsText(file)
     if (backupFileRef.current) backupFileRef.current.value = ''
   }
@@ -353,15 +370,17 @@ export function Settings() {
   }
 
   const handleImportBackup = async () => {
-    if (!backupText.trim()) return
-    const data = JSON.parse(backupText)
-    for (const wallet of data.wallets ?? []) await addWallet.mutateAsync(stripSystemFields(wallet) as Parameters<typeof addWallet.mutateAsync>[0])
-    for (const category of data.budget_categories ?? []) await addCategory.mutateAsync(stripSystemFields(category) as Parameters<typeof addCategory.mutateAsync>[0])
-    for (const rule of data.budget_rules ?? []) await addBudgetRule.mutateAsync(stripSystemFields(rule) as Parameters<typeof addBudgetRule.mutateAsync>[0])
-    if (data.investment_config) await saveInvestmentConfig.mutateAsync(stripSystemFields(data.investment_config))
-    for (const plan of data.estimation_plans ?? []) await upsertEstimationPlan.mutateAsync(stripSystemFields(plan) as Parameters<typeof upsertEstimationPlan.mutateAsync>[0])
-    for (const tx of data.transactions ?? []) await addTransaction.mutateAsync(stripSystemFields(tx) as Parameters<typeof addTransaction.mutateAsync>[0])
-    toast.success('Backup imported')
+    if (!backupText.trim() && !backupPreview) return
+    const data = backupPreview ? (backupPreview.parsed as Record<string, unknown[]>) : JSON.parse(backupText)
+    for (const wallet of (data.wallets as Record<string, unknown>[] ?? [])) await addWallet.mutateAsync(stripSystemFields(wallet) as Parameters<typeof addWallet.mutateAsync>[0])
+    for (const category of (data.budget_categories as Record<string, unknown>[] ?? [])) await addCategory.mutateAsync(stripSystemFields(category) as Parameters<typeof addCategory.mutateAsync>[0])
+    for (const rule of (data.budget_rules as Record<string, unknown>[] ?? [])) await addBudgetRule.mutateAsync(stripSystemFields(rule) as Parameters<typeof addBudgetRule.mutateAsync>[0])
+    if (data.investment_config) await saveInvestmentConfig.mutateAsync(stripSystemFields(data.investment_config as Record<string, unknown>))
+    for (const plan of (data.estimation_plans as Record<string, unknown>[] ?? [])) await upsertEstimationPlan.mutateAsync(stripSystemFields(plan) as Parameters<typeof upsertEstimationPlan.mutateAsync>[0])
+    for (const tx of (data.transactions as Record<string, unknown>[] ?? [])) await addTransaction.mutateAsync(stripSystemFields(tx) as Parameters<typeof addTransaction.mutateAsync>[0])
+    setBackupPreview(null)
+    setBackupText('')
+    toast.success('Backup imported successfully')
   }
 
   return (
@@ -920,14 +939,12 @@ export function Settings() {
           <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button className="gap-2" onClick={handleExportBackup}>
+                <Download className="h-4 w-4" />
                 Export backup
               </Button>
               <Button variant="secondary" className="gap-2" onClick={() => backupFileRef.current?.click()}>
                 <Upload className="h-4 w-4" />
                 Choose backup file
-              </Button>
-              <Button variant="secondary" onClick={handleImportBackup} disabled={!backupText.trim()}>
-                Import from text
               </Button>
             </div>
             <input
@@ -937,14 +954,69 @@ export function Settings() {
               className="hidden"
               onChange={handleFileLoad}
             />
-            <p className="text-center text-xs text-muted-foreground">— or paste backup JSON below —</p>
-            <textarea
-              aria-label="Backup JSON"
-              className="min-h-44 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none focus:border-primary"
-              value={backupText}
-              onChange={event => setBackupText(event.target.value)}
-              placeholder="Paste backup JSON here to import, or export to see your data"
-            />
+
+            {/* Import preview */}
+            {backupPreview && (
+              <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+                <p className="text-sm font-bold text-foreground">Ready to import</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    { label: 'Wallets', count: backupPreview.wallets },
+                    { label: 'Categories', count: backupPreview.categories },
+                    { label: 'Transactions', count: backupPreview.transactions },
+                    { label: 'Budget rules', count: backupPreview.rules },
+                  ].map(({ label, count }) => (
+                    <div key={label} className="rounded-xl bg-secondary px-3 py-2 text-center">
+                      <p className="text-lg font-extrabold text-foreground">{count}</p>
+                      <p className="text-[10px] text-muted-foreground">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">These records will be added to your existing data. Existing records are not removed.</p>
+                <div className="flex gap-2">
+                  <Button className="flex-1" onClick={handleImportBackup}>
+                    Confirm import
+                  </Button>
+                  <Button variant="secondary" onClick={() => { setBackupPreview(null); setBackupText('') }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!backupPreview && (
+              <>
+                <p className="text-center text-xs text-muted-foreground">— or paste backup JSON below —</p>
+                <textarea
+                  aria-label="Backup JSON"
+                  className="min-h-44 w-full rounded-2xl border border-border bg-secondary p-4 font-mono text-xs text-foreground outline-none focus:border-primary"
+                  value={backupText}
+                  onChange={event => {
+                    setBackupText(event.target.value)
+                    setBackupPreview(null)
+                  }}
+                  placeholder="Paste backup JSON here to import, or export to see your data"
+                />
+                {backupText.trim() && (
+                  <Button variant="secondary" className="w-full" onClick={() => {
+                    try {
+                      const parsed = JSON.parse(backupText)
+                      setBackupPreview({
+                        wallets: (parsed.wallets ?? []).length,
+                        categories: (parsed.budget_categories ?? []).length,
+                        transactions: (parsed.transactions ?? []).length,
+                        rules: (parsed.budget_rules ?? []).length,
+                        parsed,
+                      })
+                    } catch {
+                      toast.error('Invalid JSON — check your backup text')
+                    }
+                  }}>
+                    Preview import
+                  </Button>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       )}
