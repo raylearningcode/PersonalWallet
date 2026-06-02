@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Calculator, RefreshCw, Settings, Target, TrendingUp } from 'lucide-react'
+import { BarChart2, Calculator, RefreshCw, Settings, Target, TrendingUp, Wallet } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
@@ -19,6 +19,7 @@ const MORE_NAV_GROUPS = [
     items: [
       { to: '/subscriptions', label: 'Recurring', Icon: RefreshCw, color: '#FADBEA' },
       { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+      { to: '/settings?section=wallets', label: 'Wallets', Icon: Wallet, color: '#A9F5C7' },
     ],
   },
   {

@@ -1316,17 +1316,17 @@ export function Transactions() {
                           <TableCell className="w-[124px]">
                             <div className="flex justify-end gap-1">
                               {tx.needs_review && (
-                                <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
+                                <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FFCF73] hover:bg-[#FFCF73]/10 hover:text-[#FFCF73]" onClick={() => handleMarkReviewed(tx.id)} aria-label={`Mark ${tx.description} as reviewed`}>
                                   <CheckCircle size={15} />
                                 </Button>
                               )}
-                              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
+                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => handleDuplicateTransaction(tx)} aria-label={`Duplicate ${tx.description}`}>
                                 <Copy size={15} />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
+                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
                                 <Pencil size={15} />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
                                 <Trash2 size={15} />
                               </Button>
                             </div>
