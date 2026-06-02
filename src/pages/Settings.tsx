@@ -75,6 +75,8 @@ export function Settings() {
   const isDesktop = useIsDesktop()
   const [installPrompt, setInstallPrompt] = useState<Event & { prompt?: () => void } | null>(null)
   const [appInstalled, setAppInstalled] = useState(false)
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isStandalone = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches
 
   useEffect(() => {
     const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e) }
@@ -411,6 +413,19 @@ export function Settings() {
           </button>
         ))}
       </div>
+
+      {/* iOS install guidance */}
+      {!effectiveTab && isIos && !isStandalone && !appInstalled && (
+        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 lg:hidden">
+          <span className="mt-0.5 text-xl">📱</span>
+          <div className="min-w-0">
+            <p className="font-bold text-foreground">Add to Home Screen</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Tap the <strong>Share</strong> button in Safari, then choose <strong>Add to Home Screen</strong> for the full app experience.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* PWA install banner */}
       {!effectiveTab && installPrompt && !appInstalled && (
