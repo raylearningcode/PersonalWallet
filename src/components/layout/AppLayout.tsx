@@ -14,15 +14,16 @@ import { QuickAddSheet } from './QuickAddSheet'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 import { NotificationsSheet } from './NotificationsSheet'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
-import { DollarSign, ArrowLeftRight, TrendingUp, Target } from 'lucide-react'
+import { DollarSign, ArrowLeftRight, TrendingUp, Target, RefreshCw } from 'lucide-react'
 
 type QuickAddType = 'expense' | 'income' | 'transfer'
 
-const QUICK_ACTIONS: { type: QuickAddType | 'goal'; label: string; description: string; color: string; Icon: typeof DollarSign; to?: string }[] = [
+const QUICK_ACTIONS: { type: QuickAddType | 'goal' | 'subscription'; label: string; description: string; color: string; Icon: typeof DollarSign; to?: string }[] = [
   { type: 'expense', label: 'Add expense', description: 'Record a purchase or payment', color: '#FF8388', Icon: DollarSign },
   { type: 'income', label: 'Add income', description: 'Log salary, gift, or refund', color: '#4ADE80', Icon: TrendingUp },
   { type: 'transfer', label: 'Transfer', description: 'Move money between wallets', color: '#60A5FA', Icon: ArrowLeftRight },
   { type: 'goal', label: 'Goal contribution', description: 'Log savings toward a goal', color: '#A9F5C7', Icon: Target, to: '/goals' },
+  { type: 'subscription', label: 'Add subscription', description: 'Track recurring bill or income', color: '#FADBEA', Icon: RefreshCw, to: '/subscriptions' },
 ]
 
 function ResponsiveToaster() {
