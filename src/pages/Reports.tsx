@@ -13,12 +13,13 @@ import { getCategoryInsights } from '@/lib/financeOs'
 import { Download, Upload, FileText } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-type ReportRange = 'week' | 'month' | 'year' | 'all'
+type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all'
 type ReportMode = 'expense' | 'income'
 
 const RANGE_LABELS: Record<ReportRange, string> = {
   week: 'Week',
   month: 'Month',
+  '3months': '3 months',
   year: 'Year',
   all: 'All time',
 }
@@ -37,6 +38,10 @@ function getRangeBounds(range: ReportRange, periodDate: Date, allTxDates?: strin
     const start = new Date(periodDate.getFullYear(), 0, 1)
     return { start, end: new Date(periodDate.getFullYear() + 1, 0, 1) }
   }
+  if (range === '3months') {
+    const start = new Date(periodDate.getFullYear(), periodDate.getMonth() - 2, 1)
+    return { start, end: new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 1) }
+  }
   if (range === 'month') {
     const start = new Date(periodDate.getFullYear(), periodDate.getMonth(), 1)
     return { start, end: new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 1) }
@@ -54,7 +59,10 @@ function addPeriod(date: Date, range: ReportRange, direction: -1 | 1) {
   if (range === 'all') return date
   const next = new Date(date)
   if (range === 'year') next.setFullYear(date.getFullYear() + direction)
-  else if (range === 'month') {
+  else if (range === '3months') {
+    next.setDate(1)
+    next.setMonth(date.getMonth() + direction * 3)
+  } else if (range === 'month') {
     next.setDate(1) // avoid day-overflow (e.g. May 31 − 1 month → April 31 → May 1)
     next.setMonth(date.getMonth() + direction)
   } else next.setDate(date.getDate() + direction * 7)
@@ -64,6 +72,10 @@ function addPeriod(date: Date, range: ReportRange, direction: -1 | 1) {
 function formatPeriodLabel(range: ReportRange, date: Date) {
   if (range === 'all') return 'All time'
   if (range === 'year') return String(date.getFullYear())
+  if (range === '3months') {
+    const start = new Date(date.getFullYear(), date.getMonth() - 2, 1)
+    return `${start.toLocaleDateString('en-US', { month: 'short' })} – ${date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+  }
   if (range === 'month') return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const { start, end } = getRangeBounds(range, date)
   const finalDay = new Date(end)
@@ -198,6 +210,13 @@ export function Reports() {
       }
       return weeks
     }
+    if (range === '3months') {
+      return Array.from({ length: 3 }, (_, i) => {
+        const mStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + i, 1)
+        const mEnd = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + i + 1, 1)
+        return { label: mStart.toLocaleDateString('en-GB', { month: 'short' }), ...bucket(rangeTx.filter(t => t.date >= toStr(mStart) && t.date < toStr(mEnd))) }
+      })
+    }
     if (range === 'all') {
       const years = Array.from(new Set(rangeTx.map(t => t.date.slice(0, 4)))).sort()
       if (years.length === 0) return []
@@ -229,6 +248,9 @@ export function Reports() {
     } else if (range === 'month') {
       bucketStart = new Date(rangeStart); bucketStart.setDate(rangeStart.getDate() + idx * 7)
       bucketEnd = new Date(bucketStart); bucketEnd.setDate(bucketStart.getDate() + 7)
+    } else if (range === '3months') {
+      bucketStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + idx, 1)
+      bucketEnd = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + idx + 1, 1)
     } else if (range === 'all') {
       const yr = clickedBucket
       bucketStart = new Date(`${yr}-01-01`)
@@ -369,7 +391,7 @@ export function Reports() {
               {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-lg font-extrabold text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
             </div>
             <div className="flex rounded-full border border-border bg-secondary p-1">
-              {(['week', 'month', 'year', 'all'] as ReportRange[]).map(item => (
+              {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
                 <button
                   key={item}
                   className={`rounded-full px-4 py-2 text-sm font-extrabold ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
@@ -420,13 +442,13 @@ export function Reports() {
           <span className="flex-1 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
           {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
           <div className="flex rounded-full border border-border bg-secondary p-0.5">
-            {(['week', 'month', 'year', 'all'] as ReportRange[]).map(item => (
+            {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
               <button
                 key={item}
-                className={`rounded-full px-2.5 py-1 text-xs font-extrabold transition-colors ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                className={`rounded-full px-2 py-1 text-xs font-extrabold transition-colors ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
                 onClick={() => handleRangeChange(item)}
               >
-                {item === 'all' ? 'All' : RANGE_LABELS[item]}
+                {item === 'all' ? 'All' : item === '3months' ? '3M' : RANGE_LABELS[item]}
               </button>
             ))}
           </div>
@@ -435,6 +457,7 @@ export function Reports() {
           {[
             { label: 'This month', action: () => { handleRangeChange('month'); setPeriodDate(new Date()) } },
             { label: 'Last month', action: () => { handleRangeChange('month'); const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); setPeriodDate(d) } },
+            { label: 'Last 3 months', action: () => { handleRangeChange('3months'); setPeriodDate(new Date()) } },
             { label: 'This year', action: () => { handleRangeChange('year'); setPeriodDate(new Date()) } },
             { label: 'All time', action: () => handleRangeChange('all') },
           ].map(({ label, action }) => (
