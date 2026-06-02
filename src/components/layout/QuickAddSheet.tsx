@@ -727,7 +727,7 @@ export function QuickAddSheet({ open, onClose, initialType }: { open: boolean; o
                     aria-label="Scan receipt"
                     onClick={() => receiptInputRef.current?.click()}
                     disabled={scanning}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
                   >
                     {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
                   </button>
