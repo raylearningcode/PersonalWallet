@@ -87,10 +87,11 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     if (open) {
       if (initialType) setType(initialType)
       if (initialCash) setCashEnabled(true)
+      setInputCurrency(money.displayCurrency)
       const timer = setTimeout(() => amountInputRef.current?.focus(), 120)
       return () => clearTimeout(timer)
     }
-  }, [open, initialType, initialCash])
+  }, [open, initialType, initialCash, money.displayCurrency])
 
   const merchantSuggestion = useMemo(
     () => getMerchantSuggestion(description, transactions),
@@ -497,173 +498,6 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 )
               )}
 
-              {/* Cash-change assistant — expense + cash wallet only */}
-              {showCashAssistant && (() => {
-                const otherWallets = wallets.filter(w => w.id !== walletId)
-                const parsedExpense = parseNumberInput(amount)
-                const parsedTenderedVal = parseNumberInput(cashTendered)
-                const changeAmount = cashEnabled && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > parsedExpense
-                  ? parsedTenderedVal - parsedExpense : 0
-                const isUnderpay = cashEnabled && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > 0 && parsedTenderedVal < parsedExpense
-                const isTWD = inputCurrency === 'TWD' || selectedWallet?.currency === 'TWD'
-                const { bills: billsChange, coins: coinsChange } = isTWD
-                  ? splitTwdChange(changeAmount, getFiftyCoinRouting())
-                  : { bills: 0, coins: changeAmount }
-                const twdChips = [100, 500, 1000].filter(n => !parsedExpense || parsedExpense <= 0 || n >= parsedExpense)
-
-                return (
-                  <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <span>
-                        <span className="block text-sm font-extrabold text-foreground">Cash payment</span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">Track bill given and route change</span>
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={cashEnabled}
-                        aria-label="Enable cash change tracking"
-                        onClick={() => {
-                          const next = !cashEnabled
-                          setCashEnabled(next)
-                          if (next) {
-                            const coinsWallet = otherWallets.find(w => w.cash_role === 'coins')
-                            setChangeCoinsWalletId(coinsWallet?.id ?? otherWallets[0]?.id ?? '')
-                            const billsWallet = otherWallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed')
-                            setChangeBillsWalletId(billsWallet?.id ?? '')
-                            const parsedExp = parseNumberInput(amount)
-                            if (!cashTendered && parsedExp > 0 && isTWD) {
-                              const minDenom = parsedExp <= 100 ? 100 : parsedExp <= 500 ? 500 : 1000
-                              setCashTendered(String(minDenom))
-                            }
-                          } else {
-                            setCashTendered('')
-                          }
-                        }}
-                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${cashEnabled ? 'bg-primary' : 'bg-muted'}`}
-                      >
-                        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${cashEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                      </button>
-                    </div>
-
-                    {cashEnabled && (
-                      <div className="mt-4 space-y-3">
-                        <div>
-                          <Label className="text-xs font-bold text-muted-foreground">Cash given ({isTWD ? 'TWD' : inputCurrency})</Label>
-                          <Input
-                            aria-label="Cash given"
-                            className="mt-2 bg-secondary"
-                            inputMode="decimal"
-                            value={cashTendered}
-                            onChange={e => setCashTendered(formatNumberInput(e.target.value))}
-                            placeholder="Amount you handed over"
-                          />
-                          {isTWD && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => { const e = parseNumberInput(amount); if (e > 0) setCashTendered(String(e)) }}
-                                className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
-                              >
-                                Exact
-                              </button>
-                              {twdChips.map(chip => (
-                                <button
-                                  key={chip}
-                                  type="button"
-                                  onClick={() => setCashTendered(String(chip))}
-                                  className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTenderedVal === chip ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
-                                >
-                                  NT${chip.toLocaleString()}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {isUnderpay && (
-                            <p className="mt-1.5 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
-                          )}
-                        </div>
-
-                        {changeAmount > 0 && (
-                          <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-                            <p className="text-sm font-extrabold text-primary">
-                              Change: {isTWD
-                                ? `NT$${changeAmount.toLocaleString()}`
-                                : money.format(changeAmount, inputCurrency)}
-                            </p>
-                            {isTWD && billsChange > 0 && coinsChange > 0 && (
-                              <p className="mt-0.5 text-xs text-muted-foreground">
-                                NT${billsChange.toLocaleString()} bills + NT${coinsChange.toLocaleString()} coins
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {changeAmount > 0 && otherWallets.length > 0 && (
-                          <>
-                            {isTWD && billsChange > 0 && (
-                              <div>
-                                <Label className="text-xs font-bold text-muted-foreground">
-                                  Bills change (NT${billsChange.toLocaleString()}) → wallet
-                                </Label>
-                                <select
-                                  aria-label="Bills change destination wallet"
-                                  className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                                  value={changeBillsWalletId}
-                                  onChange={e => setChangeBillsWalletId(e.target.value)}
-                                >
-                                  <option value="">Keep in {selectedWallet?.name}</option>
-                                  {otherWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
-                              </div>
-                            )}
-                            {isTWD && coinsChange > 0 && (
-                              <div>
-                                <Label className="text-xs font-bold text-muted-foreground">
-                                  Coins change (NT${coinsChange.toLocaleString()}) → wallet
-                                </Label>
-                                <select
-                                  aria-label="Coins change destination wallet"
-                                  className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                                  value={changeCoinsWalletId}
-                                  onChange={e => setChangeCoinsWalletId(e.target.value)}
-                                >
-                                  {otherWallets.map(w => (
-                                    <option key={w.id} value={w.id}>
-                                      {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-                            {!isTWD && (
-                              <div>
-                                <Label className="text-xs font-bold text-muted-foreground">Change goes to</Label>
-                                <select
-                                  aria-label="Change destination wallet"
-                                  className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                                  value={changeCoinsWalletId}
-                                  onChange={e => setChangeCoinsWalletId(e.target.value)}
-                                >
-                                  <option value="">Keep in same wallet</option>
-                                  {otherWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        {changeAmount > 0 && otherWallets.length === 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Add a coin pouch wallet in Settings to route change automatically.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-
               {/* Optional note */}
               <Input
                 aria-label="Description"
@@ -932,6 +766,173 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               </button>
             </>
           )}
+
+          {/* ── Cash-change assistant — shown in both modes when expense + cash wallet ── */}
+          {showCashAssistant && (() => {
+            const otherWallets = wallets.filter(w => w.id !== walletId)
+            const parsedExpense = parseNumberInput(amount)
+            const parsedTenderedVal = parseNumberInput(cashTendered)
+            const changeAmount = cashEnabled && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > parsedExpense
+              ? parsedTenderedVal - parsedExpense : 0
+            const isUnderpay = cashEnabled && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > 0 && parsedTenderedVal < parsedExpense
+            const isTWD = inputCurrency === 'TWD' || selectedWallet?.currency === 'TWD'
+            const { bills: billsChange, coins: coinsChange } = isTWD
+              ? splitTwdChange(changeAmount, getFiftyCoinRouting())
+              : { bills: 0, coins: changeAmount }
+            const twdChips = [100, 500, 1000].filter(n => !parsedExpense || parsedExpense <= 0 || n >= parsedExpense)
+
+            return (
+              <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span>
+                    <span className="block text-sm font-extrabold text-foreground">Cash payment</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">Track bill given and route change</span>
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={cashEnabled}
+                    aria-label="Enable cash change tracking"
+                    onClick={() => {
+                      const next = !cashEnabled
+                      setCashEnabled(next)
+                      if (next) {
+                        const coinsWallet = otherWallets.find(w => w.cash_role === 'coins')
+                        setChangeCoinsWalletId(coinsWallet?.id ?? otherWallets[0]?.id ?? '')
+                        const billsWallet = otherWallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed')
+                        setChangeBillsWalletId(billsWallet?.id ?? '')
+                        const parsedExp = parseNumberInput(amount)
+                        if (!cashTendered && parsedExp > 0 && isTWD) {
+                          const minDenom = parsedExp <= 100 ? 100 : parsedExp <= 500 ? 500 : 1000
+                          setCashTendered(String(minDenom))
+                        }
+                      } else {
+                        setCashTendered('')
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${cashEnabled ? 'bg-primary' : 'bg-muted'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${cashEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {cashEnabled && (
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground">Cash given ({isTWD ? 'TWD' : inputCurrency})</Label>
+                      <Input
+                        aria-label="Cash given"
+                        className="mt-2 bg-secondary"
+                        inputMode="decimal"
+                        value={cashTendered}
+                        onChange={e => setCashTendered(formatNumberInput(e.target.value))}
+                        placeholder="Amount you handed over"
+                      />
+                      {isTWD && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { const e = parseNumberInput(amount); if (e > 0) setCashTendered(String(e)) }}
+                            className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
+                          >
+                            Exact
+                          </button>
+                          {twdChips.map(chip => (
+                            <button
+                              key={chip}
+                              type="button"
+                              onClick={() => setCashTendered(String(chip))}
+                              className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTenderedVal === chip ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
+                            >
+                              NT${chip.toLocaleString()}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {isUnderpay && (
+                        <p className="mt-1.5 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
+                      )}
+                    </div>
+
+                    {changeAmount > 0 && (
+                      <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+                        <p className="text-sm font-extrabold text-primary">
+                          Change: {isTWD
+                            ? `NT$${changeAmount.toLocaleString()}`
+                            : money.format(changeAmount, inputCurrency)}
+                        </p>
+                        {isTWD && billsChange > 0 && coinsChange > 0 && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            NT${billsChange.toLocaleString()} bills + NT${coinsChange.toLocaleString()} coins
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {changeAmount > 0 && otherWallets.length > 0 && (
+                      <>
+                        {isTWD && billsChange > 0 && (
+                          <div>
+                            <Label className="text-xs font-bold text-muted-foreground">
+                              Bills change (NT${billsChange.toLocaleString()}) → wallet
+                            </Label>
+                            <select
+                              aria-label="Bills change destination wallet"
+                              className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                              value={changeBillsWalletId}
+                              onChange={e => setChangeBillsWalletId(e.target.value)}
+                            >
+                              <option value="">Keep in {selectedWallet?.name}</option>
+                              {otherWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        {isTWD && coinsChange > 0 && (
+                          <div>
+                            <Label className="text-xs font-bold text-muted-foreground">
+                              Coins change (NT${coinsChange.toLocaleString()}) → wallet
+                            </Label>
+                            <select
+                              aria-label="Coins change destination wallet"
+                              className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                              value={changeCoinsWalletId}
+                              onChange={e => setChangeCoinsWalletId(e.target.value)}
+                            >
+                              {otherWallets.map(w => (
+                                <option key={w.id} value={w.id}>
+                                  {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        {!isTWD && (
+                          <div>
+                            <Label className="text-xs font-bold text-muted-foreground">Change goes to</Label>
+                            <select
+                              aria-label="Change destination wallet"
+                              className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+                              value={changeCoinsWalletId}
+                              onChange={e => setChangeCoinsWalletId(e.target.value)}
+                            >
+                              <option value="">Keep in same wallet</option>
+                              {otherWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {changeAmount > 0 && otherWallets.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Add a coin pouch wallet in Settings to route change automatically.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* ── Sticky save button ── */}
           <div className="sticky bottom-0 -mx-5 bg-background px-5 pb-4 pt-3">
