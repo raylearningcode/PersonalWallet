@@ -132,7 +132,7 @@ export function AllocationEditor({ value, onChange, onSave, isSaving }: Props) {
 
         <Button
           size="sm"
-          className="h-10 w-full"
+          className="h-11 w-full"
           onClick={onSave}
           disabled={!isValid || isSaving}
         >

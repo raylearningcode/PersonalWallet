@@ -316,7 +316,7 @@ export function Estimation() {
           <button
             type="button"
             onClick={() => { localStorage.setItem(PLANNING_TIP_KEY, '1'); setPlanningTipDismissed(true) }}
-            className="shrink-0 rounded-full px-3 py-1 text-xs font-bold text-primary hover:bg-primary/10"
+            className="shrink-0 rounded-full px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10 active:scale-95"
           >
             Got it
           </button>

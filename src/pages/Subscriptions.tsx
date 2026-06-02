@@ -363,7 +363,7 @@ export function Subscriptions() {
                 <Label className="text-xs text-muted-foreground">Amount *</Label>
                 <div className="mt-2 flex gap-2">
                   <select
-                    className="h-10 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                    className="h-11 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
                     value={addForm.currency}
                     onChange={e => setField('currency', e.target.value)}
                   >
@@ -663,7 +663,7 @@ export function Subscriptions() {
                       <Label className="text-xs text-muted-foreground">Amount</Label>
                       <div className="mt-1.5 flex gap-2">
                         <select
-                          className="h-10 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                          className="h-11 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
                           value={editForm.currency}
                           onChange={e => setEditField('currency', e.target.value)}
                         >
