@@ -68,7 +68,7 @@ function ColorSwatch({ color, selected, onClick }: { color: string; selected: bo
       type="button"
       aria-label={`Select color ${color}`}
       aria-pressed={selected}
-      className={`h-10 w-10 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
+      className={`h-11 w-11 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
       style={{ backgroundColor: color }}
       onClick={onClick}
     />
@@ -323,7 +323,7 @@ export function Budget() {
           type="button"
           aria-label="Previous month"
           onClick={() => setPeriodDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -346,7 +346,7 @@ export function Budget() {
           aria-label="Next month"
           onClick={() => setPeriodDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
           disabled={isCurrentMonth}
-          className={`flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background transition-colors ${isCurrentMonth ? 'cursor-not-allowed opacity-30' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background transition-colors ${isCurrentMonth ? 'cursor-not-allowed opacity-30' : 'text-muted-foreground hover:text-foreground'}`}
         >
           <ChevronRight className="h-4 w-4" />
         </button>

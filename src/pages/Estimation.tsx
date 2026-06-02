@@ -318,7 +318,7 @@ export function Estimation() {
               type="button"
               aria-label="Previous month"
               onClick={() => setPlanningDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -340,7 +340,7 @@ export function Estimation() {
               type="button"
               aria-label="Next month"
               onClick={() => setPlanningDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
