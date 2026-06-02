@@ -22,7 +22,7 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download } from 'lucide-react'
+import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
@@ -47,6 +47,20 @@ const WALLET_TYPE_LABELS: Record<string, string> = {
   e_wallet: 'E-wallet', investment: 'Investment', other: 'Other',
 }
 const WALLET_TYPE_ORDER = ['cash', 'bank', 'card', 'e_wallet', 'investment', 'other']
+
+const WALLET_TYPE_CARDS = [
+  { value: 'cash' as const,       Icon: Banknote,   label: 'Cash' },
+  { value: 'bank' as const,       Icon: Landmark,   label: 'Bank' },
+  { value: 'e_wallet' as const,   Icon: Smartphone, label: 'E-wallet' },
+  { value: 'card' as const,       Icon: CreditCard, label: 'Card' },
+  { value: 'investment' as const, Icon: TrendingUp, label: 'Invest' },
+  { value: 'other' as const,      Icon: Package,    label: 'Other' },
+]
+
+const WALLET_NAME_HINTS: Record<string, string> = {
+  cash: 'My wallet', bank: 'BCA / Chase', e_wallet: 'GoPay / PayPal',
+  card: 'Visa / Mastercard', investment: 'Stocks', other: 'Misc',
+}
 
 export function Settings() {
   const money = useMoney()
@@ -670,54 +684,61 @@ export function Settings() {
             <p className="text-sm text-muted-foreground">Add cash wallets, bank accounts, cards, and e-wallets for transaction tracking.</p>
           </CardHeader>
           <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_auto]">
-              <Input
-                aria-label="Wallet name"
-                className="bg-secondary"
-                value={walletName}
-                onChange={event => setWalletName(event.target.value)}
-                onKeyDown={event => event.key === 'Enter' && handleAddWallet()}
-                placeholder="Wallet name"
-              />
-              <select
-                aria-label="Wallet type"
-                className="h-11 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                value={walletType}
-                onChange={event => { setWalletType(event.target.value as Wallet['type']); setWalletCashRole('') }}
-              >
-                <option value="cash">Cash</option>
-                <option value="bank">Bank</option>
-                <option value="card">Card</option>
-                <option value="e_wallet">E-wallet</option>
-                <option value="investment">Investment</option>
-                <option value="other">Other</option>
-              </select>
-              <Button onClick={handleAddWallet} disabled={addWallet.isPending}>Add wallet</Button>
-            </div>
-            {walletType === 'cash' && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold text-muted-foreground">Cash role:</span>
-                  {([['', 'General'], ['notes', 'Notes / Wallet'], ['coins', 'Coins / Pouch'], ['mixed', 'Mixed']] as const).map(([val, label]) => (
+            <div className="space-y-4 rounded-2xl border border-border bg-secondary/40 p-4">
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Wallet type</p>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  {WALLET_TYPE_CARDS.map(({ value, Icon, label }) => (
                     <button
-                      key={val}
+                      key={value}
                       type="button"
-                      onClick={() => setWalletCashRole(val as CashRole | '')}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${walletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                      onClick={() => { setWalletType(value); setWalletCashRole('') }}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 transition-colors active:scale-95 ${walletType === value ? 'border-primary bg-primary/10' : 'border-border bg-secondary hover:border-primary/40'}`}
                     >
-                      {label}
+                      <Icon className={`h-5 w-5 ${walletType === value ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <span className={`text-xs font-bold ${walletType === value ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>
                     </button>
                   ))}
                 </div>
-                {walletCashRole && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {walletCashRole === 'notes' && 'Bills wallet — NT$100+ change will route here. Use for your main cash wallet.'}
-                    {walletCashRole === 'coins' && 'Coins pouch — change under NT$100 routes here automatically after cash payments.'}
-                    {walletCashRole === 'mixed' && 'Mixed wallet — holds both bills and coins. Change routing goes here for non-TWD currencies.'}
-                  </p>
-                )}
               </div>
-            )}
+
+              {walletType === 'cash' && (
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Cash role</p>
+                  <div className="flex flex-wrap gap-2">
+                    {([['', 'General'], ['notes', 'Notes / Wallet'], ['coins', 'Coins / Pouch'], ['mixed', 'Mixed']] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setWalletCashRole(val as CashRole | '')}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${walletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {walletCashRole && (
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      {walletCashRole === 'notes' && 'Bills wallet — NT$100+ change will route here. Use for your main cash wallet.'}
+                      {walletCashRole === 'coins' && 'Coins pouch — change under NT$100 routes here automatically after cash payments.'}
+                      {walletCashRole === 'mixed' && 'Mixed wallet — holds both bills and coins. Change routing goes here for non-TWD currencies.'}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Input
+                  aria-label="Wallet name"
+                  className="flex-1 bg-background"
+                  value={walletName}
+                  onChange={event => setWalletName(event.target.value)}
+                  onKeyDown={event => event.key === 'Enter' && handleAddWallet()}
+                  placeholder={`Name — e.g. ${WALLET_NAME_HINTS[walletType] ?? 'My wallet'}`}
+                />
+                <Button onClick={handleAddWallet} disabled={addWallet.isPending || !walletName.trim()}>Add wallet</Button>
+              </div>
+            </div>
             <div className="max-h-[320px] overflow-y-auto space-y-5 pr-1">
               {walletGroups.map(group => (
                 <div key={group.type}>

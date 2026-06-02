@@ -118,8 +118,8 @@ describe('Settings', () => {
     renderSettings()
 
     fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Card' }))
     fireEvent.change(screen.getByLabelText('Wallet name'), { target: { value: 'Taiwan card' } })
-    fireEvent.change(screen.getByLabelText('Wallet type'), { target: { value: 'card' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }))
 
     expect(addWallet).toHaveBeenCalledWith(expect.objectContaining({
