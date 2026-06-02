@@ -166,14 +166,6 @@ export function Reports() {
   const topCategory = categoryTotals[0]?.[0] ?? '—'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
 
-  const periodSummary = useMemo(() => {
-    const items: string[] = []
-    if (incomeDiff) items.push(`Income ${incomeDiff.up ? 'increased' : 'decreased'} by ${Math.abs(incomeDiff.pct)}% vs previous ${RANGE_LABELS[range].toLowerCase()}`)
-    if (expenseDiff) items.push(`Expenses ${expenseDiff.up ? 'increased' : 'decreased'} by ${Math.abs(expenseDiff.pct)}% vs previous ${RANGE_LABELS[range].toLowerCase()}`)
-    if (savingsRate > 0) items.push(`Savings rate this period: ${savingsRate}%`)
-    if (topCategory !== '—') items.push(`Top spending category: ${topCategory} (${categoryTotals[0] ? Math.round((categoryTotals[0][1] / activeTotal) * 100) : 0}% of total)`)
-    return items
-  }, [incomeDiff, expenseDiff, savingsRate, topCategory, range, categoryTotals, activeTotal])
 
   const walletActivity = useMemo(() => {
     if (wallets.length === 0) return []
@@ -595,18 +587,48 @@ export function Reports() {
         </CardContent>
       </Card>
 
-      {/* Narrative summary */}
-      {periodSummary.length > 0 && (
-        <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period summary</p>
-          <ul className="mt-3 space-y-1.5">
-            {periodSummary.map((line, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                {line}
-              </li>
-            ))}
-          </ul>
+      {/* Period review metric cards */}
+      {(incomeDiff || expenseDiff || savingsRate > 0 || topCategory !== '—') && (
+        <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period review</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {incomeDiff && (
+              <div className="rounded-xl bg-secondary/60 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Income</p>
+                <p className={`mt-1 text-xl font-extrabold tabular-nums ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
+                  {incomeDiff.up ? '▲' : '▼'} {Math.abs(incomeDiff.pct)}%
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">vs prev {RANGE_LABELS[range].toLowerCase()}</p>
+              </div>
+            )}
+            {expenseDiff && (
+              <div className="rounded-xl bg-secondary/60 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Expenses</p>
+                <p className={`mt-1 text-xl font-extrabold tabular-nums ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
+                  {expenseDiff.up ? '▲' : '▼'} {Math.abs(expenseDiff.pct)}%
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">vs prev {RANGE_LABELS[range].toLowerCase()}</p>
+              </div>
+            )}
+            {savingsRate > 0 && (
+              <div className="rounded-xl bg-secondary/60 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Savings rate</p>
+                <p className={`mt-1 text-xl font-extrabold tabular-nums ${savingsRate >= 20 ? 'text-primary' : savingsRate >= 10 ? 'text-[#FFCF73]' : 'text-[#FF8388]'}`}>
+                  {savingsRate}%
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{savingsRate >= 20 ? 'Great job' : savingsRate >= 10 ? 'Getting there' : 'Below target'}</p>
+              </div>
+            )}
+            {topCategory !== '—' && (
+              <div className="rounded-xl bg-secondary/60 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Top category</p>
+                <p className="mt-1 truncate text-sm font-extrabold text-foreground">{topCategory}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  {categoryTotals[0] ? Math.round((categoryTotals[0][1] / activeTotal) * 100) : 0}% of total spend
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
