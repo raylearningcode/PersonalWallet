@@ -299,6 +299,7 @@ export function QuickAddSheet({ open, onClose, initialType }: { open: boolean; o
     ? 'New transaction'
     : type === 'transfer' ? 'Transfer money'
     : type === 'income' ? 'Add income'
+    : cashEnabled ? 'Cash payment'
     : 'Add expense'
 
   return (
