@@ -361,17 +361,29 @@ export function Budget() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-xl">Category allocation</CardTitle>
-            <div className="flex rounded-xl border border-border bg-secondary p-0.5 text-xs font-bold">
-              {(['monthly', 'daily', 'remaining'] as const).map(mode => (
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-xl border border-border bg-secondary p-0.5 text-xs font-bold">
+                {(['monthly', 'daily', 'remaining'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setViewMode(mode)}
+                    className={`rounded-lg px-3 py-1.5 transition-colors ${viewMode === mode ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {mode === 'monthly' ? 'Monthly' : mode === 'daily' ? 'Daily' : 'Remaining'}
+                  </button>
+                ))}
+              </div>
+              {!showAdd && (
                 <button
-                  key={mode}
                   type="button"
-                  onClick={() => setViewMode(mode)}
-                  className={`rounded-lg px-3 py-1.5 transition-colors ${viewMode === mode ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  aria-label="Add budget category"
+                  onClick={() => { setShowAdd(true); setTimeout(() => addNameInputRef.current?.focus(), 80) }}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary text-lg font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
                 >
-                  {mode === 'monthly' ? 'Monthly' : mode === 'daily' ? 'Daily' : 'Remaining'}
+                  +
                 </button>
-              ))}
+              )}
             </div>
           </div>
         </CardHeader>

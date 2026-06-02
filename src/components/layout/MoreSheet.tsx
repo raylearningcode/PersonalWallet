@@ -5,13 +5,28 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
 
-const MORE_NAV = [
-  { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
-  { to: '/subscriptions', label: 'Recurring', Icon: RefreshCw, color: '#FADBEA' },
-  { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
-  { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
-  { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
-  { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
+const MORE_NAV_GROUPS = [
+  {
+    label: 'Plan',
+    items: [
+      { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
+      { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
+      { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
+    ],
+  },
+  {
+    label: 'Track',
+    items: [
+      { to: '/subscriptions', label: 'Recurring', Icon: RefreshCw, color: '#FADBEA' },
+      { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+    ],
+  },
+  {
+    label: 'Manage',
+    items: [
+      { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
+    ],
+  },
 ]
 
 interface MoreSheetProps {
@@ -56,22 +71,29 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
 
         <h2 className="mb-5 text-lg font-extrabold text-foreground">More</h2>
 
-        {/* App-style icon grid */}
-        <div className="mb-6 grid grid-cols-3 gap-4">
-          {MORE_NAV.map(({ to, label, Icon, color }) => (
-            <button
-              key={to}
-              onClick={() => handleNav(to)}
-              className="flex flex-col items-center gap-2 rounded-2xl p-3 transition-colors active:scale-95 hover:bg-secondary"
-            >
-              <div
-                className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
-                style={{ backgroundColor: color + '33', border: `1.5px solid ${color}55` }}
-              >
-                <Icon className="h-6 w-6" style={{ color }} />
+        {/* Grouped navigation */}
+        <div className="mb-6 space-y-5">
+          {MORE_NAV_GROUPS.map(group => (
+            <div key={group.label}>
+              <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">{group.label}</p>
+              <div className="grid grid-cols-3 gap-3">
+                {group.items.map(({ to, label, Icon, color }) => (
+                  <button
+                    key={to}
+                    onClick={() => handleNav(to)}
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 transition-colors active:scale-95 hover:bg-secondary"
+                  >
+                    <div
+                      className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
+                      style={{ backgroundColor: color + '33', border: `1.5px solid ${color}55` }}
+                    >
+                      <Icon className="h-6 w-6" style={{ color }} />
+                    </div>
+                    <span className="text-xs font-bold text-foreground">{label}</span>
+                  </button>
+                ))}
               </div>
-              <span className="text-xs font-bold text-foreground">{label}</span>
-            </button>
+            </div>
           ))}
         </div>
 
