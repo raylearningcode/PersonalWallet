@@ -22,7 +22,7 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle } from 'lucide-react'
+import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
@@ -450,7 +450,7 @@ export function Settings() {
       {/* iOS install guidance */}
       {!effectiveTab && isIos && !isStandalone && !appInstalled && (
         <div className="mb-4 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 lg:hidden">
-          <span className="mt-0.5 text-xl">📱</span>
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Smartphone className="h-4 w-4 text-primary" /></span>
           <div className="min-w-0">
             <p className="font-bold text-foreground">Add to Home Screen</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -1052,34 +1052,38 @@ export function Settings() {
           </CardHeader>
           <CardContent className="px-5 pb-6 sm:px-8 sm:pb-8">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {[
-                {
-                  label: 'Storage',
-                  value: session ? 'Cloud (Supabase)' : 'This device only',
-                  status: session ? 'ok' : 'info',
-                  icon: session ? '☁️' : '📱',
-                },
-                {
-                  label: 'Last backup',
-                  value: lastExportDate ? new Date(lastExportDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never',
-                  status: lastExportDate ? 'ok' : 'warn',
-                  icon: '💾',
-                },
-                {
-                  label: 'PIN lock',
-                  value: pinEnabled ? 'Enabled' : 'Off',
-                  status: pinEnabled ? 'ok' : 'info',
-                  icon: '🔒',
-                },
-                {
-                  label: 'Cloud sync',
-                  value: session ? 'Active' : 'Off (guest mode)',
-                  status: session ? 'ok' : 'info',
-                  icon: '🔄',
-                },
-              ].map(item => (
+              {(
+                [
+                  {
+                    label: 'Storage',
+                    value: session ? 'Cloud (Supabase)' : 'This device only',
+                    status: session ? 'ok' : 'info',
+                    Icon: session ? Cloud : Smartphone,
+                  },
+                  {
+                    label: 'Last backup',
+                    value: lastExportDate ? new Date(lastExportDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never',
+                    status: lastExportDate ? 'ok' : 'warn',
+                    Icon: HardDrive,
+                  },
+                  {
+                    label: 'PIN lock',
+                    value: pinEnabled ? 'Enabled' : 'Off',
+                    status: pinEnabled ? 'ok' : 'info',
+                    Icon: Lock,
+                  },
+                  {
+                    label: 'Cloud sync',
+                    value: session ? 'Active' : 'Off (guest mode)',
+                    status: session ? 'ok' : 'info',
+                    Icon: RefreshCw,
+                  },
+                ] as { label: string; value: string; status: string; Icon: ElementType }[]
+              ).map(item => (
                 <div key={item.label} className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${item.status === 'warn' ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary'}`}>
-                  <span className="text-xl">{item.icon}</span>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/60">
+                    <item.Icon className={`h-4 w-4 ${item.status === 'warn' ? 'text-[#FFCF73]' : item.status === 'ok' ? 'text-primary' : 'text-muted-foreground'}`} />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground">{item.label}</p>
                     <p className={`truncate text-sm font-bold ${item.status === 'warn' ? 'text-[#FFCF73]' : item.status === 'ok' ? 'text-primary' : 'text-foreground'}`}>{item.value}</p>

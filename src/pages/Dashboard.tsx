@@ -12,7 +12,7 @@ import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
 import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
 import { computeStreak } from '@/lib/streak'
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart, Zap, Calendar, ChevronUp, ChevronDown } from 'lucide-react'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart, Zap, Calendar, ChevronUp, ChevronDown, Lock } from 'lucide-react'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -361,7 +361,7 @@ export function Dashboard() {
         <div className="mb-6 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3">
           <Flame className="h-5 w-5 shrink-0 text-primary" />
           <div>
-            <p className="text-sm font-extrabold text-primary">{streak.current}-day logging streak 🔥</p>
+            <p className="text-sm font-extrabold text-primary">{streak.current}-day logging streak</p>
             <p className="text-xs text-muted-foreground">
               {streak.current === streak.longest ? 'Personal best!' : `Best: ${streak.longest} days`} · Keep recording daily to stay on track.
             </p>
@@ -991,7 +991,7 @@ export function Dashboard() {
                         'Generate your monthly financial summary',
                       ].map(text => (
                         <div key={text} className="flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2">
-                          <span className="text-sm">🔒</span>
+                          <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">{text}</span>
                         </div>
                       ))}

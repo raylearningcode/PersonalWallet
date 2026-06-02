@@ -500,7 +500,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         value={transferWalletId}
                         onChange={e => setTransferWalletId(e.target.value)}
                       >
-                        {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        {wallets.map(w => <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}</option>)}
                       </select>
                     </div>
                   </div>
@@ -697,7 +697,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       value={transferWalletId}
                       onChange={e => setTransferWalletId(e.target.value)}
                     >
-                      {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      {wallets.map(w => <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}</option>)}
                     </select>
                   </div>
                 </div>

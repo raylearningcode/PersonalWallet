@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
-import { ChevronLeft, ChevronRight, Download, Upload, FileText, TrendingUp, TrendingDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Upload, FileText, TrendingUp, TrendingDown, X } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all'
@@ -583,7 +583,7 @@ export function Reports() {
             <div className="mt-4 rounded-2xl border border-border bg-secondary/60 p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-extrabold text-foreground">{clickedBucket} — {bucketTx.length} transaction{bucketTx.length !== 1 ? 's' : ''}</p>
-                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">✕</button>
+                <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"><X className="h-4 w-4" /></button>
               </div>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {bucketTx.map(tx => (
@@ -681,7 +681,7 @@ export function Reports() {
                     className="mb-2 flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
                     onClick={() => setSelectedCategory(null)}
                   >
-                    ✕ Clear filter: {selectedCategory}
+                    <X className="h-3 w-3" /> Clear filter: {selectedCategory}
                   </button>
                 )}
                 {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
