@@ -314,6 +314,28 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Wallet balance strip — mobile only */}
+      {!walletPending && wallets.length > 0 && (
+        <div className="relative mb-5 -mx-4 lg:hidden">
+          <div className="flex gap-3 overflow-x-auto px-4 pb-1 scrollbar-none">
+            {wallets.map(w => {
+              const bal = walletBalances.get(w.id) ?? 0
+              return (
+                <Link
+                  key={w.id}
+                  to="/settings?section=wallets"
+                  className="flex min-w-[110px] shrink-0 flex-col rounded-2xl border border-border bg-card px-3 py-3 transition-colors hover:border-primary/30"
+                >
+                  <span className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{w.name}</span>
+                  <span className={`mt-1.5 text-sm font-extrabold tabular-nums whitespace-nowrap ${bal < 0 ? 'text-[#FF8388]' : 'text-foreground'}`}>{fmt(bal)}</span>
+                </Link>
+              )
+            })}
+          </div>
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent" />
+        </div>
+      )}
+
       {/* Hero stat cards — 2×2 on mobile, 4-col on desktop */}
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6">
         {(txPending || walletPending || catPending) ? (
