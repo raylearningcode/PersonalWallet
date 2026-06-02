@@ -600,18 +600,27 @@ export function Settings() {
               <Button onClick={handleAddWallet} disabled={addWallet.isPending}>Add wallet</Button>
             </div>
             {walletType === 'cash' && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-muted-foreground">Cash role:</span>
-                {([['', 'General'], ['notes', 'Notes / Wallet'], ['coins', 'Coins / Pouch'], ['mixed', 'Mixed']] as const).map(([val, label]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setWalletCashRole(val as CashRole | '')}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${walletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-muted-foreground">Cash role:</span>
+                  {([['', 'General'], ['notes', 'Notes / Wallet'], ['coins', 'Coins / Pouch'], ['mixed', 'Mixed']] as const).map(([val, label]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setWalletCashRole(val as CashRole | '')}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${walletCashRole === val ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {walletCashRole && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {walletCashRole === 'notes' && 'Bills wallet — NT$100+ change will route here. Use for your main cash wallet.'}
+                    {walletCashRole === 'coins' && 'Coins pouch — change under NT$100 routes here automatically after cash payments.'}
+                    {walletCashRole === 'mixed' && 'Mixed wallet — holds both bills and coins. Change routing goes here for non-TWD currencies.'}
+                  </p>
+                )}
               </div>
             )}
             <div className="max-h-[320px] overflow-y-auto space-y-5 pr-1">
