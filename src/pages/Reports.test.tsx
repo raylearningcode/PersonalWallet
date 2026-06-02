@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { Reports } from './Reports'
 
 vi.mock('@/lib/queries', () => ({
@@ -30,7 +31,7 @@ vi.mock('@/lib/currency', () => ({
 
 describe('Reports', () => {
   it('switches report range between week, month, and year', () => {
-    render(<Reports />)
+    render(<MemoryRouter><Reports /></MemoryRouter>)
 
     // Range buttons appear in both the header and the mobile sticky bar
     expect(screen.getAllByRole('button', { name: 'Week' }).length).toBeGreaterThan(0)
@@ -42,11 +43,11 @@ describe('Reports', () => {
   })
 
   it('moves between specific reporting periods', () => {
-    render(<Reports />)
+    render(<MemoryRouter><Reports /></MemoryRouter>)
 
     // Period label appears in both the header and the mobile sticky bar
     expect(screen.getAllByText('June 2026').length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/No expense data for this period\./).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/No transactions in this period\./).length).toBeGreaterThan(0)
     // Go back to May 2026 where mock transactions exist
     fireEvent.click(screen.getAllByRole('button', { name: 'Previous period' })[0])
     expect(screen.getAllByText('May 2026').length).toBeGreaterThan(0)

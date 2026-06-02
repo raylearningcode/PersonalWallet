@@ -478,6 +478,18 @@ export function Goals() {
                       </div>
                     )}
                   </button>
+                  {!done && (
+                    <div className="border-t border-border px-5 py-3 sm:px-6">
+                      <button
+                        type="button"
+                        onClick={() => { setSheetGoal(goal); setContributeAmount(''); setContributeWalletId(wallets[0]?.id ?? '') }}
+                        className="w-full rounded-xl bg-primary/10 py-2.5 text-sm font-extrabold text-primary transition-colors hover:bg-primary/20 active:scale-[0.98]"
+                        aria-label={`Log contribution to ${goal.name}`}
+                      >
+                        + Contribute
+                      </button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )

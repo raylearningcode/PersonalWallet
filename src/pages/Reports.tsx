@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useBudgetCategories, useTransactions, useAddTransaction, useWallets } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
@@ -492,12 +493,16 @@ export function Reports() {
         <CardContent className="px-2 pb-4 sm:px-6">
           {rangeTx.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-sm text-muted-foreground">No expense data for this period.</p>
+              <p className="text-sm text-muted-foreground">No transactions in this period.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Try a different period or add a transaction.</p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
                 <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => { handleRangeChange('month'); setPeriodDate(new Date()) }}>This month</button>
                 <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => { handleRangeChange('year'); setPeriodDate(new Date()) }}>This year</button>
                 <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => handleRangeChange('all')}>All time</button>
               </div>
+              <Link to="/transactions" className="mt-4 inline-block rounded-full bg-primary px-5 py-2 text-xs font-extrabold text-primary-foreground hover:bg-primary/90">
+                Add transaction
+              </Link>
             </div>
           ) : (
             <>
