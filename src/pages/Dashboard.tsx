@@ -491,14 +491,38 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Deep tools row (mobile) */}
+      {!isNewUser && (
+        <div className="mb-6 lg:hidden">
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { to: '/reports', label: 'Reports', color: '#93C5FD', Icon: BarChart2 },
+              { to: '/investing', label: 'Investing', color: '#FFD276', Icon: TrendingUp },
+              { to: '/estimation', label: 'Planning', color: '#C4AEFF', Icon: PieChart },
+            ] as const).map(({ to, label, color, Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-secondary py-3 transition-colors active:scale-95 hover:border-primary/30"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: color + '30' }}>
+                  <Icon className="h-4 w-4" style={{ color }} />
+                </span>
+                <span className="text-xs font-bold text-foreground">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mobile expand toggle */}
       <div className="mb-6 flex justify-center lg:hidden">
         <button
           type="button"
           onClick={() => setShowDetails(v => !v)}
-          className="rounded-full border border-border bg-secondary px-6 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+          className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-6 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
         >
-          {showDetails ? '▲ See less' : '▼ See full dashboard'}
+          {showDetails ? '▲ Less' : '▼ More insights'}
         </button>
       </div>
 
