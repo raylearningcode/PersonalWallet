@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -74,6 +74,8 @@ export function Transactions() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [bulkCategorySheet, setBulkCategorySheet] = useState(false)
+  const [bulkCategoryTarget, setBulkCategoryTarget] = useState('')
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
@@ -542,6 +544,17 @@ export function Transactions() {
     const toReview = sortedTransactions.filter(tx => selectedIds.has(tx.id) && tx.needs_review)
     for (const tx of toReview) markReviewed.mutate(tx.id)
     if (toReview.length > 0) toast.success(`${toReview.length} marked as reviewed`)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const bulkChangeCategory = async () => {
+    if (!bulkCategoryTarget) return
+    const toUpdate = sortedTransactions.filter(tx => selectedIds.has(tx.id))
+    for (const tx of toUpdate) await updateTransaction.mutateAsync({ id: tx.id, category: bulkCategoryTarget })
+    toast.success(`Category updated on ${toUpdate.length} transaction${toUpdate.length !== 1 ? 's' : ''}`)
+    setBulkCategorySheet(false)
+    setBulkCategoryTarget('')
     setSelectMode(false)
     setSelectedIds(new Set())
   }
@@ -1357,34 +1370,74 @@ export function Transactions() {
       </div>
       {/* Bulk action bar — shown when items are selected */}
       {selectMode && selectedIds.size > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 shadow-lg sm:px-6">
-          <span className="text-sm font-extrabold text-foreground">{selectedIds.size} selected</span>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={bulkMarkReviewed}
-              disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
-            >
-              <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-              Mark reviewed
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
-              onClick={() => setBulkDeleteConfirm(true)}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Delete
-            </Button>
-            <Button size="sm" variant="secondary" onClick={toggleSelectMode}>
-              <X className="mr-1.5 h-3.5 w-3.5" />
-              Cancel
-            </Button>
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card px-4 py-3 shadow-lg sm:px-6" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-extrabold text-foreground">{selectedIds.size} selected</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => { setBulkCategoryTarget(categories[0]?.name ?? ''); setBulkCategorySheet(true) }}
+                disabled={categories.length === 0}
+              >
+                <Tag className="mr-1.5 h-3.5 w-3.5" />
+                Recategorize
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={bulkMarkReviewed}
+                disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
+              >
+                <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                Reviewed
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                onClick={() => setBulkDeleteConfirm(true)}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Delete
+              </Button>
+              <Button size="sm" variant="secondary" onClick={toggleSelectMode}>
+                <X className="mr-1.5 h-3.5 w-3.5" />
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Bulk recategorize sheet */}
+      <Sheet open={bulkCategorySheet} onOpenChange={open => { if (!open) setBulkCategorySheet(false) }}>
+        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background px-6 pb-10 pt-6">
+          <SheetHeader className="mb-5">
+            <SheetTitle>Recategorize {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
+            <SheetDescription>Choose a new category for all selected transactions.</SheetDescription>
+          </SheetHeader>
+          <div className="mb-5 flex flex-wrap gap-2">
+            {categories.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setBulkCategoryTarget(c.name)}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-colors ${bulkCategoryTarget === c.name ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+              >
+                {c.color && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />}
+                {c.name}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-3">
+            <Button className="flex-1" onClick={bulkChangeCategory} disabled={!bulkCategoryTarget}>
+              Apply to {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}
+            </Button>
+            <Button variant="secondary" onClick={() => setBulkCategorySheet(false)}>Cancel</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget ? `Delete ${deleteTarget.description}?` : ''}
