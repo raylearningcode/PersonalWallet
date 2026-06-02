@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -92,6 +93,7 @@ export function Settings() {
     setInstallPrompt(null)
   }
 
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const s = new URLSearchParams(window.location.search).get('section')
     return (s && (tabs as readonly string[]).includes(s)) ? s as SettingsTab : 'profile'
@@ -100,6 +102,13 @@ export function Settings() {
     const s = new URLSearchParams(window.location.search).get('section')
     return (s && (tabs as readonly string[]).includes(s)) ? s as SettingsTab : null
   })
+  useEffect(() => {
+    const s = searchParams.get('section')
+    if (s && (tabs as readonly string[]).includes(s)) {
+      setActiveTab(s as SettingsTab)
+      setMobilePage(s as SettingsTab)
+    }
+  }, [searchParams])
   const effectiveTab = isDesktop ? activeTab : mobilePage
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')

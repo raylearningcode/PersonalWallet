@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { Settings } from './Settings'
+
+const renderSettings = (initialPath = '/settings') =>
+  render(<MemoryRouter initialEntries={[initialPath]}><Settings /></MemoryRouter>)
 
 const saveSettings = vi.fn()
 const signIn = vi.fn()
@@ -59,7 +63,7 @@ vi.mock('@/lib/currency', () => ({
 
 describe('Settings', () => {
   it('restores missing starter categories without duplicating existing ones', async () => {
-    render(<Settings />)
+    renderSettings()
 
     fireEvent.click(screen.getByRole('button', { name: 'Categories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Restore starter categories' }))
@@ -70,7 +74,7 @@ describe('Settings', () => {
   })
 
   it('asks for confirmation before deleting a category', () => {
-    render(<Settings />)
+    renderSettings()
 
     fireEvent.click(screen.getByRole('button', { name: 'Categories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete Income category' }))
@@ -83,7 +87,7 @@ describe('Settings', () => {
   })
 
   it('saves a selected currency without unused preference fields', () => {
-    render(<Settings />)
+    renderSettings()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Display currency' }))
     fireEvent.click(screen.getByRole('option', { name: 'TWD' }))
@@ -99,7 +103,7 @@ describe('Settings', () => {
   })
 
   it('provides email login and signup actions', () => {
-    render(<Settings />)
+    renderSettings()
 
     fireEvent.change(screen.getByLabelText('Auth email'), { target: { value: 'ray@example.com' } })
     fireEvent.change(screen.getByLabelText('Auth password'), { target: { value: 'secret123' } })
@@ -111,7 +115,7 @@ describe('Settings', () => {
   })
 
   it('adds wallet and card options', () => {
-    render(<Settings />)
+    renderSettings()
 
     fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
     fireEvent.change(screen.getByLabelText('Wallet name'), { target: { value: 'Taiwan card' } })
@@ -127,7 +131,7 @@ describe('Settings', () => {
   })
 
   it('shows live wallet balance from transactions', () => {
-    render(<Settings />)
+    renderSettings()
 
     fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
     expect(screen.getByText('Rp 1,650,000')).toBeInTheDocument()
