@@ -65,10 +65,11 @@ function ColorSwatch({ color, selected, onClick }: { color: string; selected: bo
   return (
     <button
       type="button"
+      aria-label={`Select color ${color}`}
+      aria-pressed={selected}
       className={`h-10 w-10 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${selected ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent'}`}
       style={{ backgroundColor: color }}
       onClick={onClick}
-      title={color}
     />
   )
 }

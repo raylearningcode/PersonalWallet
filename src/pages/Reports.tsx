@@ -600,7 +600,7 @@ export function Reports() {
                     key={item}
                     className={`rounded-full px-5 py-2 text-sm font-extrabold capitalize transition-colors ${mode === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     onClick={() => handleModeChange(item)}
-                    title={`Show ${item} breakdown`}
+                    aria-label={`Show ${item} breakdown`}
                   >
                     {item}
                   </button>
@@ -630,7 +630,7 @@ export function Reports() {
                     key={name}
                     className={`flex w-full items-center justify-between gap-4 rounded-xl px-2 py-1.5 transition-colors ${selectedCategory === name ? 'bg-secondary' : 'hover:bg-secondary/60'}`}
                     onClick={() => setSelectedCategory(selectedCategory === name ? null : name)}
-                    title={`Filter transactions by ${name}`}
+                    aria-label={`Filter transactions by ${name}`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />

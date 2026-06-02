@@ -669,7 +669,7 @@ export function Transactions() {
                     if (merchantSuggestion.wallet_id) setWalletId(merchantSuggestion.wallet_id)
                     setType(merchantSuggestion.type === 'income' || merchantSuggestion.type === 'transfer' ? merchantSuggestion.type : 'expense')
                   }}
-                  title="Fills in category, wallet, and type from last time you used this merchant"
+                  aria-label="Use last merchant suggestion — fills in category, wallet, and type"
                 >
                   Last time: {merchantSuggestion.category}
                   {merchantSuggestion.wallet_id && wallets.find(w => w.id === merchantSuggestion.wallet_id) && (
@@ -1068,7 +1068,7 @@ export function Transactions() {
                 variant="secondary"
                 onClick={handleGenerateDue}
                 disabled={runDueRecurringRules.isPending}
-                title={nextDueRule ? `Next due: ${nextDueRule.description} on ${nextDueRule.next_due_date}` : 'No upcoming rules'}
+                aria-label={nextDueRule ? `Generate due recurring transactions — next: ${nextDueRule.description} on ${nextDueRule.next_due_date}` : 'Generate due recurring transactions — no upcoming rules'}
               >
                 Generate due
               </Button>

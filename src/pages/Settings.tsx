@@ -681,6 +681,7 @@ export function Settings() {
                           <>
                             <div className="flex items-center gap-2">
                               <input
+                                aria-label={`New name for ${wallet.name} wallet`}
                                 className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
                                 value={editingWalletName}
                                 autoFocus
@@ -782,6 +783,7 @@ export function Settings() {
                   {editingCategoryId === category.id ? (
                     <>
                       <input
+                        aria-label={`New name for ${category.name} category`}
                         className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
                         value={editingCategoryName}
                         autoFocus
