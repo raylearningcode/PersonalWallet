@@ -67,6 +67,14 @@ body::before {
   background: hsl(var(--muted-foreground) / 0.4);
 }
 
+/* Prevent iOS Safari auto-zoom when inputs are focused (requires font-size >= 16px) */
+@media (max-width: 639px) {
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* Date input */
 input[type="date"],
 input[type="datetime-local"] {
