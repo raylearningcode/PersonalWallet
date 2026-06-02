@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
-import { ChevronLeft, ChevronRight, Download, Upload, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Upload, FileText, TrendingUp, TrendingDown } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all'
@@ -430,9 +430,9 @@ export function Reports() {
       {/* Mobile sticky period bar */}
       <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden">
         <div className="flex items-center justify-between gap-2">
-          {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}>‹</button>}
+          {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
           <span className="flex-1 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-          {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-lg font-extrabold text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}>›</button>}
+          {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
           <div className="flex rounded-full border border-border bg-secondary p-0.5">
             {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
               <button
@@ -479,8 +479,8 @@ export function Reports() {
             <div className="mt-2 flex items-end gap-3">
               <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalIncome)}</span>
               {incomeDiff && (
-                <span className={`mb-0.5 text-sm font-bold ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
-                  {incomeDiff.up ? '▲' : '▼'} {Math.abs(incomeDiff.pct)}%
+                <span className={`mb-0.5 flex items-center gap-0.5 text-sm font-bold ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
+                  {incomeDiff.up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />} {Math.abs(incomeDiff.pct)}%
                 </span>
               )}
             </div>
@@ -491,8 +491,8 @@ export function Reports() {
             <div className="mt-2 flex items-end gap-3">
               <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalExpenses)}</span>
               {expenseDiff && (
-                <span className={`mb-0.5 text-sm font-bold ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
-                  {expenseDiff.up ? '▲' : '▼'} {Math.abs(expenseDiff.pct)}%
+                <span className={`mb-0.5 flex items-center gap-0.5 text-sm font-bold ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
+                  {expenseDiff.up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />} {Math.abs(expenseDiff.pct)}%
                 </span>
               )}
             </div>
@@ -595,8 +595,8 @@ export function Reports() {
             {incomeDiff && (
               <div className="rounded-xl bg-secondary/60 px-3 py-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Income</p>
-                <p className={`mt-1 text-xl font-extrabold tabular-nums ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
-                  {incomeDiff.up ? '▲' : '▼'} {Math.abs(incomeDiff.pct)}%
+                <p className={`mt-1 flex items-center gap-1 text-xl font-extrabold tabular-nums ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
+                  {incomeDiff.up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />} {Math.abs(incomeDiff.pct)}%
                 </p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">vs prev {RANGE_LABELS[range].toLowerCase()}</p>
               </div>
@@ -604,8 +604,8 @@ export function Reports() {
             {expenseDiff && (
               <div className="rounded-xl bg-secondary/60 px-3 py-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Expenses</p>
-                <p className={`mt-1 text-xl font-extrabold tabular-nums ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
-                  {expenseDiff.up ? '▲' : '▼'} {Math.abs(expenseDiff.pct)}%
+                <p className={`mt-1 flex items-center gap-1 text-xl font-extrabold tabular-nums ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
+                  {expenseDiff.up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />} {Math.abs(expenseDiff.pct)}%
                 </p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">vs prev {RANGE_LABELS[range].toLowerCase()}</p>
               </div>

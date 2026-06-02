@@ -11,7 +11,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
@@ -440,14 +440,14 @@ export function Estimation() {
           </div>
           <div className="mt-3 border-t border-border pt-3">
             {monthlyIncome >= monthlyExpenses + (wishlistTotal > 0 ? wishlistTotal : 0) ? (
-              <p className="font-extrabold text-primary">✓ Affordable — surplus of {money.formatDisplay(monthlyIncome - monthlyExpenses - wishlistTotal)}/mo after everything</p>
+              <p className="flex items-center gap-1.5 font-extrabold text-primary"><Check className="h-4 w-4 shrink-0" /> Affordable — surplus of {money.formatDisplay(monthlyIncome - monthlyExpenses - wishlistTotal)}/mo after everything</p>
             ) : monthlyIncome >= monthlyExpenses ? (
               <div>
-                <p className="font-extrabold text-[#FFCF73]">⚡ Expenses covered — wishlist needs {money.formatDisplay(monthlyExpenses + wishlistTotal - monthlyIncome)} more/mo</p>
+                <p className="flex items-center gap-1.5 font-extrabold text-[#FFCF73]"><Zap className="h-4 w-4 shrink-0" /> Expenses covered — wishlist needs {money.formatDisplay(monthlyExpenses + wishlistTotal - monthlyIncome)} more/mo</p>
                 {wishlistTotal > 0 && <p className="mt-1 text-xs text-muted-foreground">Save {money.formatDisplay(monthlyExpenses + wishlistTotal - monthlyIncome)}/mo for {Math.ceil(wishlistTotal / Math.max(1, monthlyIncome - monthlyExpenses))} months to afford wishlist</p>}
               </div>
             ) : (
-              <p className="font-extrabold text-[#FF8388]">✗ Expenses exceed income by {money.formatDisplay(monthlyExpenses - monthlyIncome)}/mo — reduce expenses or increase income</p>
+              <p className="flex items-center gap-1.5 font-extrabold text-[#FF8388]"><X className="h-4 w-4 shrink-0" /> Expenses exceed income by {money.formatDisplay(monthlyExpenses - monthlyIncome)}/mo — reduce expenses or increase income</p>
             )}
           </div>
         </div>
@@ -476,8 +476,8 @@ export function Estimation() {
                         <p className="text-xl font-extrabold text-foreground">{money.formatDisplay(row.actual)}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">actual · planned {money.formatDisplay(row.planned)}</p>
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${isGood ? 'bg-primary/10 text-primary' : 'bg-[#FF8388]/10 text-[#FF8388]'}`}>
-                        {variance > 0 ? '+' : ''}{money.formatDisplay(Math.abs(variance))} {variance > 0 ? '▲' : '▼'} ({pct}%)
+                      <span className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-extrabold ${isGood ? 'bg-primary/10 text-primary' : 'bg-[#FF8388]/10 text-[#FF8388]'}`}>
+                        {variance > 0 ? '+' : ''}{money.formatDisplay(Math.abs(variance))} {variance > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />} ({pct}%)
                       </span>
                     </div>
                   </div>

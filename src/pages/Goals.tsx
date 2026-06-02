@@ -12,7 +12,7 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Bookmark, ChevronRight, Plus, Pencil, Trash2, Target, TrendingUp, Copy } from 'lucide-react'
+import { AlertTriangle, Bookmark, Check, ChevronRight, Plus, Pencil, Trash2, Target, TrendingUp, Copy, Zap } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
 import type { Goal } from '@/types'
 
@@ -485,8 +485,9 @@ export function Goals() {
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: goal.color + '33', color: goal.color }}>{goal.category}</span>
                           {urgency && (
-                            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${urgency === 'urgent' ? 'bg-[#FF8388]/20 text-[#FF8388]' : 'bg-[#FFCF73]/20 text-[#FFCF73]'}`}>
-                              {urgency === 'urgent' ? '⚡ Urgent' : '⚠ Behind'}
+                            <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${urgency === 'urgent' ? 'bg-[#FF8388]/20 text-[#FF8388]' : 'bg-[#FFCF73]/20 text-[#FFCF73]'}`}>
+                              {urgency === 'urgent' ? <Zap className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                              {urgency === 'urgent' ? 'Urgent' : 'Behind'}
                             </span>
                           )}
                         </div>
@@ -587,8 +588,9 @@ export function Goals() {
                     <div className="flex flex-wrap items-center gap-1.5 mb-1">
                       <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: g.color + '33', color: g.color }}>{g.category}</span>
                       {urgency && (
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${urgency === 'urgent' ? 'bg-[#FF8388]/20 text-[#FF8388]' : 'bg-[#FFCF73]/20 text-[#FFCF73]'}`}>
-                          {urgency === 'urgent' ? '⚡ Urgent' : '⚠ Behind'}
+                        <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${urgency === 'urgent' ? 'bg-[#FF8388]/20 text-[#FF8388]' : 'bg-[#FFCF73]/20 text-[#FFCF73]'}`}>
+                          {urgency === 'urgent' ? <Zap className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                          {urgency === 'urgent' ? 'Urgent' : 'Behind'}
                         </span>
                       )}
                     </div>
@@ -670,8 +672,8 @@ export function Goals() {
                           onClick={() => setContributeRepeat(r => !r)}
                           className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${contributeRepeat ? 'border-primary/40 bg-primary/10' : 'border-border bg-secondary hover:border-primary/30'}`}
                         >
-                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs font-extrabold ${contributeRepeat ? 'border-primary bg-primary text-primary-foreground' : 'border-border'}`}>
-                            {contributeRepeat ? '✓' : ''}
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${contributeRepeat ? 'border-primary bg-primary text-primary-foreground' : 'border-border'}`}>
+                            {contributeRepeat && <Check className="h-3 w-3" />}
                           </span>
                           <div className="min-w-0">
                             <p className={`text-sm font-bold ${contributeRepeat ? 'text-primary' : 'text-foreground'}`}>Repeat monthly</p>

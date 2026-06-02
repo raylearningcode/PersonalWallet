@@ -22,7 +22,7 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package } from 'lucide-react'
+import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
@@ -426,7 +426,7 @@ export function Settings() {
       />
       {!session && (
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
-          <span className="mt-0.5 text-base">⚠</span>
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
           <div>
             <p className="font-bold text-[#FFCF73]">Guest mode — data is not saved to the cloud</p>
             <p className="mt-0.5 text-sm text-muted-foreground">Your budgets, wallets, and transactions are stored in this browser only. Log in to keep your data safe and sync across devices.</p>
@@ -651,7 +651,7 @@ export function Settings() {
               ].map(({ step, title, desc, done }) => (
                 <div key={step} className={`flex items-start gap-3 rounded-xl px-3 py-2.5 ${done ? 'bg-primary/10' : 'bg-secondary/60'}`}>
                   <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                    {done ? '✓' : step}
+                    {done ? <Check className="h-3.5 w-3.5" /> : step}
                   </span>
                   <div className="min-w-0">
                     <p className={`text-sm font-bold ${done ? 'text-primary' : 'text-foreground'}`}>{title}</p>
@@ -990,7 +990,7 @@ export function Settings() {
                   Save
                 </Button>
               </div>
-              {geminiKey && <p className="mt-2 text-xs text-primary">✓ Key saved — receipt scanning and AI insights are enabled</p>}
+              {geminiKey && <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><Check className="h-3 w-3 shrink-0" /> Key saved — receipt scanning and AI insights are enabled</p>}
             </div>
           </CardContent>
         </Card>
@@ -1088,7 +1088,7 @@ export function Settings() {
               ))}
             </div>
             {!lastExportDate && (
-              <p className="mt-3 text-xs text-[#FFCF73]">⚠ No backup created yet. Export your data to keep it safe.</p>
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-[#FFCF73]"><AlertTriangle className="h-3 w-3 shrink-0" /> No backup created yet. Export your data to keep it safe.</p>
             )}
           </CardContent>
         </Card>

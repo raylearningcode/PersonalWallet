@@ -13,7 +13,7 @@ import { parseNumberInput } from '@/lib/numberInput'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { toast } from 'sonner'
-import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight } from 'lucide-react'
+import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight, AlertTriangle, Check } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
 
 const FREQ_LABELS: Record<string, string> = {
@@ -363,8 +363,9 @@ export function Subscriptions() {
 
         {(isUnused || hasNeverPaid) && (
           <div className="mt-2 flex items-center gap-1.5 rounded-xl bg-[#FFCF73]/10 px-3 py-1.5">
+            <AlertTriangle className="h-3 w-3 shrink-0 text-[#FFCF73]" />
             <span className="text-xs font-bold text-[#FFCF73]">
-              {hasNeverPaid ? '⚠ No payments recorded' : `⚠ No activity for ${daysSinceLastPaid}d — still needed?`}
+              {hasNeverPaid ? 'No payments recorded' : `No activity for ${daysSinceLastPaid}d — still needed?`}
             </span>
           </div>
         )}
@@ -799,7 +800,7 @@ export function Subscriptions() {
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span className={`font-bold ${paidPct === 100 ? 'text-primary' : 'text-foreground'}`}>{paidPct}% complete</span>
-                      <span>{remaining > 0 ? `${remaining} payment${remaining !== 1 ? 's' : ''} left` : '✓ Fully paid'}</span>
+                      {remaining > 0 ? <span>{remaining} payment{remaining !== 1 ? 's' : ''} left</span> : <span className="flex items-center gap-1 text-primary font-bold"><Check className="h-3 w-3" /> Fully paid</span>}
                     </div>
                   </button>
                 )

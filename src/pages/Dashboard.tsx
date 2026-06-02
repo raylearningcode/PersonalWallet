@@ -12,7 +12,7 @@ import { isInBudgetPeriod } from '@/lib/budget'
 import { getCategoryInsights, getDaysRemainingInMonth, getSafeToSpend, getWalletBalances } from '@/lib/financeOs'
 import { getAiInsights, getGeminiKey, type InsightResult } from '@/lib/gemini'
 import { computeStreak } from '@/lib/streak'
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart, Zap, Calendar } from 'lucide-react'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, Plus, Target, RefreshCw, BarChart2, PieChart, Zap, Calendar, ChevronUp, ChevronDown } from 'lucide-react'
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -608,7 +608,8 @@ export function Dashboard() {
           onClick={() => setShowDetails(v => !v)}
           className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-6 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
         >
-          {showDetails ? '▲ Less' : '▼ More insights'}
+          {showDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          {showDetails ? 'Less' : 'More insights'}
         </button>
       </div>
 
@@ -919,7 +920,7 @@ export function Dashboard() {
                     <Link key={i} to={ev.kind === 'bill' ? '/subscriptions' : '/goals'} className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 transition-colors hover:opacity-80 ${ev.kind === 'bill' ? 'bg-secondary' : 'bg-primary/5 border border-primary/10'}`}>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs">{ev.kind === 'bill' ? '💳' : '🎯'}</span>
+                          {ev.kind === 'bill' ? <RefreshCw className="h-3 w-3 shrink-0 text-muted-foreground" /> : <Target className="h-3 w-3 shrink-0 text-primary" />}
                           <p className="truncate text-sm font-bold text-foreground">{ev.label}</p>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">{ev.date} · {ev.sub}</p>

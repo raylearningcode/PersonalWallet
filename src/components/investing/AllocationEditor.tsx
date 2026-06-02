@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Check } from 'lucide-react'
 import type { AllocationItem } from '@/types'
 
 const CIRCUMFERENCE = 2 * Math.PI * 28
@@ -69,9 +70,10 @@ export function AllocationEditor({ value, onChange, onSave, isSaving }: Props) {
       <div className="flex flex-1 flex-col gap-3">
         {/* Total indicator */}
         <div className="flex items-center justify-between">
-          <span className={`text-xs font-extrabold ${isValid ? 'text-primary' : total > 100 ? 'text-[#FF8388]' : 'text-[#FFCF73]'}`}>
+          <span className={`flex items-center gap-1 text-xs font-extrabold ${isValid ? 'text-primary' : total > 100 ? 'text-[#FF8388]' : 'text-[#FFCF73]'}`}>
+            {isValid && <Check className="h-3 w-3" />}
             {isValid
-              ? '✓ 100% allocated'
+              ? '100% allocated'
               : total < 100
                 ? `${remaining}% remaining to allocate`
                 : `${total - 100}% over — reduce allocations`}

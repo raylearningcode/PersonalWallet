@@ -18,7 +18,7 @@ import { getMerchantSuggestion } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { splitTwdChange, getFiftyCoinRouting } from '@/lib/cashChange'
 import { scanReceipt, getGeminiKey } from '@/lib/gemini'
-import { ScanLine, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { ScanLine, Loader2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { RecurringFrequency } from '@/types'
 
@@ -929,7 +929,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         onClick={handleClose}
                         className="flex items-center justify-between rounded-xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-3 py-2.5 text-xs font-bold text-[#FFCF73] hover:bg-[#FFCF73]/10"
                       >
-                        <span>⚠ Set up a coin pouch wallet to route change automatically</span>
+                        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 shrink-0" /> Set up a coin pouch wallet to route change automatically</span>
                         <span className="ml-2 shrink-0">Settings →</span>
                       </Link>
                     )}
