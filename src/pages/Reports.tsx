@@ -165,6 +165,18 @@ export function Reports() {
     return items
   }, [incomeDiff, expenseDiff, savingsRate, topCategory, range, categoryTotals, activeTotal])
 
+  const walletActivity = useMemo(() => {
+    if (wallets.length === 0) return []
+    return wallets.map(w => {
+      const wIncome = rangeTx.filter(t => t.type === 'income' && t.wallet_id === w.id).reduce((s, t) => s + t.amount, 0)
+      const wExpenses = rangeTx.filter(t => t.type !== 'income' && t.type !== 'transfer' && t.wallet_id === w.id).reduce((s, t) => s + t.amount, 0)
+      const wTransferIn = rangeTx.filter(t => t.type === 'transfer' && t.transfer_wallet_id === w.id).reduce((s, t) => s + t.amount, 0)
+      const wTransferOut = rangeTx.filter(t => t.type === 'transfer' && t.wallet_id === w.id).reduce((s, t) => s + t.amount, 0)
+      const net = wIncome - wExpenses + wTransferIn - wTransferOut
+      return { wallet: w, income: wIncome, expenses: wExpenses, net }
+    }).filter(wa => wa.income > 0 || wa.expenses > 0)
+  }, [wallets, rangeTx])
+
   const trendData = useMemo(() => {
     const toStr = (d: Date) => d.toISOString().slice(0, 10)
     const bucket = (txList: typeof rangeTx) => ({
@@ -761,6 +773,31 @@ export function Reports() {
                 </div>
               )
             })}
+          </CardContent>
+        </Card>
+      )}
+
+      {walletActivity.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Wallet activity</CardTitle>
+            <p className="text-sm text-muted-foreground">Money flow per wallet during this period.</p>
+          </CardHeader>
+          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+            {walletActivity.map(({ wallet, income, expenses, net }) => (
+              <div key={wallet.id} className="rounded-2xl border border-border bg-secondary px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-extrabold text-foreground">{wallet.name}</p>
+                  <span className={`text-sm font-extrabold ${net >= 0 ? 'text-primary' : 'text-[#FF8388]'}`}>
+                    {net >= 0 ? '+' : ''}{money.formatDisplay(net)}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex gap-4 text-xs text-muted-foreground">
+                  {income > 0 && <span>In: <span className="font-bold text-primary">{money.formatDisplay(income)}</span></span>}
+                  {expenses > 0 && <span>Out: <span className="font-bold text-[#FF8388]">{money.formatDisplay(expenses)}</span></span>}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
