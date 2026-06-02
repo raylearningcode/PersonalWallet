@@ -9,32 +9,38 @@
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     {
       "name": "Add Expense",
       "short_name": "Add",
       "description": "Quickly record a new expense",
-      "url": "/transactions?action=expense"
+      "url": "/transactions?action=expense",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Add Income",
+      "short_name": "Income",
+      "description": "Record income received",
+      "url": "/transactions?action=income",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "View Budget",
       "short_name": "Budget",
       "description": "Check your budget categories",
-      "url": "/budget"
+      "url": "/budget",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Reports",
       "short_name": "Reports",
       "description": "View spending reports",
-      "url": "/reports"
-    },
-    {
-      "name": "Goals",
-      "short_name": "Goals",
-      "description": "Track your savings goals",
-      "url": "/goals"
+      "url": "/reports",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
