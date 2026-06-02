@@ -11,7 +11,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, X, Lightbulb, Target } from 'lucide-react'
+import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight } from 'lucide-react'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
@@ -39,7 +39,8 @@ export function Estimation() {
   const addGoal = useAddGoal()
   const { data: plans } = useEstimationPlans()
   const { data: transactions = [] } = useTransactions()
-  const initialized = useRef(false)
+  const [planningDate, setPlanningDate] = useState(() => { const d = new Date(); d.setDate(1); return d })
+  const loadedMonth = useRef('')
 
   const [incomeItems, setIncomeItems] = useState<EstimateItem[]>([])
   const [expenseItems, setExpenseItems] = useState<EstimateItem[]>([])
@@ -71,10 +72,15 @@ export function Estimation() {
   const [planningTipDismissed, setPlanningTipDismissed] = useState(() => localStorage.getItem(PLANNING_TIP_KEY) === '1')
 
   useEffect(() => {
-    if (initialized.current || !plans) return
-    initialized.current = true
-    const now = new Date()
-    const current = plans.find(p => p.month === now.getMonth() + 1 && p.year === now.getFullYear())
+    if (!plans) return
+    const monthKey = `${planningDate.getFullYear()}-${planningDate.getMonth() + 1}`
+    if (loadedMonth.current === monthKey) return
+    loadedMonth.current = monthKey
+    const current = plans.find(p => p.month === planningDate.getMonth() + 1 && p.year === planningDate.getFullYear())
+    setNotes('')
+    setIncomeItems([])
+    setExpenseItems([])
+    setWishlistItems([])
     if (!current?.notes) return
     try {
       const parsed = JSON.parse(current.notes) as {
@@ -90,11 +96,10 @@ export function Estimation() {
     } catch {
       setNotes(current.notes)
     }
-  }, [plans])
+  }, [plans, planningDate])
 
   const actualThisMonth = useMemo(() => {
-    const now = new Date()
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const monthStr = `${planningDate.getFullYear()}-${String(planningDate.getMonth() + 1).padStart(2, '0')}`
     const monthTx = transactions.filter(t => t.date.startsWith(monthStr))
     return {
       income: monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
@@ -119,8 +124,8 @@ export function Estimation() {
     const mi = newIncome.reduce((s, i) => s + (i.period === 'monthly' ? i.amount : i.amount / 12), 0)
     const me = newExpense.reduce((s, i) => s + (i.period === 'monthly' ? i.amount : i.amount / 12), 0)
     await upsert.mutateAsync({
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
+      month: planningDate.getMonth() + 1,
+      year: planningDate.getFullYear(),
       estimated_income: mi,
       fixed_expenses: me,
       variable_estimate: 0,
@@ -303,6 +308,46 @@ export function Estimation() {
           </div>
         )}
       />
+      {/* Month navigator */}
+      {(() => {
+        const today = new Date()
+        const isCurrentMonth = planningDate.getFullYear() === today.getFullYear() && planningDate.getMonth() === today.getMonth()
+        return (
+          <div className="mb-5 flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
+            <button
+              type="button"
+              aria-label="Previous month"
+              onClick={() => setPlanningDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="text-center">
+              <p className="text-sm font-extrabold text-foreground">
+                {planningDate.toLocaleString('en', { month: 'long', year: 'numeric' })}
+              </p>
+              {!isCurrentMonth && (
+                <button
+                  type="button"
+                  onClick={() => setPlanningDate(new Date())}
+                  className="mt-0.5 text-xs text-primary hover:underline"
+                >
+                  Back to current
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              aria-label="Next month"
+              onClick={() => setPlanningDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )
+      })()}
+
       {!planningTipDismissed && (
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
           <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -375,7 +420,7 @@ export function Estimation() {
       {monthlyIncome > 0 && (
         <div className={`mb-8 rounded-2xl border px-5 py-4 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} forecast
+            {planningDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} forecast
           </p>
           <div className="space-y-1.5 text-sm">
             <div className="flex items-center justify-between gap-4">
