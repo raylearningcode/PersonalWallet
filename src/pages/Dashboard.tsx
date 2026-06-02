@@ -492,6 +492,27 @@ export function Dashboard() {
               </Link>
             )}
             {(() => {
+              const efGoal = goals.find(g =>
+                g.current_amount < g.target_amount &&
+                /emergency|dana darurat/i.test(g.name + ' ' + (g.category ?? ''))
+              )
+              if (!efGoal) return null
+              const remaining = efGoal.target_amount - efGoal.current_amount
+              const monthlyNeeded = efGoal.deadline
+                ? Math.ceil(remaining / Math.max(1, Math.ceil((new Date(efGoal.deadline).getTime() - Date.now()) / (30 * 86_400_000))))
+                : null
+              if (!monthlyNeeded || monthlyNeeded <= 0) return null
+              return (
+                <Link to="/goals" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 active:scale-[0.99]">
+                  <span className="text-lg">🆘</span>
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    Emergency fund needs <span className="font-bold text-foreground">{money.formatDisplay(monthlyNeeded)}/month</span> to reach goal.
+                  </p>
+                  <span className="shrink-0 text-xs font-bold text-primary">Goals →</span>
+                </Link>
+              )
+            })()}
+            {(() => {
               const nextBill = recurringRules
                 .filter(r => r.active && r.type === 'expense')
                 .sort((a, b) => (a.next_due_date ?? '').localeCompare(b.next_due_date ?? ''))[0]
