@@ -722,6 +722,12 @@ export function Reports() {
                   >
                     This week
                   </button>
+                  <button
+                    className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/10"
+                    onClick={() => { handleRangeChange('all'); setPeriodDate(new Date()) }}
+                  >
+                    All time
+                  </button>
                 </div>
               </div>
             )}
