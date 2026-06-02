@@ -7,6 +7,7 @@ const addGoal = vi.fn()
 const updateGoal = vi.fn()
 const deleteGoal = vi.fn()
 const addTransaction = vi.fn()
+const addRecurringRule = vi.fn()
 
 const mockGoals = [
   {
@@ -42,6 +43,7 @@ vi.mock('@/lib/queries', () => ({
   useDeleteGoal: () => ({ mutateAsync: deleteGoal, isPending: false }),
   useWallets: () => ({ data: mockWallets }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
+  useAddRecurringRule: () => ({ mutateAsync: addRecurringRule, isPending: false }),
   useAppSettings: () => ({ data: undefined }),
 }))
 

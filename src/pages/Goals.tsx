@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets, useAddTransaction } from '@/lib/queries'
+import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets, useAddTransaction, useAddRecurringRule } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,6 +67,7 @@ export function Goals() {
   const updateGoal = useUpdateGoal()
   const deleteGoal = useDeleteGoal()
   const addTransaction = useAddTransaction()
+  const addRecurringRule = useAddRecurringRule()
 
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -74,6 +75,7 @@ export function Goals() {
   const [sheetGoal, setSheetGoal] = useState<Goal | null>(null)
   const [contributeAmount, setContributeAmount] = useState('')
   const [contributeWalletId, setContributeWalletId] = useState('')
+  const [contributeRepeat, setContributeRepeat] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
@@ -167,8 +169,10 @@ export function Goals() {
     const target = sheetGoal
     const wallet = wallets.find(w => w.id === contributeWalletId)
     const newAmount = target.current_amount + amount
+    const today = new Date().toISOString().slice(0, 10)
     setContributeAmount('')
     setContributeWalletId('')
+    setContributeRepeat(false)
     try {
       await updateGoal.mutateAsync({ id: target.id, current_amount: newAmount })
       if (wallet) {
@@ -184,11 +188,37 @@ export function Goals() {
           transfer_wallet_id: null,
           recurring_rule_id: null,
           recurring_due_date: null,
-          date: new Date().toISOString().slice(0, 10),
+          date: today,
           needs_review: false,
         })
+        if (contributeRepeat) {
+          const nextMonth = new Date(today)
+          nextMonth.setMonth(nextMonth.getMonth() + 1)
+          await addRecurringRule.mutateAsync({
+            user_id: null,
+            description: `Goal: ${target.name}`,
+            amount,
+            original_amount: parseNumberInput(contributeAmount),
+            original_currency: money.displayCurrency,
+            type: 'expense',
+            category: 'Goals',
+            wallet_id: wallet.id,
+            transfer_wallet_id: null,
+            start_date: today,
+            next_due_date: nextMonth.toISOString().slice(0, 10),
+            frequency: 'monthly',
+            end_date: target.deadline ?? null,
+            installment_total: null,
+            installment_paid: 0,
+            active: true,
+          })
+        }
       }
-      toast.success(wallet ? `Contribution from ${wallet.name} logged` : 'Contribution logged')
+      toast.success(
+        contributeRepeat && wallet
+          ? `Contribution logged + monthly repeat created`
+          : wallet ? `Contribution from ${wallet.name} logged` : 'Contribution logged'
+      )
     } catch {
       toast.error('Failed to log contribution')
     }
@@ -498,7 +528,7 @@ export function Goals() {
       )}
 
       {/* Goal detail sheet */}
-      <Sheet open={!!sheetGoal} onOpenChange={open => { if (!open) { setSheetGoal(null); setContributeAmount(''); setContributeWalletId('') } }}>
+      <Sheet open={!!sheetGoal} onOpenChange={open => { if (!open) { setSheetGoal(null); setContributeAmount(''); setContributeWalletId(''); setContributeRepeat(false) } }}>
         <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
           {sheetGoal && (() => {
             const g = sheetGoal
@@ -601,12 +631,27 @@ export function Goals() {
                         value={contributeAmount}
                         onValueChange={setContributeAmount}
                       />
+                      {contributeWalletId && (
+                        <button
+                          type="button"
+                          onClick={() => setContributeRepeat(r => !r)}
+                          className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${contributeRepeat ? 'border-primary/40 bg-primary/10' : 'border-border bg-secondary hover:border-primary/30'}`}
+                        >
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs font-extrabold ${contributeRepeat ? 'border-primary bg-primary text-primary-foreground' : 'border-border'}`}>
+                            {contributeRepeat ? '✓' : ''}
+                          </span>
+                          <div className="min-w-0">
+                            <p className={`text-sm font-bold ${contributeRepeat ? 'text-primary' : 'text-foreground'}`}>Repeat monthly</p>
+                            <p className="text-xs text-muted-foreground">Create a recurring rule for this amount</p>
+                          </div>
+                        </button>
+                      )}
                       <Button
                         className="h-14 w-full"
                         onClick={handleContribute}
-                        disabled={updateGoal.isPending || addTransaction.isPending || !contributeAmount}
+                        disabled={updateGoal.isPending || addTransaction.isPending || addRecurringRule.isPending || !contributeAmount}
                       >
-                        Log contribution
+                        {contributeRepeat ? 'Log + set monthly repeat' : 'Log contribution'}
                       </Button>
                     </div>
                   )}
