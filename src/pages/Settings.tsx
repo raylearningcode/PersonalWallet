@@ -29,6 +29,7 @@ import type { CashRole, Wallet } from '@/types'
 import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
 import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
 import { parseNumberInput, formatNumberInput } from '@/lib/numberInput'
+import { getQueue } from '@/lib/offlineCache'
 
 const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
 type SettingsTab = typeof tabs[number]
@@ -639,7 +640,7 @@ export function Settings() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Secondary currency <span className="font-normal">(optional reference, e.g. home currency when abroad)</span></Label>
+                <Label className="text-sm text-muted-foreground">View currency <span className="font-normal">(display currency for amounts, e.g. home currency when abroad)</span></Label>
                 <Select value={currency} onValueChange={setCurrency}>
                   <SelectTrigger aria-label="Secondary currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
                     <SelectValue />
@@ -1122,8 +1123,8 @@ export function Settings() {
                   },
                   {
                     label: 'Cloud sync',
-                    value: session ? 'Active' : 'Off (guest mode)',
-                    status: session ? 'ok' : 'info',
+                    value: session ? (getQueue().length > 0 ? `${getQueue().length} pending` : 'Up to date') : 'Off (guest mode)',
+                    status: session ? (getQueue().length > 0 ? 'warn' : 'ok') : 'info',
                     Icon: RefreshCw,
                   },
                 ] as { label: string; value: string; status: string; Icon: ElementType }[]

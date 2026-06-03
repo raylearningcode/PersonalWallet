@@ -1,13 +1,15 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { AndroidBackHandler } from '@/components/native/AndroidBackHandler'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAuthSession } from '@/lib/queries'
+import { useAuthSession, useRecurringRules } from '@/lib/queries'
 import { getQueue } from '@/lib/offlineCache'
 import { processSyncQueue } from '@/lib/syncQueue'
+import { scheduleUpcomingBillNotifications } from '@/lib/notifications'
 import { toast, Toaster } from 'sonner'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { useMoney } from '@/lib/currency'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { MoreSheet } from './MoreSheet'
@@ -56,6 +58,10 @@ export function AppLayout() {
   const [quickAddType, setQuickAddType] = useState<QuickAddType>('expense')
   const [quickAddCash, setQuickAddCash] = useState(false)
   const [quickActionsOpen, setQuickActionsOpen] = useState(false)
+  const [quickAddKeypadOpen, setQuickAddKeypadOpen] = useState(false)
+  const { data: recurringRules = [] } = useRecurringRules()
+  const money = useMoney()
+  const lastNotifScheduleRef = useRef<string>('')
   const [pinLocked, setPinLocked] = useState(() =>
     Boolean(localStorage.getItem(PIN_STORAGE_KEY)) && !sessionStorage.getItem(PIN_SESSION_KEY)
   )
@@ -74,6 +80,12 @@ export function AppLayout() {
     const handler = () => setProfileOpen(true)
     window.addEventListener('finpath-open-profile', handler)
     return () => window.removeEventListener('finpath-open-profile', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (e: Event) => setQuickAddKeypadOpen((e as CustomEvent<{ active: boolean }>).detail.active)
+    window.addEventListener('finpath-keypad-change', handler)
+    return () => window.removeEventListener('finpath-keypad-change', handler)
   }, [])
 
   useEffect(() => {
@@ -112,6 +124,18 @@ export function AppLayout() {
   }, [navigate])
 
   useEffect(() => {
+    if (recurringRules.length === 0) return
+    // Only reschedule when the actual due-date/amount data changes, not on every array reference refresh
+    const key = recurringRules
+      .filter(r => r.active && r.type !== 'income')
+      .map(r => `${r.id}:${r.next_due_date}:${r.amount}`)
+      .join('|')
+    if (key === lastNotifScheduleRef.current) return
+    lastNotifScheduleRef.current = key
+    scheduleUpcomingBillNotifications(recurringRules, money.formatDisplay)
+  }, [recurringRules, money.formatDisplay])
+
+  useEffect(() => {
     const handleOffline = () => setOffline(true)
     const handleOnline = async () => {
       setOffline(false)
@@ -138,12 +162,16 @@ export function AppLayout() {
   }, [qc])
 
   const closeTopSheet = useCallback((): boolean => {
+    if (quickAddOpen && quickAddKeypadOpen) {
+      window.dispatchEvent(new CustomEvent('finpath-close-keypad'))
+      return true
+    }
     if (quickAddOpen) { setQuickAddOpen(false); return true }
     if (quickActionsOpen) { setQuickActionsOpen(false); return true }
     if (moreOpen) { setMoreOpen(false); return true }
     if (profileOpen) { setProfileOpen(false); return true }
     return false
-  }, [quickAddOpen, quickActionsOpen, moreOpen, profileOpen])
+  }, [quickAddOpen, quickAddKeypadOpen, quickActionsOpen, moreOpen, profileOpen])
 
   if (pinLocked) {
     return <PinLockScreen onUnlock={() => setPinLocked(false)} />

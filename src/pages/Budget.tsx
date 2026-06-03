@@ -361,8 +361,8 @@ export function Budget() {
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
-        <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalAllocated) : 'Blended monthly equivalent'} />
-        <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(hasData ? remaining : 0) : 'Safe inside active periods'} badgeVariant="success" />
+        <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.formatRef(totalAllocated) ?? 'Blended monthly equivalent'} />
+        <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.formatRef(hasData ? remaining : 0) ?? 'Safe inside active periods'} badgeVariant="success" />
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% of budget used` : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>
 
@@ -591,12 +591,18 @@ export function Budget() {
                 })()}
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No budget categories yet.{' '}
-                <Link to="/settings" className="font-bold text-primary hover:underline">
-                  Add categories in Settings →
-                </Link>
-              </p>
+              <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-12 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                  <Lightbulb className="h-7 w-7 text-primary" />
+                </span>
+                <div>
+                  <p className="font-extrabold text-foreground">No budget categories yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Create categories to track spending limits and see how much you have left each month.</p>
+                </div>
+                <Button asChild size="sm">
+                  <Link to="/settings">Set up categories →</Link>
+                </Button>
+              </div>
             )}
 
             {spendingSuggestions.length > 0 && (

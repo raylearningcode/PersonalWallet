@@ -57,7 +57,20 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const [endDate, setEndDate] = useState('')
   const [scanning, setScanning] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [activeKeypad, setActiveKeypad] = useState<ActiveKeypad>(null)
+  const [activeKeypad, setActiveKeypadRaw] = useState<ActiveKeypad>(null)
+
+  const setActiveKeypad = (next: ActiveKeypad) => {
+    setActiveKeypadRaw(next)
+    window.dispatchEvent(new CustomEvent('finpath-keypad-change', { detail: { active: next !== null } }))
+  }
+
+  // Close keypad when AppLayout back handler fires
+  useEffect(() => {
+    const handler = () => setActiveKeypad(null)
+    window.addEventListener('finpath-close-keypad', handler)
+    return () => window.removeEventListener('finpath-close-keypad', handler)
+  }, [])
+
   // Cash-change assistant state
   const [cashEnabled, setCashEnabled] = useState(false)
   const [cashTendered, setCashTendered] = useState('')

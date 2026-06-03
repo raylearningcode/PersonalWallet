@@ -110,11 +110,11 @@ export function MoneyKeypad({
           <button
             type="button"
             aria-label="Confirm amount"
-            className="mt-3 flex h-12 w-full items-center justify-center rounded-2xl bg-white text-black transition-transform active:scale-95"
-            onClick={onDone}
+            className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white text-black font-extrabold text-base transition-transform active:scale-95"
+            onClick={() => { hapticLight(); onDone() }}
           >
-            <Check className="h-6 w-6" aria-hidden="true" />
-            <span className="sr-only">{doneLabel}</span>
+            <Check className="h-5 w-5" aria-hidden="true" />
+            {doneLabel}
           </button>
         )}
       </div>

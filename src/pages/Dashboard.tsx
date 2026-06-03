@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
-import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals, useAuthSession } from '@/lib/queries'
+import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
 import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -31,7 +31,7 @@ export function Dashboard() {
   const { data: wallets = [], isPending: walletPending } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
   const { data: goals = [] } = useGoals()
-  const { data: session } = useAuthSession()
+
 
   const year = new Date().getFullYear()
   const now = new Date()
@@ -153,7 +153,7 @@ export function Dashboard() {
   const safeToSpend = getSafeToSpend(monthlyBudget, monthlySpent, daysLeft)
   const categoryInsights = getCategoryInsights(transactions, categories).slice(0, 3)
 
-  const isNewUser = !session && transactions.length === 0 && categories.length === 0 && wallets.length === 0
+  const isNewUser = !txPending && !catPending && !walletPending && transactions.length === 0 && categories.length === 0 && wallets.length === 0
 
   const streak = useMemo(() => computeStreak(transactions.map(t => t.date)), [transactions])
   const [aiCardDismissed, setAiCardDismissed] = useState(() => localStorage.getItem('finpath_ai_dismissed') === '1')
@@ -365,10 +365,10 @@ export function Dashboard() {
           ))
         ) : (
           <>
-            <StatCard label="Net worth" value={fmt(netWorth)} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(netWorth) : 'Cash + investments'} badgeVariant="success" to="/settings?section=wallets" />
+            <StatCard label="Net worth" value={fmt(netWorth)} sub={money.formatRef(netWorth) ?? 'Cash + investments'} badgeVariant="success" to="/settings?section=wallets" />
             <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : daysLeft === 0 ? 'Month ends today' : `${daysLeft} days left`} badgeVariant="warning" to="/transactions" />
             <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={daysLeft === 0 ? 'Month ends today' : daysLeft > 0 ? `${daysLeft} days left` : 'Based on budgets'} to="/budget" />
-            <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.baseCurrency !== money.displayCurrency ? money.formatBase(totalIncome - totalExpenses) : `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} to="/reports" />
+            <StatCard label="Savings rate" value={`${savingsRate}%`} sub={money.formatRef(totalIncome - totalExpenses) ?? `${yearTx.length} transactions`} badgeVariant={savingsRateVariant} to="/reports" />
           </>
         )}
       </div>

@@ -11,7 +11,8 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown } from 'lucide-react'
+import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown, Monitor } from 'lucide-react'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
@@ -35,6 +36,7 @@ type WishlistItem = {
 
 export function Estimation() {
   const money = useMoney()
+  const isDesktop = useIsDesktop()
   const upsert = useUpsertEstimationPlan()
   const addGoal = useAddGoal()
   const { data: plans } = useEstimationPlans()
@@ -135,7 +137,7 @@ export function Estimation() {
   }
 
   const addIncome = async () => {
-    const amount = parseNumberInput(incomeAmount)
+    const amount = money.toBase(parseNumberInput(incomeAmount), money.displayCurrency)
     if (!incomeSource.trim() || amount <= 0) {
       setIncomeError(true)
       setTimeout(() => setIncomeError(false), 1500)
@@ -154,7 +156,7 @@ export function Estimation() {
   }
 
   const addExpense = async () => {
-    const amount = parseNumberInput(expenseAmount)
+    const amount = money.toBase(parseNumberInput(expenseAmount), money.displayCurrency)
     if (!expenseDetail.trim() || amount <= 0) {
       setExpenseError(true)
       setTimeout(() => setExpenseError(false), 1500)
@@ -173,7 +175,7 @@ export function Estimation() {
   }
 
   const addWishlistItem = async () => {
-    const amount = parseNumberInput(wishlistAmount)
+    const amount = money.toBase(parseNumberInput(wishlistAmount), money.displayCurrency)
     if (!wishlistName.trim() || amount <= 0) return
     const newItems = [...wishlistItems, {
       id: crypto.randomUUID(),
@@ -308,6 +310,15 @@ export function Estimation() {
           </div>
         )}
       />
+      {!isDesktop && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+          <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <p className="font-bold text-primary">Best on desktop</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">This tool is easier to use on a larger screen. Open FinPath Studio on desktop for the full planning experience.</p>
+          </div>
+        </div>
+      )}
       {/* Month navigator */}
       {(() => {
         const today = new Date()
@@ -369,10 +380,10 @@ export function Estimation() {
       )}
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-        <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={`${incomeItems.length} income items`} badgeVariant="success" />
-        <StatCard label="Monthly expenses" value={money.formatDisplay(monthlyExpenses)} sub={`${expenseItems.length} expense items`} badgeVariant="warning" />
-        <StatCard label="Yearly saving" value={money.formatDisplay(yearlySaving)} sub={`${savingsRate}% monthly saving rate`} />
-        <StatCard label="Yearly income" value={money.formatDisplay(yearlyIncome)} sub={`Expenses ${money.formatDisplay(yearlyExpenses)}`} />
+        <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={money.formatRef(monthlyIncome) ?? `${incomeItems.length} income items`} badgeVariant="success" />
+        <StatCard label="Monthly expenses" value={money.formatDisplay(monthlyExpenses)} sub={money.formatRef(monthlyExpenses) ?? `${expenseItems.length} expense items`} badgeVariant="warning" />
+        <StatCard label="Yearly saving" value={money.formatDisplay(yearlySaving)} sub={money.formatRef(yearlySaving) ?? `${savingsRate}% monthly saving rate`} />
+        <StatCard label="Yearly income" value={money.formatDisplay(yearlyIncome)} sub={money.formatRef(yearlyIncome) ?? `Expenses ${money.formatDisplay(yearlyExpenses)}`} />
       </div>
 
       {(monthlyIncome > 0 || monthlyExpenses > 0) && (() => {
