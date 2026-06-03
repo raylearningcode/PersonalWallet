@@ -179,7 +179,7 @@ describe('Transactions', () => {
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Laptop cicilan' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '1000' } })
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-27' } })
-    fireEvent.click(screen.getByLabelText('Recurring / Cicilan'))
+    fireEvent.click(screen.getByLabelText('Recurring / Installment'))
     fireEvent.change(screen.getByLabelText('Recurring frequency'), { target: { value: 'monthly' } })
     fireEvent.change(screen.getByLabelText('Installment count'), { target: { value: '12' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }))

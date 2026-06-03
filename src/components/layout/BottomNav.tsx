@@ -1,9 +1,10 @@
+import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { CreditCard, LayoutDashboard, MoreHorizontal, PieChart, Plus } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
-  { to: '/transactions', label: 'Txns', icon: CreditCard },
+  { to: '/transactions', label: 'Activity', icon: CreditCard },
   { to: '/budget', label: 'Budget', icon: PieChart },
 ]
 
@@ -11,13 +12,38 @@ export function BottomNav({
   onMoreClick,
   moreActive,
   onAddClick,
+  onLongPressAdd,
   hidden = false,
 }: {
   onMoreClick: () => void
   moreActive: boolean
   onAddClick: () => void
+  onLongPressAdd?: () => void
   hidden?: boolean
 }) {
+  const longPressRef = useRef(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>(null)
+
+  const handleFabPointerDown = () => {
+    longPressRef.current = false
+    longPressTimer.current = setTimeout(() => {
+      longPressRef.current = true
+      onLongPressAdd?.()
+    }, 500)
+  }
+
+  const handleFabPointerUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  const handleFabClick = () => {
+    if (!longPressRef.current) onAddClick()
+    longPressRef.current = false
+  }
+
   return (
     <nav
       className={`fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-border bg-background/97 backdrop-blur-md lg:hidden transition-transform duration-300 ${hidden ? 'translate-y-full pointer-events-none' : 'translate-y-0'}`}
@@ -47,8 +73,12 @@ export function BottomNav({
       <div className="flex flex-1 items-center justify-center">
         <button
           type="button"
-          aria-label="Quick add"
-          onClick={onAddClick}
+          aria-label="Add transaction (hold for more options)"
+          onPointerDown={handleFabPointerDown}
+          onPointerUp={handleFabPointerUp}
+          onPointerLeave={handleFabPointerUp}
+          onPointerCancel={handleFabPointerUp}
+          onClick={handleFabClick}
           className="flex items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/40 transition-transform active:scale-90"
           style={{ width: 52, height: 52 }}
         >

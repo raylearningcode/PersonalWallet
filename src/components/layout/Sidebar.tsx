@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 export const PINNED_GOAL_KEY = 'finpath_pinned_goal_id'
 
@@ -33,6 +34,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
   const signUp = useSignUp()
   const signOut = useSignOut()
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
 
   const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
   const [authEmail, setAuthEmail] = useState('')
@@ -209,6 +211,19 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
               <Button variant="secondary" className="w-full" onClick={handleSignOut} disabled={signOut.isPending}>
                 Log out
               </Button>
+            ) : !isDesktop ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Your data is saved on this device. Sign in from a keyboard-safe mobile page when you are ready to sync.</p>
+                <Button
+                  className="h-12 w-full"
+                  onClick={() => { onProfileOpenChange(false); navigate('/auth') }}
+                >
+                  Sign in to sync
+                </Button>
+                <Button variant="secondary" className="h-12 w-full" onClick={() => onProfileOpenChange(false)}>
+                  Continue as guest
+                </Button>
+              </div>
             ) : (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">Sign in to sync your data across devices.</p>

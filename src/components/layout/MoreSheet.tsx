@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Calculator, Plus, RefreshCw, Settings, Target, TrendingUp, Wallet } from 'lucide-react'
+import { BarChart2, Monitor, Plus, RefreshCw, Settings, Target, Wallet } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
@@ -9,23 +9,22 @@ const MORE_NAV_GROUPS = [
   {
     label: 'Daily',
     items: [
-      { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
-      { to: '/subscriptions', label: 'Subscriptions', Icon: RefreshCw, color: '#FADBEA' },
-      { to: '/settings?section=wallets', label: 'Wallets', Icon: Wallet, color: '#A9F5C7' },
+      { to: '/goals', label: 'Goal contribution', Icon: Target, color: '#A9F5C7' },
+      { to: '/subscriptions', label: 'Recurring bills', Icon: RefreshCw, color: '#FADBEA' },
+      { to: '/settings?section=wallets', label: 'Wallets & cash', Icon: Wallet, color: '#A9F5C7' },
     ],
   },
   {
     label: 'Review',
     items: [
       { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
-      { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
     ],
   },
   {
     label: 'Advanced',
     items: [
       { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
-      { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
+      { to: '/desktop-tools', label: 'Desktop tools', Icon: Monitor, color: '#C4AEFF' },
     ],
   },
 ]

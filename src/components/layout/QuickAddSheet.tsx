@@ -23,6 +23,7 @@ import { scanReceipt, getGeminiKey } from '@/lib/gemini'
 import { ScanLine, Loader2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { RecurringFrequency } from '@/types'
+import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 type EntryType = 'income' | 'expense' | 'transfer'
@@ -94,8 +95,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         setWalletId(pickQuickAddWallet(wallets, last, true)?.id ?? '')
       }
       setInputCurrency(money.displayCurrency)
-      const timer = setTimeout(() => amountInputRef.current?.focus(), 120)
-      return () => clearTimeout(timer)
+      amountInputRef.current?.blur()
     }
   }, [open, initialType, initialCash, money.displayCurrency, wallets])
 
@@ -381,10 +381,9 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   <Input
                     ref={amountInputRef}
                     aria-label="Amount"
-                    inputMode="decimal"
+                    readOnly
                     className="h-16 w-44 border-0 bg-transparent text-center text-5xl font-extrabold shadow-none focus-visible:ring-0"
                     value={amount}
-                    onChange={e => setAmount(formatNumberInput(e.target.value))}
                     placeholder="0"
                   />
                 </div>
@@ -395,6 +394,15 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   value={date}
                   onChange={e => setDate(e.target.value)}
                 />
+                <div className="mt-4">
+                  <MoneyKeypad
+                    value={amount}
+                    onChange={setAmount}
+                    currency={inputCurrency}
+                    allowDecimal={inputCurrency !== 'IDR'}
+                    quickAmounts={inputCurrency === 'TWD' ? [50, 100, 500, 1000] : []}
+                  />
+                </div>
               </div>
 
               {/* Category chips — expense */}
@@ -543,7 +551,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-muted-foreground hover:text-foreground"
               >
                 <ChevronDown className="h-3.5 w-3.5" />
-                More options
+                Advanced details
               </button>
             </>
           )}
@@ -583,10 +591,9 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   <Input
                     ref={amountInputRef}
                     aria-label="Amount"
-                    inputMode="decimal"
+                    readOnly
                     className="h-14 w-44 border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
                     value={amount}
-                    onChange={e => setAmount(formatNumberInput(e.target.value))}
                     placeholder="0"
                   />
                   <button
@@ -614,6 +621,15 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   value={date}
                   onChange={e => setDate(e.target.value)}
                 />
+                <div className="mt-4">
+                  <MoneyKeypad
+                    value={amount}
+                    onChange={setAmount}
+                    currency={inputCurrency}
+                    allowDecimal={inputCurrency !== 'IDR'}
+                    quickAmounts={inputCurrency === 'TWD' ? [50, 100, 500, 1000] : []}
+                  />
+                </div>
               </div>
 
               {/* Description */}
@@ -729,7 +745,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               <div className="rounded-[1.25rem] border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span>
-                    <span className="block text-sm font-extrabold text-foreground">Recurring / Cicilan</span>
+                    <span className="block text-sm font-extrabold text-foreground">Recurring / Installment</span>
                     <span className="mt-1 block text-xs text-muted-foreground">
                       Rent, subscriptions, salary, or installments.
                     </span>
@@ -738,7 +754,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                     type="button"
                     role="switch"
                     aria-checked={isRecurring}
-                    aria-label="Recurring / Cicilan"
+                    aria-label="Recurring / Installment"
                     onClick={() => setIsRecurring(!isRecurring)}
                     className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${isRecurring ? 'bg-primary' : 'bg-muted'}`}
                   >
@@ -853,9 +869,8 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       <Input
                         aria-label="Cash given"
                         className="mt-2 bg-secondary"
-                        inputMode="decimal"
+                        readOnly
                         value={cashTendered}
-                        onChange={e => setCashTendered(formatNumberInput(e.target.value))}
                         placeholder="Amount you handed over"
                       />
                       {isTWD && (
@@ -889,15 +904,34 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       {isUnderpay && (
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
                       )}
+                      <div className="mt-3">
+                        <MoneyKeypad
+                          value={cashTendered}
+                          onChange={setCashTendered}
+                          currency={inputCurrency}
+                          allowDecimal={inputCurrency !== 'IDR'}
+                          quickAmounts={isTWD ? twdChips : []}
+                        />
+                      </div>
                     </div>
 
                     {changeAmount > 0 && (
                       <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-                        <p className="text-sm font-extrabold text-primary">
-                          Change: {isTWD
-                            ? `NT$${changeAmount.toLocaleString()}`
-                            : money.format(changeAmount, inputCurrency)}
-                        </p>
+                        <p className="text-xs font-extrabold uppercase tracking-wide text-primary">Cash preview</p>
+                        <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                          <div className="rounded-lg bg-background/70 px-2 py-2">
+                            <p className="text-[10px] text-muted-foreground">You pay</p>
+                            <p className="text-sm font-extrabold text-foreground">{money.format(parsedExpense, inputCurrency)}</p>
+                          </div>
+                          <div className="rounded-lg bg-background/70 px-2 py-2">
+                            <p className="text-[10px] text-muted-foreground">Cash given</p>
+                            <p className="text-sm font-extrabold text-foreground">{money.format(parsedTenderedVal, inputCurrency)}</p>
+                          </div>
+                          <div className="rounded-lg bg-background/70 px-2 py-2">
+                            <p className="text-[10px] text-muted-foreground">Change</p>
+                            <p className="text-sm font-extrabold text-primary">{money.format(changeAmount, inputCurrency)}</p>
+                          </div>
+                        </div>
                         {isTWD && billsChange > 0 && coinsChange > 0 && (
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             NT${billsChange.toLocaleString()} bills + NT${coinsChange.toLocaleString()} coins

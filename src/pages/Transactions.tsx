@@ -1123,11 +1123,11 @@ export function Transactions() {
                   <div className="rounded-[1.25rem] border border-border bg-card p-4">
                     <label className="flex items-center justify-between gap-4">
                       <span>
-                        <span className="block text-sm font-extrabold text-foreground">Recurring / Cicilan</span>
+                        <span className="block text-sm font-extrabold text-foreground">Recurring / Installment</span>
                         <span className="mt-1 block text-xs text-muted-foreground">For rent, subscriptions, salary, or installments.</span>
                       </span>
                       <input
-                        aria-label="Recurring / Cicilan"
+                        aria-label="Recurring / Installment"
                         type="checkbox"
                         className="h-5 w-5 accent-primary"
                         checked={isRecurring}
