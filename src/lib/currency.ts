@@ -25,16 +25,6 @@ export function formatCurrency(amount: number, currency: string): string {
   return formatted.replace(/ | /g, ' ').replace('IDR', 'Rp')
 }
 
-export function formatCompact(amount: number, currency: string): string {
-  const abs = Math.abs(amount)
-  const sign = amount < 0 ? '-' : ''
-  const prefix = currency === 'IDR' ? 'Rp ' : `${currency} `
-  if (abs >= 1_000_000_000_000) return `${sign}${prefix}${(abs / 1_000_000_000_000).toFixed(1)}T`
-  if (abs >= 1_000_000_000) return `${sign}${prefix}${(abs / 1_000_000_000).toFixed(1)}B`
-  if (abs >= 10_000) return `${sign}${prefix}${(abs / 1_000).toFixed(0)}K`
-  return formatCurrency(amount, currency)
-}
-
 export function getFallbackRates(baseCurrency: string): Rates {
   const base = baseCurrency.toLowerCase()
   const basePerUsd = FALLBACK_USD_RATES[base] ?? 1
@@ -101,15 +91,8 @@ export function useMoney() {
     format: (amount: number, currency = displayCurrency) => formatCurrency(amount, currency),
     formatBase: (amount: number) => formatCurrency(amount, baseCurrency),
     formatDisplay: (baseAmount: number) => formatCurrency(fromBase(baseAmount), displayCurrency),
-    formatDisplayCompact: (baseAmount: number) => formatCompact(fromBase(baseAmount), displayCurrency),
     approxBase: (amount: number, currency = displayCurrency) => formatCurrency(toBase(amount, currency), baseCurrency),
   }
-}
-
-export function useCurrency() {
-  const money = useMoney()
-
-  return money.formatDisplay
 }
 
 export function txAmountColor(amount: number, type: string): string {

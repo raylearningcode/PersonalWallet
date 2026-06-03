@@ -61,10 +61,6 @@ export function removeFromQueue(id: string) {
   try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue)) } catch {}
 }
 
-export function clearQueue() {
-  localStorage.removeItem(QUEUE_KEY)
-}
-
 // ─── Network detection ────────────────────────────────────────────────────────
 
 export function isOffline() {
