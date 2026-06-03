@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import {
   useAddTransaction,
   useUpdateTransaction,
+  useDeleteTransaction,
   useAddRecurringRule,
   useBudgetCategories,
   useTransactions,
@@ -36,6 +37,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const { data: transactions = [] } = useTransactions()
   const addTransaction = useAddTransaction()
   const updateTransaction = useUpdateTransaction()
+  const deleteTransaction = useDeleteTransaction()
   const addRecurringRule = useAddRecurringRule()
 
   const [type, setType] = useState<EntryType>('expense')
@@ -219,13 +221,13 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       const savedTx = await addTransaction.mutateAsync(payload)
 
       // Create cash-change transfer(s)
+      const changeTxIds: string[] = []
       if (cashEnabled && baseChange > 0 && savedTx?.id) {
         const isTWD = inputCurrency === 'TWD'
         const rawChange = parsedTendered - parsedAmount
         const { bills: billsChangeAmt, coins: coinsChangeAmt } = isTWD
           ? splitChangeByPolicy(rawChange, { currency: 'TWD', routeFiftyCoinTo: getFiftyCoinRouting() })
           : { bills: 0, coins: rawChange }
-        let firstChangeTxId: string | undefined
 
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
           const ct = await addTransaction.mutateAsync({
@@ -240,7 +242,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             needs_review: false, is_system_generated: true,
             linked_transaction_id: savedTx.id, cash_tendered: null,
           })
-          firstChangeTxId = ct?.id
+          if (ct?.id) changeTxIds.push(ct.id)
         }
 
         if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
@@ -256,7 +258,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             needs_review: false, is_system_generated: true,
             linked_transaction_id: savedTx.id, cash_tendered: null,
           })
-          if (!firstChangeTxId) firstChangeTxId = ct?.id
+          if (ct?.id) changeTxIds.push(ct.id)
         }
 
         if (!isTWD && changeCoinsWalletId) {
@@ -272,11 +274,11 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             needs_review: false, is_system_generated: true,
             linked_transaction_id: savedTx.id, cash_tendered: null,
           })
-          firstChangeTxId = ct?.id
+          if (ct?.id) changeTxIds.push(ct.id)
         }
 
-        if (firstChangeTxId) {
-          await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: firstChangeTxId })
+        if (changeTxIds.length > 0) {
+          await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: changeTxIds[0] })
         }
       }
 
@@ -304,7 +306,21 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       if (walletId) localStorage.setItem(LAST_WALLET_KEY, walletId)
       if (selectedCategory) localStorage.setItem(LAST_CATEGORY_KEY, selectedCategory)
 
-      toast.success(cashEnabled && baseChange > 0 ? 'Cash payment added · change routed' : 'Transaction added')
+      if (cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
+        const allIds = [savedTx.id, ...changeTxIds]
+        toast.success('Cash payment saved · change routed', {
+          duration: 8000,
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              for (const id of allIds) await deleteTransaction.mutateAsync(id)
+              toast.success('Cash payment undone')
+            },
+          },
+        })
+      } else {
+        toast.success('Transaction added')
+      }
       reset()
       onClose()
     } catch (err) {
@@ -558,7 +574,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 <div className="flex items-center justify-center gap-2">
                   <select
                     aria-label="Input currency"
-                    className="h-10 rounded-full border border-border bg-secondary px-3 text-sm font-extrabold text-muted-foreground outline-none"
+                    className="h-11 rounded-full border border-border bg-secondary px-3 text-sm font-extrabold text-muted-foreground outline-none"
                     value={inputCurrency}
                     onChange={e => setInputCurrency(e.target.value)}
                   >
@@ -847,9 +863,9 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                           <button
                             type="button"
                             onClick={() => { const e = parseNumberInput(amount); if (e > 0) setCashTendered(String(e)) }}
-                            className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
+                            className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTenderedVal === parsedExpense && parsedExpense > 0 ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
                           >
-                            Exact
+                            {parsedExpense > 0 ? `Exact NT$${parsedExpense.toLocaleString()}` : 'Exact'}
                           </button>
                           {twdChips.map(chip => (
                             <button
@@ -864,7 +880,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         </div>
                       )}
                       {isUnderpay && (
-                        <p className="mt-1.5 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
                       )}
                     </div>
 
@@ -946,6 +962,45 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 shrink-0" /> Set up a coin pouch wallet to route change automatically</span>
                         <span className="ml-2 shrink-0">Settings →</span>
                       </Link>
+                    )}
+
+                    {/* Transaction summary preview */}
+                    {changeAmount > 0 && parsedTenderedVal > 0 && (
+                      <div className="rounded-xl border border-border bg-secondary/60 px-4 py-3">
+                        <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">Summary</p>
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground truncate">{selectedWallet?.name ?? 'Wallet'}</span>
+                            <span className="shrink-0 font-bold text-[#FF8388]">
+                              −{isTWD ? `NT$${parsedTenderedVal.toLocaleString()}` : money.format(parsedTenderedVal, inputCurrency)}
+                            </span>
+                          </div>
+                          {isTWD && billsChange > 0 && changeBillsWalletId && (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeBillsWalletId)?.name ?? 'Bills wallet'}</span>
+                              <span className="shrink-0 font-bold text-primary">+NT${billsChange.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {isTWD && coinsChange > 0 && changeCoinsWalletId && (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeCoinsWalletId)?.name ?? 'Coin pouch'}</span>
+                              <span className="shrink-0 font-bold text-primary">+NT${coinsChange.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {!isTWD && changeAmount > 0 && changeCoinsWalletId && (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeCoinsWalletId)?.name ?? 'Change wallet'}</span>
+                              <span className="shrink-0 font-bold text-primary">+{money.format(changeAmount, inputCurrency)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between gap-2 border-t border-border pt-1.5">
+                            <span className="text-muted-foreground truncate">{category || 'Expense'} recorded</span>
+                            <span className="shrink-0 font-bold text-[#FF8388]">
+                              −{isTWD ? `NT$${parsedExpense.toLocaleString()}` : money.format(parsedExpense, inputCurrency)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}

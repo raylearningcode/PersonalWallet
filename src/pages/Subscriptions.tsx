@@ -12,6 +12,7 @@ import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currenc
 import { parseNumberInput } from '@/lib/numberInput'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
+import { addRecurringInterval } from '@/lib/recurring'
 import { toast } from 'sonner'
 import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight, AlertTriangle, Check } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
@@ -166,6 +167,32 @@ export function Subscriptions() {
       toast.success(rule.active ? 'Subscription paused' : 'Subscription resumed')
     } catch {
       toast.error('Failed to update subscription')
+    }
+  }
+
+  const logPaymentNow = async (rule: RecurringRule) => {
+    const today = new Date().toISOString().slice(0, 10)
+    try {
+      await addTransaction.mutateAsync({
+        description: rule.description,
+        amount: rule.amount,
+        original_amount: rule.original_amount ?? rule.amount,
+        original_currency: rule.original_currency ?? money.displayCurrency,
+        type: rule.type as 'expense' | 'income',
+        category: rule.category,
+        wallet_id: rule.wallet_id ?? null,
+        transfer_wallet_id: null,
+        recurring_rule_id: rule.id,
+        recurring_due_date: today,
+        date: today,
+        needs_review: false,
+      })
+      const nextDate = addRecurringInterval(rule.next_due_date, rule.frequency)
+      await updateRule.mutateAsync({ id: rule.id, next_due_date: nextDate })
+      const nextFormatted = new Date(nextDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      toast.success(`${rule.description} logged · next due ${nextFormatted}`)
+    } catch {
+      toast.error('Failed to log payment')
     }
   }
 
@@ -343,7 +370,7 @@ export function Subscriptions() {
                     : 'Overdue'}
                 </span>
               ) : (
-                <span className="text-xs text-muted-foreground">Paused · next charge disabled</span>
+                <span className="text-xs text-muted-foreground">Paused — no future charges will be created</span>
               )}
               {rule.installment_total && (
                 <span className="text-xs text-muted-foreground">{rule.installment_paid}/{rule.installment_total} installments</span>
@@ -372,6 +399,17 @@ export function Subscriptions() {
 
         </button>
         <div className="mt-3 flex gap-2">
+          {rule.active && days <= 3 && (
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:opacity-40"
+              onClick={() => logPaymentNow(rule)}
+              disabled={addTransaction.isPending || updateRule.isPending}
+            >
+              <Check className="h-3 w-3" />
+              Log payment
+            </button>
+          )}
           <button
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
               rule.active
@@ -415,7 +453,7 @@ export function Subscriptions() {
                 <Label className="text-xs text-muted-foreground">Amount</Label>
                 <div className="mt-1.5 flex gap-2">
                   <select
-                    className="h-10 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                    className="h-11 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
                     value={editForm.currency}
                     onChange={e => setEditField('currency', e.target.value)}
                   >
@@ -426,14 +464,14 @@ export function Subscriptions() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
-                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
+                <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
                   <option value="expense">Expense</option>
                   <option value="income">Income</option>
                 </select>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Frequency</Label>
-                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
+                <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
@@ -442,7 +480,7 @@ export function Subscriptions() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Category</Label>
-                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
+                <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
                   <option value="">— auto —</option>
                   {categories.length > 0 && (
                     <>
@@ -463,7 +501,7 @@ export function Subscriptions() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Wallet</Label>
-                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
+                <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
                   <option value="">— none —</option>
                   {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
@@ -731,7 +769,7 @@ export function Subscriptions() {
                   ))}
                   <select
                     aria-label="Sort subscriptions"
-                    className="ml-auto h-9 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
+                    className="ml-auto h-11 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
                     value={expenseSort}
                     onChange={e => setExpenseSort(e.target.value as ExpenseSort)}
                   >
@@ -980,7 +1018,7 @@ export function Subscriptions() {
                     type="button"
                     aria-label="Delete subscription"
                     onClick={() => { setDeleteTarget(rule); setDetailRule(null) }}
-                    className="flex h-14 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10 px-5 font-bold text-red-400 hover:bg-red-500/20"
+                    className="flex h-14 items-center justify-center rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/10 px-5 font-bold text-[#FF8388] hover:bg-[#FF8388]/20"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

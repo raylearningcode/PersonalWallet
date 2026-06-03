@@ -514,14 +514,14 @@ export function Budget() {
                                   <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{secondaryValue}</span>
                                   <div className="flex shrink-0 items-center gap-2 lg:hidden">
                                     <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">{fmt(cat.spent)} / {fmt(cat.yearly_allocated)}</span>
-                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>{pct}%</span>
+                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-[#FF8388]' : pct >= 70 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>{pct}%</span>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 </div>
                                 <div className="lg:hidden"><ColorBar value={pct} color={barColor} /></div>
                                 <div className="hidden items-center gap-2 lg:flex">
                                   <div className="min-w-0 flex-1"><ColorBar value={pct} color={barColor} /></div>
-                                  <span className={`w-9 text-right text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                                  <span className={`w-9 text-right text-xs font-bold ${pct >= 90 ? 'text-[#FF8388]' : pct >= 70 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
                                     {pct}%
                                   </span>
                                 </div>
@@ -529,13 +529,13 @@ export function Budget() {
                                   {pct === 0 ? (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground lg:truncate">No spending</span>
                                   ) : pct >= 100 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400 lg:truncate">Over budget</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FF8388]/15 px-2 py-0.5 text-[11px] font-bold text-[#FF8388] lg:truncate">Over budget</span>
                                   ) : pct >= 90 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400 lg:truncate">Near limit</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FF8388]/15 px-2 py-0.5 text-[11px] font-bold text-[#FF8388] lg:truncate">Near limit</span>
                                   ) : pct >= 70 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-400 lg:truncate">Watch spending</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCF73]/15 px-2 py-0.5 text-[11px] font-bold text-[#FFCF73] lg:truncate">Watch spending</span>
                                   ) : overPace ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-400 lg:truncate">Over pace</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCF73]/10 px-2 py-0.5 text-[11px] font-bold text-[#FFCF73] lg:truncate">Over pace</span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary lg:truncate">On track</span>
                                   )}
@@ -695,10 +695,10 @@ export function Budget() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button className="h-10 flex-1 text-sm" onClick={handleAdd} disabled={addCategory.isPending}>
+                  <Button className="h-11 flex-1 text-sm" onClick={handleAdd} disabled={addCategory.isPending}>
                     Add category
                   </Button>
-                  <Button variant="secondary" className="h-10 text-sm" onClick={() => setShowAdd(false)}>
+                  <Button variant="secondary" className="h-11 text-sm" onClick={() => setShowAdd(false)}>
                     Cancel
                   </Button>
                 </div>
@@ -761,7 +761,7 @@ export function Budget() {
                     </div>
                     <div className="rounded-2xl bg-secondary p-3 text-center">
                       <p className="text-xs text-muted-foreground">Left</p>
-                      <p className={`mt-0.5 truncate text-sm font-extrabold ${leftAmt === 0 ? 'text-red-400' : 'text-primary'}`}>{fmt(leftAmt)}</p>
+                      <p className={`mt-0.5 truncate text-sm font-extrabold ${leftAmt === 0 ? 'text-[#FF8388]' : 'text-primary'}`}>{fmt(leftAmt)}</p>
                     </div>
                   </div>
                 )}
@@ -832,14 +832,14 @@ export function Budget() {
                     type="button"
                     onClick={saveSheet}
                     disabled={updateCategory.isPending}
-                    className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-primary font-extrabold text-primary-foreground disabled:opacity-60"
+                    className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-primary font-extrabold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Save changes
                   </button>
                   <button
                     type="button"
                     onClick={() => { setDeleteTarget({ id: cat.id, name: cat.name }); setSheetCat(null) }}
-                    className="flex h-14 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10 px-5 font-bold text-red-400 hover:bg-red-500/20"
+                    className="flex h-14 items-center justify-center rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/10 px-5 font-bold text-[#FF8388] hover:bg-[#FF8388]/20"
                   >
                     Delete
                   </button>

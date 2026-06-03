@@ -341,6 +341,7 @@ export function Goals() {
                 <Input
                   className={`mt-2 bg-secondary ${errors.name ? 'border-[#FF8388]' : ''}`}
                   value={form.name}
+                  autoFocus
                   onChange={e => setField('name', e.target.value)}
                   placeholder="Emergency fund"
                 />
@@ -711,7 +712,7 @@ export function Goals() {
                       <Copy className="h-4 w-4" />
                     </Button>
                     <Button
-                      className="h-14 px-5 gap-2 border border-red-500/30 bg-red-500/10 text-[#FF8388] hover:bg-red-500/20"
+                      className="h-14 px-5 gap-2 border border-[#FF8388]/30 bg-[#FF8388]/10 text-[#FF8388] hover:bg-[#FF8388]/20"
                       variant="ghost"
                       onClick={() => { setSheetGoal(null); setDeleteTarget(g) }}
                       aria-label="Delete goal"

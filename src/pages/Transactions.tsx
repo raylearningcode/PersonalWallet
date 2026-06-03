@@ -53,7 +53,10 @@ export function Transactions() {
   const [filter, setFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(() => {
+    const action = new URLSearchParams(window.location.search).get('action')
+    return action === 'expense' || action === 'income'
+  })
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
   const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
@@ -72,7 +75,10 @@ export function Transactions() {
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
   const [transferWalletId, setTransferWalletId] = useState('')
-  const [type, setType] = useState<EntryType>('expense')
+  const [type, setType] = useState<EntryType>(() => {
+    const action = new URLSearchParams(window.location.search).get('action')
+    return (action === 'income' ? 'income' : 'expense') as EntryType
+  })
   const [isRecurring, setIsRecurring] = useState(false)
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [installmentTotal, setInstallmentTotal] = useState('')
@@ -956,7 +962,7 @@ export function Transactions() {
                               </div>
                             )}
                             {isUnderpay && (
-                              <p className="mt-2 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
+                              <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
                             )}
                             {!isUnderpay && Number.isFinite(parsedTendered) && parsedTendered > 0 && walletCurrentBal < money.toBase(parsedTendered, inputCurrency) && (
                               <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#FFCF73]"><AlertTriangle className="h-3 w-3 shrink-0" /> Wallet balance {money.formatBase(walletCurrentBal)} may be lower than cash given</p>
@@ -1706,7 +1712,7 @@ export function Transactions() {
                               <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
                                 <Pencil size={15} />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FF8388] hover:bg-[#FF8388]/10" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
                                 <Trash2 size={15} />
                               </Button>
                             </div>
@@ -1788,7 +1794,7 @@ export function Transactions() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                className="text-[#FF8388] hover:bg-[#FF8388]/10"
                 onClick={() => setBulkDeleteConfirm(true)}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -1873,7 +1879,7 @@ export function Transactions() {
                         {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
                       </p>
                     )}
-                    <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${tx.type === 'income' ? 'bg-green-500/15 text-green-400' : tx.type === 'expense' ? 'bg-red-500/15 text-red-400' : 'bg-blue-500/15 text-blue-400'}`}>
+                    <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${tx.type === 'income' ? 'bg-primary/15 text-primary' : tx.type === 'expense' ? 'bg-[#FF8388]/15 text-[#FF8388]' : 'bg-muted text-muted-foreground'}`}>
                       {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
                     </span>
                   </div>
@@ -1987,7 +1993,7 @@ export function Transactions() {
                       <Copy size={15} />Duplicate
                     </Button>
                     <Button
-                      className="h-14 w-14 shrink-0 gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      className="h-14 w-14 shrink-0 gap-2 text-[#FF8388] hover:bg-[#FF8388]/10"
                       variant="ghost"
                       onClick={() => { setDetailTx(null); handleDeleteTransaction(tx) }}
                       aria-label="Delete transaction"

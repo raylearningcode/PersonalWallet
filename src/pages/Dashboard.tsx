@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals, useAuthSession } from '@/lib/queries'
 import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { StatCard } from '@/components/shared/StatCard'
@@ -20,6 +21,7 @@ export function Dashboard() {
   const money = useMoney()
   const fmt = money.formatDisplay
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
   const [showDetails, setShowDetails] = useState(false)
   const { data: transactions = [], isPending: txPending } = useTransactions()
   const { data: investConfig } = useInvestmentConfig()
@@ -936,8 +938,8 @@ export function Dashboard() {
           </Card>
         </div>
 
-        {/* AI Insights */}
-        {(!aiCardDismissed || getGeminiKey() || aiInsights) && (
+        {/* AI Insights — hide locked card on mobile to reduce clutter */}
+        {(getGeminiKey() || aiInsights || (isDesktop && !aiCardDismissed)) && (
           <Card className="mt-6">
             <CardHeader>
               <div className="flex items-center justify-between gap-4">
@@ -1009,13 +1011,13 @@ export function Dashboard() {
                   Analysing your finances…
                 </div>
               ) : insightsError ? (
-                <p className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">{insightsError}</p>
+                <p className="rounded-2xl border border-[#FF8388]/20 bg-[#FF8388]/5 p-4 text-sm text-[#FF8388]">{insightsError}</p>
               ) : aiInsights ? (
                 <div className="space-y-3">
                   {aiInsights.map((insight, i) => {
                     const styles = {
                       warning:     { border: 'border-[#FFCF73]/30',  bg: 'bg-[#FFCF73]/5',   text: 'text-[#FFCF73]',   icon: <AlertTriangle className="h-4 w-4" />, label: 'Warning' },
-                      alert:       { border: 'border-red-500/30',    bg: 'bg-red-500/5',      text: 'text-red-400',     icon: <Bell className="h-4 w-4" />,          label: 'Alert' },
+                      alert:       { border: 'border-[#FF8388]/30',  bg: 'bg-[#FF8388]/5',    text: 'text-[#FF8388]',   icon: <Bell className="h-4 w-4" />,          label: 'Alert' },
                       opportunity: { border: 'border-primary/30',    bg: 'bg-primary/5',      text: 'text-primary',     icon: <TrendingUp className="h-4 w-4" />,     label: 'Opportunity' },
                       tip:         { border: 'border-border',        bg: 'bg-secondary',      text: 'text-muted-foreground', icon: <Lightbulb className="h-4 w-4" />, label: 'Tip' },
                     }

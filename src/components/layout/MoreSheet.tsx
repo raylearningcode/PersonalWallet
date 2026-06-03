@@ -1,31 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Calculator, RefreshCw, Settings, Target, TrendingUp, Wallet } from 'lucide-react'
+import { BarChart2, Calculator, Plus, RefreshCw, Settings, Target, TrendingUp, Wallet } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
 
 const MORE_NAV_GROUPS = [
   {
-    label: 'Plan',
+    label: 'Daily',
     items: [
       { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
-      { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
-      { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
-    ],
-  },
-  {
-    label: 'Track',
-    items: [
-      { to: '/subscriptions', label: 'Recurring', Icon: RefreshCw, color: '#FADBEA' },
-      { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+      { to: '/subscriptions', label: 'Subscriptions', Icon: RefreshCw, color: '#FADBEA' },
       { to: '/settings?section=wallets', label: 'Wallets', Icon: Wallet, color: '#A9F5C7' },
     ],
   },
   {
-    label: 'Manage',
+    label: 'Review',
+    items: [
+      { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+      { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
+    ],
+  },
+  {
+    label: 'Advanced',
     items: [
       { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
+      { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
     ],
   },
 ]
@@ -74,7 +74,7 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
           {MORE_NAV_GROUPS.map(group => (
             <div key={group.label}>
               <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">{group.label}</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className={`grid gap-3 ${group.items.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {group.items.map(({ to, label, Icon, color }) => (
                   <button
                     key={to}
@@ -96,25 +96,37 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
         </div>
 
         {/* Goal progress card */}
-        <button
-          type="button"
-          onClick={() => handleNav('/goals')}
-          className="w-full rounded-2xl border border-border bg-card px-5 py-4 text-left transition-colors active:bg-secondary/60"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Current goal</p>
-              <p className="mt-0.5 truncate text-base font-extrabold text-foreground">{displayGoal?.name ?? 'No goal set'}</p>
+        <div className="rounded-2xl border border-border bg-card px-5 py-4">
+          <button
+            type="button"
+            onClick={() => handleNav('/goals')}
+            className="w-full text-left"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Current goal</p>
+                <p className="mt-0.5 truncate text-base font-extrabold text-foreground">{displayGoal?.name ?? 'No goal set'}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-sm font-extrabold text-primary">{goalPct}%</span>
             </div>
-            <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-sm font-extrabold text-primary">{goalPct}%</span>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
-              style={{ width: `${goalPct}%` }}
-            />
-          </div>
-        </button>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${goalPct}%` }}
+              />
+            </div>
+          </button>
+          {displayGoal && goalPct < 100 && (
+            <button
+              type="button"
+              onClick={() => handleNav('/goals')}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/10 active:bg-primary/15"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add contribution
+            </button>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   )

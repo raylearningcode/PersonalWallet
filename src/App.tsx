@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Component, lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Dashboard } from '@/pages/Dashboard'
@@ -20,20 +20,56 @@ function PageLoader() {
   )
 }
 
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-8 text-center">
+          <p className="text-sm font-bold text-foreground">This page took too long to load.</p>
+          <p className="text-xs text-muted-foreground">Check your connection and try again.</p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => this.setState({ error: null })}
+              className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground"
+            >
+              Try again
+            </button>
+            <a href="/" className="rounded-full border border-border px-5 py-2 text-sm font-bold text-foreground">
+              Go home
+            </a>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+function Page({ children }: { children: ReactNode }) {
+  return (
+    <RouteErrorBoundary>
+      <Suspense fallback={<PageLoader />}>{children}</Suspense>
+    </RouteErrorBoundary>
+  )
+}
+
 export function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<Dashboard />} />
-        <Route path="transactions" element={<Suspense fallback={<PageLoader />}><Transactions /></Suspense>} />
-        <Route path="budget" element={<Suspense fallback={<PageLoader />}><Budget /></Suspense>} />
-        <Route path="estimation" element={<Suspense fallback={<PageLoader />}><Estimation /></Suspense>} />
-        <Route path="planning" element={<Suspense fallback={<PageLoader />}><Estimation /></Suspense>} />
-        <Route path="investing" element={<Suspense fallback={<PageLoader />}><Investing /></Suspense>} />
-        <Route path="reports" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
-        <Route path="settings" element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
-        <Route path="goals" element={<Suspense fallback={<PageLoader />}><Goals /></Suspense>} />
-        <Route path="subscriptions" element={<Suspense fallback={<PageLoader />}><Subscriptions /></Suspense>} />
+        <Route path="transactions" element={<Page><Transactions /></Page>} />
+        <Route path="budget" element={<Page><Budget /></Page>} />
+        <Route path="estimation" element={<Page><Estimation /></Page>} />
+        <Route path="planning" element={<Page><Estimation /></Page>} />
+        <Route path="investing" element={<Page><Investing /></Page>} />
+        <Route path="reports" element={<Page><Reports /></Page>} />
+        <Route path="settings" element={<Page><Settings /></Page>} />
+        <Route path="goals" element={<Page><Goals /></Page>} />
+        <Route path="subscriptions" element={<Page><Subscriptions /></Page>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

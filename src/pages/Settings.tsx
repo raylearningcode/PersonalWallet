@@ -562,7 +562,7 @@ export function Settings() {
                     <p className="font-bold text-foreground">Logged in</p>
                     <p className="text-sm text-muted-foreground">{session.user.email}</p>
                   </div>
-                  <Button variant="secondary" onClick={() => signOut.mutateAsync()}>Log out</Button>
+                  <Button variant="secondary" disabled={signOut.isPending} onClick={() => signOut.mutateAsync()}>Log out</Button>
                 </div>
               ) : (
                 <div className="grid max-w-md grid-cols-1 items-end gap-4">
@@ -781,7 +781,7 @@ export function Settings() {
                               />
                               <button
                                 aria-label="Save wallet rename"
-                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
                                 onClick={handleSaveWalletRename}
                                 disabled={updateWallet.isPending || renameWallet.isPending}
                               >
@@ -883,7 +883,7 @@ export function Settings() {
                       />
                       <button
                         aria-label="Save rename"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={handleSaveRename}
                         disabled={renameCategory.isPending}
                       >
