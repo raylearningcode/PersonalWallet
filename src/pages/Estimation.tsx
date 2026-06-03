@@ -141,7 +141,7 @@ export function Estimation() {
       setTimeout(() => setIncomeError(false), 1500)
       return
     }
-    const newItems = [...incomeItems, { id: crypto.randomUUID(), name: incomeSource.trim(), amount: money.toBase(amount, money.displayCurrency), period: incomePeriod }]
+    const newItems = [...incomeItems, { id: crypto.randomUUID(), name: incomeSource.trim(), amount, period: incomePeriod }]
     setIncomeItems(newItems)
     setIncomeSource('')
     setIncomeAmount('')
@@ -160,7 +160,7 @@ export function Estimation() {
       setTimeout(() => setExpenseError(false), 1500)
       return
     }
-    const newItems = [...expenseItems, { id: crypto.randomUUID(), name: expenseDetail.trim(), amount: money.toBase(amount, money.displayCurrency), period: expensePeriod }]
+    const newItems = [...expenseItems, { id: crypto.randomUUID(), name: expenseDetail.trim(), amount, period: expensePeriod }]
     setExpenseItems(newItems)
     setExpenseDetail('')
     setExpenseAmount('')
@@ -178,7 +178,7 @@ export function Estimation() {
     const newItems = [...wishlistItems, {
       id: crypto.randomUUID(),
       name: wishlistName.trim(),
-      amount: money.toBase(amount, money.displayCurrency),
+      amount,
       type: wishlistType,
       note: wishlistNote.trim(),
     }]
@@ -201,13 +201,13 @@ export function Estimation() {
     if (!item) return
     setEditItem({ list, id })
     setEditName(item.name)
-    setEditAmount(formatNumberInput(money.fromBase(item.amount, money.displayCurrency)))
+    setEditAmount(formatNumberInput(item.amount))
     setEditPeriod(item.period)
   }
 
   const saveEditItem = async () => {
     if (!editItem) return
-    const amount = money.toBase(parseNumberInput(editAmount), money.displayCurrency)
+    const amount = parseNumberInput(editAmount)
     if (!editName.trim() || amount <= 0) return
     let newIncome = incomeItems
     let newExpense = expenseItems
@@ -227,14 +227,14 @@ export function Estimation() {
     if (!item) return
     setEditWishlistId(id)
     setEditWishlistName(item.name)
-    setEditWishlistAmount(formatNumberInput(money.fromBase(item.amount, money.displayCurrency)))
+    setEditWishlistAmount(formatNumberInput(item.amount))
     setEditWishlistType(item.type)
     setEditWishlistNote(item.note)
   }
 
   const saveEditWishlist = async () => {
     if (!editWishlistId) return
-    const amount = money.toBase(parseNumberInput(editWishlistAmount), money.displayCurrency)
+    const amount = parseNumberInput(editWishlistAmount)
     if (!editWishlistName.trim() || amount <= 0) return
     const newWishlist = wishlistItems.map(i => i.id === editWishlistId
       ? { ...i, name: editWishlistName.trim(), amount, type: editWishlistType, note: editWishlistNote.trim() }
@@ -531,7 +531,7 @@ export function Estimation() {
                 <Input aria-label="Income source" className={`mt-2 bg-secondary transition-colors ${incomeError && !incomeSource.trim() ? 'border-[#FF8388]' : ''}`} value={incomeSource} onChange={event => setIncomeSource(event.target.value)} placeholder="Part-time work" />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
+                <Label className="text-xs text-muted-foreground">Income amount ({money.baseCurrency})</Label>
                 <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
               </div>
               <div>
@@ -558,7 +558,7 @@ export function Estimation() {
               onEditPeriodChange={p => setEditPeriod(p as EstimatePeriod)}
               onEditSave={saveEditItem}
               onEditCancel={() => setEditItem(null)}
-              displayCurrency={money.displayCurrency}
+              displayCurrency={money.baseCurrency}
             />
           </CardContent>
         </Card>
@@ -577,7 +577,7 @@ export function Estimation() {
                 <Input aria-label="Expense detail" className={`mt-2 bg-secondary transition-colors ${expenseError && !expenseDetail.trim() ? 'border-[#FF8388]' : ''}`} value={expenseDetail} onChange={event => setExpenseDetail(event.target.value)} placeholder="Apartment rent" />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
+                <Label className="text-xs text-muted-foreground">Expense amount ({money.baseCurrency})</Label>
                 <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
               </div>
               <div>
@@ -604,7 +604,7 @@ export function Estimation() {
               onEditPeriodChange={p => setEditPeriod(p as EstimatePeriod)}
               onEditSave={saveEditItem}
               onEditCancel={() => setEditItem(null)}
-              displayCurrency={money.displayCurrency}
+              displayCurrency={money.baseCurrency}
             />
           </CardContent>
         </Card>
@@ -630,7 +630,7 @@ export function Estimation() {
                 <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="e.g. new laptop, vacation, gadget" />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
+                <Label className="text-xs text-muted-foreground">Amount ({money.baseCurrency})</Label>
                 <Input aria-label="Wishlist amount" className="mt-2 bg-secondary" inputMode="decimal" value={wishlistAmount} onChange={event => setWishlistAmount(formatNumberInput(event.target.value))} placeholder="0" />
               </div>
               <div>

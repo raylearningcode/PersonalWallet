@@ -75,10 +75,10 @@ export function Subscriptions() {
   const deleteRule = useDeleteRecurringRule()
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [addForm, setAddForm] = useState(() => emptyAddForm(money.displayCurrency))
+  const [addForm, setAddForm] = useState(() => emptyAddForm(money.baseCurrency))
   const [detailRule, setDetailRule] = useState<RecurringRule | null>(null)
   const [editTarget, setEditTarget] = useState<RecurringRule | null>(null)
-  const [editForm, setEditForm] = useState(() => emptyAddForm(money.displayCurrency))
+  const [editForm, setEditForm] = useState(() => emptyAddForm(money.baseCurrency))
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
   const [expenseSort, setExpenseSort] = useState<ExpenseSort>('due-date')
   const [searchQuery, setSearchQuery] = useState('')
@@ -177,7 +177,7 @@ export function Subscriptions() {
         description: rule.description,
         amount: rule.amount,
         original_amount: rule.original_amount ?? rule.amount,
-        original_currency: rule.original_currency ?? money.displayCurrency,
+        original_currency: rule.original_currency ?? money.baseCurrency,
         type: rule.type as 'expense' | 'income',
         category: rule.category,
         wallet_id: rule.wallet_id ?? null,
@@ -221,7 +221,7 @@ export function Subscriptions() {
     setEditForm({
       description: rule.description,
       amount: String(rule.original_amount ?? rule.amount),
-      currency: rule.original_currency ?? money.displayCurrency,
+      currency: rule.original_currency ?? money.baseCurrency,
       type: rule.type as 'expense' | 'income',
       frequency: rule.frequency,
       category: rule.category,
@@ -237,7 +237,7 @@ export function Subscriptions() {
     setEditForm({
       description: rule.description,
       amount: String(rule.original_amount ?? rule.amount),
-      currency: rule.original_currency ?? money.displayCurrency,
+      currency: rule.original_currency ?? money.baseCurrency,
       type: rule.type as 'expense' | 'income',
       frequency: rule.frequency,
       category: rule.category,
@@ -256,7 +256,7 @@ export function Subscriptions() {
       return
     }
     const category = editForm.category || (editForm.type === 'income' ? 'Income' : 'Subscriptions')
-    const currency = editForm.currency || money.displayCurrency
+    const currency = editForm.currency || money.baseCurrency
     try {
       await updateRule.mutateAsync({
         id: editTarget.id,
@@ -272,7 +272,7 @@ export function Subscriptions() {
         end_date: editForm.endDate || null,
       })
       setEditTarget(null)
-      setEditForm(emptyAddForm(money.displayCurrency))
+      setEditForm(emptyAddForm(money.baseCurrency))
       toast.success('Subscription updated')
     } catch {
       toast.error('Failed to update subscription')
@@ -287,7 +287,7 @@ export function Subscriptions() {
     }
     const startDate = addForm.startDate || new Date().toISOString().slice(0, 10)
     const category = addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions')
-    const currency = addForm.currency || money.displayCurrency
+    const currency = addForm.currency || money.baseCurrency
     try {
       const rule = await addRule.mutateAsync({
         user_id: null,
@@ -327,7 +327,7 @@ export function Subscriptions() {
       } else {
         toast.success('Subscription added')
       }
-      setAddForm(emptyAddForm(money.displayCurrency))
+      setAddForm(emptyAddForm(money.baseCurrency))
       setShowAddForm(false)
     } catch {
       toast.error('Failed to add subscription')
@@ -559,7 +559,7 @@ export function Subscriptions() {
               <button
                 aria-label="Close new subscription form"
                 className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
-                onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.displayCurrency)) }}
+                onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.baseCurrency)) }}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -682,7 +682,7 @@ export function Subscriptions() {
               <Button onClick={handleAdd} disabled={addRule.isPending || addTransaction.isPending}>
                 {(addRule.isPending || addTransaction.isPending) ? 'Adding…' : 'Add subscription'}
               </Button>
-              <Button variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.displayCurrency)) }}>
+              <Button variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.baseCurrency)) }}>
                 Cancel
               </Button>
             </div>
