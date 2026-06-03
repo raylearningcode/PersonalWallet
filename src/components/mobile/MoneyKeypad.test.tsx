@@ -20,4 +20,13 @@ describe('MoneyKeypad', () => {
 
     expect(onChange).toHaveBeenCalledWith('500')
   })
+
+  it('confirms panel entry with the large check button', () => {
+    const onDone = vi.fn()
+    render(<MoneyKeypad value="500" onChange={vi.fn()} currency="TWD" variant="panel" onDone={onDone} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm amount' }))
+
+    expect(onDone).toHaveBeenCalledOnce()
+  })
 })
