@@ -7,25 +7,25 @@ import { PINNED_GOAL_KEY } from './Sidebar'
 
 const MORE_NAV_GROUPS = [
   {
-    label: 'Plan',
+    label: 'Daily',
     items: [
       { to: '/goals', label: 'Goals', Icon: Target, color: '#A9F5C7' },
-      { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
-      { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
-    ],
-  },
-  {
-    label: 'Track',
-    items: [
-      { to: '/subscriptions', label: 'Recurring', Icon: RefreshCw, color: '#FADBEA' },
-      { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+      { to: '/subscriptions', label: 'Subscriptions', Icon: RefreshCw, color: '#FADBEA' },
       { to: '/settings?section=wallets', label: 'Wallets', Icon: Wallet, color: '#A9F5C7' },
     ],
   },
   {
-    label: 'Manage',
+    label: 'Review',
+    items: [
+      { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+      { to: '/estimation', label: 'Planning', Icon: Calculator, color: '#C4AEFF' },
+    ],
+  },
+  {
+    label: 'Advanced',
     items: [
       { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
+      { to: '/investing', label: 'Investing', Icon: TrendingUp, color: '#FFD276' },
     ],
   },
 ]
@@ -74,7 +74,7 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
           {MORE_NAV_GROUPS.map(group => (
             <div key={group.label}>
               <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">{group.label}</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className={`grid gap-3 ${group.items.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {group.items.map(({ to, label, Icon, color }) => (
                   <button
                     key={to}

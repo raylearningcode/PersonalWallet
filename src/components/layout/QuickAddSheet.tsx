@@ -788,7 +788,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             const { bills: billsChange, coins: coinsChange } = isTWD
               ? splitTwdChange(changeAmount, getFiftyCoinRouting())
               : { bills: 0, coins: changeAmount }
-            const twdChips = [100, 500, 1000].filter(n => !parsedExpense || parsedExpense <= 0 || n >= parsedExpense)
+            const twdChips = [50, 100, 200, 500, 1000].filter(n => parsedExpense <= 0 || n >= parsedExpense)
 
             return (
               <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
@@ -842,9 +842,9 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                           <button
                             type="button"
                             onClick={() => { const e = parseNumberInput(amount); if (e > 0) setCashTendered(String(e)) }}
-                            className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
+                            className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTenderedVal === parsedExpense && parsedExpense > 0 ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
                           >
-                            Exact
+                            {parsedExpense > 0 ? `Exact NT$${parsedExpense.toLocaleString()}` : 'Exact'}
                           </button>
                           {twdChips.map(chip => (
                             <button
@@ -941,6 +941,45 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 shrink-0" /> Set up a coin pouch wallet to route change automatically</span>
                         <span className="ml-2 shrink-0">Settings →</span>
                       </Link>
+                    )}
+
+                    {/* Transaction summary preview */}
+                    {changeAmount > 0 && parsedTenderedVal > 0 && (
+                      <div className="rounded-xl border border-border bg-secondary/60 px-4 py-3">
+                        <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">Summary</p>
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground truncate">{selectedWallet?.name ?? 'Wallet'}</span>
+                            <span className="shrink-0 font-bold text-[#FF8388]">
+                              −{isTWD ? `NT$${parsedTenderedVal.toLocaleString()}` : money.format(parsedTenderedVal, inputCurrency)}
+                            </span>
+                          </div>
+                          {isTWD && billsChange > 0 && changeBillsWalletId && (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeBillsWalletId)?.name ?? 'Bills wallet'}</span>
+                              <span className="shrink-0 font-bold text-primary">+NT${billsChange.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {isTWD && coinsChange > 0 && changeCoinsWalletId && (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeCoinsWalletId)?.name ?? 'Coin pouch'}</span>
+                              <span className="shrink-0 font-bold text-primary">+NT${coinsChange.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {!isTWD && changeAmount > 0 && changeCoinsWalletId && (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeCoinsWalletId)?.name ?? 'Change wallet'}</span>
+                              <span className="shrink-0 font-bold text-primary">+{money.format(changeAmount, inputCurrency)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between gap-2 border-t border-border pt-1.5">
+                            <span className="text-muted-foreground truncate">{category || 'Expense'} recorded</span>
+                            <span className="shrink-0 font-bold text-[#FF8388]">
+                              −{isTWD ? `NT$${parsedExpense.toLocaleString()}` : money.format(parsedExpense, inputCurrency)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}

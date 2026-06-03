@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals, useAuthSession } from '@/lib/queries'
 import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { StatCard } from '@/components/shared/StatCard'
@@ -20,6 +21,7 @@ export function Dashboard() {
   const money = useMoney()
   const fmt = money.formatDisplay
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
   const [showDetails, setShowDetails] = useState(false)
   const { data: transactions = [], isPending: txPending } = useTransactions()
   const { data: investConfig } = useInvestmentConfig()
@@ -936,8 +938,8 @@ export function Dashboard() {
           </Card>
         </div>
 
-        {/* AI Insights */}
-        {(!aiCardDismissed || getGeminiKey() || aiInsights) && (
+        {/* AI Insights — hide locked card on mobile to reduce clutter */}
+        {(getGeminiKey() || aiInsights || (isDesktop && !aiCardDismissed)) && (
           <Card className="mt-6">
             <CardHeader>
               <div className="flex items-center justify-between gap-4">

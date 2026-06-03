@@ -158,8 +158,7 @@ export function AppLayout() {
       <BottomNav
         onMoreClick={() => setMoreOpen(true)}
         moreActive={moreOpen}
-        onAddClick={() => { setQuickAddType('expense'); setQuickAddCash(false); setQuickAddOpen(true) }}
-        onLongPressAdd={() => setQuickActionsOpen(true)}
+        onAddClick={() => setQuickActionsOpen(true)}
         hidden={keyboardVisible}
       />
       <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
