@@ -936,19 +936,6 @@ export function useAppSettings() {
   })
 }
 
-export function useUpdateAppSettings() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, ...rest }: Partial<Omit<AppSettings, 'created_at'>> & { id: string }) => {
-      const userId = await getCurrentUserId()
-      if (!userId) { localSaveSettings(rest); return }
-      const { error } = await supabase.from('app_settings').update(rest).eq('id', id).eq('user_id', userId)
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['app_settings'] }),
-  })
-}
-
 export function useSaveAppSettings() {
   const qc = useQueryClient()
   return useMutation({
