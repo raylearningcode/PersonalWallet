@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { AndroidBackHandler } from '@/components/native/AndroidBackHandler'
@@ -61,6 +61,7 @@ export function AppLayout() {
   const [quickAddKeypadOpen, setQuickAddKeypadOpen] = useState(false)
   const { data: recurringRules = [] } = useRecurringRules()
   const money = useMoney()
+  const lastNotifScheduleRef = useRef<string>('')
   const [pinLocked, setPinLocked] = useState(() =>
     Boolean(localStorage.getItem(PIN_STORAGE_KEY)) && !sessionStorage.getItem(PIN_SESSION_KEY)
   )
@@ -124,8 +125,15 @@ export function AppLayout() {
 
   useEffect(() => {
     if (recurringRules.length === 0) return
+    // Only reschedule when the actual due-date/amount data changes, not on every array reference refresh
+    const key = recurringRules
+      .filter(r => r.active && r.type !== 'income')
+      .map(r => `${r.id}:${r.next_due_date}:${r.amount}`)
+      .join('|')
+    if (key === lastNotifScheduleRef.current) return
+    lastNotifScheduleRef.current = key
     scheduleUpcomingBillNotifications(recurringRules, money.formatDisplay)
-  }, [recurringRules])
+  }, [recurringRules, money.formatDisplay])
 
   useEffect(() => {
     const handleOffline = () => setOffline(true)

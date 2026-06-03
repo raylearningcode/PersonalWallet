@@ -66,7 +66,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
   // Close keypad when AppLayout back handler fires
   useEffect(() => {
-    const handler = () => setActiveKeypadRaw(null)
+    const handler = () => setActiveKeypad(null)
     window.addEventListener('finpath-close-keypad', handler)
     return () => window.removeEventListener('finpath-close-keypad', handler)
   }, [])

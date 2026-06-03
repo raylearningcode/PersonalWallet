@@ -23,6 +23,7 @@ vi.mock('@/lib/currency', () => ({
         : `${currency} ${new Intl.NumberFormat('en-US').format(Math.round(amount))}`,
     formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(Math.round(amount / 1_000_000 * 10) / 10)}M`,
     formatDisplay: (amount: number) => `TWD ${new Intl.NumberFormat('en-US').format(Math.round(amount / 550))}`,
+    formatRef: (amount: number) => `TWD ${new Intl.NumberFormat("en-US").format(Math.round(amount / 550))}`,
   }),
   useCurrency: () => (amount: number) =>
     `TWD ${new Intl.NumberFormat('en-US').format(Math.round(amount / 550))}`,

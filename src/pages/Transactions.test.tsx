@@ -84,6 +84,10 @@ vi.mock('@/lib/currency', () => ({
     format: (amount: number, currency: string) => `${currency} ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatDisplay: (amount: number) => `NT$${new Intl.NumberFormat('en-US').format(Math.round(amount / 550))}`,
+    formatRef: (amount: number) => `NT$${new Intl.NumberFormat('en-US').format(Math.round(amount / 550))}`,
+    formatTx: (tx: { amount: number; original_amount?: number | null; original_currency?: string | null }) =>
+      `Rp ${new Intl.NumberFormat('en-US').format(tx.original_currency === 'IDR' && tx.original_amount != null ? tx.original_amount : tx.amount)}`,
+    approxBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
   }),
   formatCurrency: (amount: number) =>
     `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,

@@ -46,6 +46,7 @@ vi.mock('@/lib/currency', () => ({
     format: (amount: number, currency = 'TWD') => `${currency} ${amount}`,
     formatBase: (amount: number) => `TWD ${amount}`,
     formatDisplay: (amount: number) => `TWD ${amount}`,
+    formatRef: () => null,
   }),
 }))
 

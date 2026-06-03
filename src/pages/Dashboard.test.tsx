@@ -26,6 +26,13 @@ vi.mock('@/lib/currency', () => ({
     displayCurrency: 'IDR',
     formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatDisplay: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
+    formatRef: () => null,
+    formatTx: (tx: { amount: number; original_amount?: number | null; original_currency?: string | null }) =>
+      `Rp ${new Intl.NumberFormat('en-US').format(tx.original_currency === 'IDR' && tx.original_amount != null ? tx.original_amount : tx.amount)}`,
+    approxBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
+    toBase: (amount: number) => amount,
+    format: (amount: number, currency: string) => `${currency} ${new Intl.NumberFormat('en-US').format(amount)}`,
+    fromBase: (amount: number) => amount,
   }),
   txAmountColor: (amount: number, type: string) => amount === 0 ? 'text-foreground' : type === 'income' ? 'text-primary' : 'text-[#FF8388]',
   txAmountSign: (amount: number, type: string) => amount === 0 ? '' : type === 'income' ? '+' : type === 'transfer' ? '' : '-',

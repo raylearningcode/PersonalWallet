@@ -365,6 +365,8 @@ export function Reports() {
     if (added > 0) { setImportText(''); setImportOpen(false) }
   }
 
+  const csvField = (s: string) => `"${s.replace(/"/g, '""')}"`
+
   const buildCSV = (txList: typeof rangeTx, label: string) => {
     const headers = ['Date', 'Description', 'Category', 'Type', 'Wallet', `Amount (${money.baseCurrency})`]
     const rows = [...txList]
@@ -373,10 +375,10 @@ export function Reports() {
         const wallet = wallets.find(w => w.id === tx.wallet_id)
         return [
           tx.date,
-          `"${tx.description.replace(/"/g, '""')}"`,
-          tx.category,
-          tx.type,
-          wallet?.name ?? '',
+          csvField(tx.description),
+          csvField(tx.category),
+          csvField(tx.type),
+          csvField(wallet?.name ?? ''),
           money.formatBase(tx.amount).replace(/,/g, ''),
         ]
       })

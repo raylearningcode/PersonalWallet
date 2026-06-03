@@ -64,13 +64,13 @@ export function Transactions() {
   const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
   const [ruleDescription, setRuleDescription] = useState('')
   const [ruleAmount, setRuleAmount] = useState('')
-  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.baseCurrency)
+  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
   const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
   const [ruleNextDueDate, setRuleNextDueDate] = useState('')
   const [ruleEndDate, setRuleEndDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
-  const [inputCurrency, setInputCurrency] = useState(money.baseCurrency)
+  const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
@@ -102,6 +102,7 @@ export function Transactions() {
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const swipeRef = useRef<{ activeId: string | null; startX: number; startY: number; dx: number; isSwipe: boolean; wasSwipe: boolean }>({ activeId: null, startX: 0, startY: 0, dx: 0, isSwipe: false, wasSwipe: false })
   const { data: transactions = [], isPending: txPending, isError: txError, refetch: txRefetch } = useTransactions(filter)
+  const { data: allTransactions = [] } = useTransactions()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
@@ -123,8 +124,8 @@ export function Transactions() {
   }, [walletId, transferWalletId, wallets])
 
   useEffect(() => {
-    setInputCurrency(current => current || money.baseCurrency)
-  }, [money.baseCurrency])
+    setInputCurrency(current => current || money.displayCurrency)
+  }, [money.displayCurrency])
 
   useEffect(() => {
     if (selectMode) setSwipeOpenId(null)
@@ -146,7 +147,7 @@ export function Transactions() {
     if (!editingRule) return
     setRuleDescription(editingRule.description)
     setRuleAmount(String(editingRule.original_amount ?? editingRule.amount))
-    setRuleInputCurrency(editingRule.original_currency ?? money.baseCurrency)
+    setRuleInputCurrency(editingRule.original_currency ?? money.displayCurrency)
     setRuleFrequency(editingRule.frequency)
     setRuleNextDueDate(editingRule.next_due_date)
     setRuleEndDate(editingRule.end_date ?? '')
@@ -246,27 +247,33 @@ export function Transactions() {
 
   const potentialDuplicates = useMemo(() => {
     const candidates: { a: Transaction; b: Transaction }[] = []
-    const nonSystem = transactions.filter(t => !t.is_system_generated)
-    for (let i = 0; i < nonSystem.length; i++) {
-      for (let j = i + 1; j < nonSystem.length; j++) {
-        const a = nonSystem[i]; const b = nonSystem[j]
-        if (a.type !== b.type) continue
+    // Use allTransactions (unfiltered) so duplicates are caught regardless of which tab is active
+    const sorted = allTransactions
+      .filter(t => !t.is_system_generated)
+      .sort((a, b) => a.date.localeCompare(b.date))
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const a = sorted[i]; const b = sorted[j]
         const dayDiff = Math.abs(new Date(a.date).getTime() - new Date(b.date).getTime()) / 86400000
-        if (dayDiff > 2) continue
+        if (dayDiff > 2) break // sorted by date — once gap > 2 days, no need to scan further
+        if (a.type !== b.type) continue
         const descMatch = a.description.toLowerCase() === b.description.toLowerCase()
-        const amtMatch = Math.abs(a.amount - b.amount) / Math.max(a.amount, b.amount) < 0.01
-        if (descMatch && amtMatch) candidates.push({ a, b })
-        if (candidates.length >= 10) return candidates
+        const maxAmt = Math.max(a.amount, b.amount)
+        const amtMatch = maxAmt === 0 ? true : Math.abs(a.amount - b.amount) / maxAmt < 0.01
+        if (descMatch && amtMatch) {
+          candidates.push({ a, b })
+          if (candidates.length >= 10) return candidates
+        }
       }
     }
     return candidates
-  }, [transactions])
+  }, [allTransactions])
 
   const resetForm = () => {
     setEditingTransaction(null)
     setDescription('')
     setAmount('')
-    setInputCurrency(money.baseCurrency)
+    setInputCurrency(money.displayCurrency)
     setDate(new Date().toISOString().slice(0, 10))
     setType('expense')
     setCategory(categories[0]?.name ?? '')
@@ -291,7 +298,7 @@ export function Transactions() {
     setEditingTransaction(transaction)
     setDescription(transaction.description)
     setAmount(String(transaction.original_amount ?? transaction.amount))
-    setInputCurrency(transaction.original_currency ?? money.baseCurrency)
+    setInputCurrency(transaction.original_currency ?? money.displayCurrency)
     setDate(transaction.date)
     setCategory(transaction.category)
     setWalletId(transaction.wallet_id ?? wallets[0]?.id ?? '')
@@ -1524,23 +1531,32 @@ export function Transactions() {
           </SheetContent>
         </Sheet>
 
-        {!txPending && !txError && potentialDuplicates.length > 0 && !searchQuery && !selectedCategory && (
-          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/40 bg-[#FFCF73]/10 px-4 py-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-foreground">{potentialDuplicates.length} potential duplicate{potentialDuplicates.length !== 1 ? 's' : ''} detected</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {potentialDuplicates[0].a.description} on {potentialDuplicates[0].a.date} — same amount within 2 days.
-              </p>
+        {!txPending && !txError && potentialDuplicates.length > 0 && !searchQuery && !selectedCategory && (() => {
+          const groups = [...new Map(potentialDuplicates.map(p => [p.a.description.toLowerCase(), p])).values()]
+          return (
+            <div className="mb-4 rounded-2xl border border-[#FFCF73]/40 bg-[#FFCF73]/10 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
+                <p className="flex-1 text-sm font-bold text-foreground">{potentialDuplicates.length} potential duplicate{potentialDuplicates.length !== 1 ? 's' : ''} detected</p>
+              </div>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {groups.map(p => (
+                  <div key={p.a.id} className="flex items-center gap-2">
+                    <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                      {p.a.description} · {p.a.date}
+                    </p>
+                    <button
+                      className="shrink-0 rounded-full bg-[#FFCF73]/20 px-2.5 py-1 text-xs font-bold text-[#FFCF73] hover:bg-[#FFCF73]/30"
+                      onClick={() => setSearchQuery(p.a.description)}
+                    >
+                      Review
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-            <button
-              className="shrink-0 rounded-full bg-[#FFCF73]/20 px-2.5 py-1 text-xs font-bold text-[#FFCF73] hover:bg-[#FFCF73]/30"
-              onClick={() => setSearchQuery(potentialDuplicates[0].a.description)}
-            >
-              Review
-            </button>
-          </div>
-        )}
+          )
+        })()}
 
         {txPending ? (
           <div className="space-y-3">

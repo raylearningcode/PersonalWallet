@@ -16,9 +16,11 @@ vi.mock('@/lib/currency', () => ({
     baseCurrency: 'IDR',
     displayCurrency: 'TWD',
     toBase: (amount: number, currency = 'TWD') => currency === 'TWD' ? amount * 550 : amount,
+    fromBase: (amount: number, currency = 'TWD') => currency === 'TWD' ? amount / 550 : amount,
     format: (amount: number, currency: string) => `${currency} ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatDisplay: (amount: number) => `NT$${new Intl.NumberFormat('en-US').format(Math.round(amount / 550))}`,
+    formatRef: (amount: number) => `TWD ${new Intl.NumberFormat("en-US").format(Math.round(amount / 550))}`,
   }),
   formatCurrency: (amount: number) =>
     `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
