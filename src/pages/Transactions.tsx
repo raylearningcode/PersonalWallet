@@ -959,6 +959,13 @@ export function Transactions() {
                                     NT${chip.toLocaleString()}
                                   </button>
                                 ))}
+                                <button
+                                  type="button"
+                                  onClick={() => { setCashTendered(''); setTimeout(() => (document.querySelector('[aria-label="Cash given"]') as HTMLInputElement | null)?.focus(), 50) }}
+                                  className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                                >
+                                  Custom
+                                </button>
                               </div>
                             )}
                             {isUnderpay && (

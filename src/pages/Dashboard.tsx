@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals, useAuthSession } from '@/lib/queries'
 import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { StatCard } from '@/components/shared/StatCard'
@@ -238,6 +239,20 @@ export function Dashboard() {
 
   const overPaceInsight = categoryInsights.find(i => i.overPace) ?? null
 
+  const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
+  useEffect(() => {
+    const handler = () => setPinnedGoalId(localStorage.getItem(PINNED_GOAL_KEY) ?? '')
+    window.addEventListener('finpath-goal-pinned', handler)
+    return () => window.removeEventListener('finpath-goal-pinned', handler)
+  }, [])
+  const pinnedDisplayGoal = useMemo(() => {
+    if (pinnedGoalId) {
+      const found = goals.find(g => g.id === pinnedGoalId && g.current_amount < g.target_amount)
+      if (found) return found
+    }
+    return topGoals[0] ?? null
+  }, [goals, pinnedGoalId, topGoals])
+
   return (
     <div>
       <PageHeader
@@ -416,29 +431,29 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Goals preview (mobile — compact) */}
-      {topGoals.length > 0 && (
+      {/* Goals preview (mobile — 1 pinned goal) */}
+      {pinnedDisplayGoal && (
         <div className="mb-6 lg:hidden">
           <div className="mb-3 flex items-center justify-between gap-4">
-            <h2 className="text-lg font-extrabold text-foreground">Goals</h2>
+            <h2 className="text-lg font-extrabold text-foreground">Goal</h2>
             <Link to="/goals" className="text-sm font-bold text-primary hover:underline">View all →</Link>
           </div>
-          <div className="space-y-2">
-            {topGoals.slice(0, 2).map(goal => {
-              const pct = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0
-              return (
-                <Link key={goal.id} to="/goals" className="flex items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-primary/5">
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-sm font-bold text-foreground">{goal.name}</p>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
-                    </div>
+          {(() => {
+            const goal = pinnedDisplayGoal
+            const pct = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0
+            return (
+              <Link to="/goals" className="flex items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:border-primary/30 hover:bg-primary/5">
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-1 text-sm font-bold text-foreground">{goal.name}</p>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
                   </div>
-                  <span className="shrink-0 text-sm font-extrabold text-foreground">{pct}%</span>
-                </Link>
-              )
-            })}
-          </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">{fmt(goal.current_amount)} of {fmt(goal.target_amount)}</p>
+                </div>
+                <span className="shrink-0 text-sm font-extrabold text-foreground">{pct}%</span>
+              </Link>
+            )
+          })()}
         </div>
       )}
 
@@ -579,9 +594,9 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Deep tools row (mobile) */}
+      {/* Deep tools row — desktop only; mobile uses More sheet */}
       {!isNewUser && (
-        <div className="mb-6 lg:hidden">
+        <div className="mb-6 hidden lg:block">
           <div className="grid grid-cols-3 gap-2">
             {([
               { to: '/reports', label: 'Reports', color: '#93C5FD', Icon: BarChart2 },
