@@ -11,7 +11,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
 import { ChevronLeft, ChevronRight, Download, Upload, FileText, TrendingUp, TrendingDown, X } from 'lucide-react'
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, ReferenceLine } from 'recharts'
 
 type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all'
 type ReportMode = 'expense' | 'income'
@@ -166,6 +166,24 @@ export function Reports() {
   const topCategory = categoryTotals[0]?.[0] ?? '—'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
 
+  const savingsRateTrend = useMemo(() => {
+    const now = new Date()
+    return Array.from({ length: 12 }, (_, i) => {
+      const mStart = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1)
+      const mEnd = new Date(now.getFullYear(), now.getMonth() - 11 + i + 1, 1)
+      const s = mStart.toISOString().slice(0, 10)
+      const e = mEnd.toISOString().slice(0, 10)
+      const mTx = transactions.filter(t => !t.is_system_generated && t.date >= s && t.date < e)
+      const inc = mTx.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0)
+      const exp = mTx.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((a, t) => a + t.amount, 0)
+      return {
+        label: mStart.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        rate: calculateSavingsRate(inc, exp),
+        income: inc,
+        expenses: exp,
+      }
+    })
+  }, [transactions])
 
   const walletActivity = useMemo(() => {
     if (wallets.length === 0) return []
@@ -347,27 +365,40 @@ export function Reports() {
     if (added > 0) { setImportText(''); setImportOpen(false) }
   }
 
-  const handleExportCSV = () => {
-    const headers = ['Date', 'Description', 'Category', 'Type', 'Amount (display)', 'Amount (base)']
-    const rows = rangeTx
+  const buildCSV = (txList: typeof rangeTx, label: string) => {
+    const headers = ['Date', 'Description', 'Category', 'Type', 'Wallet', `Amount (${money.baseCurrency})`]
+    const rows = [...txList]
       .sort((a, b) => b.date.localeCompare(a.date))
-      .map(tx => [
-        tx.date,
-        `"${tx.description.replace(/"/g, '""')}"`,
-        tx.category,
-        tx.type,
-        money.formatDisplay(tx.amount).replace(/,/g, ''),
-        money.formatBase(tx.amount).replace(/,/g, ''),
-      ])
+      .map(tx => {
+        const wallet = wallets.find(w => w.id === tx.wallet_id)
+        return [
+          tx.date,
+          `"${tx.description.replace(/"/g, '""')}"`,
+          tx.category,
+          tx.type,
+          wallet?.name ?? '',
+          money.formatBase(tx.amount).replace(/,/g, ''),
+        ]
+      })
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `finpath-${range}-${periodLabel.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`
+    a.download = `finpath-${label}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('CSV exported successfully')
+  }
+
+  const handleExportCSV = () => {
+    buildCSV(rangeTx, `${range}-${periodLabel.replace(/[^a-z0-9]/gi, '-').toLowerCase()}`)
+    toast.success('CSV exported')
+  }
+
+  const handleExportAllCSV = () => {
+    const allNonSystem = transactions.filter(t => !t.is_system_generated)
+    buildCSV(allNonSystem, `all-${new Date().toISOString().slice(0, 10)}`)
+    toast.success(`Exported ${allNonSystem.length} transactions`)
   }
 
   const today = new Date()
@@ -430,7 +461,11 @@ export function Reports() {
             )}
             <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportCSV} disabled={rangeTx.length === 0}>
               <Download className="h-4 w-4" />
-              Export CSV
+              Export period
+            </Button>
+            <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportAllCSV} disabled={transactions.length === 0}>
+              <Download className="h-4 w-4" />
+              Export all
             </Button>
             <Button size="sm" variant="secondary" className="gap-2" onClick={() => window.print()}>
               <FileText className="h-4 w-4" />
@@ -481,9 +516,9 @@ export function Reports() {
       </div>
 
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
-        <StatCard label="Income" value={money.formatDisplay(totalIncome)} sub={`${incomeTx.length} transactions`} badgeVariant="success" />
-        <StatCard label="Expenses" value={money.formatDisplay(totalExpenses)} sub={`${expenseTx.length} transactions`} badgeVariant="warning" />
-        <StatCard label="Saved" value={money.formatDisplay(totalIncome - totalExpenses)} sub={`${savingsRate}% savings rate`} badgeVariant={totalIncome >= totalExpenses ? 'success' : 'danger'} />
+        <StatCard label="Income" value={money.formatDisplay(totalIncome)} sub={money.formatRef(totalIncome) ?? `${incomeTx.length} transactions`} badgeVariant="success" />
+        <StatCard label="Expenses" value={money.formatDisplay(totalExpenses)} sub={money.formatRef(totalExpenses) ?? `${expenseTx.length} transactions`} badgeVariant="warning" />
+        <StatCard label="Saved" value={money.formatDisplay(totalIncome - totalExpenses)} sub={money.formatRef(totalIncome - totalExpenses) ?? `${savingsRate}% savings rate`} badgeVariant={totalIncome >= totalExpenses ? 'success' : 'danger'} />
         <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 && categoryTotals.length > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No data yet'} badgeVariant="warning" />
       </div>
 
@@ -863,6 +898,38 @@ export function Reports() {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {savingsRateTrend.some(d => d.income > 0) && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Savings rate — 12 months</CardTitle>
+            <p className="text-sm text-muted-foreground">Monthly savings rate trend. Target is 20%+.</p>
+          </CardHeader>
+          <CardContent className="px-2 pb-4 sm:px-6">
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={savingsRateTrend} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 'auto']} />
+                <Tooltip
+                  contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }}
+                  formatter={(v) => [`${v ?? 0}%`, 'Savings rate']}
+                  labelStyle={{ fontWeight: 700, color: 'var(--foreground)' }}
+                />
+                <ReferenceLine y={20} stroke="#A9F5C7" strokeDasharray="4 4" strokeOpacity={0.7} />
+                <Line
+                  type="monotone"
+                  dataKey="rate"
+                  stroke="#A9F5C7"
+                  strokeWidth={2.5}
+                  dot={{ fill: '#A9F5C7', strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, fill: '#A9F5C7' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="mt-1 px-2 text-[10px] text-muted-foreground">Dashed line = 20% target</p>
           </CardContent>
         </Card>
       )}

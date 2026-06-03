@@ -244,6 +244,24 @@ export function Transactions() {
     [recurringRules]
   )
 
+  const potentialDuplicates = useMemo(() => {
+    const candidates: { a: Transaction; b: Transaction }[] = []
+    const nonSystem = transactions.filter(t => !t.is_system_generated)
+    for (let i = 0; i < nonSystem.length; i++) {
+      for (let j = i + 1; j < nonSystem.length; j++) {
+        const a = nonSystem[i]; const b = nonSystem[j]
+        if (a.type !== b.type) continue
+        const dayDiff = Math.abs(new Date(a.date).getTime() - new Date(b.date).getTime()) / 86400000
+        if (dayDiff > 2) continue
+        const descMatch = a.description.toLowerCase() === b.description.toLowerCase()
+        const amtMatch = Math.abs(a.amount - b.amount) / Math.max(a.amount, b.amount) < 0.01
+        if (descMatch && amtMatch) candidates.push({ a, b })
+        if (candidates.length >= 10) return candidates
+      }
+    }
+    return candidates
+  }, [transactions])
+
   const resetForm = () => {
     setEditingTransaction(null)
     setDescription('')
@@ -1505,6 +1523,24 @@ export function Transactions() {
             </div>
           </SheetContent>
         </Sheet>
+
+        {!txPending && !txError && potentialDuplicates.length > 0 && !searchQuery && !selectedCategory && (
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/40 bg-[#FFCF73]/10 px-4 py-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-foreground">{potentialDuplicates.length} potential duplicate{potentialDuplicates.length !== 1 ? 's' : ''} detected</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {potentialDuplicates[0].a.description} on {potentialDuplicates[0].a.date} — same amount within 2 days.
+              </p>
+            </div>
+            <button
+              className="shrink-0 rounded-full bg-[#FFCF73]/20 px-2.5 py-1 text-xs font-bold text-[#FFCF73] hover:bg-[#FFCF73]/30"
+              onClick={() => setSearchQuery(potentialDuplicates[0].a.description)}
+            >
+              Review
+            </button>
+          </div>
+        )}
 
         {txPending ? (
           <div className="space-y-3">

@@ -3,11 +3,13 @@ import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { AndroidBackHandler } from '@/components/native/AndroidBackHandler'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAuthSession } from '@/lib/queries'
+import { useAuthSession, useRecurringRules } from '@/lib/queries'
 import { getQueue } from '@/lib/offlineCache'
 import { processSyncQueue } from '@/lib/syncQueue'
+import { scheduleUpcomingBillNotifications } from '@/lib/notifications'
 import { toast, Toaster } from 'sonner'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { useMoney } from '@/lib/currency'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { MoreSheet } from './MoreSheet'
@@ -57,6 +59,8 @@ export function AppLayout() {
   const [quickAddCash, setQuickAddCash] = useState(false)
   const [quickActionsOpen, setQuickActionsOpen] = useState(false)
   const [quickAddKeypadOpen, setQuickAddKeypadOpen] = useState(false)
+  const { data: recurringRules = [] } = useRecurringRules()
+  const money = useMoney()
   const [pinLocked, setPinLocked] = useState(() =>
     Boolean(localStorage.getItem(PIN_STORAGE_KEY)) && !sessionStorage.getItem(PIN_SESSION_KEY)
   )
@@ -117,6 +121,11 @@ export function AppLayout() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [navigate])
+
+  useEffect(() => {
+    if (recurringRules.length === 0) return
+    scheduleUpcomingBillNotifications(recurringRules, money.formatDisplay)
+  }, [recurringRules])
 
   useEffect(() => {
     const handleOffline = () => setOffline(true)

@@ -380,10 +380,10 @@ export function Estimation() {
       )}
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-        <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={`${incomeItems.length} income items`} badgeVariant="success" />
-        <StatCard label="Monthly expenses" value={money.formatDisplay(monthlyExpenses)} sub={`${expenseItems.length} expense items`} badgeVariant="warning" />
-        <StatCard label="Yearly saving" value={money.formatDisplay(yearlySaving)} sub={`${savingsRate}% monthly saving rate`} />
-        <StatCard label="Yearly income" value={money.formatDisplay(yearlyIncome)} sub={`Expenses ${money.formatDisplay(yearlyExpenses)}`} />
+        <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={money.formatRef(monthlyIncome) ?? `${incomeItems.length} income items`} badgeVariant="success" />
+        <StatCard label="Monthly expenses" value={money.formatDisplay(monthlyExpenses)} sub={money.formatRef(monthlyExpenses) ?? `${expenseItems.length} expense items`} badgeVariant="warning" />
+        <StatCard label="Yearly saving" value={money.formatDisplay(yearlySaving)} sub={money.formatRef(yearlySaving) ?? `${savingsRate}% monthly saving rate`} />
+        <StatCard label="Yearly income" value={money.formatDisplay(yearlyIncome)} sub={money.formatRef(yearlyIncome) ?? `Expenses ${money.formatDisplay(yearlyExpenses)}`} />
       </div>
 
       {(monthlyIncome > 0 || monthlyExpenses > 0) && (() => {

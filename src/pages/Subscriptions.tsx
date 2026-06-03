@@ -693,9 +693,9 @@ export function Subscriptions() {
       )}
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-        <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={`≈ ${money.formatDisplay(monthlyExpenses * 12)}/year`} badgeVariant="warning" />
-        <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={`${income.filter(r => r.active).length} active`} badgeVariant="success" />
-        <StatCard label="Net monthly" value={money.formatDisplay(monthlyIncome - monthlyExpenses)} sub="Income minus expenses" />
+        <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={money.formatRef(monthlyExpenses) ?? `≈ ${money.formatDisplay(monthlyExpenses * 12)}/year`} badgeVariant="warning" />
+        <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={money.formatRef(monthlyIncome) ?? `${income.filter(r => r.active).length} active`} badgeVariant="success" />
+        <StatCard label="Net monthly" value={money.formatDisplay(monthlyIncome - monthlyExpenses)} sub={money.formatRef(monthlyIncome - monthlyExpenses) ?? 'Income minus expenses'} />
         <StatCard
           label="Next renewal"
           value={nextRenewal ? nextRenewal.description : 'None'}
