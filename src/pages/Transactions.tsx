@@ -52,7 +52,10 @@ export function Transactions() {
   const [filter, setFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(() => {
+    const action = new URLSearchParams(window.location.search).get('action')
+    return action === 'expense' || action === 'income'
+  })
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
   const [editingRule, setEditingRule] = useState<RecurringRule | null>(null)
@@ -71,7 +74,10 @@ export function Transactions() {
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
   const [transferWalletId, setTransferWalletId] = useState('')
-  const [type, setType] = useState<EntryType>('expense')
+  const [type, setType] = useState<EntryType>(() => {
+    const action = new URLSearchParams(window.location.search).get('action')
+    return (action === 'income' ? 'income' : 'expense') as EntryType
+  })
   const [isRecurring, setIsRecurring] = useState(false)
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [installmentTotal, setInstallmentTotal] = useState('')
