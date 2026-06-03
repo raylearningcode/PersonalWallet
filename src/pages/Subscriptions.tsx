@@ -12,6 +12,7 @@ import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currenc
 import { parseNumberInput } from '@/lib/numberInput'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
+import { addRecurringInterval } from '@/lib/recurring'
 import { toast } from 'sonner'
 import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight, AlertTriangle, Check } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
@@ -166,6 +167,32 @@ export function Subscriptions() {
       toast.success(rule.active ? 'Subscription paused' : 'Subscription resumed')
     } catch {
       toast.error('Failed to update subscription')
+    }
+  }
+
+  const logPaymentNow = async (rule: RecurringRule) => {
+    const today = new Date().toISOString().slice(0, 10)
+    try {
+      await addTransaction.mutateAsync({
+        description: rule.description,
+        amount: rule.amount,
+        original_amount: rule.original_amount ?? rule.amount,
+        original_currency: rule.original_currency ?? money.displayCurrency,
+        type: rule.type as 'expense' | 'income',
+        category: rule.category,
+        wallet_id: rule.wallet_id ?? null,
+        transfer_wallet_id: null,
+        recurring_rule_id: rule.id,
+        recurring_due_date: today,
+        date: today,
+        needs_review: false,
+      })
+      const nextDate = addRecurringInterval(rule.next_due_date, rule.frequency)
+      await updateRule.mutateAsync({ id: rule.id, next_due_date: nextDate })
+      const nextFormatted = new Date(nextDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      toast.success(`${rule.description} logged · next due ${nextFormatted}`)
+    } catch {
+      toast.error('Failed to log payment')
     }
   }
 
@@ -372,6 +399,17 @@ export function Subscriptions() {
 
         </button>
         <div className="mt-3 flex gap-2">
+          {rule.active && days <= 3 && (
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:opacity-40"
+              onClick={() => logPaymentNow(rule)}
+              disabled={addTransaction.isPending || updateRule.isPending}
+            >
+              <Check className="h-3 w-3" />
+              Log payment
+            </button>
+          )}
           <button
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
               rule.active
