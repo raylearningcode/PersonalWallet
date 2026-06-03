@@ -488,7 +488,7 @@ export function Budget() {
                                     <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">
                                       {fmt(cat.spent)} / {fmt(cat.yearly_allocated)}
                                     </span>
-                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-[#FF8388]' : pct >= 70 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
                                       {pct}%
                                     </span>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -499,13 +499,13 @@ export function Budget() {
                                   {pct === 0 ? (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">No spending</span>
                                   ) : pct >= 100 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400">Over budget</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FF8388]/15 px-2 py-0.5 text-[11px] font-bold text-[#FF8388]">Over budget</span>
                                   ) : pct >= 90 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-bold text-red-400">Near limit</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FF8388]/15 px-2 py-0.5 text-[11px] font-bold text-[#FF8388]">Near limit</span>
                                   ) : pct >= 70 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-400">Watch spending</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCF73]/15 px-2 py-0.5 text-[11px] font-bold text-[#FFCF73]">Watch spending</span>
                                   ) : overPace ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-400">Over pace</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCF73]/10 px-2 py-0.5 text-[11px] font-bold text-[#FFCF73]">Over pace</span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">On track</span>
                                   )}
@@ -725,7 +725,7 @@ export function Budget() {
                     </div>
                     <div className="rounded-2xl bg-secondary p-3 text-center">
                       <p className="text-xs text-muted-foreground">Left</p>
-                      <p className={`mt-0.5 truncate text-sm font-extrabold ${leftAmt === 0 ? 'text-red-400' : 'text-primary'}`}>{fmt(leftAmt)}</p>
+                      <p className={`mt-0.5 truncate text-sm font-extrabold ${leftAmt === 0 ? 'text-[#FF8388]' : 'text-primary'}`}>{fmt(leftAmt)}</p>
                     </div>
                   </div>
                 )}

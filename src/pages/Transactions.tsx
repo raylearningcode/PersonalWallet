@@ -948,7 +948,7 @@ export function Transactions() {
                               </div>
                             )}
                             {isUnderpay && (
-                              <p className="mt-2 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
+                              <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
                             )}
                             {!isUnderpay && Number.isFinite(parsedTendered) && parsedTendered > 0 && walletCurrentBal < money.toBase(parsedTendered, inputCurrency) && (
                               <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#FFCF73]"><AlertTriangle className="h-3 w-3 shrink-0" /> Wallet balance {money.formatBase(walletCurrentBal)} may be lower than cash given</p>
@@ -1865,7 +1865,7 @@ export function Transactions() {
                         {money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
                       </p>
                     )}
-                    <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${tx.type === 'income' ? 'bg-green-500/15 text-green-400' : tx.type === 'expense' ? 'bg-red-500/15 text-red-400' : 'bg-blue-500/15 text-blue-400'}`}>
+                    <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${tx.type === 'income' ? 'bg-primary/15 text-primary' : tx.type === 'expense' ? 'bg-[#FF8388]/15 text-[#FF8388]' : 'bg-muted text-muted-foreground'}`}>
                       {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
                     </span>
                   </div>

@@ -859,7 +859,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         </div>
                       )}
                       {isUnderpay && (
-                        <p className="mt-1.5 text-xs font-bold text-red-400">Cash given must be at least the expense amount</p>
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
                       )}
                     </div>
 
