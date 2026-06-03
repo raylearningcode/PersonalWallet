@@ -89,7 +89,7 @@ describe('Settings', () => {
   it('saves a selected currency without unused preference fields', () => {
     renderSettings()
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Display currency' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'View currency' }))
     fireEvent.click(screen.getByRole('option', { name: 'TWD' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save currency' }))
 
