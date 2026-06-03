@@ -29,6 +29,7 @@ import type { CashRole, Wallet } from '@/types'
 import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
 import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
 import { parseNumberInput, formatNumberInput } from '@/lib/numberInput'
+import { getQueue } from '@/lib/offlineCache'
 
 const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
 type SettingsTab = typeof tabs[number]
@@ -1122,8 +1123,8 @@ export function Settings() {
                   },
                   {
                     label: 'Cloud sync',
-                    value: session ? 'Active' : 'Off (guest mode)',
-                    status: session ? 'ok' : 'info',
+                    value: session ? (getQueue().length > 0 ? `${getQueue().length} pending` : 'Up to date') : 'Off (guest mode)',
+                    status: session ? (getQueue().length > 0 ? 'warn' : 'ok') : 'info',
                     Icon: RefreshCw,
                   },
                 ] as { label: string; value: string; status: string; Icon: ElementType }[]

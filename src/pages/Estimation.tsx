@@ -11,7 +11,8 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown } from 'lucide-react'
+import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown, Monitor } from 'lucide-react'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
@@ -35,6 +36,7 @@ type WishlistItem = {
 
 export function Estimation() {
   const money = useMoney()
+  const isDesktop = useIsDesktop()
   const upsert = useUpsertEstimationPlan()
   const addGoal = useAddGoal()
   const { data: plans } = useEstimationPlans()
@@ -308,6 +310,15 @@ export function Estimation() {
           </div>
         )}
       />
+      {!isDesktop && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+          <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <p className="font-bold text-primary">Best on desktop</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">This tool is easier to use on a larger screen. Open FinPath Studio on desktop for the full planning experience.</p>
+          </div>
+        </div>
+      )}
       {/* Month navigator */}
       {(() => {
         const today = new Date()

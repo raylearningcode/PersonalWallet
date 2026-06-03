@@ -412,9 +412,9 @@ export function Goals() {
           sub={urgentGoals > 0 ? `${urgentGoals} urgent · ${completedGoals} done` : behindGoals > 0 ? `${behindGoals} behind · ${completedGoals} done` : `${completedGoals} completed`}
           badgeVariant={urgentGoals > 0 ? 'danger' : behindGoals > 0 ? 'warning' : 'success'}
         />
-        <StatCard label="Total target" value={money.formatDisplay(totalTarget)} sub="Across all goals" />
-        <StatCard label="Total saved" value={money.formatDisplay(totalSaved)} sub={`${overallPct}% of total target`} badgeVariant="warning" />
-        <StatCard label="Still needed" value={money.formatDisplay(Math.max(0, totalTarget - totalSaved))} sub="Combined gap" />
+        <StatCard label="Total target" value={money.formatDisplay(totalTarget)} sub={money.formatRef(totalTarget) ?? 'Across all goals'} />
+        <StatCard label="Total saved" value={money.formatDisplay(totalSaved)} sub={money.formatRef(totalSaved) ?? `${overallPct}% of total target`} badgeVariant="warning" />
+        <StatCard label="Still needed" value={money.formatDisplay(Math.max(0, totalTarget - totalSaved))} sub={money.formatRef(Math.max(0, totalTarget - totalSaved)) ?? 'Combined gap'} />
       </div>
 
       {/* "What should I save this month?" card */}
@@ -680,7 +680,7 @@ export function Goals() {
                       </select>
                       <MoneyInput
                         className="h-11 w-full bg-secondary"
-                        placeholder={`Amount (${money.displayCurrency})`}
+                        placeholder={`Amount (${money.baseCurrency})`}
                         value={contributeAmount}
                         onValueChange={setContributeAmount}
                       />

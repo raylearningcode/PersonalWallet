@@ -10,8 +10,9 @@ import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { AllocationEditor } from '@/components/investing/AllocationEditor'
 import { toast } from 'sonner'
-import { BookOpen, ChevronDown } from 'lucide-react'
+import { BookOpen, ChevronDown, Monitor } from 'lucide-react'
 import type { AllocationItem } from '@/types'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 const GLOSSARY_DISMISSED_KEY = 'finpath_investing_glossary_dismissed'
 
@@ -110,6 +111,7 @@ const parseMoney = (value: string) => {
 
 export function Investing() {
   const money = useMoney()
+  const isDesktop = useIsDesktop()
   const { data: investConfig } = useInvestmentConfig()
   const saveInvestmentConfig = useSaveInvestmentConfig()
   const savedContributionCurrency = investConfig?.contribution_currency ?? money.baseCurrency
@@ -247,6 +249,15 @@ export function Investing() {
         title="Investing"
         subtitle="Simulate contribution plans, expected return, portfolio mix, and long-term compound growth."
       />
+      {!isDesktop && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+          <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <p className="font-bold text-primary">Best on desktop</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">This tool is easier to use on a larger screen. Open FinPath on desktop for the full investing planner.</p>
+          </div>
+        </div>
+      )}
       <Card className="mb-6 overflow-hidden">
         <CardContent className="relative flex min-h-[170px] flex-col gap-6 px-5 py-5 sm:px-8 sm:py-7 lg:flex-row lg:items-center lg:justify-between">
           <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(169,245,199,0.14),transparent_62%)]" />

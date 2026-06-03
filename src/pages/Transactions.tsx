@@ -150,7 +150,7 @@ export function Transactions() {
     setRuleFrequency(editingRule.frequency)
     setRuleNextDueDate(editingRule.next_due_date)
     setRuleEndDate(editingRule.end_date ?? '')
-  }, [editingRule, money.displayCurrency])
+  }, [editingRule, money.baseCurrency])
 
   const walletBalances = useMemo(() => {
     const balances = new Map(wallets.map(w => [w.id, w.balance ?? 0]))
@@ -739,8 +739,8 @@ export function Transactions() {
       </div>
       <div className="mb-9 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         {[
-          { label: 'Money in', value: money.formatDisplay(moneyIn), dot: 'bg-primary', sub: money.baseCurrency !== money.displayCurrency ? money.formatBase(moneyIn) : 'Income received' },
-          { label: 'Money out', value: money.formatDisplay(moneyOut), dot: 'bg-[#FF8388]', sub: money.baseCurrency !== money.displayCurrency ? money.formatBase(moneyOut) : `Across ${transactions.length} transactions` },
+          { label: 'Money in', value: money.formatDisplay(moneyIn), dot: 'bg-primary', sub: money.formatRef(moneyIn) ?? 'Income received' },
+          { label: 'Money out', value: money.formatDisplay(moneyOut), dot: 'bg-[#FF8388]', sub: money.formatRef(moneyOut) ?? `Across ${transactions.length} transactions` },
           { label: 'Categories', value: `${expenseCategoryTotals.length} items`, dot: 'bg-[#FFD276]', sub: 'Expense breakdown below' },
         ].map(({ label, value, dot, sub }) => (
           <div key={label} className="relative rounded-[1.4rem] border border-border bg-card px-6 py-5">
@@ -1337,7 +1337,7 @@ export function Transactions() {
                   Spent {money.formatDisplay(selectedCategoryTotal)}
                   {selectedCategoryBudget > 0 && ` / ${money.formatDisplay(selectedCategoryBudget)} (${selectedCategoryUsedPct}%)`}
                 </p>
-                {money.baseCurrency !== money.displayCurrency && <p className="mt-1 text-xs text-muted-foreground">{money.formatBase(selectedCategoryTotal)}</p>}
+                {money.formatRef(selectedCategoryTotal) && <p className="mt-1 text-xs text-muted-foreground">{money.formatRef(selectedCategoryTotal)}</p>}
               </div>
               <Button variant="secondary" size="sm" onClick={() => setSelectedCategory(null)}>Show all transactions</Button>
             </div>
@@ -1363,14 +1363,16 @@ export function Transactions() {
                   </button>
                 </>
               )}
-              <button
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${selectMode ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
-                onClick={toggleSelectMode}
-                aria-label="Toggle multi-select"
-              >
-                <CheckSquare className="h-3.5 w-3.5" />
-                Select
-              </button>
+              {(isDesktop || selectMode) && (
+                <button
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${selectMode ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+                  onClick={toggleSelectMode}
+                  aria-label="Toggle multi-select"
+                >
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  Select
+                </button>
+              )}
             </div>
           </div>
         )}

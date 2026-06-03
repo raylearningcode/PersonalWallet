@@ -99,6 +99,12 @@ export function useMoney() {
         tx.original_currency === baseCurrency && tx.original_amount != null ? tx.original_amount : tx.amount,
         baseCurrency
       ),
+    // Secondary currency reference — converts base amount to displayCurrency for reference display
+    // Returns null when base === display (no secondary reference needed)
+    formatRef: (baseAmount: number): string | null =>
+      baseCurrency !== displayCurrency
+        ? formatCurrency(fromBase(baseAmount, displayCurrency), displayCurrency)
+        : null,
   }
 }
 

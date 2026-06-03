@@ -56,6 +56,7 @@ export function AppLayout() {
   const [quickAddType, setQuickAddType] = useState<QuickAddType>('expense')
   const [quickAddCash, setQuickAddCash] = useState(false)
   const [quickActionsOpen, setQuickActionsOpen] = useState(false)
+  const [quickAddKeypadOpen, setQuickAddKeypadOpen] = useState(false)
   const [pinLocked, setPinLocked] = useState(() =>
     Boolean(localStorage.getItem(PIN_STORAGE_KEY)) && !sessionStorage.getItem(PIN_SESSION_KEY)
   )
@@ -74,6 +75,12 @@ export function AppLayout() {
     const handler = () => setProfileOpen(true)
     window.addEventListener('finpath-open-profile', handler)
     return () => window.removeEventListener('finpath-open-profile', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (e: Event) => setQuickAddKeypadOpen((e as CustomEvent<{ active: boolean }>).detail.active)
+    window.addEventListener('finpath-keypad-change', handler)
+    return () => window.removeEventListener('finpath-keypad-change', handler)
   }, [])
 
   useEffect(() => {
@@ -138,12 +145,16 @@ export function AppLayout() {
   }, [qc])
 
   const closeTopSheet = useCallback((): boolean => {
+    if (quickAddOpen && quickAddKeypadOpen) {
+      window.dispatchEvent(new CustomEvent('finpath-close-keypad'))
+      return true
+    }
     if (quickAddOpen) { setQuickAddOpen(false); return true }
     if (quickActionsOpen) { setQuickActionsOpen(false); return true }
     if (moreOpen) { setMoreOpen(false); return true }
     if (profileOpen) { setProfileOpen(false); return true }
     return false
-  }, [quickAddOpen, quickActionsOpen, moreOpen, profileOpen])
+  }, [quickAddOpen, quickAddKeypadOpen, quickActionsOpen, moreOpen, profileOpen])
 
   if (pinLocked) {
     return <PinLockScreen onUnlock={() => setPinLocked(false)} />
