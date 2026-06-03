@@ -1698,7 +1698,7 @@ export function Transactions() {
                               <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:bg-muted/20 hover:text-foreground" onClick={() => openEditForm(tx)} aria-label={`Edit ${tx.description}`}>
                                 <Pencil size={15} />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
+                              <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-[#FF8388] hover:bg-[#FF8388]/10" onClick={() => handleDeleteTransaction(tx)} aria-label={`Delete ${tx.description}`}>
                                 <Trash2 size={15} />
                               </Button>
                             </div>
@@ -1780,7 +1780,7 @@ export function Transactions() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                className="text-[#FF8388] hover:bg-[#FF8388]/10"
                 onClick={() => setBulkDeleteConfirm(true)}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -1979,7 +1979,7 @@ export function Transactions() {
                       <Copy size={15} />Duplicate
                     </Button>
                     <Button
-                      className="h-14 w-14 shrink-0 gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      className="h-14 w-14 shrink-0 gap-2 text-[#FF8388] hover:bg-[#FF8388]/10"
                       variant="ghost"
                       onClick={() => { setDetailTx(null); handleDeleteTransaction(tx) }}
                       aria-label="Delete transaction"

@@ -980,7 +980,7 @@ export function Subscriptions() {
                     type="button"
                     aria-label="Delete subscription"
                     onClick={() => { setDeleteTarget(rule); setDetailRule(null) }}
-                    className="flex h-14 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10 px-5 font-bold text-red-400 hover:bg-red-500/20"
+                    className="flex h-14 items-center justify-center rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/10 px-5 font-bold text-[#FF8388] hover:bg-[#FF8388]/20"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

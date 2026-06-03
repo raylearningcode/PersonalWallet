@@ -301,7 +301,7 @@ export function Estimation() {
               </span>
             </div>
             {(incomeItems.length > 0 || expenseItems.length > 0 || wishlistItems.length > 0) && (
-              <Button variant="secondary" size="sm" className="text-[#FF8388] hover:text-red-300" onClick={() => setShowClearConfirm(true)}>
+              <Button variant="secondary" size="sm" className="text-[#FF8388] hover:bg-[#FF8388]/10" onClick={() => setShowClearConfirm(true)}>
                 Clear all
               </Button>
             )}
