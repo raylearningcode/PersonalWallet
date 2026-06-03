@@ -112,8 +112,8 @@ export function Investing() {
   const money = useMoney()
   const { data: investConfig } = useInvestmentConfig()
   const saveInvestmentConfig = useSaveInvestmentConfig()
-  const savedContributionCurrency = investConfig?.contribution_currency ?? money.displayCurrency
-  const savedTargetCurrency = investConfig?.target_currency ?? money.displayCurrency
+  const savedContributionCurrency = investConfig?.contribution_currency ?? money.baseCurrency
+  const savedTargetCurrency = investConfig?.target_currency ?? money.baseCurrency
 
   const emptySimulator: SimulatorValues = useMemo(() => ({
     monthlyContribution: money.fromBase(investConfig?.monthly_contribution ?? 0, savedContributionCurrency),
@@ -121,7 +121,7 @@ export function Investing() {
     annualReturnRate: investConfig?.return_rate ?? 8,
     durationYears: investConfig?.duration_years ?? 10,
     initialCapital: investConfig?.current_value ?? 0,
-  }), [investConfig, money.baseCurrency, money.displayCurrency, money.rates, savedContributionCurrency, savedTargetCurrency])
+  }), [investConfig, money.baseCurrency, money.rates, savedContributionCurrency, savedTargetCurrency])
 
   const [draft, setDraft] = useState<SimulatorValues>({
     monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0,
@@ -153,7 +153,7 @@ export function Investing() {
     ...draft,
     monthlyContribution: money.toBase(draft.monthlyContribution, contributionCurrency) * FREQ_TO_MONTHLY[contributionFrequency],
     targetPortfolio: money.toBase(draft.targetPortfolio, targetCurrency),
-  }), [contributionCurrency, contributionFrequency, draft, money.baseCurrency, money.displayCurrency, money.rates, targetCurrency])
+  }), [contributionCurrency, contributionFrequency, draft, money.baseCurrency, money.rates, targetCurrency])
 
   const plan = useMemo(() => calculateInvestmentPlan(draftBase), [draftBase])
   const targetGap = Math.max(0, draftBase.targetPortfolio - plan.projectedPortfolio)
@@ -256,7 +256,7 @@ export function Investing() {
               {money.formatDisplay(plan.projectedPortfolio)}
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Projected in {money.displayCurrency}</span>
+              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Projected in {money.baseCurrency}</span>
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Base value {money.formatBase(plan.projectedPortfolio)}</span>
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">{money.format(draft.monthlyContribution, contributionCurrency)}/{FREQ_LABELS[contributionFrequency]}</span>
               {draftBase.targetPortfolio > 0 && (

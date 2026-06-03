@@ -45,7 +45,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
   const [type, setType] = useState<EntryType>('expense')
   const [amount, setAmount] = useState('')
-  const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
+  const [inputCurrency, setInputCurrency] = useState(money.baseCurrency)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
@@ -85,8 +85,8 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   }, [categories, category])
 
   useEffect(() => {
-    setInputCurrency(cur => cur || money.displayCurrency)
-  }, [money.displayCurrency])
+    setInputCurrency(cur => cur || money.baseCurrency)
+  }, [money.baseCurrency])
 
   // Reset type to initialType and auto-focus when sheet opens
   useEffect(() => {
@@ -97,11 +97,11 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         const last = localStorage.getItem(LAST_WALLET_KEY)
         setWalletId(pickQuickAddWallet(wallets, last, true)?.id ?? '')
       }
-      setInputCurrency(money.displayCurrency)
+      setInputCurrency(money.baseCurrency)
       setActiveKeypad(null)
       amountInputRef.current?.blur()
     }
-  }, [open, initialType, initialCash, money.displayCurrency, wallets])
+  }, [open, initialType, initialCash, money.baseCurrency, wallets])
 
   const merchantSuggestion = useMemo(
     () => type === 'transfer' ? null : getMerchantSuggestion(description, transactions),
@@ -118,7 +118,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const reset = () => {
     setType('expense')
     setAmount('')
-    setInputCurrency(money.displayCurrency)
+    setInputCurrency(money.baseCurrency)
     setDate(new Date().toISOString().slice(0, 10))
     setDescription('')
     setCategory(categories[0]?.name ?? '')
@@ -389,7 +389,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               {/* Big amount input */}
               <div className="rounded-[1.25rem] border border-border bg-card px-4 pb-4 pt-5 text-center">
                 <div className="flex items-center justify-center gap-2">
-                  <span className="text-xl font-bold text-muted-foreground">{money.displayCurrency}</span>
+                  <span className="text-xl font-bold text-muted-foreground">{money.baseCurrency}</span>
                   <Input
                     ref={amountInputRef}
                     aria-label="Amount"

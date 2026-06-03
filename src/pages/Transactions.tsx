@@ -146,7 +146,7 @@ export function Transactions() {
     if (!editingRule) return
     setRuleDescription(editingRule.description)
     setRuleAmount(String(editingRule.original_amount ?? editingRule.amount))
-    setRuleInputCurrency(editingRule.original_currency ?? money.displayCurrency)
+    setRuleInputCurrency(editingRule.original_currency ?? money.baseCurrency)
     setRuleFrequency(editingRule.frequency)
     setRuleNextDueDate(editingRule.next_due_date)
     setRuleEndDate(editingRule.end_date ?? '')
@@ -179,7 +179,7 @@ export function Transactions() {
           if (tx.description.toLowerCase().includes(q)) return true
           if (tx.category.toLowerCase().includes(q)) return true
           if (tx.date.includes(q)) return true
-          const displayAmt = money.fromBase(tx.amount).toString()
+          const displayAmt = String(tx.original_amount ?? tx.amount)
           if (displayAmt.includes(q)) return true
           const wallet = wallets.find(w => w.id === tx.wallet_id)
           if (wallet?.name.toLowerCase().includes(q)) return true

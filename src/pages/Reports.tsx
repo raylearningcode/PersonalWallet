@@ -593,7 +593,7 @@ export function Reports() {
                       <p className="text-xs text-muted-foreground">{tx.category} · {tx.date}</p>
                     </div>
                     <span className={`shrink-0 font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
-                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                      {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                     </span>
                   </div>
                 ))}
@@ -808,7 +808,7 @@ export function Reports() {
                   <p className="text-xs text-muted-foreground">{tx.date}</p>
                 </div>
                 <p className={`shrink-0 font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
-                  {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                  {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                 </p>
               </div>
             ))}
@@ -834,7 +834,7 @@ export function Reports() {
                       {tx.date} · {fromWallet?.name ?? 'wallet'} → {toWallet?.name ?? 'wallet'}
                     </p>
                   </div>
-                  <p className="shrink-0 font-extrabold text-foreground">{money.formatDisplay(tx.amount)}</p>
+                  <p className="shrink-0 font-extrabold text-foreground">{money.formatTx(tx)}</p>
                 </div>
               )
             })}
