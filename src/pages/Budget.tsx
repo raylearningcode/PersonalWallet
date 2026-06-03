@@ -114,7 +114,7 @@ export function Budget() {
   const openSheet = (cat: CatWithSpent) => {
     setSheetCat(cat)
     setSheetDraft({
-      yearly_allocated: Number(money.fromBase(cat.yearly_allocated, money.displayCurrency).toFixed(2)),
+      yearly_allocated: cat.yearly_allocated,
       budget_period: cat.budget_period,
       color: cat.color,
     })
@@ -228,7 +228,7 @@ export function Budget() {
       await updateCategory.mutateAsync({
         id,
         ...sheetDraft,
-        yearly_allocated: money.toBase(sheetDraft.yearly_allocated, money.displayCurrency),
+        yearly_allocated: sheetDraft.yearly_allocated,
       })
       toast.success('Category updated')
     } catch {
@@ -241,7 +241,7 @@ export function Budget() {
     if (!addName.trim()) { toast.error('Enter a category name'); return }
     if (!Number.isFinite(amount) || amount < 0) return
     try {
-      await addCategory.mutateAsync({ name: addName.trim(), yearly_allocated: money.toBase(amount, money.displayCurrency), budget_period: addPeriod, color: addColor })
+      await addCategory.mutateAsync({ name: addName.trim(), yearly_allocated: amount, budget_period: addPeriod, color: addColor })
       setAddName('')
       setAddAmount('')
       setAddPeriod('monthly')
@@ -266,7 +266,7 @@ export function Budget() {
     try {
       await addCategory.mutateAsync({
         name,
-        yearly_allocated: money.toBase(money.fromBase(monthlyAvg, money.displayCurrency), money.displayCurrency),
+        yearly_allocated: monthlyAvg,
         budget_period: 'monthly',
         color: '#6c63ff',
       })
@@ -655,7 +655,7 @@ export function Budget() {
                     aria-label="Budget amount"
                     inputMode="decimal"
                     className="min-w-0 flex-1 bg-secondary text-sm font-bold"
-                    placeholder={`Budget amount (${money.displayCurrency})`}
+                    placeholder={`Budget amount (${money.baseCurrency})`}
                     value={addAmount}
                     onChange={e => setAddAmount(formatNumberInput(e.target.value))}
                   />
@@ -778,7 +778,7 @@ export function Budget() {
                 <div className="mb-6 space-y-4">
                   <p className="text-sm font-extrabold text-foreground">Edit budget</p>
                   <div>
-                    <p className="mb-1 text-xs text-muted-foreground">Amount ({money.displayCurrency})</p>
+                    <p className="mb-1 text-xs text-muted-foreground">Amount ({money.baseCurrency})</p>
                     <Input
                       aria-label="Budget amount"
                       inputMode="decimal"

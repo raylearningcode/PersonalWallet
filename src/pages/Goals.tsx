@@ -116,8 +116,8 @@ export function Goals() {
     if (!validate()) return
     const payload = {
       name: form.name.trim(),
-      target_amount: money.toBase(parseNumberInput(form.target_amount), money.displayCurrency),
-      current_amount: money.toBase(parseNumberInput(form.current_amount) || 0, money.displayCurrency),
+      target_amount: parseNumberInput(form.target_amount),
+      current_amount: parseNumberInput(form.current_amount) || 0,
       deadline: form.deadline || null,
       color: form.color,
       category: form.category,
@@ -147,8 +147,8 @@ export function Goals() {
     setEditingId(goal.id)
     setForm({
       name: goal.name,
-      target_amount: formatNumberInput(money.fromBase(goal.target_amount, money.displayCurrency)),
-      current_amount: formatNumberInput(money.fromBase(goal.current_amount, money.displayCurrency)),
+      target_amount: formatNumberInput(goal.target_amount),
+      current_amount: formatNumberInput(goal.current_amount),
       deadline: goal.deadline ?? '',
       color: goal.color,
       category: goal.category,
@@ -167,7 +167,7 @@ export function Goals() {
 
   const handleContribute = async () => {
     if (!sheetGoal) return
-    const amount = money.toBase(parseNumberInput(contributeAmount), money.displayCurrency)
+    const amount = parseNumberInput(contributeAmount)
     if (amount <= 0) { toast.error('Enter a valid amount'); return }
     const target = sheetGoal
     const wallet = wallets.find(w => w.id === contributeWalletId)
@@ -184,7 +184,7 @@ export function Goals() {
           description: `Goal: ${target.name}`,
           amount,
           original_amount: parseNumberInput(contributeAmount),
-          original_currency: money.displayCurrency,
+          original_currency: money.baseCurrency,
           type: 'expense',
           category: 'Goals',
           wallet_id: wallet.id,
@@ -202,7 +202,7 @@ export function Goals() {
             description: `Goal: ${target.name}`,
             amount,
             original_amount: parseNumberInput(contributeAmount),
-            original_currency: money.displayCurrency,
+            original_currency: money.baseCurrency,
             type: 'expense',
             category: 'Goals',
             wallet_id: wallet.id,
@@ -304,7 +304,7 @@ export function Goals() {
           </select>
         </div>
         <div>
-          <Label className="text-xs text-muted-foreground">Target amount ({money.displayCurrency}) *</Label>
+          <Label className="text-xs text-muted-foreground">Target amount ({money.baseCurrency}) *</Label>
           <Input
             className={`mt-2 bg-secondary ${errors.target_amount ? 'border-[#FF8388]' : ''}`}
             inputMode="decimal"
@@ -315,7 +315,7 @@ export function Goals() {
           {errors.target_amount && <p className="mt-1 text-xs text-[#FF8388]">{errors.target_amount}</p>}
         </div>
         <div>
-          <Label className="text-xs text-muted-foreground">Already saved ({money.displayCurrency})</Label>
+          <Label className="text-xs text-muted-foreground">Already saved ({money.baseCurrency})</Label>
           <Input
             className="mt-2 bg-secondary"
             inputMode="decimal"

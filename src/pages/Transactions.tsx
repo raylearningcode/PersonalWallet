@@ -64,13 +64,13 @@ export function Transactions() {
   const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
   const [ruleDescription, setRuleDescription] = useState('')
   const [ruleAmount, setRuleAmount] = useState('')
-  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
+  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.baseCurrency)
   const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
   const [ruleNextDueDate, setRuleNextDueDate] = useState('')
   const [ruleEndDate, setRuleEndDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
-  const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
+  const [inputCurrency, setInputCurrency] = useState(money.baseCurrency)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
@@ -123,8 +123,8 @@ export function Transactions() {
   }, [walletId, transferWalletId, wallets])
 
   useEffect(() => {
-    setInputCurrency(current => current || money.displayCurrency)
-  }, [money.displayCurrency])
+    setInputCurrency(current => current || money.baseCurrency)
+  }, [money.baseCurrency])
 
   useEffect(() => {
     if (selectMode) setSwipeOpenId(null)
@@ -248,7 +248,7 @@ export function Transactions() {
     setEditingTransaction(null)
     setDescription('')
     setAmount('')
-    setInputCurrency(money.displayCurrency)
+    setInputCurrency(money.baseCurrency)
     setDate(new Date().toISOString().slice(0, 10))
     setType('expense')
     setCategory(categories[0]?.name ?? '')
@@ -272,8 +272,8 @@ export function Transactions() {
   const openEditForm = (transaction: Transaction) => {
     setEditingTransaction(transaction)
     setDescription(transaction.description)
-    setAmount(String(transaction.original_amount ?? money.fromBase(transaction.amount, transaction.original_currency ?? money.displayCurrency)))
-    setInputCurrency(transaction.original_currency ?? money.displayCurrency)
+    setAmount(String(transaction.original_amount ?? transaction.amount))
+    setInputCurrency(transaction.original_currency ?? money.baseCurrency)
     setDate(transaction.date)
     setCategory(transaction.category)
     setWalletId(transaction.wallet_id ?? wallets[0]?.id ?? '')
@@ -1650,7 +1650,7 @@ export function Transactions() {
                           })()}
                         </div>
                         <span className={`shrink-0 tabular-nums text-sm font-extrabold whitespace-nowrap ${txAmountColor(tx.amount, tx.type)}`}>
-                          {txAmountSign(tx.amount, tx.type)}{tx.original_currency === money.displayCurrency && tx.original_amount != null ? money.format(tx.original_amount, tx.original_currency) : money.formatDisplay(tx.amount)}
+                          {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                         </span>
                       </div>
                     </button>
@@ -1703,7 +1703,7 @@ export function Transactions() {
                           )}
                         </TableCell>
                         <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
-                          {txAmountSign(tx.amount, tx.type)}{tx.original_currency === money.displayCurrency && tx.original_amount != null ? money.format(tx.original_amount, tx.original_currency) : money.formatDisplay(tx.amount)}
+                          {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                         </TableCell>
                         {!selectMode && (
                           <TableCell className="w-[124px]">
@@ -1879,7 +1879,7 @@ export function Transactions() {
                   {/* Amount hero */}
                   <div className="mb-5 text-center">
                     <p className={`text-4xl font-extrabold tracking-tight ${txAmountColor(tx.amount, tx.type)}`}>
-                      {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                      {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                     </p>
                     {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && (
                       <p className="mt-1 text-sm text-muted-foreground">

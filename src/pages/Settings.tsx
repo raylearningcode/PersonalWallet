@@ -298,7 +298,7 @@ export function Settings() {
   const handleAddWallet = async () => {
     const name = walletName.trim()
     if (!name) return
-    const initBalance = walletInitBalance ? money.toBase(parseNumberInput(walletInitBalance), money.displayCurrency) : 0
+    const initBalance = walletInitBalance ? parseNumberInput(walletInitBalance) : 0
     try {
       await addWallet.mutateAsync({
         name,
@@ -606,13 +606,13 @@ export function Settings() {
           <Card className="mb-8">
             <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
             <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-              <p className="text-sm text-muted-foreground">Amounts are stored in your <strong>wallet currency</strong>. Use <strong>view currency</strong> to see converted values across the app — your entered amounts stay exact no matter how rates change.</p>
+              <p className="text-sm text-muted-foreground">All amounts are stored and displayed in your <strong>main currency</strong> — numbers never change due to exchange rate drift. Set a <strong>secondary currency</strong> as an optional reference (e.g. your home currency when abroad).</p>
 
               {/* Currency status banner */}
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
                 <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-muted-foreground">View currency: <span className="text-foreground">{money.displayCurrency}</span></p>
-                  <p className="text-xs font-bold text-muted-foreground">Wallet currency: <span className="text-foreground">{money.baseCurrency}</span></p>
+                  <p className="text-xs font-bold text-muted-foreground">Main currency: <span className="text-foreground">{money.baseCurrency}</span></p>
+                  <p className="text-xs font-bold text-muted-foreground">Secondary currency: <span className="text-foreground">{money.displayCurrency}</span></p>
                 </div>
                 <p className="text-right text-xs text-muted-foreground">
                   {money.ratesDate ? `Rates: ${money.ratesDate}` : <span className="text-[#FFCF73]">Using fallback rates</span>}
@@ -628,9 +628,9 @@ export function Settings() {
               )}
 
               <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Wallet currency <span className="font-normal">(amounts stored in this)</span></Label>
+                <Label className="text-sm text-muted-foreground">Main currency <span className="font-normal">(all amounts stored and shown in this)</span></Label>
                 <Select value={baseCurrency} onValueChange={setBaseCurrency}>
-                  <SelectTrigger aria-label="Wallet currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
+                  <SelectTrigger aria-label="Main currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -639,9 +639,9 @@ export function Settings() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">View currency <span className="font-normal">(shown throughout the app)</span></Label>
+                <Label className="text-sm text-muted-foreground">Secondary currency <span className="font-normal">(optional reference, e.g. home currency when abroad)</span></Label>
                 <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger aria-label="View currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
+                  <SelectTrigger aria-label="Secondary currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
