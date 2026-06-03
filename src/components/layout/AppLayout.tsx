@@ -63,6 +63,13 @@ export function AppLayout() {
   }, [])
 
   useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const handler = () => toast.info('FinPath updated — using the latest version')
+    navigator.serviceWorker.addEventListener('controllerchange', handler)
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', handler)
+  }, [])
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return

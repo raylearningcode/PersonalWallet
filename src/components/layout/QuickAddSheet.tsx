@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import {
   useAddTransaction,
   useUpdateTransaction,
+  useDeleteTransaction,
   useAddRecurringRule,
   useBudgetCategories,
   useTransactions,
@@ -35,6 +36,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const { data: transactions = [] } = useTransactions()
   const addTransaction = useAddTransaction()
   const updateTransaction = useUpdateTransaction()
+  const deleteTransaction = useDeleteTransaction()
   const addRecurringRule = useAddRecurringRule()
 
   const [type, setType] = useState<EntryType>('expense')
@@ -215,13 +217,13 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       const savedTx = await addTransaction.mutateAsync(payload)
 
       // Create cash-change transfer(s)
+      const changeTxIds: string[] = []
       if (cashEnabled && baseChange > 0 && savedTx?.id) {
         const isTWD = inputCurrency === 'TWD'
         const rawChange = parsedTendered - parsedAmount
         const { bills: billsChangeAmt, coins: coinsChangeAmt } = isTWD
           ? splitTwdChange(rawChange, getFiftyCoinRouting())
           : { bills: 0, coins: rawChange }
-        let firstChangeTxId: string | undefined
 
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
           const ct = await addTransaction.mutateAsync({
@@ -236,7 +238,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             needs_review: false, is_system_generated: true,
             linked_transaction_id: savedTx.id, cash_tendered: null,
           })
-          firstChangeTxId = ct?.id
+          if (ct?.id) changeTxIds.push(ct.id)
         }
 
         if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
@@ -252,7 +254,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             needs_review: false, is_system_generated: true,
             linked_transaction_id: savedTx.id, cash_tendered: null,
           })
-          if (!firstChangeTxId) firstChangeTxId = ct?.id
+          if (ct?.id) changeTxIds.push(ct.id)
         }
 
         if (!isTWD && changeCoinsWalletId) {
@@ -268,11 +270,11 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             needs_review: false, is_system_generated: true,
             linked_transaction_id: savedTx.id, cash_tendered: null,
           })
-          firstChangeTxId = ct?.id
+          if (ct?.id) changeTxIds.push(ct.id)
         }
 
-        if (firstChangeTxId) {
-          await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: firstChangeTxId })
+        if (changeTxIds.length > 0) {
+          await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: changeTxIds[0] })
         }
       }
 
@@ -300,7 +302,21 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       if (walletId) localStorage.setItem(LAST_WALLET_KEY, walletId)
       if (selectedCategory) localStorage.setItem(LAST_CATEGORY_KEY, selectedCategory)
 
-      toast.success(cashEnabled && baseChange > 0 ? 'Cash payment added · change routed' : 'Transaction added')
+      if (cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
+        const allIds = [savedTx.id, ...changeTxIds]
+        toast.success('Cash payment saved · change routed', {
+          duration: 8000,
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              for (const id of allIds) await deleteTransaction.mutateAsync(id)
+              toast.success('Cash payment undone')
+            },
+          },
+        })
+      } else {
+        toast.success('Transaction added')
+      }
       reset()
       onClose()
     } catch (err) {

@@ -343,7 +343,7 @@ export function Subscriptions() {
                     : 'Overdue'}
                 </span>
               ) : (
-                <span className="text-xs text-muted-foreground">Paused · next charge disabled</span>
+                <span className="text-xs text-muted-foreground">Paused — no future charges will be created</span>
               )}
               {rule.installment_total && (
                 <span className="text-xs text-muted-foreground">{rule.installment_paid}/{rule.installment_total} installments</span>
