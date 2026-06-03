@@ -18,6 +18,7 @@ import {
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
+import { hapticSuccess } from '@/lib/haptics'
 import { addRecurringInterval } from '@/lib/recurring'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { getTwdTenderOptions, pickQuickAddWallet } from '@/lib/quickAdd'
@@ -311,6 +312,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       if (walletId) localStorage.setItem(LAST_WALLET_KEY, walletId)
       if (selectedCategory) localStorage.setItem(LAST_CATEGORY_KEY, selectedCategory)
 
+      hapticSuccess()
       if (cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
         const allIds = [savedTx.id, ...changeTxIds]
         toast.success('Cash payment saved · change routed', {

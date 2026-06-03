@@ -488,13 +488,13 @@ export function Settings() {
       {/* Mobile: native-style settings list (shown when no page selected) */}
       {!effectiveTab && (
         <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
-          {tabs.map((tab, i) => {
+          {tabs.filter(t => t !== 'ai').map((tab) => {
             const { label, desc, Icon, color } = TAB_META[tab]
             return (
               <button
                 key={tab}
                 onClick={() => setMobilePage(tab)}
-                className={`flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-muted/40 ${i < tabs.length - 1 ? 'border-b border-border' : ''}`}
+                className="flex w-full items-center gap-4 border-b border-border px-4 py-3.5 text-left transition-colors active:bg-muted/40"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: color + '33' }}>
                   <Icon className="h-5 w-5" style={{ color }} />
@@ -507,6 +507,15 @@ export function Settings() {
               </button>
             )
           })}
+          <div className="flex items-center gap-4 px-4 py-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C4AEFF]/20">
+              <Sparkles className="h-5 w-5 text-[#C4AEFF]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-muted-foreground">Desktop tools</p>
+              <p className="text-xs text-muted-foreground">AI, Investing & Planning — open on a larger screen</p>
+            </div>
+          </div>
         </div>
       )}
 
