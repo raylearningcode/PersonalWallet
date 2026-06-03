@@ -796,7 +796,7 @@ export function Budget() {
                     type="button"
                     onClick={saveSheet}
                     disabled={updateCategory.isPending}
-                    className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-primary font-extrabold text-primary-foreground disabled:opacity-60"
+                    className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-primary font-extrabold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Save changes
                   </button>

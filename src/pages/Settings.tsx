@@ -777,7 +777,7 @@ export function Settings() {
                               />
                               <button
                                 aria-label="Save wallet rename"
-                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
                                 onClick={handleSaveWalletRename}
                                 disabled={updateWallet.isPending || renameWallet.isPending}
                               >
@@ -879,7 +879,7 @@ export function Settings() {
                       />
                       <button
                         aria-label="Save rename"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={handleSaveRename}
                         disabled={renameCategory.isPending}
                       >

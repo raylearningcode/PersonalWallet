@@ -415,7 +415,7 @@ export function Subscriptions() {
                 <Label className="text-xs text-muted-foreground">Amount</Label>
                 <div className="mt-1.5 flex gap-2">
                   <select
-                    className="h-10 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                    className="h-11 w-24 shrink-0 rounded-md border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
                     value={editForm.currency}
                     onChange={e => setEditField('currency', e.target.value)}
                   >
@@ -426,14 +426,14 @@ export function Subscriptions() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
-                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
+                <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.type} onChange={e => setEditField('type', e.target.value as 'expense' | 'income')}>
                   <option value="expense">Expense</option>
                   <option value="income">Income</option>
                 </select>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Frequency</Label>
-                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
+                <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.frequency} onChange={e => setEditField('frequency', e.target.value as RecurringFrequency)}>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
@@ -442,7 +442,7 @@ export function Subscriptions() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Category</Label>
-                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
+                <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
                   <option value="">— auto —</option>
                   {categories.length > 0 && (
                     <>
@@ -463,7 +463,7 @@ export function Subscriptions() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Wallet</Label>
-                <select className="mt-1.5 h-10 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
+                <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.walletId} onChange={e => setEditField('walletId', e.target.value)}>
                   <option value="">— none —</option>
                   {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
@@ -731,7 +731,7 @@ export function Subscriptions() {
                   ))}
                   <select
                     aria-label="Sort subscriptions"
-                    className="ml-auto h-9 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
+                    className="ml-auto h-11 rounded-full border border-input bg-secondary px-2.5 text-xs font-bold text-muted-foreground outline-none hover:text-foreground"
                     value={expenseSort}
                     onChange={e => setExpenseSort(e.target.value as ExpenseSort)}
                   >

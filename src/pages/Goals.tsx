@@ -341,6 +341,7 @@ export function Goals() {
                 <Input
                   className={`mt-2 bg-secondary ${errors.name ? 'border-[#FF8388]' : ''}`}
                   value={form.name}
+                  autoFocus
                   onChange={e => setField('name', e.target.value)}
                   placeholder="Emergency fund"
                 />
