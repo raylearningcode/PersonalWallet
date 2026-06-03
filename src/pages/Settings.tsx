@@ -562,7 +562,7 @@ export function Settings() {
                     <p className="font-bold text-foreground">Logged in</p>
                     <p className="text-sm text-muted-foreground">{session.user.email}</p>
                   </div>
-                  <Button variant="secondary" onClick={() => signOut.mutateAsync()}>Log out</Button>
+                  <Button variant="secondary" disabled={signOut.isPending} onClick={() => signOut.mutateAsync()}>Log out</Button>
                 </div>
               ) : (
                 <div className="grid max-w-md grid-cols-1 items-end gap-4">
