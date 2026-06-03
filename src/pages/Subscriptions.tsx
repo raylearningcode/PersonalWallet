@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useRecurringRules, useAddRecurringRule, useUpdateRecurringRule, useDeleteRecurringRule, useAddTransaction, useTransactions, useWallets, useBudgetCategories } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
@@ -73,6 +74,7 @@ export function Subscriptions() {
   const addTransaction = useAddTransaction()
   const updateRule = useUpdateRecurringRule()
   const deleteRule = useDeleteRecurringRule()
+  const isDesktop = useIsDesktop()
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState(() => emptyAddForm(money.baseCurrency))
@@ -880,7 +882,7 @@ export function Subscriptions() {
 
       {/* Recurring rule detail sheet */}
       <Sheet open={!!detailRule} onOpenChange={open => { if (!open) setDetailRule(null) }}>
-        <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}>
           {detailRule && (() => {
             const rule = detailRule
             const days = daysUntil(rule.next_due_date)

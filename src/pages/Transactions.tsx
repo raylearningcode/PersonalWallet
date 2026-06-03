@@ -1431,7 +1431,7 @@ export function Transactions() {
         </div>
 
         <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-          <SheetContent side="bottom" className="overflow-y-auto border-border bg-background pb-8">
+          <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background' : 'overflow-y-auto border-border bg-background pb-8'}>
             <SheetHeader className="mb-5 text-left">
               <SheetTitle>Filters</SheetTitle>
               <SheetDescription>Narrow down by date range or wallet.</SheetDescription>
@@ -1818,7 +1818,7 @@ export function Transactions() {
 
       {/* Bulk recategorize sheet */}
       <Sheet open={bulkCategorySheet} onOpenChange={open => { if (!open) setBulkCategorySheet(false) }}>
-        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background px-6 pb-10 pt-6">
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-10 pt-6' : 'rounded-t-3xl border-border bg-background px-6 pb-10 pt-6'}>
           <SheetHeader className="mb-5">
             <SheetTitle>Recategorize {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
             <SheetDescription>Choose a new category for all selected transactions.</SheetDescription>
@@ -1859,9 +1859,9 @@ export function Transactions() {
         onConfirm={confirmBulkDelete}
       />
 
-      {/* Transaction detail sheet (mobile) */}
+      {/* Transaction detail sheet */}
       <Sheet open={!!detailTx} onOpenChange={open => { if (!open) setDetailTx(null) }}>
-        <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border px-0 pb-0' : 'max-h-[85dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}>
           {detailTx && (() => {
             const tx = detailTx
             const wallet = wallets.find(w => w.id === tx.wallet_id)
