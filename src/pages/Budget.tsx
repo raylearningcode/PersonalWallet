@@ -23,6 +23,7 @@ import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDaysRemainingInMonth } from '@/lib/financeOs'
 import { formatDate } from '@/lib/utils'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
   Low: 'success', Medium: 'warning', High: 'danger',
@@ -95,6 +96,7 @@ function ColorBar({ value, color }: { value: number; color: string }) {
 export function Budget() {
   const money = useMoney()
   const fmt = money.formatDisplay
+  const isDesktop = useIsDesktop()
   const { data: categories = [], isPending: catPending, isError: catError, refetch: catRefetch } = useBudgetCategories()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
@@ -304,6 +306,12 @@ export function Budget() {
 
   const closestPct = closestToCap ? getCategoryUsedPct(closestToCap.spent, closestToCap.yearly_allocated) : 0
 
+  const allocationHeaders = viewMode === 'daily'
+    ? ['Daily left', 'Left']
+    : viewMode === 'remaining'
+    ? ['Remaining', 'Budget']
+    : ['Spent', 'Budget']
+
   return (
     <div>
       <PageHeader
@@ -454,7 +462,17 @@ export function Budget() {
               <>
                 {activeBudgets.length > 0 && (
                   <div className="space-y-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
+                    <div className="flex items-end justify-between gap-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
+                      <div className="hidden flex-1 grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] items-center gap-4 px-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/70 lg:grid">
+                        <span>Category</span>
+                        <span>{allocationHeaders[0]}</span>
+                        <span>{allocationHeaders[1]}</span>
+                        <span>Progress</span>
+                        <span>Status</span>
+                        <span />
+                      </div>
+                    </div>
                     {(() => {
                       const grouped = groupCategories(activeBudgets)
                       const showGroups = grouped.length > 1
@@ -470,52 +488,65 @@ export function Budget() {
                               ? (cat.yearly_allocated - cat.spent) / daysLeft
                               : null
                             const overPace = pct > monthPct
+                            const primaryValue = viewMode === 'daily'
+                              ? (catDailyAllowance !== null ? fmt(catDailyAllowance) : '—')
+                              : viewMode === 'remaining'
+                              ? fmt(Math.max(0, cat.yearly_allocated - cat.spent))
+                              : fmt(cat.spent)
+                            const secondaryValue = viewMode === 'daily'
+                              ? fmt(Math.max(0, cat.yearly_allocated - cat.spent))
+                              : fmt(cat.yearly_allocated)
 
                             return (
                               <button
                                 key={cat.id}
                                 type="button"
                                 onClick={() => openSheet(cat)}
-                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995]"
+                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] lg:items-center lg:gap-4 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
                                 aria-label={`Open ${cat.name} budget details`}
                               >
-                                <div className="mb-2 flex items-center justify-between gap-2 text-sm">
+                                <div className="mb-2 flex items-center justify-between gap-2 text-sm lg:contents">
                                   <div className="flex min-w-0 items-center gap-2">
                                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
                                     <span className="truncate font-bold text-foreground">{cat.name}</span>
                                   </div>
-                                  <div className="flex shrink-0 items-center gap-2">
-                                    <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">
-                                      {fmt(cat.spent)} / {fmt(cat.yearly_allocated)}
-                                    </span>
-                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-[#FF8388]' : pct >= 70 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
-                                      {pct}%
-                                    </span>
+                                  <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{primaryValue}</span>
+                                  <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{secondaryValue}</span>
+                                  <div className="flex shrink-0 items-center gap-2 lg:hidden">
+                                    <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">{fmt(cat.spent)} / {fmt(cat.yearly_allocated)}</span>
+                                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-[#FF8388]' : pct >= 70 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>{pct}%</span>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 </div>
-                                <ColorBar value={pct} color={barColor} />
-                                <div className="mt-1.5 flex items-center gap-2">
+                                <div className="lg:hidden"><ColorBar value={pct} color={barColor} /></div>
+                                <div className="hidden items-center gap-2 lg:flex">
+                                  <div className="min-w-0 flex-1"><ColorBar value={pct} color={barColor} /></div>
+                                  <span className={`w-9 text-right text-xs font-bold ${pct >= 90 ? 'text-[#FF8388]' : pct >= 70 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
+                                    {pct}%
+                                  </span>
+                                </div>
+                                <div className="mt-1.5 flex items-center gap-2 lg:mt-0 lg:min-w-0">
                                   {pct === 0 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">No spending</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground lg:truncate">No spending</span>
                                   ) : pct >= 100 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FF8388]/15 px-2 py-0.5 text-[11px] font-bold text-[#FF8388]">Over budget</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FF8388]/15 px-2 py-0.5 text-[11px] font-bold text-[#FF8388] lg:truncate">Over budget</span>
                                   ) : pct >= 90 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FF8388]/15 px-2 py-0.5 text-[11px] font-bold text-[#FF8388]">Near limit</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FF8388]/15 px-2 py-0.5 text-[11px] font-bold text-[#FF8388] lg:truncate">Near limit</span>
                                   ) : pct >= 70 ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCF73]/15 px-2 py-0.5 text-[11px] font-bold text-[#FFCF73]">Watch spending</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCF73]/15 px-2 py-0.5 text-[11px] font-bold text-[#FFCF73] lg:truncate">Watch spending</span>
                                   ) : overPace ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCF73]/10 px-2 py-0.5 text-[11px] font-bold text-[#FFCF73]">Over pace</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCF73]/10 px-2 py-0.5 text-[11px] font-bold text-[#FFCF73] lg:truncate">Over pace</span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">On track</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary lg:truncate">On track</span>
                                   )}
                                   {viewMode === 'remaining' && (
-                                    <span className="text-[11px] text-muted-foreground">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))} left</span>
+                                    <span className="text-[11px] text-muted-foreground lg:hidden">{fmt(Math.max(0, cat.yearly_allocated - cat.spent))} left</span>
                                   )}
                                   {viewMode === 'daily' && cat.budget_period === 'monthly' && catDailyAllowance !== null && daysLeft > 0 && (
-                                    <span className="text-[11px] text-muted-foreground">{fmt(catDailyAllowance)}/day</span>
+                                    <span className="text-[11px] text-muted-foreground lg:hidden">{fmt(catDailyAllowance)}/day</span>
                                   )}
                                 </div>
+                                <ChevronRight className="hidden h-4 w-4 justify-self-end text-muted-foreground lg:block" />
                               </button>
                             )
                           })}
@@ -692,7 +723,12 @@ export function Budget() {
 
       {/* Category detail sheet */}
       <Sheet open={!!sheetCat} onOpenChange={open => { if (!open) setSheetCat(null) }}>
-        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+        <SheetContent
+          side={isDesktop ? 'right' : 'bottom'}
+          className={isDesktop
+            ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0 sm:max-w-xl'
+            : 'max-h-[90dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}
+        >
           {sheetCat && (() => {
             const cat = sheetCat
             const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)

@@ -28,7 +28,8 @@ import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
-import { splitTwdChange, getFiftyCoinRouting } from '@/lib/cashChange'
+import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
+import { getTwdTenderOptions } from '@/lib/quickAdd'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -223,8 +224,8 @@ export function Transactions() {
     ? Math.round((selectedCategoryTotal / selectedCategoryBudget) * 100)
     : 0
   const merchantSuggestion = useMemo(
-    () => getMerchantSuggestion(description, transactions),
-    [description, transactions]
+    () => type === 'transfer' ? null : getMerchantSuggestion(description, transactions),
+    [description, transactions, type]
   )
   const upcomingRecurringRules = useMemo(
     () => [...recurringRules].sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 6),
@@ -333,7 +334,7 @@ export function Transactions() {
           const isTWDEdit = inputCurrency === 'TWD'
           const rawChangeEdit = parsedTendered - parsedAmount
           const { bills: billsChangeEdit, coins: coinsChangeEdit } = isTWDEdit
-            ? splitTwdChange(rawChangeEdit, getFiftyCoinRouting())
+            ? splitChangeByPolicy(rawChangeEdit, { currency: 'TWD', routeFiftyCoinTo: getFiftyCoinRouting() })
             : { bills: 0, coins: rawChangeEdit }
           let firstEditChangeTxId: string | undefined
           if (isTWDEdit && billsChangeEdit > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
@@ -393,7 +394,7 @@ export function Transactions() {
           const isTWD = inputCurrency === 'TWD'
           const rawChange = parsedTendered - parsedAmount
           const { bills: billsChangeAmt, coins: coinsChangeAmt } = isTWD
-            ? splitTwdChange(rawChange, getFiftyCoinRouting())
+            ? splitChangeByPolicy(rawChange, { currency: 'TWD', routeFiftyCoinTo: getFiftyCoinRouting() })
             : { bills: 0, coins: rawChange }
           let firstChangeTxId: string | undefined
 
@@ -781,10 +782,18 @@ export function Transactions() {
               <p className="mt-1 text-xs text-muted-foreground">{inputCurrency}</p>
             </div>
 
-            {/* Merchant — always visible */}
+            {/* Description */}
             <div>
-              <Label className="text-sm font-bold text-foreground">Merchant name</Label>
-              <Input aria-label="Description" className="mt-2 bg-secondary" value={description} onChange={event => setDescription(event.target.value)} placeholder="Enter a merchant name" />
+              <Label className="text-sm font-bold text-foreground">
+                {type === 'transfer' ? 'Transfer note' : 'Merchant name'}
+              </Label>
+              <Input
+                aria-label={type === 'transfer' ? 'Transfer note' : 'Description'}
+                className="mt-2 bg-secondary"
+                value={description}
+                onChange={event => setDescription(event.target.value)}
+                placeholder={type === 'transfer' ? 'Optional note' : 'Enter a merchant name'}
+              />
               {merchantSuggestion && !editingTransaction && (
                 <button
                   type="button"
@@ -884,11 +893,11 @@ export function Transactions() {
                   const showChips = selectedWallet.currency === 'TWD' && inputCurrency === 'TWD'
                   const isTWD = inputCurrency === 'TWD'
                   const { bills: billsChange, coins: coinsChange } = isTWD
-                    ? splitTwdChange(changeAmount, getFiftyCoinRouting())
+                    ? splitChangeByPolicy(changeAmount, { currency: 'TWD', routeFiftyCoinTo: getFiftyCoinRouting() })
                     : { bills: 0, coins: changeAmount }
                   const hasBills = billsChange > 0
                   const hasCoins = coinsChange > 0
-                  const twdChips = [100, 500, 1000].filter(n => !Number.isFinite(parsedExpense) || parsedExpense <= 0 || n >= parsedExpense)
+                  const twdChips = getTwdTenderOptions(parsedExpense)
                   const validTender = Number.isFinite(parsedTendered) && parsedTendered >= parsedExpense && parsedTendered > 0
 
                   return (
@@ -911,8 +920,7 @@ export function Transactions() {
                               const billsWallet = otherWallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed')
                               setChangeBillsWalletId(billsWallet?.id ?? '')
                               if (!cashTendered && parsedExpense > 0 && showChips) {
-                                const minDenom = parsedExpense <= 100 ? 100 : parsedExpense <= 500 ? 500 : 1000
-                                setCashTendered(String(minDenom))
+                                setCashTendered(String(getTwdTenderOptions(parsedExpense)[0]))
                               }
                             }
                             if (!e.target.checked) setCashTendered('')

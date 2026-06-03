@@ -155,7 +155,8 @@ describe('Transactions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
-    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Move to card' } })
+    expect(screen.queryByText('Merchant name')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Transfer note'), { target: { value: 'Move to card' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '300' } })
     fireEvent.change(screen.getByLabelText('From wallet'), { target: { value: 'cash' } })
     fireEvent.change(screen.getByLabelText('To wallet'), { target: { value: 'card' } })

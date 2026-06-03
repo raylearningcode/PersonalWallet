@@ -17,7 +17,8 @@ import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
-import { splitTwdChange, getFiftyCoinRouting } from '@/lib/cashChange'
+import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
+import { getTwdTenderOptions, pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, getGeminiKey } from '@/lib/gemini'
 import { ScanLine, Loader2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -66,8 +67,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   useEffect(() => {
     if (!walletId && wallets.length > 0) {
       const last = localStorage.getItem(LAST_WALLET_KEY)
-      const found = last ? wallets.find(w => w.id === last) : null
-      setWalletId(found ? found.id : wallets[0].id)
+      setWalletId(pickQuickAddWallet(wallets, last, false)?.id ?? '')
     }
     if (!transferWalletId && wallets.length > 1) setTransferWalletId(wallets[1].id)
   }, [wallets, walletId, transferWalletId])
@@ -88,16 +88,20 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   useEffect(() => {
     if (open) {
       if (initialType) setType(initialType)
-      if (initialCash) setCashEnabled(true)
+      if (initialCash) {
+        setCashEnabled(true)
+        const last = localStorage.getItem(LAST_WALLET_KEY)
+        setWalletId(pickQuickAddWallet(wallets, last, true)?.id ?? '')
+      }
       setInputCurrency(money.displayCurrency)
       const timer = setTimeout(() => amountInputRef.current?.focus(), 120)
       return () => clearTimeout(timer)
     }
-  }, [open, initialType, initialCash, money.displayCurrency])
+  }, [open, initialType, initialCash, money.displayCurrency, wallets])
 
   const merchantSuggestion = useMemo(
-    () => getMerchantSuggestion(description, transactions),
-    [description, transactions]
+    () => type === 'transfer' ? null : getMerchantSuggestion(description, transactions),
+    [description, transactions, type]
   )
 
   const selectedWallet = wallets.find(w => w.id === walletId) ?? null
@@ -222,7 +226,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         const isTWD = inputCurrency === 'TWD'
         const rawChange = parsedTendered - parsedAmount
         const { bills: billsChangeAmt, coins: coinsChangeAmt } = isTWD
-          ? splitTwdChange(rawChange, getFiftyCoinRouting())
+          ? splitChangeByPolicy(rawChange, { currency: 'TWD', routeFiftyCoinTo: getFiftyCoinRouting() })
           : { bills: 0, coins: rawChange }
 
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
@@ -612,15 +616,17 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 />
               </div>
 
-              {/* Merchant name */}
+              {/* Description */}
               <div>
-                <Label className="text-sm font-bold text-foreground">Merchant name</Label>
+                <Label className="text-sm font-bold text-foreground">
+                  {type === 'transfer' ? 'Transfer note' : 'Merchant name'}
+                </Label>
                 <Input
-                  aria-label="Description"
+                  aria-label={type === 'transfer' ? 'Transfer note' : 'Description'}
                   className="mt-2 bg-secondary"
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="Enter a merchant name (optional)"
+                  placeholder={type === 'transfer' ? 'Optional note' : 'Enter a merchant name (optional)'}
                 />
                 {merchantSuggestion && (
                   <button
@@ -802,9 +808,9 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             const isUnderpay = cashEnabled && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > 0 && parsedTenderedVal < parsedExpense
             const isTWD = inputCurrency === 'TWD' || selectedWallet?.currency === 'TWD'
             const { bills: billsChange, coins: coinsChange } = isTWD
-              ? splitTwdChange(changeAmount, getFiftyCoinRouting())
+              ? splitChangeByPolicy(changeAmount, { currency: 'TWD', routeFiftyCoinTo: getFiftyCoinRouting() })
               : { bills: 0, coins: changeAmount }
-            const twdChips = [50, 100, 200, 500, 1000].filter(n => parsedExpense <= 0 || n >= parsedExpense)
+            const twdChips = getTwdTenderOptions(parsedExpense)
 
             return (
               <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
@@ -828,8 +834,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         setChangeBillsWalletId(billsWallet?.id ?? '')
                         const parsedExp = parseNumberInput(amount)
                         if (!cashTendered && parsedExp > 0 && isTWD) {
-                          const minDenom = parsedExp <= 100 ? 100 : parsedExp <= 500 ? 500 : 1000
-                          setCashTendered(String(minDenom))
+                          setCashTendered(String(getTwdTenderOptions(parsedExp)[0]))
                         }
                       } else {
                         setCashTendered('')
