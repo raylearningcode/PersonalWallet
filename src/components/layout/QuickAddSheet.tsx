@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,7 +35,6 @@ const LAST_WALLET_KEY = 'finpath_last_wallet'
 
 export function QuickAddSheet({ open, onClose, initialType, initialCash }: { open: boolean; onClose: () => void; initialType?: EntryType; initialCash?: boolean }) {
   const money = useMoney()
-  const isDesktop = useIsDesktop()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
