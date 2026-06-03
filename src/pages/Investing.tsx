@@ -267,7 +267,7 @@ export function Investing() {
               {money.formatDisplay(plan.projectedPortfolio)}
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Projected in {money.displayCurrency}</span>
+              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Projected in {money.baseCurrency}</span>
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">Base value {money.formatBase(plan.projectedPortfolio)}</span>
               <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">{money.format(draft.monthlyContribution, contributionCurrency)}/{FREQ_LABELS[contributionFrequency]}</span>
               {draftBase.targetPortfolio > 0 && (

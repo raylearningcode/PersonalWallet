@@ -64,13 +64,13 @@ export function Transactions() {
   const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
   const [ruleDescription, setRuleDescription] = useState('')
   const [ruleAmount, setRuleAmount] = useState('')
-  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
+  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.baseCurrency)
   const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
   const [ruleNextDueDate, setRuleNextDueDate] = useState('')
   const [ruleEndDate, setRuleEndDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
-  const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
+  const [inputCurrency, setInputCurrency] = useState(money.baseCurrency)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
@@ -124,8 +124,8 @@ export function Transactions() {
   }, [walletId, transferWalletId, wallets])
 
   useEffect(() => {
-    setInputCurrency(current => current || money.displayCurrency)
-  }, [money.displayCurrency])
+    setInputCurrency(current => current || money.baseCurrency)
+  }, [money.baseCurrency])
 
   useEffect(() => {
     if (selectMode) setSwipeOpenId(null)
@@ -147,7 +147,7 @@ export function Transactions() {
     if (!editingRule) return
     setRuleDescription(editingRule.description)
     setRuleAmount(String(editingRule.original_amount ?? editingRule.amount))
-    setRuleInputCurrency(editingRule.original_currency ?? money.displayCurrency)
+    setRuleInputCurrency(editingRule.original_currency ?? money.baseCurrency)
     setRuleFrequency(editingRule.frequency)
     setRuleNextDueDate(editingRule.next_due_date)
     setRuleEndDate(editingRule.end_date ?? '')
@@ -273,7 +273,7 @@ export function Transactions() {
     setEditingTransaction(null)
     setDescription('')
     setAmount('')
-    setInputCurrency(money.displayCurrency)
+    setInputCurrency(money.baseCurrency)
     setDate(new Date().toISOString().slice(0, 10))
     setType('expense')
     setCategory(categories[0]?.name ?? '')

@@ -642,7 +642,7 @@ export function Settings() {
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">View currency <span className="font-normal">(display currency for amounts, e.g. home currency when abroad)</span></Label>
                 <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger aria-label="View currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
+                  <SelectTrigger aria-label="Secondary currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
