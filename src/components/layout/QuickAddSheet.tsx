@@ -554,7 +554,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 <div className="flex items-center justify-center gap-2">
                   <select
                     aria-label="Input currency"
-                    className="h-10 rounded-full border border-border bg-secondary px-3 text-sm font-extrabold text-muted-foreground outline-none"
+                    className="h-11 rounded-full border border-border bg-secondary px-3 text-sm font-extrabold text-muted-foreground outline-none"
                     value={inputCurrency}
                     onChange={e => setInputCurrency(e.target.value)}
                   >

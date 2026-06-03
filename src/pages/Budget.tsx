@@ -664,10 +664,10 @@ export function Budget() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button className="h-10 flex-1 text-sm" onClick={handleAdd} disabled={addCategory.isPending}>
+                  <Button className="h-11 flex-1 text-sm" onClick={handleAdd} disabled={addCategory.isPending}>
                     Add category
                   </Button>
-                  <Button variant="secondary" className="h-10 text-sm" onClick={() => setShowAdd(false)}>
+                  <Button variant="secondary" className="h-11 text-sm" onClick={() => setShowAdd(false)}>
                     Cancel
                   </Button>
                 </div>
