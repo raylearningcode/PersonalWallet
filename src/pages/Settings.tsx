@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -64,7 +64,6 @@ const WALLET_NAME_HINTS: Record<string, string> = {
 }
 
 export function Settings() {
-  const navigate = useNavigate()
   const money = useMoney()
   const { data: settings } = useAppSettings()
   const { data: session } = useAuthSession()
