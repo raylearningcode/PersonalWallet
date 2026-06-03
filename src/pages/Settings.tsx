@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -64,6 +64,7 @@ const WALLET_NAME_HINTS: Record<string, string> = {
 }
 
 export function Settings() {
+  const navigate = useNavigate()
   const money = useMoney()
   const { data: settings } = useAppSettings()
   const { data: session } = useAuthSession()
@@ -119,7 +120,11 @@ export function Settings() {
   })
   useEffect(() => {
     const s = searchParams.get('section')
-    if (s && (tabs as readonly string[]).includes(s)) {
+    if (!s) {
+      setMobilePage(null)
+      return
+    }
+    if ((tabs as readonly string[]).includes(s)) {
       setActiveTab(s as SettingsTab)
       setMobilePage(s as SettingsTab)
     }
@@ -508,7 +513,7 @@ export function Settings() {
       {/* Mobile: back button when a page is selected */}
       {effectiveTab && !isDesktop && (
         <button
-          onClick={() => setMobilePage(null)}
+          onClick={() => { setMobilePage(null); navigate('/settings', { replace: true }) }}
           className="mb-6 flex items-center gap-2 text-sm font-bold text-primary lg:hidden"
         >
           <ChevronLeft className="h-4 w-4" />

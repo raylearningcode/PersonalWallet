@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
 import { Outlet, useNavigate } from 'react-router-dom'
+import { AndroidBackHandler } from '@/components/native/AndroidBackHandler'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthSession } from '@/lib/queries'
 import { getQueue } from '@/lib/offlineCache'
@@ -41,6 +42,7 @@ function ResponsiveToaster() {
 export function AppLayout() {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
   const { data: session } = useAuthSession()
   const [moreOpen, setMoreOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -115,12 +117,21 @@ export function AppLayout() {
     }
   }, [qc])
 
+  const closeTopSheet = useCallback((): boolean => {
+    if (quickAddOpen) { setQuickAddOpen(false); return true }
+    if (quickActionsOpen) { setQuickActionsOpen(false); return true }
+    if (moreOpen) { setMoreOpen(false); return true }
+    if (profileOpen) { setProfileOpen(false); return true }
+    return false
+  }, [quickAddOpen, quickActionsOpen, moreOpen, profileOpen])
+
   if (pinLocked) {
     return <PinLockScreen onUnlock={() => setPinLocked(false)} />
   }
 
   return (
     <div className="min-h-screen bg-background">
+      <AndroidBackHandler closeTopSheet={closeTopSheet} />
       <ResponsiveToaster />
       <Sidebar profileOpen={profileOpen} onProfileOpenChange={setProfileOpen} />
       <main
@@ -148,7 +159,7 @@ export function AppLayout() {
             </p>
             <button
               type="button"
-              onClick={() => setProfileOpen(true)}
+              onClick={() => isDesktop ? setProfileOpen(true) : navigate('/auth')}
               className="shrink-0 rounded-full bg-primary px-4 py-1.5 text-xs font-extrabold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Sign in to sync

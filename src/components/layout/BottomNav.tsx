@@ -3,7 +3,7 @@ import { CreditCard, LayoutDashboard, MoreHorizontal, PieChart, Plus } from 'luc
 
 const navItems = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
-  { to: '/transactions', label: 'Txns', icon: CreditCard },
+  { to: '/transactions', label: 'History', icon: CreditCard },
   { to: '/budget', label: 'Budget', icon: PieChart },
 ]
 

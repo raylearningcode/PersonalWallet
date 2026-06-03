@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { MoneyKeypad } from '@/components/ui/MoneyKeypad'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +34,7 @@ const LAST_WALLET_KEY = 'finpath_last_wallet'
 
 export function QuickAddSheet({ open, onClose, initialType, initialCash }: { open: boolean; onClose: () => void; initialType?: EntryType; initialCash?: boolean }) {
   const money = useMoney()
+  const isDesktop = useIsDesktop()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
@@ -54,6 +57,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const [endDate, setEndDate] = useState('')
   const [scanning, setScanning] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [activeKeypad, setActiveKeypad] = useState<'amount' | 'cash' | null>(null)
   // Cash-change assistant state
   const [cashEnabled, setCashEnabled] = useState(false)
   const [cashTendered, setCashTendered] = useState('')
@@ -125,6 +129,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     setInstallmentTotal('')
     setEndDate('')
     setShowAdvanced(false)
+    setActiveKeypad(null)
     setCashEnabled(false)
     setCashTendered('')
     setChangeCoinsWalletId('')
@@ -381,8 +386,9 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   <Input
                     ref={amountInputRef}
                     aria-label="Amount"
-                    inputMode="decimal"
-                    className="h-16 w-44 border-0 bg-transparent text-center text-5xl font-extrabold shadow-none focus-visible:ring-0"
+                    inputMode={isDesktop ? 'decimal' : 'none'}
+                    readOnly={!isDesktop}
+                    className="h-16 w-44 cursor-pointer border-0 bg-transparent text-center text-5xl font-extrabold shadow-none focus-visible:ring-0"
                     value={amount}
                     onChange={e => setAmount(formatNumberInput(e.target.value))}
                     placeholder="0"
@@ -396,6 +402,17 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   onChange={e => setDate(e.target.value)}
                 />
               </div>
+
+              {/* Mobile numeric keypad — replaces native keyboard */}
+              {!isDesktop && (
+                <MoneyKeypad
+                  value={amount}
+                  onChange={setAmount}
+                  quickAmounts={inputCurrency === 'TWD' ? [50, 100, 500, 1000] : undefined}
+                  currencyPrefix={inputCurrency === 'TWD' ? 'NT$' : `${inputCurrency} `}
+                  label="Amount"
+                />
+              )}
 
               {/* Category chips — expense */}
               {type === 'expense' && wallets.length > 0 && (
@@ -583,11 +600,13 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   <Input
                     ref={amountInputRef}
                     aria-label="Amount"
-                    inputMode="decimal"
-                    className="h-14 w-44 border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
+                    inputMode={isDesktop ? 'decimal' : 'none'}
+                    readOnly={!isDesktop}
+                    className="h-14 w-44 cursor-pointer border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
                     value={amount}
                     onChange={e => setAmount(formatNumberInput(e.target.value))}
                     placeholder="0"
+                    onClick={() => !isDesktop && setActiveKeypad('amount')}
                   />
                   <button
                     type="button"
@@ -615,6 +634,18 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   onChange={e => setDate(e.target.value)}
                 />
               </div>
+
+              {/* Mobile keypad for advanced amount */}
+              {!isDesktop && activeKeypad === 'amount' && (
+                <MoneyKeypad
+                  value={amount}
+                  onChange={setAmount}
+                  quickAmounts={inputCurrency === 'TWD' ? [50, 100, 500, 1000] : undefined}
+                  currencyPrefix={inputCurrency === 'TWD' ? 'NT$' : `${inputCurrency} `}
+                  label="Amount"
+                  onDone={() => setActiveKeypad(null)}
+                />
+              )}
 
               {/* Description */}
               <div>
@@ -853,10 +884,12 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       <Input
                         aria-label="Cash given"
                         className="mt-2 bg-secondary"
-                        inputMode="decimal"
+                        inputMode={isDesktop ? 'decimal' : 'none'}
+                        readOnly={!isDesktop}
                         value={cashTendered}
                         onChange={e => setCashTendered(formatNumberInput(e.target.value))}
                         placeholder="Amount you handed over"
+                        onClick={() => !isDesktop && setActiveKeypad('cash')}
                       />
                       {isTWD && (
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -879,7 +912,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                           ))}
                           <button
                             type="button"
-                            onClick={() => { setCashTendered(''); setTimeout(() => (document.querySelector('[aria-label="Cash given"]') as HTMLInputElement | null)?.focus(), 50) }}
+                            onClick={() => { setCashTendered(''); setActiveKeypad('cash') }}
                             className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                           >
                             Custom
@@ -888,6 +921,16 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       )}
                       {isUnderpay && (
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
+                      )}
+                      {!isDesktop && activeKeypad === 'cash' && (
+                        <div className="mt-3">
+                          <MoneyKeypad
+                            value={cashTendered}
+                            onChange={setCashTendered}
+                            label="Cash given"
+                            onDone={() => setActiveKeypad(null)}
+                          />
+                        </div>
                       )}
                     </div>
 

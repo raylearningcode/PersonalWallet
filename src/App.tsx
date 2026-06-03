@@ -2,6 +2,7 @@ import { Component, lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Dashboard } from '@/pages/Dashboard'
+import { AuthPage } from '@/pages/AuthPage'
 
 const Transactions = lazy(() => import('@/pages/Transactions').then(m => ({ default: m.Transactions })))
 const Budget = lazy(() => import('@/pages/Budget').then(m => ({ default: m.Budget })))
@@ -59,6 +60,7 @@ function Page({ children }: { children: ReactNode }) {
 export function App() {
   return (
     <Routes>
+      <Route path="auth" element={<AuthPage />} />
       <Route element={<AppLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="transactions" element={<Page><Transactions /></Page>} />
