@@ -1,4 +1,5 @@
 import type { Transaction, BudgetCategory, RecurringRule, Goal } from '@/types/index'
+import { LocalNotifications } from '@capacitor/local-notifications'
 
 export type NotificationSeverity = 'critical' | 'warning' | 'info'
 
@@ -95,4 +96,53 @@ export function computeNotifications(
 
   const order: Record<NotificationSeverity, number> = { critical: 0, warning: 1, info: 2 }
   return notes.sort((a, b) => order[a.severity] - order[b.severity])
+}
+
+export async function scheduleUpcomingBillNotifications(
+  recurringRules: RecurringRule[],
+  fmt: (n: number) => string,
+) {
+  try {
+    const { display } = await LocalNotifications.checkPermissions()
+    let permission = display
+    if (permission !== 'granted') {
+      const result = await LocalNotifications.requestPermissions()
+      permission = result.display
+    }
+    if (permission !== 'granted') return
+
+    const upcomingIds = recurringRules
+      .filter(r => r.active && r.type !== 'income')
+      .map((_, i) => ({ id: 9000 + i }))
+    if (upcomingIds.length > 0) {
+      await LocalNotifications.cancel({ notifications: upcomingIds }).catch(() => undefined)
+    }
+
+    const notifications = recurringRules
+      .filter(r => r.active && r.type !== 'income')
+      .flatMap((rule, i) => {
+        const days = daysUntil(rule.next_due_date)
+        if (days <= 0 || days > 3) return []
+        const at = new Date(rule.next_due_date)
+        at.setDate(at.getDate() - 1)
+        at.setHours(9, 0, 0, 0)
+        if (at <= new Date()) return []
+        return [{
+          id: 9000 + i,
+          title: days === 1 ? `${rule.description} due tomorrow` : `${rule.description} in ${days} days`,
+          body: `${fmt(rule.amount)} payment coming up`,
+          schedule: { at },
+          sound: undefined as undefined,
+          attachments: undefined as undefined,
+          actionTypeId: '',
+          extra: null,
+        }]
+      })
+
+    if (notifications.length > 0) {
+      await LocalNotifications.schedule({ notifications })
+    }
+  } catch {
+    // Not native or notifications unavailable
+  }
 }

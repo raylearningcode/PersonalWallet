@@ -1650,7 +1650,7 @@ export function Transactions() {
                           })()}
                         </div>
                         <span className={`shrink-0 tabular-nums text-sm font-extrabold whitespace-nowrap ${txAmountColor(tx.amount, tx.type)}`}>
-                          {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                          {txAmountSign(tx.amount, tx.type)}{tx.original_currency === money.displayCurrency && tx.original_amount != null ? money.format(tx.original_amount, tx.original_currency) : money.formatDisplay(tx.amount)}
                         </span>
                       </div>
                     </button>
@@ -1703,7 +1703,7 @@ export function Transactions() {
                           )}
                         </TableCell>
                         <TableCell className={`text-right font-bold ${txAmountColor(tx.amount, tx.type)}`}>
-                          {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                          {txAmountSign(tx.amount, tx.type)}{tx.original_currency === money.displayCurrency && tx.original_amount != null ? money.format(tx.original_amount, tx.original_currency) : money.formatDisplay(tx.amount)}
                         </TableCell>
                         {!selectMode && (
                           <TableCell className="w-[124px]">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -64,6 +64,7 @@ const WALLET_NAME_HINTS: Record<string, string> = {
 }
 
 export function Settings() {
+  const navigate = useNavigate()
   const money = useMoney()
   const { data: settings } = useAppSettings()
   const { data: session } = useAuthSession()
@@ -119,7 +120,11 @@ export function Settings() {
   })
   useEffect(() => {
     const s = searchParams.get('section')
-    if (s && (tabs as readonly string[]).includes(s)) {
+    if (!s) {
+      setMobilePage(null)
+      return
+    }
+    if ((tabs as readonly string[]).includes(s)) {
       setActiveTab(s as SettingsTab)
       if (!isDesktop) setMobilePage(s as SettingsTab)
     } else if (!isDesktop) {
@@ -485,7 +490,7 @@ export function Settings() {
       {/* Mobile: native-style settings list (shown when no page selected) */}
       {!effectiveTab && (
         <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
-          {tabs.map((tab, i) => {
+          {tabs.filter(t => t !== 'ai').map((tab) => {
             const { label, desc, Icon, color } = TAB_META[tab]
             return (
               <button
@@ -494,7 +499,7 @@ export function Settings() {
                   setMobilePage(tab)
                   setSearchParams({ section: tab })
                 }}
-                className={`flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-muted/40 ${i < tabs.length - 1 ? 'border-b border-border' : ''}`}
+                className="flex w-full items-center gap-4 border-b border-border px-4 py-3.5 text-left transition-colors active:bg-muted/40"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: color + '33' }}>
                   <Icon className="h-5 w-5" style={{ color }} />
@@ -507,6 +512,15 @@ export function Settings() {
               </button>
             )
           })}
+          <div className="flex items-center gap-4 px-4 py-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C4AEFF]/20">
+              <Sparkles className="h-5 w-5 text-[#C4AEFF]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-muted-foreground">Desktop tools</p>
+              <p className="text-xs text-muted-foreground">AI, Investing & Planning — open on a larger screen</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -593,13 +607,13 @@ export function Settings() {
           <Card className="mb-8">
             <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
             <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-              <p className="text-sm text-muted-foreground">Set the currency your amounts are saved in, then choose what FinPath displays.</p>
+              <p className="text-sm text-muted-foreground">Amounts are stored in your <strong>wallet currency</strong>. Use <strong>view currency</strong> to see converted values across the app — your entered amounts stay exact no matter how rates change.</p>
 
               {/* Currency status banner */}
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
                 <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-muted-foreground">Display currency: <span className="text-foreground">{money.displayCurrency}</span></p>
-                  <p className="text-xs font-bold text-muted-foreground">Base currency: <span className="text-foreground">{money.baseCurrency}</span></p>
+                  <p className="text-xs font-bold text-muted-foreground">View currency: <span className="text-foreground">{money.displayCurrency}</span></p>
+                  <p className="text-xs font-bold text-muted-foreground">Wallet currency: <span className="text-foreground">{money.baseCurrency}</span></p>
                 </div>
                 <p className="text-right text-xs text-muted-foreground">
                   {money.ratesDate ? `Rates: ${money.ratesDate}` : <span className="text-[#FFCF73]">Using fallback rates</span>}
@@ -615,9 +629,9 @@ export function Settings() {
               )}
 
               <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Base currency</Label>
+                <Label className="text-sm text-muted-foreground">Wallet currency <span className="font-normal">(amounts stored in this)</span></Label>
                 <Select value={baseCurrency} onValueChange={setBaseCurrency}>
-                  <SelectTrigger aria-label="Base currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
+                  <SelectTrigger aria-label="Wallet currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -626,9 +640,9 @@ export function Settings() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Display currency</Label>
+                <Label className="text-sm text-muted-foreground">View currency <span className="font-normal">(shown throughout the app)</span></Label>
                 <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger aria-label="Display currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
+                  <SelectTrigger aria-label="View currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Check, Delete } from 'lucide-react'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { hapticLight, hapticMedium } from '@/lib/haptics'
 
 interface MoneyKeypadProps {
   value: string
@@ -45,6 +46,7 @@ export function MoneyKeypad({
   }
 
   const backspace = () => {
+    hapticMedium()
     const raw = value.replace(/[^\d.]/g, '')
     onChange(formatNumberInput(raw.slice(0, -1)))
   }
@@ -85,7 +87,7 @@ export function MoneyKeypad({
               key={key}
               type="button"
               className="flex min-h-[72px] items-center justify-center rounded-[1.6rem] bg-[#3B3B3B] text-3xl font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform active:scale-95"
-              onClick={() => onChange(appendKey(value, key, allowDecimal))}
+              onClick={() => { hapticLight(); onChange(appendKey(value, key, allowDecimal)) }}
             >
               {key}
             </button>

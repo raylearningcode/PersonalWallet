@@ -21,7 +21,7 @@ const MORE_NAV_GROUPS = [
     ],
   },
   {
-    label: 'Advanced',
+    label: 'Desktop tools',
     items: [
       { to: '/settings', label: 'Settings', Icon: Settings, color: '#F8DCDC' },
       { to: '/desktop-tools', label: 'Desktop tools', Icon: Monitor, color: '#C4AEFF' },

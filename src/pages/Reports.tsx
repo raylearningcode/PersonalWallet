@@ -384,7 +384,7 @@ export function Reports() {
         title="Reports"
         subtitle="Review spending by week, month, or year with category charts and breakdowns."
         action={(
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="hidden flex-wrap items-center gap-3 lg:flex">
             <div className="flex items-center rounded-full border border-border bg-secondary p-1">
               {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
               <span className="min-w-[118px] px-3 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
@@ -489,7 +489,7 @@ export function Reports() {
 
       {/* Period comparison */}
       {(incomeDiff || expenseDiff) && (
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mb-8 hidden gap-4 lg:grid lg:grid-cols-2">
           <div className="rounded-2xl border border-border bg-card px-5 py-4">
             <p className="text-xs font-bold text-muted-foreground">Income vs previous {RANGE_LABELS[range].toLowerCase()}</p>
             <div className="mt-2 flex items-end gap-3">
@@ -605,7 +605,7 @@ export function Reports() {
 
       {/* Period review metric cards */}
       {(incomeDiff || expenseDiff || savingsRate > 0 || topCategory !== '—') && (
-        <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
+        <div className="mb-8 hidden rounded-2xl border border-border bg-card px-5 py-5 lg:block lg:px-6">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period review</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {incomeDiff && (

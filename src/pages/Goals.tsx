@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { AlertTriangle, Bookmark, Check, ChevronRight, Plus, Pencil, Trash2, Target, TrendingUp, Copy, Zap } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
 import type { Goal } from '@/types'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 const GOAL_COLORS = ['#A9F5C7', '#FADBEA', '#FFF7B5', '#D9E8FF', '#F8DCDC', '#C4AEFF', '#FFD276', '#93C5FD']
 
@@ -61,6 +62,7 @@ function getGoalUrgency(goal: Goal): 'urgent' | 'behind' | null {
 
 export function Goals() {
   const money = useMoney()
+  const isDesktop = useIsDesktop()
   const { data: goals = [] } = useGoals()
   const { data: wallets = [] } = useWallets()
   const addGoal = useAddGoal()
@@ -260,6 +262,135 @@ export function Goals() {
     }
   }
 
+  const renderGoalForm = !showForm ? null : (
+    <div className="space-y-4">
+      {!editingId && (
+        <div>
+          <p className="mb-2 text-xs font-bold text-muted-foreground">Start from a template</p>
+          <div className="flex flex-wrap gap-2">
+            {GOAL_TEMPLATES.map(t => (
+              <button
+                key={t.name}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, name: t.name, category: t.category, color: t.color }))}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground active:scale-95"
+              >
+                <span>{t.emoji}</span>{t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <Label className="text-xs text-muted-foreground">Goal name *</Label>
+          <Input
+            className={`mt-2 bg-secondary ${errors.name ? 'border-[#FF8388]' : ''}`}
+            value={form.name}
+            autoFocus
+            onChange={e => setField('name', e.target.value)}
+            placeholder="Emergency fund"
+          />
+          {errors.name && <p className="mt-1 text-xs text-[#FF8388]">{errors.name}</p>}
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Category</Label>
+          <select
+            className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+            value={form.category}
+            onChange={e => setField('category', e.target.value)}
+          >
+            {GOAL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Target amount ({money.displayCurrency}) *</Label>
+          <Input
+            className={`mt-2 bg-secondary ${errors.target_amount ? 'border-[#FF8388]' : ''}`}
+            inputMode="decimal"
+            value={form.target_amount}
+            onChange={e => setField('target_amount', formatNumberInput(e.target.value))}
+            placeholder="0"
+          />
+          {errors.target_amount && <p className="mt-1 text-xs text-[#FF8388]">{errors.target_amount}</p>}
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Already saved ({money.displayCurrency})</Label>
+          <Input
+            className="mt-2 bg-secondary"
+            inputMode="decimal"
+            value={form.current_amount}
+            onChange={e => setField('current_amount', formatNumberInput(e.target.value))}
+            placeholder="0"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Target deadline <span className="font-normal opacity-60">(optional)</span></Label>
+          <Input
+            type="date"
+            className="mt-2 bg-secondary"
+            value={form.deadline}
+            onChange={e => setField('deadline', e.target.value)}
+          />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[
+              { label: '+3 mo', months: 3 },
+              { label: '+6 mo', months: 6 },
+              { label: '+1 yr', months: 12 },
+              { label: 'End of year', endOfYear: true },
+            ].map(shortcut => {
+              const target = new Date()
+              if (shortcut.endOfYear) {
+                target.setMonth(11); target.setDate(31)
+              } else {
+                target.setMonth(target.getMonth() + (shortcut.months ?? 0))
+              }
+              const value = target.toISOString().slice(0, 10)
+              return (
+                <button
+                  key={shortcut.label}
+                  type="button"
+                  onClick={() => setField('deadline', value)}
+                  className="rounded-full border border-border bg-secondary px-2.5 py-1 text-[11px] font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary active:scale-95"
+                >
+                  {shortcut.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Color</Label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {GOAL_COLORS.map(c => (
+              <button
+                key={c}
+                className={`h-11 w-11 rounded-full transition-transform active:scale-95 ${form.color === c ? 'scale-125 ring-2 ring-foreground ring-offset-2 ring-offset-background' : ''}`}
+                style={{ backgroundColor: c }}
+                onClick={() => setField('color', c)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Notes</Label>
+        <Input
+          className="mt-2 bg-secondary"
+          value={form.notes}
+          onChange={e => setField('notes', e.target.value)}
+          placeholder="Optional context"
+        />
+      </div>
+      <div className="flex gap-3">
+        <Button onClick={handleSubmit} disabled={addGoal.isPending || updateGoal.isPending}>
+          {editingId ? 'Save changes' : 'Create goal'}
+        </Button>
+        <Button variant="secondary" onClick={cancelForm}>Cancel</Button>
+      </div>
+    </div>
+  )
+
   return (
     <div>
       <PageHeader
@@ -274,7 +405,7 @@ export function Goals() {
         }
       />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+      <div className="mb-8 hidden lg:grid lg:grid-cols-4 lg:gap-6">
         <StatCard
           label="Goals set"
           value={String(goals.length)}
@@ -288,7 +419,7 @@ export function Goals() {
 
       {/* "What should I save this month?" card */}
       {goals.filter(g => g.current_amount < g.target_amount && g.deadline).length > 0 && (
-        <div className="mb-8 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+        <div className="mb-8 hidden rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 lg:block">
           <p className="mb-3 text-xs font-bold text-primary">Monthly savings guide</p>
           <div className="space-y-2">
             {goals
@@ -312,139 +443,25 @@ export function Goals() {
         </div>
       )}
 
-      {showForm && (
+      {showForm && isDesktop && (
         <Card className="mb-8">
           <CardHeader className="pb-3">
             <CardTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8">
-            {!editingId && (
-              <div>
-                <p className="mb-2 text-xs font-bold text-muted-foreground">Start from a template</p>
-                <div className="flex flex-wrap gap-2">
-                  {GOAL_TEMPLATES.map(t => (
-                    <button
-                      key={t.name}
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, name: t.name, category: t.category, color: t.color }))}
-                      className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground active:scale-95"
-                    >
-                      <span>{t.emoji}</span>{t.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label className="text-xs text-muted-foreground">Goal name *</Label>
-                <Input
-                  className={`mt-2 bg-secondary ${errors.name ? 'border-[#FF8388]' : ''}`}
-                  value={form.name}
-                  autoFocus
-                  onChange={e => setField('name', e.target.value)}
-                  placeholder="Emergency fund"
-                />
-                {errors.name && <p className="mt-1 text-xs text-[#FF8388]">{errors.name}</p>}
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Category</Label>
-                <select
-                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                  value={form.category}
-                  onChange={e => setField('category', e.target.value)}
-                >
-                  {GOAL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Target amount ({money.displayCurrency}) *</Label>
-                <Input
-                  className={`mt-2 bg-secondary ${errors.target_amount ? 'border-[#FF8388]' : ''}`}
-                  inputMode="decimal"
-                  value={form.target_amount}
-                  onChange={e => setField('target_amount', formatNumberInput(e.target.value))}
-                  placeholder="0"
-                />
-                {errors.target_amount && <p className="mt-1 text-xs text-[#FF8388]">{errors.target_amount}</p>}
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Already saved ({money.displayCurrency})</Label>
-                <Input
-                  className="mt-2 bg-secondary"
-                  inputMode="decimal"
-                  value={form.current_amount}
-                  onChange={e => setField('current_amount', formatNumberInput(e.target.value))}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Target deadline <span className="font-normal opacity-60">(optional)</span></Label>
-                <Input
-                  type="date"
-                  className="mt-2 bg-secondary"
-                  value={form.deadline}
-                  onChange={e => setField('deadline', e.target.value)}
-                />
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {[
-                    { label: '+3 mo', months: 3 },
-                    { label: '+6 mo', months: 6 },
-                    { label: '+1 yr', months: 12 },
-                    { label: 'End of year', endOfYear: true },
-                  ].map(shortcut => {
-                    const target = new Date()
-                    if (shortcut.endOfYear) {
-                      target.setMonth(11); target.setDate(31)
-                    } else {
-                      target.setMonth(target.getMonth() + (shortcut.months ?? 0))
-                    }
-                    const value = target.toISOString().slice(0, 10)
-                    return (
-                      <button
-                        key={shortcut.label}
-                        type="button"
-                        onClick={() => setField('deadline', value)}
-                        className="rounded-full border border-border bg-secondary px-2.5 py-1 text-[11px] font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary active:scale-95"
-                      >
-                        {shortcut.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Color</Label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {GOAL_COLORS.map(c => (
-                    <button
-                      key={c}
-                      className={`h-11 w-11 rounded-full transition-transform active:scale-95 ${form.color === c ? 'scale-125 ring-2 ring-foreground ring-offset-2 ring-offset-background' : ''}`}
-                      style={{ backgroundColor: c }}
-                      onClick={() => setField('color', c)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Notes</Label>
-              <Input
-                className="mt-2 bg-secondary"
-                value={form.notes}
-                onChange={e => setField('notes', e.target.value)}
-                placeholder="Optional context"
-              />
-            </div>
-            <div className="flex gap-3">
-              <Button onClick={handleSubmit} disabled={addGoal.isPending || updateGoal.isPending}>
-                {editingId ? 'Save changes' : 'Create goal'}
-              </Button>
-              <Button variant="secondary" onClick={cancelForm}>Cancel</Button>
-            </div>
+          <CardContent className="px-5 pb-6 sm:px-8">
+            {renderGoalForm}
           </CardContent>
         </Card>
       )}
+      <Sheet open={!!(showForm && !isDesktop)} onOpenChange={open => { if (!open) cancelForm() }}>
+        <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl pb-10">
+          <SheetHeader className="mb-4 text-left">
+            <SheetTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</SheetTitle>
+            <SheetDescription className="sr-only">Goal form</SheetDescription>
+          </SheetHeader>
+          {renderGoalForm}
+        </SheetContent>
+      </Sheet>
 
       {goals.length === 0 && !showForm ? (
         <Card>

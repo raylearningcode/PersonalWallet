@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +17,7 @@ import {
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
+import { hapticSuccess } from '@/lib/haptics'
 import { addRecurringInterval } from '@/lib/recurring'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { getTwdTenderOptions, pickQuickAddWallet } from '@/lib/quickAdd'
@@ -34,6 +36,7 @@ const LAST_WALLET_KEY = 'finpath_last_wallet'
 
 export function QuickAddSheet({ open, onClose, initialType, initialCash }: { open: boolean; onClose: () => void; initialType?: EntryType; initialCash?: boolean }) {
   const money = useMoney()
+  const isDesktop = useIsDesktop()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
@@ -56,12 +59,12 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const [endDate, setEndDate] = useState('')
   const [scanning, setScanning] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [activeKeypad, setActiveKeypad] = useState<ActiveKeypad>(null)
   // Cash-change assistant state
   const [cashEnabled, setCashEnabled] = useState(false)
   const [cashTendered, setCashTendered] = useState('')
   const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
   const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
-  const [activeKeypad, setActiveKeypad] = useState<ActiveKeypad>(null)
 
   const amountInputRef = useRef<HTMLInputElement>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -128,11 +131,11 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     setInstallmentTotal('')
     setEndDate('')
     setShowAdvanced(false)
+    setActiveKeypad(null)
     setCashEnabled(false)
     setCashTendered('')
     setChangeCoinsWalletId('')
     setChangeBillsWalletId('')
-    setActiveKeypad(null)
   }
 
   const handleClose = () => {
@@ -310,6 +313,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       if (walletId) localStorage.setItem(LAST_WALLET_KEY, walletId)
       if (selectedCategory) localStorage.setItem(LAST_CATEGORY_KEY, selectedCategory)
 
+      hapticSuccess()
       if (cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
         const allIds = [savedTx.id, ...changeTxIds]
         toast.success('Cash payment saved · change routed', {
