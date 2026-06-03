@@ -61,7 +61,6 @@ export function AppLayout() {
   )
   const [offline, setOffline] = useState(() => !navigator.onLine)
   const [syncing, setSyncing] = useState(false)
-  const isDesktop = useIsDesktop()
   const isGuest = session === null
 
   const openQuickAction = (actionType: QuickAddType | 'cash') => {
