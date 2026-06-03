@@ -77,16 +77,16 @@ export function MoneyKeypad({
   if (isPanel) {
     return (
       <div
-        className="rounded-t-[2rem] border border-border bg-[#171717] px-4 pb-5 pt-3 shadow-2xl"
+        className="rounded-t-[2rem] border border-border bg-[#171717] px-3 pb-4 pt-2 shadow-2xl"
         data-testid="money-keypad"
       >
-        <div className="mx-auto mb-5 h-1.5 w-16 rounded-full bg-white/10" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="mx-auto mb-3 h-1.5 w-16 rounded-full bg-white/10" />
+        <div className="grid grid-cols-3 gap-2">
           {panelKeys.map(key => (
             <button
               key={key}
               type="button"
-              className="flex min-h-[72px] items-center justify-center rounded-[1.6rem] bg-[#3B3B3B] text-3xl font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform active:scale-95"
+              className="flex min-h-[52px] items-center justify-center rounded-2xl bg-[#3B3B3B] text-2xl font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform active:scale-95"
               onClick={() => { hapticLight(); onChange(appendKey(value, key, allowDecimal)) }}
             >
               {key}
@@ -95,7 +95,7 @@ export function MoneyKeypad({
           <button
             type="button"
             aria-label="Backspace amount"
-            className="flex min-h-[72px] items-center justify-center rounded-[1.6rem] bg-[#3B3B3B] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform active:scale-95"
+            className="flex min-h-[52px] items-center justify-center rounded-2xl bg-[#3B3B3B] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform active:scale-95"
             onClick={handleBackspaceClick}
             onDoubleClick={clear}
             onPointerDown={startBackspaceHold}
@@ -103,35 +103,17 @@ export function MoneyKeypad({
             onPointerCancel={stopBackspaceHold}
             onPointerLeave={stopBackspaceHold}
           >
-            <Delete className="h-7 w-7" />
+            <Delete className="h-6 w-6" />
           </button>
         </div>
-        {quickAmounts.length > 0 && (
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {quickAmounts.map(amount => (
-              <button
-                key={amount}
-                type="button"
-                className={`min-h-14 rounded-2xl px-3 text-base font-extrabold transition-transform active:scale-95 ${
-                  parseNumberInput(value) === amount
-                    ? 'bg-primary/25 text-primary ring-2 ring-primary/70'
-                    : 'bg-[#05070D] text-white'
-                }`}
-                onClick={() => setQuickAmount(amount)}
-              >
-                {currency === 'TWD' ? `NT$${amount.toLocaleString()}` : `${currency} ${amount.toLocaleString()}`}
-              </button>
-            ))}
-          </div>
-        )}
         {onDone && (
           <button
             type="button"
             aria-label="Confirm amount"
-            className="mx-auto mt-4 flex h-20 w-32 items-center justify-center rounded-[1.5rem] bg-white text-black transition-transform active:scale-95"
+            className="mt-3 flex h-12 w-full items-center justify-center rounded-2xl bg-white text-black transition-transform active:scale-95"
             onClick={onDone}
           >
-            <Check className="h-10 w-10" aria-hidden="true" />
+            <Check className="h-6 w-6" aria-hidden="true" />
             <span className="sr-only">{doneLabel}</span>
           </button>
         )}
