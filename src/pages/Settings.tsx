@@ -109,7 +109,7 @@ export function Settings() {
     setInstallPrompt(null)
   }
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const s = new URLSearchParams(window.location.search).get('section')
     return (s && (tabs as readonly string[]).includes(s)) ? s as SettingsTab : 'profile'
@@ -126,9 +126,11 @@ export function Settings() {
     }
     if ((tabs as readonly string[]).includes(s)) {
       setActiveTab(s as SettingsTab)
-      setMobilePage(s as SettingsTab)
+      if (!isDesktop) setMobilePage(s as SettingsTab)
+    } else if (!isDesktop) {
+      setMobilePage(null)
     }
-  }, [searchParams])
+  }, [searchParams, isDesktop])
   const effectiveTab = isDesktop ? activeTab : mobilePage
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')
@@ -493,7 +495,10 @@ export function Settings() {
             return (
               <button
                 key={tab}
-                onClick={() => setMobilePage(tab)}
+                onClick={() => {
+                  setMobilePage(tab)
+                  setSearchParams({ section: tab })
+                }}
                 className="flex w-full items-center gap-4 border-b border-border px-4 py-3.5 text-left transition-colors active:bg-muted/40"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: color + '33' }}>
@@ -522,7 +527,10 @@ export function Settings() {
       {/* Mobile: back button when a page is selected */}
       {effectiveTab && !isDesktop && (
         <button
-          onClick={() => { setMobilePage(null); navigate('/settings', { replace: true }) }}
+          onClick={() => {
+            setMobilePage(null)
+            setSearchParams({})
+          }}
           className="mb-6 flex items-center gap-2 text-sm font-bold text-primary lg:hidden"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -949,7 +957,30 @@ export function Settings() {
       )}
 
       {/* AI Features tab */}
-      {effectiveTab === 'ai' && (
+      {effectiveTab === 'ai' && !isDesktop && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-xl">AI status</CardTitle>
+            <p className="text-sm text-muted-foreground">Desktop setup required for API keys. Mobile only shows whether AI is enabled.</p>
+          </CardHeader>
+          <CardContent className="space-y-4 px-5 pb-6">
+            <div className={`rounded-2xl border px-4 py-3 ${geminiKey ? 'border-primary/30 bg-primary/5' : 'border-[#FFCF73]/30 bg-[#FFCF73]/5'}`}>
+              <p className={`text-sm font-extrabold ${geminiKey ? 'text-primary' : 'text-[#FFCF73]'}`}>
+                {geminiKey ? 'AI enabled' : 'AI disabled'}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {geminiKey
+                  ? 'Receipt scanning and generated insights can use your saved desktop setup.'
+                  : 'Set up your Gemini API key from desktop to enable AI summaries and receipt scanning.'}
+              </p>
+            </div>
+            <Button variant="secondary" className="w-full" onClick={() => toast.info('Open FinPath on desktop, then go to Settings -> AI status.')}>
+              Open on desktop
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      {effectiveTab === 'ai' && isDesktop && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-xl">AI Features</CardTitle>
@@ -1167,7 +1198,7 @@ export function Settings() {
               </div>
             )}
 
-            {!backupPreview && (
+            {!backupPreview && isDesktop && (
               <>
                 <p className="text-center text-xs text-muted-foreground">— or paste backup JSON below —</p>
                 <textarea
@@ -1199,6 +1230,11 @@ export function Settings() {
                   </Button>
                 )}
               </>
+            )}
+            {!backupPreview && !isDesktop && (
+              <p className="rounded-2xl border border-border bg-secondary px-4 py-3 text-sm text-muted-foreground">
+                Raw JSON import is desktop-only. On mobile, choose a backup file and confirm the summary before importing.
+              </p>
             )}
           </CardContent>
         </Card>

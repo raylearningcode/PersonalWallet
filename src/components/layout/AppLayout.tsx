@@ -18,8 +18,9 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { DollarSign, ArrowLeftRight, TrendingUp, Target, RefreshCw, Banknote } from 'lucide-react'
 
 type QuickAddType = 'expense' | 'income' | 'transfer'
+type QuickActionType = QuickAddType | 'goal' | 'subscription' | 'cash'
 
-const QUICK_ACTIONS: { type: QuickAddType | 'goal' | 'subscription' | 'cash'; label: string; description: string; color: string; Icon: typeof DollarSign; to?: string; cash?: boolean }[] = [
+const QUICK_ACTIONS: { type: QuickActionType; label: string; description: string; color: string; Icon: typeof DollarSign; to?: string; cash?: boolean }[] = [
   { type: 'expense', label: 'Add expense', description: 'Record a purchase or payment', color: '#FF8388', Icon: DollarSign },
   { type: 'income', label: 'Add income', description: 'Log salary, gift, or refund', color: '#4ADE80', Icon: TrendingUp },
   { type: 'cash', label: 'Cash payment', description: 'Pay with cash and route change', color: '#FFD276', Icon: Banknote, cash: true },
@@ -27,6 +28,10 @@ const QUICK_ACTIONS: { type: QuickAddType | 'goal' | 'subscription' | 'cash'; la
   { type: 'goal', label: 'Goal contribution', description: 'Log savings toward a goal', color: '#A9F5C7', Icon: Target, to: '/goals' },
   { type: 'subscription', label: 'Add subscription', description: 'Track recurring bill or income', color: '#FADBEA', Icon: RefreshCw, to: '/subscriptions' },
 ]
+
+const LAST_QUICK_ACTION_KEY = 'finpath_last_quick_action'
+const QUICK_ACTION_HINT_KEY = 'finpath_quick_action_hint_seen'
+const QUICK_ACTION_TYPES = new Set(QUICK_ACTIONS.map(action => action.type))
 
 function ResponsiveToaster() {
   const isDesktop = useIsDesktop()
@@ -56,7 +61,15 @@ export function AppLayout() {
   )
   const [offline, setOffline] = useState(() => !navigator.onLine)
   const [syncing, setSyncing] = useState(false)
+  const isDesktop = useIsDesktop()
   const isGuest = session === null
+
+  const openQuickAction = (actionType: QuickAddType | 'cash') => {
+    localStorage.setItem(LAST_QUICK_ACTION_KEY, actionType)
+    setQuickAddType(actionType === 'cash' ? 'expense' : actionType)
+    setQuickAddCash(actionType === 'cash')
+    setQuickAddOpen(true)
+  }
 
   useEffect(() => {
     const handler = () => setProfileOpen(true)
@@ -70,6 +83,14 @@ export function AppLayout() {
     navigator.serviceWorker.addEventListener('controllerchange', handler)
     return () => navigator.serviceWorker.removeEventListener('controllerchange', handler)
   }, [])
+  useEffect(() => {
+    if (isDesktop || localStorage.getItem(QUICK_ACTION_HINT_KEY) === '1') return
+    const timer = window.setTimeout(() => {
+      toast('Tip: hold + for Cash, Transfer, Goal, Subscription.', { duration: 5000 })
+      localStorage.setItem(QUICK_ACTION_HINT_KEY, '1')
+    }, 1200)
+    return () => window.clearTimeout(timer)
+  }, [isDesktop])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -159,7 +180,7 @@ export function AppLayout() {
             </p>
             <button
               type="button"
-              onClick={() => isDesktop ? setProfileOpen(true) : navigate('/auth')}
+              onClick={() => { if (isDesktop) setProfileOpen(true); else navigate('/auth') }}
               className="shrink-0 rounded-full bg-primary px-4 py-1.5 text-xs font-extrabold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Sign in to sync
@@ -176,7 +197,14 @@ export function AppLayout() {
       <BottomNav
         onMoreClick={() => setMoreOpen(true)}
         moreActive={moreOpen}
-        onAddClick={() => setQuickActionsOpen(true)}
+        onAddClick={() => {
+          const saved = localStorage.getItem(LAST_QUICK_ACTION_KEY)
+          const type = saved && QUICK_ACTION_TYPES.has(saved as QuickActionType) ? saved as QuickActionType : 'expense'
+          if (type === 'goal') navigate('/goals')
+          else if (type === 'subscription') navigate('/subscriptions')
+          else openQuickAction(type)
+        }}
+        onLongPressAdd={() => setQuickActionsOpen(true)}
         hidden={keyboardVisible}
       />
       <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
@@ -195,10 +223,9 @@ export function AppLayout() {
                 className="flex w-full items-center gap-4 rounded-2xl border border-border bg-secondary p-4 text-left transition-colors active:scale-[0.99] hover:bg-muted/30"
                 onClick={() => {
                   setQuickActionsOpen(false)
+                  localStorage.setItem(LAST_QUICK_ACTION_KEY, type)
                   if (to) { navigate(to); return }
-                  setQuickAddType(type === 'cash' ? 'expense' : type as QuickAddType)
-                  setQuickAddCash(!!cash)
-                  setQuickAddOpen(true)
+                  openQuickAction(cash ? 'cash' : type as QuickAddType)
                 }}
               >
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: color + '22', border: `1.5px solid ${color}44` }}>

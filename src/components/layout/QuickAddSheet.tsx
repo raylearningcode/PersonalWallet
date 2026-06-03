@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
-import { MoneyKeypad } from '@/components/ui/MoneyKeypad'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,9 +25,11 @@ import { scanReceipt, getGeminiKey } from '@/lib/gemini'
 import { ScanLine, Loader2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { RecurringFrequency } from '@/types'
+import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 type EntryType = 'income' | 'expense' | 'transfer'
+type ActiveKeypad = 'amount' | 'cash' | null
 
 const LAST_CATEGORY_KEY = 'finpath_last_category'
 const LAST_WALLET_KEY = 'finpath_last_wallet'
@@ -58,7 +59,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const [endDate, setEndDate] = useState('')
   const [scanning, setScanning] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [activeKeypad, setActiveKeypad] = useState<'amount' | 'cash' | null>(null)
+  const [activeKeypad, setActiveKeypad] = useState<ActiveKeypad>(null)
   // Cash-change assistant state
   const [cashEnabled, setCashEnabled] = useState(false)
   const [cashTendered, setCashTendered] = useState('')
@@ -99,8 +100,8 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         setWalletId(pickQuickAddWallet(wallets, last, true)?.id ?? '')
       }
       setInputCurrency(money.displayCurrency)
-      const timer = setTimeout(() => amountInputRef.current?.focus(), 120)
-      return () => clearTimeout(timer)
+      setActiveKeypad(null)
+      amountInputRef.current?.blur()
     }
   }, [open, initialType, initialCash, money.displayCurrency, wallets])
 
@@ -347,6 +348,11 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       <SheetContent
         side="bottom"
         className="max-h-[92vh] overflow-y-auto rounded-t-3xl border-border bg-background px-5 pb-10"
+        onPointerDown={event => {
+          const target = event.target as HTMLElement
+          if (target.closest('[data-money-keypad-panel], [data-keypad-trigger]')) return
+          setActiveKeypad(null)
+        }}
       >
         <SheetHeader className="mb-4 text-left">
           <SheetTitle>{sheetTitle}</SheetTitle>
@@ -370,6 +376,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         setCategory(t === 'income' ? INCOME_CATEGORIES[0] : categories[0]?.name ?? '')
                         setCashEnabled(false)
                         setCashTendered('')
+                        setActiveKeypad(null)
                       }}
                       className={`rounded-full px-4 py-1.5 text-sm font-extrabold capitalize transition-colors ${
                         type === t ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
@@ -388,12 +395,13 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   <Input
                     ref={amountInputRef}
                     aria-label="Amount"
-                    inputMode={isDesktop ? 'decimal' : 'none'}
-                    readOnly={!isDesktop}
+                    readOnly
                     className="h-16 w-44 cursor-pointer border-0 bg-transparent text-center text-5xl font-extrabold shadow-none focus-visible:ring-0"
                     value={amount}
-                    onChange={e => setAmount(formatNumberInput(e.target.value))}
                     placeholder="0"
+                    data-keypad-trigger="amount"
+                    onClick={() => setActiveKeypad('amount')}
+                    onFocus={() => setActiveKeypad('amount')}
                   />
                 </div>
                 <Input
@@ -405,15 +413,19 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 />
               </div>
 
-              {/* Mobile numeric keypad — replaces native keyboard */}
-              {!isDesktop && (
-                <MoneyKeypad
-                  value={amount}
-                  onChange={setAmount}
-                  quickAmounts={inputCurrency === 'TWD' ? [50, 100, 500, 1000] : undefined}
-                  currencyPrefix={inputCurrency === 'TWD' ? 'NT$' : `${inputCurrency} `}
-                  label="Amount"
-                />
+              {activeKeypad === 'amount' && (
+                <div className="-mx-5 sticky bottom-[5.25rem] z-20" data-money-keypad-panel>
+                  <MoneyKeypad
+                    value={amount}
+                    onChange={setAmount}
+                    currency={inputCurrency}
+                    allowDecimal={inputCurrency !== 'IDR'}
+                    quickAmounts={inputCurrency === 'TWD' ? [50, 100, 500, 1000] : []}
+                    onDone={() => setActiveKeypad(null)}
+                    variant="panel"
+                    doneLabel="Confirm amount"
+                  />
+                </div>
               )}
 
               {/* Category chips — expense */}
@@ -558,11 +570,14 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               {/* Toggle to advanced */}
               <button
                 type="button"
-                onClick={() => setShowAdvanced(true)}
+                onClick={() => {
+                  setShowAdvanced(true)
+                  setActiveKeypad(null)
+                }}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-muted-foreground hover:text-foreground"
               >
                 <ChevronDown className="h-3.5 w-3.5" />
-                More options
+                Advanced details
               </button>
             </>
           )}
@@ -584,6 +599,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       onClick={() => {
                         setType(t)
                         setCategory(t === 'income' ? INCOME_CATEGORIES[0] : categories[0]?.name ?? '')
+                        setActiveKeypad(null)
                       }}
                     >
                       {t}
@@ -602,13 +618,13 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   <Input
                     ref={amountInputRef}
                     aria-label="Amount"
-                    inputMode={isDesktop ? 'decimal' : 'none'}
-                    readOnly={!isDesktop}
+                    readOnly
                     className="h-14 w-44 cursor-pointer border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
                     value={amount}
-                    onChange={e => setAmount(formatNumberInput(e.target.value))}
                     placeholder="0"
-                    onClick={() => !isDesktop && setActiveKeypad('amount')}
+                    data-keypad-trigger="amount"
+                    onClick={() => setActiveKeypad('amount')}
+                    onFocus={() => setActiveKeypad('amount')}
                   />
                   <button
                     type="button"
@@ -637,16 +653,19 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 />
               </div>
 
-              {/* Mobile keypad for advanced amount */}
-              {!isDesktop && activeKeypad === 'amount' && (
-                <MoneyKeypad
-                  value={amount}
-                  onChange={setAmount}
-                  quickAmounts={inputCurrency === 'TWD' ? [50, 100, 500, 1000] : undefined}
-                  currencyPrefix={inputCurrency === 'TWD' ? 'NT$' : `${inputCurrency} `}
-                  label="Amount"
-                  onDone={() => setActiveKeypad(null)}
-                />
+              {activeKeypad === 'amount' && (
+                <div className="-mx-5 sticky bottom-[5.25rem] z-20" data-money-keypad-panel>
+                  <MoneyKeypad
+                    value={amount}
+                    onChange={setAmount}
+                    currency={inputCurrency}
+                    allowDecimal={inputCurrency !== 'IDR'}
+                    quickAmounts={inputCurrency === 'TWD' ? [50, 100, 500, 1000] : []}
+                    onDone={() => setActiveKeypad(null)}
+                    variant="panel"
+                    doneLabel="Confirm amount"
+                  />
+                </div>
               )}
 
               {/* Description */}
@@ -762,7 +781,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               <div className="rounded-[1.25rem] border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span>
-                    <span className="block text-sm font-extrabold text-foreground">Recurring / Cicilan</span>
+                    <span className="block text-sm font-extrabold text-foreground">Recurring / Installment</span>
                     <span className="mt-1 block text-xs text-muted-foreground">
                       Rent, subscriptions, salary, or installments.
                     </span>
@@ -771,7 +790,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                     type="button"
                     role="switch"
                     aria-checked={isRecurring}
-                    aria-label="Recurring / Cicilan"
+                    aria-label="Recurring / Installment"
                     onClick={() => setIsRecurring(!isRecurring)}
                     className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${isRecurring ? 'bg-primary' : 'bg-muted'}`}
                   >
@@ -822,7 +841,10 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               {/* Back to simple mode */}
               <button
                 type="button"
-                onClick={() => setShowAdvanced(false)}
+                onClick={() => {
+                  setShowAdvanced(false)
+                  setActiveKeypad(null)
+                }}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-muted-foreground hover:text-foreground"
               >
                 <ChevronUp className="h-3.5 w-3.5" />
@@ -872,6 +894,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       } else {
                         setCashTendered('')
                       }
+                      setActiveKeypad(null)
                     }}
                     className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${cashEnabled ? 'bg-primary' : 'bg-muted'}`}
                   >
@@ -885,19 +908,19 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       <Label className="text-xs font-bold text-muted-foreground">Cash given ({isTWD ? 'TWD' : inputCurrency})</Label>
                       <Input
                         aria-label="Cash given"
-                        className="mt-2 bg-secondary"
-                        inputMode={isDesktop ? 'decimal' : 'none'}
-                        readOnly={!isDesktop}
+                        className="mt-2 cursor-pointer bg-secondary"
+                        readOnly
                         value={cashTendered}
-                        onChange={e => setCashTendered(formatNumberInput(e.target.value))}
                         placeholder="Amount you handed over"
-                        onClick={() => !isDesktop && setActiveKeypad('cash')}
+                        data-keypad-trigger="cash"
+                        onClick={() => setActiveKeypad('cash')}
+                        onFocus={() => setActiveKeypad('cash')}
                       />
                       {isTWD && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => { const e = parseNumberInput(amount); if (e > 0) setCashTendered(String(e)) }}
+                            onClick={() => { const e = parseNumberInput(amount); if (e > 0) setCashTendered(String(e)); setActiveKeypad('cash') }}
                             className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTenderedVal === parsedExpense && parsedExpense > 0 ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
                           >
                             {parsedExpense > 0 ? `Exact NT$${parsedExpense.toLocaleString()}` : 'Exact'}
@@ -906,7 +929,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                             <button
                               key={chip}
                               type="button"
-                              onClick={() => setCashTendered(String(chip))}
+                              onClick={() => { setCashTendered(String(chip)); setActiveKeypad('cash') }}
                               className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTenderedVal === chip ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
                             >
                               NT${chip.toLocaleString()}
@@ -914,7 +937,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                           ))}
                           <button
                             type="button"
-                            onClick={() => { setCashTendered(''); setActiveKeypad('cash') }}
+                            onClick={() => { setCashTendered(''); setActiveKeypad('cash'); setTimeout(() => (document.querySelector('[aria-label="Cash given"]') as HTMLInputElement | null)?.focus(), 50) }}
                             className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                           >
                             Custom
@@ -924,13 +947,17 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       {isUnderpay && (
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
                       )}
-                      {!isDesktop && activeKeypad === 'cash' && (
-                        <div className="mt-3">
+                      {activeKeypad === 'cash' && (
+                        <div className="-mx-4 sticky bottom-[5.25rem] z-20 mt-3" data-money-keypad-panel>
                           <MoneyKeypad
                             value={cashTendered}
                             onChange={setCashTendered}
-                            label="Cash given"
+                            currency={inputCurrency}
+                            allowDecimal={inputCurrency !== 'IDR'}
+                            quickAmounts={isTWD ? twdChips : []}
                             onDone={() => setActiveKeypad(null)}
+                            variant="panel"
+                            doneLabel="Confirm cash given"
                           />
                         </div>
                       )}
@@ -938,11 +965,21 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
                     {changeAmount > 0 && (
                       <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-                        <p className="text-sm font-extrabold text-primary">
-                          Change: {isTWD
-                            ? `NT$${changeAmount.toLocaleString()}`
-                            : money.format(changeAmount, inputCurrency)}
-                        </p>
+                        <p className="text-xs font-extrabold uppercase tracking-wide text-primary">Cash preview</p>
+                        <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                          <div className="rounded-lg bg-background/70 px-2 py-2">
+                            <p className="text-[10px] text-muted-foreground">You pay</p>
+                            <p className="text-sm font-extrabold text-foreground">{money.format(parsedExpense, inputCurrency)}</p>
+                          </div>
+                          <div className="rounded-lg bg-background/70 px-2 py-2">
+                            <p className="text-[10px] text-muted-foreground">Cash given</p>
+                            <p className="text-sm font-extrabold text-foreground">{money.format(parsedTenderedVal, inputCurrency)}</p>
+                          </div>
+                          <div className="rounded-lg bg-background/70 px-2 py-2">
+                            <p className="text-[10px] text-muted-foreground">Change</p>
+                            <p className="text-sm font-extrabold text-primary">{money.format(changeAmount, inputCurrency)}</p>
+                          </div>
+                        </div>
                         {isTWD && billsChange > 0 && coinsChange > 0 && (
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             NT${billsChange.toLocaleString()} bills + NT${coinsChange.toLocaleString()} coins
