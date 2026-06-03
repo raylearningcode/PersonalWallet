@@ -581,7 +581,7 @@ export function Goals() {
 
       {/* Goal detail sheet */}
       <Sheet open={!!sheetGoal} onOpenChange={open => { if (!open) { setSheetGoal(null); setContributeAmount(''); setContributeWalletId(''); setContributeRepeat(false) } }}>
-        <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0">
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}>
           {sheetGoal && (() => {
             const g = sheetGoal
             const pct = g.target_amount > 0 ? Math.min(100, Math.round((g.current_amount / g.target_amount) * 100)) : 0
