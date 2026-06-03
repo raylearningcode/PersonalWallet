@@ -90,8 +90,15 @@ export function useMoney() {
     fromBase,
     format: (amount: number, currency = displayCurrency) => formatCurrency(amount, currency),
     formatBase: (amount: number) => formatCurrency(amount, baseCurrency),
-    formatDisplay: (baseAmount: number) => formatCurrency(fromBase(baseAmount), displayCurrency),
+    // Always show in baseCurrency (main) — no live-rate conversion, no drift
+    formatDisplay: (baseAmount: number) => formatCurrency(baseAmount, baseCurrency),
     approxBase: (amount: number, currency = displayCurrency) => formatCurrency(toBase(amount, currency), baseCurrency),
+    // Uses original_amount when original_currency matches main currency — exact, never drifts
+    formatTx: (tx: { amount: number; original_amount?: number | null; original_currency?: string | null }) =>
+      formatCurrency(
+        tx.original_currency === baseCurrency && tx.original_amount != null ? tx.original_amount : tx.amount,
+        baseCurrency
+      ),
   }
 }
 

@@ -413,7 +413,7 @@ export function Dashboard() {
                   </div>
                 </div>
                 <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
-                  {txAmountSign(tx.amount, tx.type)}{fmt(tx.amount)}
+                  {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                 </span>
               </button>
             ))}
@@ -1107,7 +1107,7 @@ export function Dashboard() {
                     <p className="text-xs text-muted-foreground">{tx.category} · {tx.date}</p>
                   </div>
                   <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>
-                    {txAmountSign(tx.amount, tx.type)}{fmt(tx.amount)}
+                    {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                   </span>
                 </div>
               ))}
