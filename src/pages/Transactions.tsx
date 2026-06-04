@@ -115,6 +115,12 @@ export function Transactions() {
   const markReviewed = useMarkReviewed()
 
   useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!category && categories.length > 0) setCategory(categories[0].name)
   }, [categories, category])
 
