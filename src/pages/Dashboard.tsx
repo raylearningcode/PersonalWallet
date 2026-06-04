@@ -118,36 +118,36 @@ export function Dashboard() {
     }))
   }, [yearTx, categories])
 
-  const topSpending = spendingByCategory.reduce(
+  const topSpending = useMemo(() => spendingByCategory.reduce(
     (top, item) => item.amount > top.amount ? item : top,
     { name: '', amount: 0, color: '#2D3953' }
-  )
-  const totalCategorySpend = spendingByCategory.reduce((sum, item) => sum + item.amount, 0)
-  const spendingOverviewRows = (spendingByCategory.length > 0
+  ), [spendingByCategory])
+  const totalCategorySpend = useMemo(() => spendingByCategory.reduce((sum, item) => sum + item.amount, 0), [spendingByCategory])
+  const spendingOverviewRows = useMemo(() => (spendingByCategory.length > 0
     ? [...spendingByCategory].sort((a, b) => b.amount - a.amount).slice(0, 5)
     : []
   ).map(item => ({
     ...item,
     pct: totalCategorySpend > 0 ? Math.round((item.amount / totalCategorySpend) * 100) : 0,
-  }))
+  })), [spendingByCategory, totalCategorySpend])
 
-  const categoryRows = categories
+  const categoryRows = useMemo(() => categories
     .filter(category => category.yearly_allocated > 0)
     .slice(0, 4)
     .map(category => {
       const spent = yearTx
         .filter(tx => tx.type !== 'income' && tx.type !== 'transfer' && tx.category === category.name && isInBudgetPeriod(tx.date, category.budget_period ?? 'yearly'))
         .reduce((sum, tx) => sum + tx.amount, 0)
-      const pct = category.yearly_allocated > 0 ? Math.min(100, Math.round((spent / category.yearly_allocated) * 100)) : 0
+      const pct = category.yearly_allocated > 0 ? Math.round((spent / category.yearly_allocated) * 100) : 0
       return { ...category, spent, pct }
-    })
+    }), [categories, yearTx])
 
   // Normalise all categories to monthly so yearly budgets contribute to safe-to-spend
-  const monthlyBudget = categories.reduce((sum, category) => {
+  const monthlyBudget = useMemo(() => categories.reduce((sum, category) => {
     if (category.budget_period === 'monthly') return sum + category.yearly_allocated
     if (category.budget_period === 'yearly') return sum + category.yearly_allocated / 12
     return sum
-  }, 0)
+  }, 0), [categories])
 
   const daysLeft = getDaysRemainingInMonth()
   const safeToSpend = getSafeToSpend(monthlyBudget, monthlySpent, daysLeft)
@@ -741,7 +741,7 @@ export function Dashboard() {
                     <div
                       className="h-full rounded-full"
                       style={{
-                        width: `${category.pct}%`,
+                        width: `${Math.min(100, category.pct)}%`,
                         backgroundColor: category.pct >= 90 ? '#FF8388' : category.pct >= 70 ? '#FFCF73' : category.color,
                       }}
                     />

@@ -132,15 +132,17 @@ export function Reports() {
     return txDate >= prevStart && txDate < prevEnd
   }), [prevEnd, prevStart, transactions])
 
-  const incomeTx = rangeTx.filter(tx => tx.type === 'income')
-  const expenseTx = rangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer')
+  const incomeTx = useMemo(() => rangeTx.filter(tx => tx.type === 'income'), [rangeTx])
+  const expenseTx = useMemo(() => rangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer'), [rangeTx])
   const activeTx = mode === 'income' ? incomeTx : expenseTx
 
-  const totalIncome = incomeTx.reduce((sum, tx) => sum + tx.amount, 0)
-  const totalExpenses = expenseTx.reduce((sum, tx) => sum + tx.amount, 0)
+  const totalIncome = useMemo(() => incomeTx.reduce((sum, tx) => sum + tx.amount, 0), [incomeTx])
+  const totalExpenses = useMemo(() => expenseTx.reduce((sum, tx) => sum + tx.amount, 0), [expenseTx])
   const savingsRate = calculateSavingsRate(totalIncome, totalExpenses)
-  const prevTotalIncome = prevRangeTx.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
-  const prevTotalExpenses = prevRangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer').reduce((sum, tx) => sum + tx.amount, 0)
+  const { prevTotalIncome, prevTotalExpenses } = useMemo(() => ({
+    prevTotalIncome: prevRangeTx.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0),
+    prevTotalExpenses: prevRangeTx.filter(tx => tx.type !== 'income' && tx.type !== 'transfer').reduce((sum, tx) => sum + tx.amount, 0),
+  }), [prevRangeTx])
   const incomeDiff = diffLabel(totalIncome, prevTotalIncome)
   const expenseDiff = diffLabel(totalExpenses, prevTotalExpenses)
 
@@ -242,7 +244,7 @@ export function Reports() {
     })
   }, [range, rangeStart, rangeEnd, rangeTx])
 
-  const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null); setClickedBucket(null) }
+  const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null); setClickedBucket(null); setSelectedWalletId('') }
   const handleModeChange = (m: ReportMode) => { setMode(m); setSelectedCategory(null) }
 
   const bucketTx = useMemo(() => {

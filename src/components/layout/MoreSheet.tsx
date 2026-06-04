@@ -65,7 +65,7 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-10">
+      <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
         <h2 className="mb-5 text-lg font-extrabold text-foreground">More</h2>
 
         {/* Grouped navigation */}

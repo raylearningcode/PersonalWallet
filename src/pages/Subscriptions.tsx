@@ -882,7 +882,7 @@ export function Subscriptions() {
 
       {/* Recurring rule detail sheet */}
       <Sheet open={!!detailRule} onOpenChange={open => { if (!open) setDetailRule(null) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-safe-10'}>
           {detailRule && (() => {
             const rule = detailRule
             const days = daysUntil(rule.next_due_date)
@@ -891,7 +891,7 @@ export function Subscriptions() {
             const monthlyImpact = getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)
             const yearlyImpact = getYearlyImpact(rule.original_amount ?? rule.amount, rule.frequency)
             return (
-              <div className="px-6 pb-10 pt-6">
+              <div className="px-6 pb-safe-10 pt-6">
                 <SheetHeader className="mb-5 pb-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

@@ -454,7 +454,7 @@ export function Goals() {
         </Card>
       )}
       <Sheet open={!!(showForm && !isDesktop)} onOpenChange={open => { if (!open) cancelForm() }}>
-        <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl pb-10">
+        <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl pb-safe-10">
           <SheetHeader className="mb-4 text-left">
             <SheetTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</SheetTitle>
             <SheetDescription className="sr-only">Goal form</SheetDescription>
@@ -581,7 +581,7 @@ export function Goals() {
 
       {/* Goal detail sheet */}
       <Sheet open={!!sheetGoal} onOpenChange={open => { if (!open) { setSheetGoal(null); setContributeAmount(''); setContributeWalletId(''); setContributeRepeat(false) } }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-safe-10'}>
           {sheetGoal && (() => {
             const g = sheetGoal
             const pct = g.target_amount > 0 ? Math.min(100, Math.round((g.current_amount / g.target_amount) * 100)) : 0
@@ -711,7 +711,7 @@ export function Goals() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="sticky bottom-0 border-t border-border bg-background px-6 py-4">
+                <div className="sticky bottom-0 border-t border-border bg-background px-6 pt-4 pb-safe-4">
                   <div className="flex gap-2">
                     <Button
                       className="h-14 flex-1 gap-2"

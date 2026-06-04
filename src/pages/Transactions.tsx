@@ -64,13 +64,13 @@ export function Transactions() {
   const [dateTo, setDateTo] = useState(() => { const d = new Date(); return getLastDay(d.getFullYear(), d.getMonth() + 1) })
   const [ruleDescription, setRuleDescription] = useState('')
   const [ruleAmount, setRuleAmount] = useState('')
-  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.baseCurrency)
+  const [ruleInputCurrency, setRuleInputCurrency] = useState(money.displayCurrency)
   const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
   const [ruleNextDueDate, setRuleNextDueDate] = useState('')
   const [ruleEndDate, setRuleEndDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
-  const [inputCurrency, setInputCurrency] = useState(money.baseCurrency)
+  const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
@@ -115,6 +115,12 @@ export function Transactions() {
   const markReviewed = useMarkReviewed()
 
   useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!category && categories.length > 0) setCategory(categories[0].name)
   }, [categories, category])
 
@@ -124,8 +130,8 @@ export function Transactions() {
   }, [walletId, transferWalletId, wallets])
 
   useEffect(() => {
-    setInputCurrency(current => current || money.baseCurrency)
-  }, [money.baseCurrency])
+    setInputCurrency(current => current || money.displayCurrency)
+  }, [money.displayCurrency])
 
   useEffect(() => {
     if (selectMode) setSwipeOpenId(null)
@@ -147,7 +153,7 @@ export function Transactions() {
     if (!editingRule) return
     setRuleDescription(editingRule.description)
     setRuleAmount(String(editingRule.original_amount ?? editingRule.amount))
-    setRuleInputCurrency(editingRule.original_currency ?? money.baseCurrency)
+    setRuleInputCurrency(editingRule.original_currency ?? money.displayCurrency)
     setRuleFrequency(editingRule.frequency)
     setRuleNextDueDate(editingRule.next_due_date)
     setRuleEndDate(editingRule.end_date ?? '')
@@ -273,7 +279,7 @@ export function Transactions() {
     setEditingTransaction(null)
     setDescription('')
     setAmount('')
-    setInputCurrency(money.baseCurrency)
+    setInputCurrency(money.displayCurrency)
     setDate(new Date().toISOString().slice(0, 10))
     setType('expense')
     setCategory(categories[0]?.name ?? '')
@@ -1458,7 +1464,7 @@ export function Transactions() {
         </div>
 
         <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-          <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background' : 'overflow-y-auto border-border bg-background pb-8'}>
+          <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background' : 'overflow-y-auto border-border bg-background pb-safe-8'}>
             <SheetHeader className="mb-5 text-left">
               <SheetTitle>Filters</SheetTitle>
               <SheetDescription>Narrow down by date range or wallet.</SheetDescription>
@@ -1872,7 +1878,7 @@ export function Transactions() {
 
       {/* Bulk recategorize sheet */}
       <Sheet open={bulkCategorySheet} onOpenChange={open => { if (!open) setBulkCategorySheet(false) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-10 pt-6' : 'rounded-t-3xl border-border bg-background px-6 pb-10 pt-6'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-6' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-6'}>
           <SheetHeader className="mb-5">
             <SheetTitle>Recategorize {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
             <SheetDescription>Choose a new category for all selected transactions.</SheetDescription>
@@ -1915,7 +1921,7 @@ export function Transactions() {
 
       {/* Transaction detail sheet */}
       <Sheet open={!!detailTx} onOpenChange={open => { if (!open) setDetailTx(null) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border px-0 pb-0' : 'max-h-[85dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border px-0 pb-0' : 'max-h-[85dvh] overflow-y-auto rounded-t-3xl px-0 pb-safe-10'}>
           {detailTx && (() => {
             const tx = detailTx
             const wallet = wallets.find(w => w.id === tx.wallet_id)
@@ -2037,7 +2043,7 @@ export function Transactions() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="sticky bottom-0 border-t border-border bg-background px-6 py-4">
+                <div className="sticky bottom-0 border-t border-border bg-background px-6 pt-4 pb-safe-4">
                   <div className="flex gap-2">
                     <Button
                       className="h-14 flex-1 gap-2"
