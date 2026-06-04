@@ -176,7 +176,7 @@ export function Estimation() {
 
   const addWishlistItem = async () => {
     const amount = money.toBase(parseNumberInput(wishlistAmount), money.displayCurrency)
-    if (!wishlistName.trim() || amount <= 0) return
+    if (!wishlistName.trim() || amount <= 0) { toast.error(amount <= 0 ? 'Enter a valid amount' : 'Enter item name'); return }
     const newItems = [...wishlistItems, {
       id: crypto.randomUUID(),
       name: wishlistName.trim(),
@@ -210,7 +210,7 @@ export function Estimation() {
   const saveEditItem = async () => {
     if (!editItem) return
     const amount = parseNumberInput(editAmount)
-    if (!editName.trim() || amount <= 0) return
+    if (!editName.trim() || amount <= 0) { toast.error(amount <= 0 ? 'Enter a valid amount' : 'Enter item name'); return }
     let newIncome = incomeItems
     let newExpense = expenseItems
     if (editItem.list === 'income') {
@@ -237,7 +237,7 @@ export function Estimation() {
   const saveEditWishlist = async () => {
     if (!editWishlistId) return
     const amount = parseNumberInput(editWishlistAmount)
-    if (!editWishlistName.trim() || amount <= 0) return
+    if (!editWishlistName.trim() || amount <= 0) { toast.error(amount <= 0 ? 'Enter a valid amount' : 'Enter item name'); return }
     const newWishlist = wishlistItems.map(i => i.id === editWishlistId
       ? { ...i, name: editWishlistName.trim(), amount, type: editWishlistType, note: editWishlistNote.trim() }
       : i

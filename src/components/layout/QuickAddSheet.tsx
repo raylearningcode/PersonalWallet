@@ -358,7 +358,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     <Sheet open={open} onOpenChange={v => { if (!v) handleClose() }}>
       <SheetContent
         side="bottom"
-        className="max-h-[92vh] overflow-y-auto rounded-t-3xl border-border bg-background px-5 pb-10"
+        className="max-h-[92vh] overflow-y-auto rounded-t-3xl border-border bg-background px-5 pb-safe-10"
         onPointerDown={event => {
           const target = event.target as HTMLElement
           if (target.closest('[data-money-keypad-panel], [data-keypad-trigger]')) return
@@ -425,7 +425,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               </div>
 
               {activeKeypad === 'amount' && (
-                <div className="-mx-5 sticky bottom-[5.25rem] z-20" data-money-keypad-panel>
+                <div className="-mx-5 sticky z-20" style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }} data-money-keypad-panel>
                   <MoneyKeypad
                     value={amount}
                     onChange={setAmount}
@@ -665,7 +665,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               </div>
 
               {activeKeypad === 'amount' && (
-                <div className="-mx-5 sticky bottom-[5.25rem] z-20" data-money-keypad-panel>
+                <div className="-mx-5 sticky z-20" style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }} data-money-keypad-panel>
                   <MoneyKeypad
                     value={amount}
                     onChange={setAmount}
@@ -959,7 +959,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
                       )}
                       {activeKeypad === 'cash' && (
-                        <div className="-mx-4 sticky bottom-[5.25rem] z-20 mt-3" data-money-keypad-panel>
+                        <div className="-mx-4 sticky z-20 mt-3" style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }} data-money-keypad-panel>
                           <MoneyKeypad
                             value={cashTendered}
                             onChange={setCashTendered}
@@ -1109,7 +1109,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
           })()}
 
           {/* ── Sticky save button ── */}
-          <div className="sticky bottom-0 -mx-5 bg-background px-5 pb-4 pt-3">
+          <div className="sticky bottom-0 -mx-5 bg-background px-5 pb-safe-4 pt-3">
             {wallets.length === 0 ? (
               <Link
                 to="/settings"
@@ -1133,7 +1133,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 disabled={
                   addTransaction.isPending ||
                   addRecurringRule.isPending ||
-                  !amount ||
+                  parseFloat(amount.replace(/,/g, '')) <= 0 ||
                   cannotSaveTransfer
                 }
               >

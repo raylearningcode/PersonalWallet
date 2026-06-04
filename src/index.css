@@ -47,6 +47,11 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.pb-safe-4  { padding-bottom: max(1rem,   calc(1rem   + env(safe-area-inset-bottom, 0px))); }
+.pb-safe-6  { padding-bottom: max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom, 0px))); }
+.pb-safe-8  { padding-bottom: max(2rem,   calc(2rem   + env(safe-area-inset-bottom, 0px))); }
+.pb-safe-10 { padding-bottom: max(2.5rem, calc(2.5rem + env(safe-area-inset-bottom, 0px))); }
+
 body::before {
   content: "";
   position: fixed;

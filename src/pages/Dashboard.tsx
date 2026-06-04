@@ -138,7 +138,7 @@ export function Dashboard() {
       const spent = yearTx
         .filter(tx => tx.type !== 'income' && tx.type !== 'transfer' && tx.category === category.name && isInBudgetPeriod(tx.date, category.budget_period ?? 'yearly'))
         .reduce((sum, tx) => sum + tx.amount, 0)
-      const pct = category.yearly_allocated > 0 ? Math.min(100, Math.round((spent / category.yearly_allocated) * 100)) : 0
+      const pct = category.yearly_allocated > 0 ? Math.round((spent / category.yearly_allocated) * 100) : 0
       return { ...category, spent, pct }
     })
 

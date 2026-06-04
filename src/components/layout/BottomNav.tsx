@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { CreditCard, LayoutDashboard, MoreHorizontal, PieChart, Plus } from 'lucide-react'
 
@@ -43,6 +43,12 @@ export function BottomNav({
     if (!longPressRef.current) onAddClick()
     longPressRef.current = false
   }
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current)
+    }
+  }, [])
 
   return (
     <nav

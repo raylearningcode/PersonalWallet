@@ -242,7 +242,7 @@ export function Reports() {
     })
   }, [range, rangeStart, rangeEnd, rangeTx])
 
-  const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null); setClickedBucket(null) }
+  const handleRangeChange = (r: ReportRange) => { setRange(r); setSelectedCategory(null); setClickedBucket(null); setSelectedWalletId('') }
   const handleModeChange = (m: ReportMode) => { setMode(m); setSelectedCategory(null) }
 
   const bucketTx = useMemo(() => {

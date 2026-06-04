@@ -239,7 +239,7 @@ export function Budget() {
   const handleAdd = async () => {
     const amount = parseNumberInput(addAmount)
     if (!addName.trim()) { toast.error('Enter a category name'); return }
-    if (!Number.isFinite(amount) || amount < 0) return
+    if (!Number.isFinite(amount) || amount <= 0) { toast.error('Enter a valid amount'); return }
     try {
       await addCategory.mutateAsync({ name: addName.trim(), yearly_allocated: amount, budget_period: addPeriod, color: addColor })
       setAddName('')
@@ -733,7 +733,7 @@ export function Budget() {
           side={isDesktop ? 'right' : 'bottom'}
           className={isDesktop
             ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0 sm:max-w-xl'
-            : 'max-h-[90dvh] overflow-y-auto rounded-t-3xl px-0 pb-0'}
+            : 'max-h-[90dvh] overflow-y-auto rounded-t-3xl px-0 pb-safe-10'}
         >
           {sheetCat && (() => {
             const cat = sheetCat
@@ -741,7 +741,7 @@ export function Budget() {
             const barColor = getBarColor(pct, cat.color)
             const leftAmt = Math.max(0, cat.yearly_allocated - cat.spent)
             return (
-              <div className="px-6 pb-10 pt-6">
+              <div className="px-6 pb-safe-10 pt-6">
                 <SheetHeader className="mb-6 pb-0">
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-extrabold text-background" style={{ backgroundColor: cat.color }}>
