@@ -1133,7 +1133,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 disabled={
                   addTransaction.isPending ||
                   addRecurringRule.isPending ||
-                  parseFloat(amount.replace(/,/g, '')) <= 0 ||
+                  parseNumberInput(amount) <= 0 ||
                   cannotSaveTransfer
                 }
               >

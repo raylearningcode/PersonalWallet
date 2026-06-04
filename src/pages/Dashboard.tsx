@@ -741,7 +741,7 @@ export function Dashboard() {
                     <div
                       className="h-full rounded-full"
                       style={{
-                        width: `${category.pct}%`,
+                        width: `${Math.min(100, category.pct)}%`,
                         backgroundColor: category.pct >= 90 ? '#FF8388' : category.pct >= 70 ? '#FFCF73' : category.color,
                       }}
                     />

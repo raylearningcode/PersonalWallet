@@ -218,8 +218,8 @@ export function Budget() {
 
   const saveSheet = async () => {
     if (!sheetCat) return
-    if (sheetDraft.yearly_allocated < 0) {
-      toast.error('Budget must be zero or greater')
+    if (!Number.isFinite(sheetDraft.yearly_allocated) || sheetDraft.yearly_allocated <= 0) {
+      toast.error('Enter a valid budget amount')
       return
     }
     const id = sheetCat.id
