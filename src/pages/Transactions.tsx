@@ -313,6 +313,24 @@ export function Transactions() {
     setTransferWalletId(transaction.transfer_wallet_id ?? wallets.find(wallet => wallet.id !== transaction.wallet_id)?.id ?? '')
     setType(transaction.type === 'income' || transaction.type === 'transfer' ? transaction.type : 'expense')
     setIsRecurring(false)
+    if (transaction.cash_tendered && transaction.cash_tendered > 0) {
+      const origCurrency = transaction.original_currency ?? money.displayCurrency
+      const tenderedInOrig = money.fromBase(transaction.cash_tendered, origCurrency)
+      setCashEnabled(true)
+      setCashTendered(formatNumberInput(Math.round(tenderedInOrig)))
+      const linkedChangeTxs = transactions.filter(tx => tx.linked_transaction_id === transaction.id && tx.is_system_generated)
+      setChangeBillsWalletId(linkedChangeTxs.find(tx => tx.description?.startsWith('Change bills'))?.transfer_wallet_id ?? '')
+      setChangeCoinsWalletId(
+        linkedChangeTxs.find(tx => tx.description?.startsWith('Change coins'))?.transfer_wallet_id
+        ?? linkedChangeTxs.find(tx => tx.description?.startsWith('Change'))?.transfer_wallet_id
+        ?? ''
+      )
+    } else {
+      setCashEnabled(false)
+      setCashTendered('')
+      setChangeBillsWalletId('')
+      setChangeCoinsWalletId('')
+    }
     setIsFormOpen(true)
   }
 
