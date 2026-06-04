@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useRecurringRules, useAddRecurringRule, useUpdateRecurringRule, useDeleteRecurringRule, useAddTransaction, useTransactions, useWallets, useBudgetCategories } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -77,10 +77,16 @@ export function Subscriptions() {
   const isDesktop = useIsDesktop()
   const [deleteTarget, setDeleteTarget] = useState<RecurringRule | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [addForm, setAddForm] = useState(() => emptyAddForm(money.baseCurrency))
+  const [addForm, setAddForm] = useState(() => emptyAddForm(money.displayCurrency))
   const [detailRule, setDetailRule] = useState<RecurringRule | null>(null)
   const [editTarget, setEditTarget] = useState<RecurringRule | null>(null)
-  const [editForm, setEditForm] = useState(() => emptyAddForm(money.baseCurrency))
+  const [editForm, setEditForm] = useState(() => emptyAddForm(money.displayCurrency))
+
+  useEffect(() => {
+    setAddForm(f => ({ ...f, currency: f.currency ? f.currency : money.displayCurrency }))
+    if (!editTarget) setEditForm(f => ({ ...f, currency: f.currency ? f.currency : money.displayCurrency }))
+  }, [money.displayCurrency, editTarget])
+
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
   const [expenseSort, setExpenseSort] = useState<ExpenseSort>('due-date')
   const [searchQuery, setSearchQuery] = useState('')
@@ -258,7 +264,7 @@ export function Subscriptions() {
       return
     }
     const category = editForm.category || (editForm.type === 'income' ? 'Income' : 'Subscriptions')
-    const currency = editForm.currency || money.baseCurrency
+    const currency = editForm.currency || money.displayCurrency
     try {
       await updateRule.mutateAsync({
         id: editTarget.id,
@@ -274,7 +280,7 @@ export function Subscriptions() {
         end_date: editForm.endDate || null,
       })
       setEditTarget(null)
-      setEditForm(emptyAddForm(money.baseCurrency))
+      setEditForm(emptyAddForm(money.displayCurrency))
       toast.success('Subscription updated')
     } catch {
       toast.error('Failed to update subscription')
@@ -289,7 +295,7 @@ export function Subscriptions() {
     }
     const startDate = addForm.startDate || new Date().toISOString().slice(0, 10)
     const category = addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions')
-    const currency = addForm.currency || money.baseCurrency
+    const currency = addForm.currency || money.displayCurrency
     try {
       const rule = await addRule.mutateAsync({
         user_id: null,
@@ -329,7 +335,7 @@ export function Subscriptions() {
       } else {
         toast.success('Subscription added')
       }
-      setAddForm(emptyAddForm(money.baseCurrency))
+      setAddForm(emptyAddForm(money.displayCurrency))
       setShowAddForm(false)
     } catch {
       toast.error('Failed to add subscription')
@@ -561,7 +567,7 @@ export function Subscriptions() {
               <button
                 aria-label="Close new subscription form"
                 className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
-                onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.baseCurrency)) }}
+                onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.displayCurrency)) }}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -684,7 +690,7 @@ export function Subscriptions() {
               <Button onClick={handleAdd} disabled={addRule.isPending || addTransaction.isPending}>
                 {(addRule.isPending || addTransaction.isPending) ? 'Adding…' : 'Add subscription'}
               </Button>
-              <Button variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.baseCurrency)) }}>
+              <Button variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm(money.displayCurrency)) }}>
                 Cancel
               </Button>
             </div>

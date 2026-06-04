@@ -135,8 +135,12 @@ export function Transactions() {
   }, [walletId, transferWalletId, wallets])
 
   useEffect(() => {
-    setInputCurrency(current => current || money.displayCurrency)
+    setInputCurrency(money.displayCurrency)
   }, [money.displayCurrency])
+
+  useEffect(() => {
+    if (!editingRule) setRuleInputCurrency(money.displayCurrency)
+  }, [money.displayCurrency, editingRule])
 
   useEffect(() => {
     if (selectMode) setSwipeOpenId(null)
@@ -741,7 +745,7 @@ export function Transactions() {
       await updateRecurringRule.mutateAsync({
         id: editingRule.id,
         description: ruleDescription.trim(),
-        amount: amount,
+        amount: money.toBase(amount, ruleInputCurrency),
         original_amount: amount,
         original_currency: ruleInputCurrency,
         frequency: ruleFrequency,
