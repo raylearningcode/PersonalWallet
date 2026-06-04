@@ -28,6 +28,7 @@ import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
+import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { getTwdTenderOptions } from '@/lib/quickAdd'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
@@ -87,6 +88,7 @@ export function Transactions() {
   const [cashTendered, setCashTendered] = useState('')
   const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
   const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
+  const [formActiveKeypad, setFormActiveKeypad] = useState<'amount' | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
@@ -783,8 +785,8 @@ export function Transactions() {
         ))}
       </div>
 
-      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 sm:max-w-md sm:p-6">
+      <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v); if (!v) setFormActiveKeypad(null) }}>
+        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 pb-safe-10 sm:max-w-md sm:p-6 sm:pb-safe-10">
           <SheetHeader className="mb-6 text-left">
             <SheetTitle>{editingTransaction ? 'Edit transaction' : 'New transaction'}</SheetTitle>
             <SheetDescription>Fill the amount in the currency you actually paid or received.</SheetDescription>
@@ -793,7 +795,7 @@ export function Transactions() {
             {/* Type selector + big amount — always visible */}
             <div className="rounded-[1.25rem] border border-border bg-card p-4 text-center">
               <div className="mx-auto mb-3 inline-flex rounded-full border border-border bg-secondary p-1">
-                {(['income', 'expense', 'transfer'] as const).map(item => (
+                {(['expense', 'income', 'transfer'] as const).map(item => (
                   <button
                     key={item}
                     type="button"
@@ -809,9 +811,29 @@ export function Transactions() {
                   </button>
                 ))}
               </div>
-              <Input aria-label="Amount" className="mx-auto h-16 w-full border-0 bg-transparent text-center text-4xl font-extrabold" inputMode="decimal" value={amount} onChange={event => setAmount(formatNumberInput(event.target.value))} placeholder="0" />
+              <Input
+                aria-label="Amount"
+                readOnly
+                data-keypad-trigger="amount"
+                className="mx-auto h-16 w-full cursor-pointer border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
+                value={amount}
+                placeholder="0"
+                onChange={e => setAmount(formatNumberInput(e.target.value))}
+                onClick={() => setFormActiveKeypad('amount')}
+                onFocus={() => setFormActiveKeypad('amount')}
+              />
               <p className="mt-1 text-xs text-muted-foreground">{inputCurrency}</p>
             </div>
+            {formActiveKeypad === 'amount' && (
+              <MoneyKeypad
+                value={amount}
+                onChange={setAmount}
+                currency={inputCurrency}
+                allowDecimal
+                onDone={() => setFormActiveKeypad(null)}
+                doneLabel="Done"
+              />
+            )}
 
             {/* Description */}
             <div>
@@ -1191,7 +1213,11 @@ export function Transactions() {
               </div>
 
             <Button className="mt-4 w-full" onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
-              {editingTransaction ? 'Save transaction' : 'Add transaction'}
+              {addTransaction.isPending || updateTransaction.isPending
+                ? 'Saving…'
+                : editingTransaction
+                  ? `Save ${type}`
+                  : `Add ${type}`}
             </Button>
             <Button variant="secondary" className="mt-2 w-full" onClick={() => setIsFormOpen(false)}>
               Cancel
