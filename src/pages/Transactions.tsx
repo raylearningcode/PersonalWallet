@@ -88,6 +88,9 @@ export function Transactions() {
   const [cashTendered, setCashTendered] = useState('')
   const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
   const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
+  const [transferFeeEnabled, setTransferFeeEnabled] = useState(false)
+  const [transferFeeAmount, setTransferFeeAmount] = useState('')
+  const [feeKeypad, setFeeKeypad] = useState(false)
   const [formActiveKeypad, setFormActiveKeypad] = useState<'amount' | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -293,6 +296,9 @@ export function Transactions() {
     setCashTendered('')
     setChangeBillsWalletId('')
     setChangeCoinsWalletId('')
+    setTransferFeeEnabled(false)
+    setTransferFeeAmount('')
+    setFeeKeypad(false)
     if (wallets[0]) setWalletId(wallets[0].id)
     if (wallets[1]) setTransferWalletId(wallets[1].id)
   }
@@ -331,6 +337,15 @@ export function Transactions() {
       setChangeBillsWalletId('')
       setChangeCoinsWalletId('')
     }
+    const existingFee = transactions.find(tx => tx.linked_transaction_id === transaction.id && tx.category === 'Transfer Fee' && tx.is_system_generated)
+    if (existingFee) {
+      setTransferFeeEnabled(true)
+      setTransferFeeAmount(String(existingFee.original_amount ?? existingFee.amount))
+    } else {
+      setTransferFeeEnabled(false)
+      setTransferFeeAmount('')
+    }
+    setFeeKeypad(false)
     setIsFormOpen(true)
   }
 
@@ -437,6 +452,25 @@ export function Transactions() {
             await updateTransaction.mutateAsync({ id: editingTx.id, linked_transaction_id: firstEditChangeTxId })
           }
         }
+        if (type === 'transfer') {
+          const oldFees = transactions.filter(tx => tx.linked_transaction_id === editingTx.id && tx.category === 'Transfer Fee' && tx.is_system_generated)
+          for (const fee of oldFees) await del.mutateAsync(fee.id)
+          if (transferFeeEnabled && parseNumberInput(transferFeeAmount) > 0) {
+            const parsedFee = parseNumberInput(transferFeeAmount)
+            await addTransaction.mutateAsync({
+              description: `Transfer fee${description.trim() ? ` — ${description.trim()}` : ''}`,
+              amount: money.toBase(parsedFee, inputCurrency),
+              original_amount: parsedFee,
+              original_currency: inputCurrency,
+              type: 'expense', category: 'Transfer Fee',
+              wallet_id: walletId || null,
+              transfer_wallet_id: null,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: editingTx.id, cash_tendered: null,
+            })
+          }
+        }
         toast.success('Transaction updated')
       } else {
         const savedTx = await addTransaction.mutateAsync(payload)
@@ -503,6 +537,21 @@ export function Transactions() {
           if (firstChangeTxId) {
             await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: firstChangeTxId })
           }
+        }
+        if (type === 'transfer' && transferFeeEnabled && parseNumberInput(transferFeeAmount) > 0 && savedTx?.id) {
+          const parsedFee = parseNumberInput(transferFeeAmount)
+          await addTransaction.mutateAsync({
+            description: `Transfer fee${description.trim() ? ` — ${description.trim()}` : ''}`,
+            amount: money.toBase(parsedFee, inputCurrency),
+            original_amount: parsedFee,
+            original_currency: inputCurrency,
+            type: 'expense', category: 'Transfer Fee',
+            wallet_id: walletId || null,
+            transfer_wallet_id: null,
+            recurring_rule_id: null, recurring_due_date: null, date,
+            needs_review: false, is_system_generated: true,
+            linked_transaction_id: savedTx.id, cash_tendered: null,
+          })
         }
         if (isRecurring) {
           const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
@@ -803,7 +852,7 @@ export function Transactions() {
         ))}
       </div>
 
-      <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v); if (!v) setFormActiveKeypad(null) }}>
+      <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v); if (!v) { setFormActiveKeypad(null); setFeeKeypad(false) } }}>
         <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 pb-safe-10 sm:max-w-md sm:p-6 sm:pb-safe-10">
           <SheetHeader className="mb-6 text-left">
             <SheetTitle>{editingTransaction ? 'Edit transaction' : 'New transaction'}</SheetTitle>
@@ -943,6 +992,71 @@ export function Transactions() {
                     {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                   </select>
                 </div>
+              </div>
+            )}
+
+            {/* Transfer fee */}
+            {type === 'transfer' && (
+              <div className="rounded-[1.25rem] border border-border bg-card p-4">
+                <label className="flex cursor-pointer items-center justify-between gap-4">
+                  <span>
+                    <span className="block text-sm font-extrabold text-foreground">Transfer fee</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">Bank or service fee charged for this transfer</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    aria-label="Enable transfer fee"
+                    className="h-5 w-5 accent-primary"
+                    checked={transferFeeEnabled}
+                    onChange={e => {
+                      setTransferFeeEnabled(e.target.checked)
+                      if (!e.target.checked) { setTransferFeeAmount(''); setFeeKeypad(false) }
+                    }}
+                  />
+                </label>
+                {transferFeeEnabled && (
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground">Fee amount ({inputCurrency})</Label>
+                      <Input
+                        aria-label="Transfer fee amount"
+                        readOnly
+                        className="mt-2 bg-secondary"
+                        value={transferFeeAmount}
+                        placeholder="0"
+                        onChange={e => setTransferFeeAmount(formatNumberInput(e.target.value))}
+                        onClick={() => setFeeKeypad(true)}
+                        onFocus={() => setFeeKeypad(true)}
+                      />
+                      {feeKeypad && (
+                        <MoneyKeypad
+                          value={transferFeeAmount}
+                          onChange={setTransferFeeAmount}
+                          currency={inputCurrency}
+                          allowDecimal
+                          onDone={() => setFeeKeypad(false)}
+                          doneLabel="Done"
+                        />
+                      )}
+                    </div>
+                    {parseNumberInput(transferFeeAmount) > 0 && (
+                      <div className="space-y-1.5 rounded-xl border border-border bg-secondary p-3 text-sm">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-muted-foreground">Transfer amount</span>
+                          <span className="font-bold text-foreground">{money.format(parseNumberInput(amount), inputCurrency)}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-muted-foreground">Fee</span>
+                          <span className="font-bold text-[#FF8388]">+{money.format(parseNumberInput(transferFeeAmount), inputCurrency)}</span>
+                        </div>
+                        <div className="flex justify-between gap-3 border-t border-border pt-1.5">
+                          <span className="font-extrabold text-foreground">Total from wallet</span>
+                          <span className="font-extrabold text-foreground">{money.format(parseNumberInput(amount) + parseNumberInput(transferFeeAmount), inputCurrency)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2074,6 +2188,20 @@ export function Transactions() {
                         })}
                       </div>
                     )}
+                    {tx.type === 'transfer' && (() => {
+                      const feeTx = transactions.find(t => t.linked_transaction_id === tx.id && t.category === 'Transfer Fee' && t.is_system_generated)
+                      if (!feeTx) return null
+                      return (
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <ReceiptText size={13} />Transfer fee
+                          </span>
+                          <span className="text-sm font-bold text-[#FF8388]">
+                            −{money.format(feeTx.original_amount ?? feeTx.amount, feeTx.original_currency ?? money.baseCurrency)}
+                          </span>
+                        </div>
+                      )
+                    })()}
                     {tx.needs_review && (
                       <div className="flex items-center justify-between px-4 py-3">
                         <span className="text-sm font-bold text-[#FFCF73]">Needs review</span>
