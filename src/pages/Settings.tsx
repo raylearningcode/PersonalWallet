@@ -135,7 +135,6 @@ export function Settings() {
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')
   const [baseCurrency, setBaseCurrency] = useState('IDR')
-  const [currency, setCurrency] = useState('IDR')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [newCategory, setNewCategory] = useState('')
@@ -187,8 +186,7 @@ export function Settings() {
 
   useEffect(() => {
     setName(settings?.user_name ?? '')
-    setBaseCurrency(settings?.base_currency || 'IDR')
-    setCurrency(settings?.currency || 'IDR')
+    setBaseCurrency(settings?.base_currency || settings?.currency || 'IDR')
   }, [settings, session])
 
   const baseSettings = {
@@ -197,7 +195,7 @@ export function Settings() {
     email: session?.user.email || '',
     theme: settings?.theme ?? 'dark',
     base_currency: baseCurrency,
-    currency,
+    currency: baseCurrency,
     year_start: settings?.year_start ?? '',
     default_view: settings?.default_view ?? '',
     notifications: settings?.notifications ?? '',
@@ -607,42 +605,20 @@ export function Settings() {
           <Card className="mb-8">
             <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
             <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-              <p className="text-sm text-muted-foreground">All amounts are stored and displayed in your <strong>main currency</strong> — numbers never change due to exchange rate drift. Set a <strong>secondary currency</strong> as an optional reference (e.g. your home currency when abroad).</p>
+              <p className="text-sm text-muted-foreground">All amounts are stored and displayed in your <strong>main currency</strong> — numbers never change due to exchange rate drift.</p>
 
               {/* Currency status banner */}
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-muted-foreground">Main currency: <span className="text-foreground">{money.baseCurrency}</span></p>
-                  <p className="text-xs font-bold text-muted-foreground">Secondary currency: <span className="text-foreground">{money.displayCurrency}</span></p>
-                </div>
+                <p className="text-xs font-bold text-muted-foreground">Current currency: <span className="text-foreground">{money.baseCurrency}</span></p>
                 <p className="text-right text-xs text-muted-foreground">
                   {money.ratesDate ? `Rates: ${money.ratesDate}` : <span className="text-[#FFCF73]">Using fallback rates</span>}
                 </p>
               </div>
 
-              {/* Conversion preview */}
-              {money.baseCurrency !== money.displayCurrency && (
-                <div className="rounded-2xl border border-border bg-secondary px-4 py-3 text-xs text-muted-foreground">
-                  <p>1 {money.baseCurrency} ≈ {money.format(money.fromBase(1, money.displayCurrency), money.displayCurrency)}</p>
-                  <p className="mt-0.5">1 {money.displayCurrency} ≈ {money.formatBase(money.toBase(1, money.displayCurrency))}</p>
-                </div>
-              )}
-
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Main currency <span className="font-normal">(all amounts stored and shown in this)</span></Label>
                 <Select value={baseCurrency} onValueChange={setBaseCurrency}>
                   <SelectTrigger aria-label="Main currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">View currency <span className="font-normal">(display currency for amounts, e.g. home currency when abroad)</span></Label>
-                <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger aria-label="View currency" className="h-12 rounded-2xl bg-secondary font-extrabold">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
