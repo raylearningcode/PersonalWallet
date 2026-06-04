@@ -809,6 +809,20 @@ export function Transactions() {
             <SheetTitle>{editingTransaction ? 'Edit transaction' : 'New transaction'}</SheetTitle>
             <SheetDescription>Fill the amount in the currency you actually paid or received.</SheetDescription>
           </SheetHeader>
+          {editingTransaction?.cash_tendered && editingTransaction.cash_tendered > 0 && (() => {
+            const origCurrency = editingTransaction.original_currency ?? money.displayCurrency
+            const tenderedDisplay = money.format(money.fromBase(editingTransaction.cash_tendered, origCurrency), origCurrency)
+            const changeDisplay = money.format(money.fromBase(editingTransaction.cash_tendered - (editingTransaction.original_amount ?? editingTransaction.amount), origCurrency), origCurrency)
+            return (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+                <Banknote className="h-4 w-4 shrink-0 text-primary" />
+                <span className="text-muted-foreground">Cash given</span>
+                <span className="font-extrabold text-foreground">{tenderedDisplay}</span>
+                <span className="text-muted-foreground">· change</span>
+                <span className="font-extrabold text-primary">{changeDisplay}</span>
+              </div>
+            )
+          })()}
           <div className="space-y-5">
             {/* Type selector + big amount — always visible */}
             <div className="rounded-[1.25rem] border border-border bg-card p-4 text-center">
