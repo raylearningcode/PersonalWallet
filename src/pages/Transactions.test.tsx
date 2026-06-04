@@ -116,7 +116,7 @@ describe('Transactions', () => {
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-10' } })
     fireEvent.click(screen.getByRole('combobox', { name: 'Category' }))
     fireEvent.click(screen.getByRole('option', { name: 'Food' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }))
 
     expect(addTransaction).toHaveBeenCalledWith(expect.objectContaining({
       description: 'Lunch',
@@ -138,7 +138,7 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Old lunch' }))
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Updated lunch' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '200' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save transaction' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save expense' }))
 
     expect(updateTransaction).toHaveBeenCalledWith(expect.objectContaining({
       id: 'tx-1',
@@ -164,7 +164,7 @@ describe('Transactions', () => {
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '300' } })
     fireEvent.change(screen.getByLabelText('From wallet'), { target: { value: 'cash' } })
     fireEvent.change(screen.getByLabelText('To wallet'), { target: { value: 'card' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add transfer' }))
 
     expect(addTransaction).toHaveBeenCalledWith(expect.objectContaining({
       description: 'Move to card',
@@ -186,7 +186,7 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByLabelText('Recurring / Installment'))
     fireEvent.change(screen.getByLabelText('Recurring frequency'), { target: { value: 'monthly' } })
     fireEvent.change(screen.getByLabelText('Installment count'), { target: { value: '12' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }))
 
     await waitFor(() => expect(addRecurringRule).toHaveBeenCalledWith(expect.objectContaining({
       description: 'Laptop cicilan',

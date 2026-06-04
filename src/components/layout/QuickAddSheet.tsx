@@ -525,7 +525,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                     <select
                       aria-label="Wallet"
                       className="h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                      value={walletId}
+                      value={walletId || wallets[0]?.id || ''}
                       onChange={e => { setWalletId(e.target.value); setCashEnabled(false); setCashTendered('') }}
                     >
                       {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
