@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { MoneyInput } from '@/components/shared/MoneyInput'
+import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
@@ -82,6 +82,8 @@ export function Goals() {
   const [duplicateTarget, setDuplicateTarget] = useState<Goal | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
+  const [formKeypad, setFormKeypad] = useState<'target_amount' | 'current_amount' | null>(null)
+  const [contributeKeypad, setContributeKeypad] = useState(false)
 
   const pinGoal = (goalId: string) => {
     const newId = pinnedGoalId === goalId ? '' : goalId
@@ -307,22 +309,44 @@ export function Goals() {
           <Label className="text-xs text-muted-foreground">Target amount ({money.baseCurrency}) *</Label>
           <Input
             className={`mt-2 bg-secondary ${errors.target_amount ? 'border-[#FF8388]' : ''}`}
-            inputMode="decimal"
+            readOnly
             value={form.target_amount}
             onChange={e => setField('target_amount', formatNumberInput(e.target.value))}
             placeholder="0"
+            onClick={() => setFormKeypad('target_amount')}
+            onFocus={() => setFormKeypad('target_amount')}
           />
           {errors.target_amount && <p className="mt-1 text-xs text-[#FF8388]">{errors.target_amount}</p>}
+          {formKeypad === 'target_amount' && (
+            <MoneyKeypad
+              value={form.target_amount}
+              onChange={v => setField('target_amount', v)}
+              currency={money.baseCurrency}
+              onDone={() => setFormKeypad(null)}
+              doneLabel="Done"
+            />
+          )}
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">Already saved ({money.baseCurrency})</Label>
           <Input
             className="mt-2 bg-secondary"
-            inputMode="decimal"
+            readOnly
             value={form.current_amount}
             onChange={e => setField('current_amount', formatNumberInput(e.target.value))}
             placeholder="0"
+            onClick={() => setFormKeypad('current_amount')}
+            onFocus={() => setFormKeypad('current_amount')}
           />
+          {formKeypad === 'current_amount' && (
+            <MoneyKeypad
+              value={form.current_amount}
+              onChange={v => setField('current_amount', v)}
+              currency={money.baseCurrency}
+              onDone={() => setFormKeypad(null)}
+              doneLabel="Done"
+            />
+          )}
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">Target deadline <span className="font-normal opacity-60">(optional)</span></Label>
@@ -453,7 +477,7 @@ export function Goals() {
           </CardContent>
         </Card>
       )}
-      <Sheet open={!!(showForm && !isDesktop)} onOpenChange={open => { if (!open) cancelForm() }}>
+      <Sheet open={!!(showForm && !isDesktop)} onOpenChange={open => { if (!open) { cancelForm(); setFormKeypad(null) } }}>
         <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl pb-safe-10">
           <SheetHeader className="mb-4 text-left">
             <SheetTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</SheetTitle>
@@ -580,7 +604,7 @@ export function Goals() {
       )}
 
       {/* Goal detail sheet */}
-      <Sheet open={!!sheetGoal} onOpenChange={open => { if (!open) { setSheetGoal(null); setContributeAmount(''); setContributeWalletId(''); setContributeRepeat(false) } }}>
+      <Sheet open={!!sheetGoal} onOpenChange={open => { if (!open) { setSheetGoal(null); setContributeAmount(''); setContributeWalletId(''); setContributeRepeat(false); setContributeKeypad(false) } }}>
         <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-safe-10'}>
           {sheetGoal && (() => {
             const g = sheetGoal
@@ -678,12 +702,24 @@ export function Goals() {
                         <option value="">From: no specific wallet</option>
                         {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                       </select>
-                      <MoneyInput
+                      <Input
+                        readOnly
                         className="h-11 w-full bg-secondary"
                         placeholder={`Amount (${money.baseCurrency})`}
                         value={contributeAmount}
-                        onValueChange={setContributeAmount}
+                        onChange={e => setContributeAmount(formatNumberInput(e.target.value))}
+                        onClick={() => setContributeKeypad(true)}
+                        onFocus={() => setContributeKeypad(true)}
                       />
+                      {contributeKeypad && (
+                        <MoneyKeypad
+                          value={contributeAmount}
+                          onChange={setContributeAmount}
+                          currency={money.baseCurrency}
+                          onDone={() => setContributeKeypad(false)}
+                          doneLabel="Done"
+                        />
+                      )}
                       {contributeWalletId && (
                         <button
                           type="button"
