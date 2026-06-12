@@ -239,6 +239,18 @@ export function Dashboard() {
 
   const overPaceInsight = categoryInsights.find(i => i.overPace) ?? null
 
+  const lastMonthSpent = useMemo(() => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    return yearTx
+      .filter(t => {
+        const td = new Date(t.date)
+        return t.type !== 'income' && t.type !== 'transfer' &&
+          td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth()
+      })
+      .reduce((sum, t) => sum + t.amount, 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yearTx])
+
   const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
   useEffect(() => {
     const handler = () => setPinnedGoalId(localStorage.getItem(PINNED_GOAL_KEY) ?? '')
@@ -387,6 +399,33 @@ export function Dashboard() {
       )}
 
       {/* ── MOBILE-ONLY: compact overview before toggle ── */}
+
+      {/* Month comparison strip (mobile) */}
+      {!txPending && monthlySpent > 0 && (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3 lg:hidden">
+          <div>
+            <p className="text-xs font-bold text-muted-foreground">This month</p>
+            <p className="mt-0.5 text-base font-extrabold text-foreground">{fmt(monthlySpent)}</p>
+            {lastMonthSpent > 0 && (() => {
+              const diff = monthlySpent - lastMonthSpent
+              const pct = Math.round(Math.abs(diff / lastMonthSpent) * 100)
+              return (
+                <p className={`mt-0.5 text-xs font-bold ${diff > 0 ? 'text-[#FF8388]' : 'text-primary'}`}>
+                  {diff > 0 ? `↑ ${pct}%` : `↓ ${pct}%`} vs last month
+                </p>
+              )
+            })()}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/add-transaction')}
+            className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-extrabold text-primary-foreground transition-opacity active:opacity-80"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add
+          </button>
+        </div>
+      )}
 
       {/* Recent activity (mobile) */}
       {recentTransactions.length > 0 && (

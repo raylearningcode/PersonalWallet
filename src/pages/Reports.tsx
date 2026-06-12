@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useBudgetCategories, useTransactions, useAddTransaction, useWallets } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -91,6 +92,8 @@ function diffLabel(current: number, prev: number) {
 
 export function Reports() {
   const money = useMoney()
+  const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
   const { data: transactions = [] } = useTransactions()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
@@ -727,8 +730,11 @@ export function Reports() {
                   <button
                     key={name}
                     className={`flex w-full items-center justify-between gap-4 rounded-xl px-2 py-1.5 transition-colors ${selectedCategory === name ? 'bg-secondary' : 'hover:bg-secondary/60'}`}
-                    onClick={() => setSelectedCategory(selectedCategory === name ? null : name)}
-                    aria-label={`Filter transactions by ${name}`}
+                    onClick={() => {
+                      if (!isDesktop) { navigate(`/category/${encodeURIComponent(name)}`); return }
+                      setSelectedCategory(selectedCategory === name ? null : name)
+                    }}
+                    aria-label={`${isDesktop ? 'Filter transactions by' : 'View category'} ${name}`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />
