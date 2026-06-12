@@ -70,8 +70,12 @@ export function useExchangeRates(baseCurrency: string) {
 
 export function useMoney() {
   const { data: settings } = useAppSettings()
-  const baseCurrency = settings?.base_currency ?? 'IDR'
-  const displayCurrency = settings?.currency ?? 'IDR'
+  // Prefer whichever field is non-IDR — IDR was the old system default so a non-IDR
+  // value in either field reflects deliberate user intent. base_currency takes priority.
+  const rawBase = settings?.base_currency ?? 'IDR'
+  const rawView = settings?.currency ?? 'IDR'
+  const baseCurrency = rawBase !== 'IDR' ? rawBase : rawView
+  const displayCurrency = baseCurrency
   const { data: ratesData } = useExchangeRates(baseCurrency)
   const rates = ratesData?.rates ?? getFallbackRates(baseCurrency)
   const ratesDate = ratesData?.date ?? null

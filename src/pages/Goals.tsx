@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets, useAddTransaction, useAddRecurringRule } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
@@ -62,6 +63,7 @@ function getGoalUrgency(goal: Goal): 'urgent' | 'behind' | null {
 
 export function Goals() {
   const money = useMoney()
+  const navigate = useNavigate()
   const isDesktop = useIsDesktop()
   const { data: goals = [] } = useGoals()
   const { data: wallets = [] } = useWallets()
@@ -518,7 +520,12 @@ export function Goals() {
                   {/* Tappable card body → opens detail sheet */}
                   <button
                     type="button"
-                    onClick={() => { setSheetGoal(goal); setContributeAmount(''); setContributeWalletId(wallets[0]?.id ?? '') }}
+                    onClick={() => {
+                      if (!isDesktop) { navigate(`/goals/${goal.id}`); return }
+                      setSheetGoal(goal)
+                      setContributeAmount('')
+                      setContributeWalletId(wallets[0]?.id ?? '')
+                    }}
                     className="w-full rounded-[inherit] p-5 text-left transition-colors hover:bg-secondary/30 active:scale-[0.995] sm:p-6"
                     aria-label={`Open ${goal.name} details`}
                   >
@@ -588,7 +595,12 @@ export function Goals() {
                     <div className="border-t border-border px-5 py-3 sm:px-6">
                       <button
                         type="button"
-                        onClick={() => { setSheetGoal(goal); setContributeAmount(''); setContributeWalletId(wallets[0]?.id ?? '') }}
+                        onClick={() => {
+                          if (!isDesktop) { navigate(`/goals/${goal.id}`); return }
+                          setSheetGoal(goal)
+                          setContributeAmount('')
+                          setContributeWalletId(wallets[0]?.id ?? '')
+                        }}
                         className="w-full rounded-xl bg-primary/10 py-2.5 text-sm font-extrabold text-primary transition-colors hover:bg-primary/20 active:scale-[0.98]"
                         aria-label={`Log contribution to ${goal.name}`}
                       >

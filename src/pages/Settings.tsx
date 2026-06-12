@@ -186,7 +186,9 @@ export function Settings() {
 
   useEffect(() => {
     setName(settings?.user_name ?? '')
-    setBaseCurrency(settings?.base_currency || settings?.currency || 'IDR')
+    const rawBase = settings?.base_currency ?? 'IDR'
+    const rawView = settings?.currency ?? 'IDR'
+    setBaseCurrency(rawBase !== 'IDR' ? rawBase : rawView)
   }, [settings, session])
 
   const baseSettings = {

@@ -11,8 +11,9 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown, Monitor } from 'lucide-react'
+import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown, Plus } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
@@ -72,6 +73,9 @@ export function Estimation() {
   const [editWishlistType, setEditWishlistType] = useState('Want')
   const [editWishlistNote, setEditWishlistNote] = useState('')
   const [planningTipDismissed, setPlanningTipDismissed] = useState(() => localStorage.getItem(PLANNING_TIP_KEY) === '1')
+  const [incomeSheetOpen, setIncomeSheetOpen] = useState(false)
+  const [expenseSheetOpen, setExpenseSheetOpen] = useState(false)
+  const [wishlistSheetOpen, setWishlistSheetOpen] = useState(false)
 
   useEffect(() => {
     if (!plans) return
@@ -136,12 +140,12 @@ export function Estimation() {
     })
   }
 
-  const addIncome = async () => {
+  const addIncome = async (): Promise<boolean> => {
     const amount = money.toBase(parseNumberInput(incomeAmount), money.displayCurrency)
     if (!incomeSource.trim() || amount <= 0) {
       setIncomeError(true)
       setTimeout(() => setIncomeError(false), 1500)
-      return
+      return false
     }
     const newItems = [...incomeItems, { id: crypto.randomUUID(), name: incomeSource.trim(), amount, period: incomePeriod }]
     setIncomeItems(newItems)
@@ -150,17 +154,19 @@ export function Estimation() {
     try {
       await saveToBackend(newItems, expenseItems, wishlistItems, notes)
       toast.success('Income item added')
+      return true
     } catch {
       toast.error('Failed to save — item shown locally but may not persist')
+      return false
     }
   }
 
-  const addExpense = async () => {
+  const addExpense = async (): Promise<boolean> => {
     const amount = money.toBase(parseNumberInput(expenseAmount), money.displayCurrency)
     if (!expenseDetail.trim() || amount <= 0) {
       setExpenseError(true)
       setTimeout(() => setExpenseError(false), 1500)
-      return
+      return false
     }
     const newItems = [...expenseItems, { id: crypto.randomUUID(), name: expenseDetail.trim(), amount, period: expensePeriod }]
     setExpenseItems(newItems)
@@ -169,14 +175,16 @@ export function Estimation() {
     try {
       await saveToBackend(incomeItems, newItems, wishlistItems, notes)
       toast.success('Expense item added')
+      return true
     } catch {
       toast.error('Failed to save — item shown locally but may not persist')
+      return false
     }
   }
 
-  const addWishlistItem = async () => {
+  const addWishlistItem = async (): Promise<boolean> => {
     const amount = money.toBase(parseNumberInput(wishlistAmount), money.displayCurrency)
-    if (!wishlistName.trim() || amount <= 0) { toast.error(amount <= 0 ? 'Enter a valid amount' : 'Enter item name'); return }
+    if (!wishlistName.trim() || amount <= 0) { toast.error(amount <= 0 ? 'Enter a valid amount' : 'Enter item name'); return false }
     const newItems = [...wishlistItems, {
       id: crypto.randomUUID(),
       name: wishlistName.trim(),
@@ -192,8 +200,10 @@ export function Estimation() {
     try {
       await saveToBackend(incomeItems, expenseItems, newItems, notes)
       toast.success('Wishlist item added')
+      return true
     } catch {
       toast.error('Failed to save — item shown locally but may not persist')
+      return false
     }
   }
 
@@ -310,15 +320,6 @@ export function Estimation() {
           </div>
         )}
       />
-      {!isDesktop && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
-          <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-          <div>
-            <p className="font-bold text-primary">Best on desktop</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">This tool is easier to use on a larger screen. Open FinPath Studio on desktop for the full planning experience.</p>
-          </div>
-        </div>
-      )}
       {/* Month navigator */}
       {(() => {
         const today = new Date()
@@ -536,24 +537,35 @@ export function Estimation() {
             <p className="text-sm text-muted-foreground">How much money will come in?</p>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
-            <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
-              <div>
-                <Label className="text-xs text-muted-foreground">Income source</Label>
-                <Input aria-label="Income source" className={`mt-2 bg-secondary transition-colors ${incomeError && !incomeSource.trim() ? 'border-[#FF8388]' : ''}`} value={incomeSource} onChange={event => setIncomeSource(event.target.value)} placeholder="Part-time work" />
+            {isDesktop ? (
+              <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Income source</Label>
+                  <Input aria-label="Income source" className={`mt-2 bg-secondary transition-colors ${incomeError && !incomeSource.trim() ? 'border-[#FF8388]' : ''}`} value={incomeSource} onChange={event => setIncomeSource(event.target.value)} placeholder="Part-time work" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
+                  <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Period</Label>
+                  <select aria-label="Income period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={incomePeriod} onChange={event => setIncomePeriod(event.target.value as EstimatePeriod)}>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <Button onClick={addIncome} disabled={upsert.isPending}>Add</Button>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
-                <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Period</Label>
-                <select aria-label="Income period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={incomePeriod} onChange={event => setIncomePeriod(event.target.value as EstimatePeriod)}>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-              <Button onClick={addIncome} disabled={upsert.isPending}>Add</Button>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIncomeSheetOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary py-3 text-sm font-bold text-primary transition-colors hover:bg-secondary/80"
+              >
+                <Plus className="h-4 w-4" />
+                Add income source
+              </button>
+            )}
             <ItemList
               items={incomeItems}
               empty="No income sources yet."
@@ -573,6 +585,31 @@ export function Estimation() {
             />
           </CardContent>
         </Card>
+        <Sheet open={incomeSheetOpen} onOpenChange={setIncomeSheetOpen}>
+          <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto rounded-t-3xl px-5 pb-safe-6">
+            <SheetHeader className="mb-4 text-left">
+              <SheetTitle>Add income source</SheetTitle>
+            </SheetHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground">Income source</Label>
+                <Input aria-label="Income source" className={`mt-2 bg-secondary transition-colors ${incomeError && !incomeSource.trim() ? 'border-[#FF8388]' : ''}`} value={incomeSource} onChange={event => setIncomeSource(event.target.value)} placeholder="Part-time work" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
+                <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Period</Label>
+                <select aria-label="Income period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={incomePeriod} onChange={event => setIncomePeriod(event.target.value as EstimatePeriod)}>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <Button className="w-full h-12" onClick={async () => { const ok = await addIncome(); if (ok) setIncomeSheetOpen(false) }} disabled={upsert.isPending}>Add income source</Button>
+            </div>
+          </SheetContent>
+        </Sheet>
         <Card>
           <CardHeader className="pb-0">
             <div className="flex items-center gap-3 mb-1">
@@ -582,24 +619,35 @@ export function Estimation() {
             <p className="text-sm text-muted-foreground">What fixed expenses are expected this month?</p>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
-            <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
-              <div>
-                <Label className="text-xs text-muted-foreground">Expense detail</Label>
-                <Input aria-label="Expense detail" className={`mt-2 bg-secondary transition-colors ${expenseError && !expenseDetail.trim() ? 'border-[#FF8388]' : ''}`} value={expenseDetail} onChange={event => setExpenseDetail(event.target.value)} placeholder="Apartment rent" />
+            {isDesktop ? (
+              <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Expense detail</Label>
+                  <Input aria-label="Expense detail" className={`mt-2 bg-secondary transition-colors ${expenseError && !expenseDetail.trim() ? 'border-[#FF8388]' : ''}`} value={expenseDetail} onChange={event => setExpenseDetail(event.target.value)} placeholder="Apartment rent" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
+                  <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Period</Label>
+                  <select aria-label="Expense period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={expensePeriod} onChange={event => setExpensePeriod(event.target.value as EstimatePeriod)}>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <Button onClick={addExpense} disabled={upsert.isPending}>Add</Button>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
-                <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Period</Label>
-                <select aria-label="Expense period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={expensePeriod} onChange={event => setExpensePeriod(event.target.value as EstimatePeriod)}>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-              <Button onClick={addExpense} disabled={upsert.isPending}>Add</Button>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setExpenseSheetOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary py-3 text-sm font-bold text-primary transition-colors hover:bg-secondary/80"
+              >
+                <Plus className="h-4 w-4" />
+                Add expense
+              </button>
+            )}
             <ItemList
               items={expenseItems}
               empty="No expected expenses yet."
@@ -619,6 +667,31 @@ export function Estimation() {
             />
           </CardContent>
         </Card>
+        <Sheet open={expenseSheetOpen} onOpenChange={setExpenseSheetOpen}>
+          <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto rounded-t-3xl px-5 pb-safe-6">
+            <SheetHeader className="mb-4 text-left">
+              <SheetTitle>Add expected expense</SheetTitle>
+            </SheetHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground">Expense detail</Label>
+                <Input aria-label="Expense detail" className={`mt-2 bg-secondary transition-colors ${expenseError && !expenseDetail.trim() ? 'border-[#FF8388]' : ''}`} value={expenseDetail} onChange={event => setExpenseDetail(event.target.value)} placeholder="Apartment rent" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
+                <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Period</Label>
+                <select aria-label="Expense period" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={expensePeriod} onChange={event => setExpensePeriod(event.target.value as EstimatePeriod)}>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <Button className="w-full h-12" onClick={async () => { const ok = await addExpense(); if (ok) setExpenseSheetOpen(false) }} disabled={upsert.isPending}>Add expense</Button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
         <Card>
@@ -635,32 +708,43 @@ export function Estimation() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 p-5 sm:p-6">
-            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(110px,0.45fr)_minmax(120px,0.45fr)]">
-              <div>
-                <Label className="text-xs text-muted-foreground">Wishlist item</Label>
-                <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="e.g. new laptop, vacation, gadget" />
+            {isDesktop ? (
+              <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(110px,0.45fr)_minmax(120px,0.45fr)]">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Wishlist item</Label>
+                  <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="e.g. new laptop, vacation, gadget" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
+                  <Input aria-label="Wishlist amount" className="mt-2 bg-secondary" inputMode="decimal" value={wishlistAmount} onChange={event => setWishlistAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Type</Label>
+                  <select aria-label="Wishlist type" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
+                    <option value="Need">Need</option>
+                    <option value="Want">Want</option>
+                    <option value="Later">Later</option>
+                    <option value="Work">Work</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Gift">Gift</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <Label className="text-xs text-muted-foreground">Note</Label>
+                  <Input aria-label="Wishlist note" className="mt-2 bg-secondary" value={wishlistNote} onChange={event => setWishlistNote(event.target.value)} placeholder="What this is for" />
+                </div>
+                <Button onClick={addWishlistItem} disabled={upsert.isPending}>Add wishlist item</Button>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
-                <Input aria-label="Wishlist amount" className="mt-2 bg-secondary" inputMode="decimal" value={wishlistAmount} onChange={event => setWishlistAmount(formatNumberInput(event.target.value))} placeholder="0" />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Type</Label>
-                <select aria-label="Wishlist type" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
-                  <option value="Need">Need</option>
-                  <option value="Want">Want</option>
-                  <option value="Later">Later</option>
-                  <option value="Work">Work</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Gift">Gift</option>
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="text-xs text-muted-foreground">Note</Label>
-                <Input aria-label="Wishlist note" className="mt-2 bg-secondary" value={wishlistNote} onChange={event => setWishlistNote(event.target.value)} placeholder="What this is for" />
-              </div>
-              <Button onClick={addWishlistItem} disabled={upsert.isPending}>Add wishlist item</Button>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setWishlistSheetOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary py-3 text-sm font-bold text-primary transition-colors hover:bg-secondary/80"
+              >
+                <Plus className="h-4 w-4" />
+                Add wishlist item
+              </button>
+            )}
             {wishlistItems.length > 0 ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {wishlistItems.map(item => (
@@ -716,6 +800,39 @@ export function Estimation() {
             )}
           </CardContent>
         </Card>
+        <Sheet open={wishlistSheetOpen} onOpenChange={setWishlistSheetOpen}>
+          <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto rounded-t-3xl px-5 pb-safe-6">
+            <SheetHeader className="mb-4 text-left">
+              <SheetTitle>Add wishlist item</SheetTitle>
+            </SheetHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground">Wishlist item</Label>
+                <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="e.g. new laptop, vacation, gadget" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
+                <Input aria-label="Wishlist amount" className="mt-2 bg-secondary" inputMode="decimal" value={wishlistAmount} onChange={event => setWishlistAmount(formatNumberInput(event.target.value))} placeholder="0" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Type</Label>
+                <select aria-label="Wishlist type" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
+                  <option value="Need">Need</option>
+                  <option value="Want">Want</option>
+                  <option value="Later">Later</option>
+                  <option value="Work">Work</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Gift">Gift</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Note</Label>
+                <Input aria-label="Wishlist note" className="mt-2 bg-secondary" value={wishlistNote} onChange={event => setWishlistNote(event.target.value)} placeholder="What this is for" />
+              </div>
+              <Button className="w-full h-12" onClick={async () => { const ok = await addWishlistItem(); if (ok) setWishlistSheetOpen(false) }} disabled={upsert.isPending}>Add wishlist item</Button>
+            </div>
+          </SheetContent>
+        </Sheet>
         <Card>
           <CardHeader className="pb-0">
             <CardTitle className="text-xl">Plan notes</CardTitle>

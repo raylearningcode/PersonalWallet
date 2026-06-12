@@ -406,7 +406,7 @@ export function Subscriptions() {
         )}
 
         </button>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 hidden gap-2 lg:flex">
           {rule.active && days <= 3 && (
             <button
               type="button"
@@ -448,6 +448,8 @@ export function Subscriptions() {
             Delete
           </button>
         </div>
+        {/* Mobile: tap hint */}
+        <p className="mt-2 text-[10px] text-muted-foreground lg:hidden">Tap card to manage</p>
 
         {editTarget?.id === rule.id && (
           <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
@@ -1005,6 +1007,17 @@ export function Subscriptions() {
                 </div>
 
                 {/* Action buttons */}
+                {rule.active && days <= 3 && (
+                  <button
+                    type="button"
+                    onClick={() => { logPaymentNow(rule); setDetailRule(null) }}
+                    disabled={addTransaction.isPending || updateRule.isPending}
+                    className="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary/10 font-bold text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
+                  >
+                    <Check className="h-4 w-4" />
+                    Log payment now
+                  </button>
+                )}
                 <div className="flex gap-3">
                   <button
                     type="button"

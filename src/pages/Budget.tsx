@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   useBudgetCategories,
   useTransactions,
@@ -98,6 +98,7 @@ export function Budget() {
   const money = useMoney()
   const fmt = money.formatDisplay
   const isDesktop = useIsDesktop()
+  const navigate = useNavigate()
   const { data: categories = [], isPending: catPending, isError: catError, refetch: catRefetch } = useBudgetCategories()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
@@ -503,7 +504,10 @@ export function Budget() {
                               <button
                                 key={cat.id}
                                 type="button"
-                                onClick={() => openSheet(cat)}
+                                onClick={() => {
+                                  if (isDesktop) openSheet(cat)
+                                  else navigate(`/category/${encodeURIComponent(cat.name)}`)
+                                }}
                                 className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] lg:items-center lg:gap-4 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
                                 aria-label={`Open ${cat.name} budget details`}
                               >
@@ -572,7 +576,10 @@ export function Budget() {
                             <button
                               key={cat.id}
                               type="button"
-                              onClick={() => openSheet(cat)}
+                              onClick={() => {
+                                if (isDesktop) openSheet(cat)
+                                else navigate(`/category/${encodeURIComponent(cat.name)}`)
+                              }}
                               className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995]"
                               aria-label={`Open ${cat.name} details`}
                             >

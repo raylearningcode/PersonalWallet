@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AndroidBackHandler } from '@/components/native/AndroidBackHandler'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthSession, useRecurringRules } from '@/lib/queries'
@@ -49,6 +49,7 @@ function ResponsiveToaster() {
 export function AppLayout() {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const isDesktop = useIsDesktop()
   const { data: session } = useAuthSession()
   const [moreOpen, setMoreOpen] = useState(false)
@@ -227,12 +228,17 @@ export function AppLayout() {
         onAddClick={() => {
           const saved = localStorage.getItem(LAST_QUICK_ACTION_KEY)
           const type = saved && QUICK_ACTION_TYPES.has(saved as QuickActionType) ? saved as QuickActionType : 'expense'
-          if (type === 'goal') navigate('/goals')
-          else if (type === 'subscription') navigate('/subscriptions')
-          else openQuickAction(type)
+          if (type === 'goal') { navigate('/goals'); return }
+          if (type === 'subscription') { navigate('/subscriptions'); return }
+          if (!isDesktop) {
+            const isCash = type === 'cash'
+            navigate(`/add-transaction?type=${isCash ? 'expense' : type}${isCash ? '&cash=true' : ''}`)
+          } else {
+            openQuickAction(type)
+          }
         }}
         onLongPressAdd={() => setQuickActionsOpen(true)}
-        hidden={keyboardVisible}
+        hidden={keyboardVisible || pathname === '/add-transaction'}
       />
       <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
       <QuickAddSheet open={quickAddOpen} onClose={() => { setQuickAddOpen(false); setQuickAddCash(false) }} initialType={quickAddType} initialCash={quickAddCash} />
@@ -252,6 +258,10 @@ export function AppLayout() {
                   setQuickActionsOpen(false)
                   localStorage.setItem(LAST_QUICK_ACTION_KEY, type)
                   if (to) { navigate(to); return }
+                  if (!isDesktop) {
+                    navigate(`/add-transaction?type=${cash ? 'expense' : type}${cash ? '&cash=true' : ''}`)
+                    return
+                  }
                   openQuickAction(cash ? 'cash' : type as QuickAddType)
                 }}
               >
