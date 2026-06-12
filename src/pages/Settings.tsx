@@ -21,7 +21,7 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
+import { X, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
@@ -77,13 +77,11 @@ export function Settings() {
   const updateWallet = useUpdateWallet()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
-  const { data: budgetRules = [] } = useBudgetRules()
   const { data: investmentConfig } = useInvestmentConfig()
   const { data: estimationPlans = [] } = useEstimationPlans()
   const addWallet = useAddWallet()
   const deleteWallet = useDeleteWallet()
   const addTransaction = useAddTransaction()
-  const addBudgetRule = useAddBudgetRule()
   const saveInvestmentConfig = useSaveInvestmentConfig()
   const upsertEstimationPlan = useUpsertEstimationPlan()
 
@@ -355,7 +353,6 @@ export function Settings() {
     settings,
     wallets,
     budget_categories: categories,
-    budget_rules: budgetRules,
     investment_config: investmentConfig,
     estimation_plans: estimationPlans,
     transactions,
@@ -412,7 +409,6 @@ export function Settings() {
     const data = backupPreview ? (backupPreview.parsed as Record<string, unknown[]>) : JSON.parse(backupText)
     for (const wallet of (data.wallets as Record<string, unknown>[] ?? [])) await addWallet.mutateAsync(stripSystemFields(wallet) as Parameters<typeof addWallet.mutateAsync>[0])
     for (const category of (data.budget_categories as Record<string, unknown>[] ?? [])) await addCategory.mutateAsync(stripSystemFields(category) as Parameters<typeof addCategory.mutateAsync>[0])
-    for (const rule of (data.budget_rules as Record<string, unknown>[] ?? [])) await addBudgetRule.mutateAsync(stripSystemFields(rule) as Parameters<typeof addBudgetRule.mutateAsync>[0])
     if (data.investment_config) await saveInvestmentConfig.mutateAsync(stripSystemFields(data.investment_config as Record<string, unknown>))
     for (const plan of (data.estimation_plans as Record<string, unknown>[] ?? [])) await upsertEstimationPlan.mutateAsync(stripSystemFields(plan) as Parameters<typeof upsertEstimationPlan.mutateAsync>[0])
     for (const tx of (data.transactions as Record<string, unknown>[] ?? [])) await addTransaction.mutateAsync(stripSystemFields(tx) as Parameters<typeof addTransaction.mutateAsync>[0])

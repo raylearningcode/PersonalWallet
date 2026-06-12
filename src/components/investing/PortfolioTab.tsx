@@ -465,7 +465,6 @@ export function PortfolioTab() {
                         <span title="Dividends are logged manually. Stock dividend APIs require paid subscriptions.">
                           <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
                         </span>
-                        />
                       </div>
 
                       {dividendHolding === h.id && (

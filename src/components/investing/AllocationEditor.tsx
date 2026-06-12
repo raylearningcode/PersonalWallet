@@ -50,11 +50,6 @@ export function AllocationEditor({ value, onChange, onSave, isSaving, readOnly }
   const isValid = total === 100
   const remaining = 100 - total
 
-  const _update = (index: number, field: keyof AllocationItem, val: string | number) => {
-    if (readOnly) return
-    onChange(value.map((item, i) => i === index ? { ...item, [field]: val } : item))
-  }
-
   const remove = (index: number) => {
     if (readOnly || value.length <= 1) return
     onChange(value.filter((_, i) => i !== index))
@@ -90,33 +85,36 @@ export function AllocationEditor({ value, onChange, onSave, isSaving, readOnly }
           {value.map((item, i) => (
             <div key={i} className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <div
-                  className="h-11 w-11 shrink-0 rounded-md border border-border p-0.5"
-                  style={{ backgroundColor: item.color }}
-                  title={item.color}
-                />
-                <span className="flex-1 px-2 text-xs font-bold text-foreground">{item.name}</span>
+                {readOnly ? (
+                  <div className="h-11 w-11 shrink-0 rounded-md border border-border p-0.5" style={{ backgroundColor: item.color }} />
+                ) : (
+                  <input type="color" aria-label="Asset color" className="h-11 w-11 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                    value={item.color} onChange={e => onChange(value.map((it, j) => j === i ? { ...it, color: e.target.value } : it))} />
+                )}
+                {readOnly ? (
+                  <span className="flex-1 px-2 text-xs font-bold text-foreground">{item.name}</span>
+                ) : (
+                  <input aria-label="Asset name" className="h-9 flex-1 rounded-lg bg-secondary px-2 text-xs font-bold" placeholder="Asset name"
+                    value={item.name} onChange={e => onChange(value.map((it, j) => j === i ? { ...it, name: e.target.value } : it))} />
+                )}
                 <span className="w-9 text-right text-xs font-extrabold text-foreground">{item.pct}%</span>
                 {!readOnly && (
-                  <button
-                    onClick={() => remove(i)}
-                    disabled={value.length <= 1}
+                  <button onClick={() => remove(i)} disabled={value.length <= 1}
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:bg-secondary hover:text-[#FF8388] disabled:opacity-30"
-                    aria-label={`Remove ${item.name || 'asset'}`}
-                  >
+                    aria-label={`Remove ${item.name || 'asset'}`}>
                     ×
                   </button>
                 )}
               </div>
-              <div
-                className="h-2 w-full rounded-full bg-muted"
-                style={{ overflow: 'hidden' }}
-              >
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${Math.min(100, item.pct)}%`, backgroundColor: item.color }}
-                />
-              </div>
+              {readOnly ? (
+                <div className="h-2 w-full rounded-full bg-muted" style={{ overflow: 'hidden' }}>
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, item.pct)}%`, backgroundColor: item.color }} />
+                </div>
+              ) : (
+                <input type="range" aria-label={`${item.name || 'Asset'} allocation percent`} min={0} max={100} step={1} value={item.pct}
+                  onChange={e => onChange(value.map((it, j) => j === i ? { ...it, pct: Number(e.target.value) } : it))}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-current" style={{ accentColor: item.color }} />
+              )}
             </div>
           ))}
         </div>
