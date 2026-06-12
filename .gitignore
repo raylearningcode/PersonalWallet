@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.claude/
+.superpowers/
+Wallet_Tracker/
+
+*.log
+*.local
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Capacitor native build artifacts
+android/app/build/
+android/.gradle/
+ios/App/build/
+ios/App/Pods/
+ios/.xcode.env.local

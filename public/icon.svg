@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FinPath icon">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#0f1117"/>
+  <!-- Path/graph line representing financial growth -->
+  <polyline
+    points="64,360 160,280 240,320 320,200 400,240 448,160"
+    fill="none"
+    stroke="#22C55E"
+    stroke-width="36"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Dot at current position -->
+  <circle cx="448" cy="160" r="28" fill="#22C55E"/>
+  <!-- "F" letterform using a subtle path -->
+  <text x="72" y="184" font-family="system-ui, -apple-system, sans-serif" font-size="128" font-weight="800" fill="#FFFFFF" opacity="0.15">F</text>
+</svg>

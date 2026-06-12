@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 225 44% 4%;
+    --foreground: 220 40% 97%;
+    --card: 221 31% 11%;
+    --card-foreground: 210 40% 96%;
+    --border: 219 32% 20%;
+    --primary: 148 83% 82%;
+    --primary-foreground: 223 44% 6%;
+    --muted: 220 25% 21%;
+    --muted-foreground: 222 18% 65%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --accent: 214 91% 77%;
+    --accent-foreground: 223 44% 6%;
+    --secondary: 220 28% 15%;
+    --secondary-foreground: 210 40% 96%;
+    --ring: 249 83% 70%;
+    --input: 220 25% 18%;
+    --popover: 220 28% 12%;
+    --popover-foreground: 210 40% 96%;
+    --radius: 1.5rem;
+  }
+}
+
+body {
+  @apply bg-background text-foreground;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overscroll-behavior: none;
+}
+
+* {
+  @apply border-border;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Safe area insets for notched devices (iOS + Capacitor) */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-safe-4  { padding-bottom: max(1rem,   calc(1rem   + env(safe-area-inset-bottom, 0px))); }
+.pb-safe-6  { padding-bottom: max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom, 0px))); }
+.pb-safe-8  { padding-bottom: max(2rem,   calc(2rem   + env(safe-area-inset-bottom, 0px))); }
+.pb-safe-10 { padding-bottom: max(2.5rem, calc(2.5rem + env(safe-area-inset-bottom, 0px))); }
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 75% 0%, rgba(173, 248, 205, 0.22), transparent 26rem),
+    linear-gradient(90deg, rgba(188, 163, 255, 0.16), transparent 8rem);
+  z-index: -1;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* Prevent iOS Safari auto-zoom when inputs are focused (requires font-size >= 16px) */
+@media (max-width: 639px) {
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Date input */
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(0.9);
+  background: hsl(var(--muted));
+}
+
+/* Print stylesheet for Export PDF */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  body::before { display: none; }
+  nav, [data-radix-dialog-overlay], .mobile-bottom-nav { display: none !important; }
+  .bg-background { background: white !important; }
+  .bg-card, .bg-secondary { background: #f9f9f9 !important; }
+  .text-foreground, .text-muted-foreground { color: #111 !important; }
+  .border-border { border-color: #ddd !important; }
+  .text-primary { color: #16a34a !important; }
+}
