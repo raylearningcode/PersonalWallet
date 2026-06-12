@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
@@ -45,7 +45,7 @@ export function Dashboard() {
   const savingsRate = calculateSavingsRate(annualIncome, annualSpent)
   const netWorth = [...walletBalances.values()].reduce((a, b) => a + b, 0) + (investConfig?.current_value ?? 0)
   const reviewCount = transactions.filter(t => t.needs_review).length
-  const streak = useMemo(() => computeStreak(transactions), [transactions])
+  const streak = useMemo(() => computeStreak(transactions.map(t => t.date)), [transactions])
   const daysLeft = new Date(year, now.getMonth() + 1, 0).getDate() - now.getDate() + 1
   const safeToSpend = daysLeft > 0 ? (() => {
     const monthlyBudgets = categories.filter(c => c.budget_period === 'monthly' || !c.budget_period)
@@ -56,7 +56,7 @@ export function Dashboard() {
 
   // Budget health
   const categoryHealth = categories.filter(c => c.yearly_allocated > 0).map(c => {
-    const spent = monthTx.filter(t => t.type !== 'income' && t.category === c.name && isInBudgetPeriod(t.date, c)).reduce((s, t) => s + t.amount, 0)
+    const spent = monthTx.filter(t => t.type !== 'income' && t.category === c.name && isInBudgetPeriod(t.date, c.budget_period)).reduce((s, t) => s + t.amount, 0)
     const pct = c.yearly_allocated > 0 ? Math.min(100, Math.round((spent / c.yearly_allocated) * 100)) : 0
     return { ...c, spent, pct }
   }).sort((a, b) => b.pct - a.pct).slice(0, 5)

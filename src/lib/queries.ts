@@ -62,12 +62,6 @@ function invalidateAccountQueries(qc: ReturnType<typeof useQueryClient>) {
   accountQueryKeys.forEach(queryKey => qc.invalidateQueries({ queryKey }))
 }
 
-async function requireUserId(action: string) {
-  const userId = await getCurrentUserId()
-  if (!userId) throw new Error(`Log in before ${action}.`)
-  return userId
-}
-
 async function migrateGuestDataToAccount(userId: string): Promise<number> {
   const guestData = getGuestDataForMigration()
   const { transactions, wallets, categories, rules, plans, goals, investment, holdings, dividends } = guestData

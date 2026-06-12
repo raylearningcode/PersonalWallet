@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
-  useBudgetRules, useAddBudgetRule,
   useRenameWallet, useUpdateWallet,
   useAuthSession, useSignIn, useSignUp, useSignOut,
   useWallets, useAddWallet, useDeleteWallet,
@@ -22,7 +21,7 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
+import { X, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
@@ -487,7 +486,7 @@ export function Settings() {
       {/* Mobile: native-style settings list (shown when no page selected) */}
       {!effectiveTab && (
         <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
-          {tabs.filter(t => t !== 'ai').map((tab) => {
+          {tabs.map((tab) => {
             const { label, desc, Icon, color } = TAB_META[tab]
             return (
               <button

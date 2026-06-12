@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Check } from 'lucide-react'
 import type { AllocationItem } from '@/types'
 
@@ -51,7 +50,7 @@ export function AllocationEditor({ value, onChange, onSave, isSaving, readOnly }
   const isValid = total === 100
   const remaining = 100 - total
 
-  const update = (index: number, field: keyof AllocationItem, val: string | number) => {
+  const _update = (index: number, field: keyof AllocationItem, val: string | number) => {
     if (readOnly) return
     onChange(value.map((item, i) => i === index ? { ...item, [field]: val } : item))
   }

@@ -462,9 +462,9 @@ export function PortfolioTab() {
                         >
                           {dividendHolding === h.id ? 'Cancel' : '+ Log dividend'}
                         </button>
-                        <HelpCircle
-                          className="h-3 w-3 text-muted-foreground cursor-help"
-                          title="Dividends are logged manually. Stock dividend APIs require paid subscriptions — manual entry is more reliable and keeps your data private."
+                        <span title="Dividends are logged manually. Stock dividend APIs require paid subscriptions.">
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </span>
                         />
                       </div>
 

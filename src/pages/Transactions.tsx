@@ -265,11 +265,6 @@ export function Transactions() {
     ).slice(0, 4)
   }, [transactions, recurringRules])
 
-  const nextDueRule = useMemo(
-    () => recurringRules.filter(r => r.active).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))[0] ?? null,
-    [recurringRules]
-  )
-
   const potentialDuplicates = useMemo(() => {
     const candidates: { a: Transaction; b: Transaction }[] = []
     // Use allTransactions (unfiltered) so duplicates are caught regardless of which tab is active

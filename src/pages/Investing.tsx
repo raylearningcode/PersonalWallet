@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useInvestmentConfig, useSaveInvestmentConfig } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PortfolioTab } from '@/components/investing/PortfolioTab'
