@@ -90,12 +90,12 @@ describe('Settings', () => {
   it('saves a selected currency without unused preference fields', () => {
     renderSettings()
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'View currency' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Main currency' }))
     fireEvent.click(screen.getByRole('option', { name: 'TWD' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save currency' }))
 
     expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({
-      base_currency: 'IDR',
+      base_currency: 'TWD',
       currency: 'TWD',
     }))
     expect(screen.queryByText('Year start')).not.toBeInTheDocument()

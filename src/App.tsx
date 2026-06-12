@@ -14,6 +14,8 @@ const Goals = lazy(() => import('@/pages/Goals').then(m => ({ default: m.Goals }
 const Subscriptions = lazy(() => import('@/pages/Subscriptions').then(m => ({ default: m.Subscriptions })))
 const Auth = lazy(() => import('@/pages/Auth').then(m => ({ default: m.Auth })))
 const DesktopTools = lazy(() => import('@/pages/DesktopTools').then(m => ({ default: m.DesktopTools })))
+const AddTransaction = lazy(() => import('@/pages/AddTransaction').then(m => ({ default: m.AddTransaction })))
+const CategoryDetail = lazy(() => import('@/pages/CategoryDetail').then(m => ({ default: m.CategoryDetail })))
 
 function PageLoader() {
   return (
@@ -76,6 +78,8 @@ export function App() {
         <Route path="desktop-tools" element={<Page><DesktopTools /></Page>} />
         <Route path="goals" element={<Page><Goals /></Page>} />
         <Route path="subscriptions" element={<Page><Subscriptions /></Page>} />
+        <Route path="add-transaction" element={<Page><AddTransaction /></Page>} />
+        <Route path="category/:name" element={<Page><CategoryDetail /></Page>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

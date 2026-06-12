@@ -1438,7 +1438,7 @@ export function Transactions() {
 
 
       {expenseCategoryTotals.length > 0 && (
-        <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
+        <div className="mb-6 hidden rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6 lg:block">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-extrabold text-foreground">Expense by category</h2>
             <p className="text-xs font-bold text-muted-foreground">Tap to filter</p>
@@ -1464,7 +1464,7 @@ export function Transactions() {
       )}
 
       {upcomingRecurringRules.length > 0 && (
-        <div className="mb-6 rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6">
+        <div className="mb-6 hidden rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6 lg:block">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold text-foreground">Recurring / cicilan</h2>
