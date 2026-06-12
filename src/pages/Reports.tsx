@@ -647,7 +647,7 @@ export function Reports() {
 
       {/* Period review metric cards */}
       {(incomeDiff || expenseDiff || savingsRate > 0 || topCategory !== '—') && (
-        <div className="mb-8 hidden rounded-2xl border border-border bg-card px-5 py-5 lg:block lg:px-6">
+        <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-5 lg:px-6">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period review</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {incomeDiff && (
