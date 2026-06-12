@@ -289,8 +289,8 @@ export function CategoryDetail() {
                         <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{tx.category}</p>
                       </div>
-                      <span className={`shrink-0 text-sm font-extrabold tabular-nums ${txAmountColor(tx)}`}>
-                        {txAmountSign(tx)}{money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
+                      <span className={`shrink-0 text-sm font-extrabold tabular-nums ${txAmountColor(tx.amount, tx.type)}`}>
+                        {txAmountSign(tx.amount, tx.type)}{money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
                       </span>
                     </div>
                   ))}

@@ -11,22 +11,13 @@ import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
-import { AlertTriangle, ArrowLeft, Bookmark, Check, Copy, Pencil, Trash2, TrendingUp, Zap } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Bookmark, Check, Pencil, Trash2, TrendingUp, Zap } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
 import type { Goal } from '@/types'
 
 const GOAL_COLORS = ['#A9F5C7', '#FADBEA', '#FFF7B5', '#D9E8FF', '#F8DCDC', '#C4AEFF', '#FFD276', '#93C5FD']
 
 const GOAL_CATEGORIES = ['Savings', 'Emergency Fund', 'Vacation', 'Home', 'Vehicle', 'Education', 'Travel', 'Gadget', 'Health', 'Retirement', 'Investment', 'Other']
-
-const GOAL_TEMPLATES: { name: string; category: string; color: string; emoji: string }[] = [
-  { name: 'Emergency fund', category: 'Emergency Fund', color: '#FF8388', emoji: '🆘' },
-  { name: 'Travel fund', category: 'Travel', color: '#93C5FD', emoji: '✈️' },
-  { name: 'New laptop', category: 'Gadget', color: '#C4AEFF', emoji: '💻' },
-  { name: 'Tuition', category: 'Education', color: '#FFD276', emoji: '🎓' },
-  { name: 'Rent deposit', category: 'Home', color: '#A9F5C7', emoji: '🏠' },
-  { name: 'New phone', category: 'Gadget', color: '#FADBEA', emoji: '📱' },
-]
 
 type FormState = {
   name: string
