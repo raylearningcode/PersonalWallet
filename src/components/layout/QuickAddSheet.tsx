@@ -25,6 +25,7 @@ import { ScanLine, Loader2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide
 import { toast } from 'sonner'
 import type { RecurringFrequency } from '@/types'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
+import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
@@ -163,7 +164,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     const file = e.target.files?.[0]
     if (!file) return
     if (!isAiConfigured()) {
-      toast.error('Set up your AI API in Settings → AI Features to use receipt scanning')
+      toast.error('Set up your AI API in Settings â†’ AI Features to use receipt scanning')
       return
     }
     setScanning(true)
@@ -182,7 +183,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         const matched = categories.find(c => c.name.toLowerCase() === result.category.toLowerCase())
         if (matched) setCategory(matched.name)
       }
-      toast.success('Receipt scanned — review and confirm')
+      toast.success('Receipt scanned â€” review and confirm')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Receipt scan failed')
     } finally {
@@ -270,7 +271,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
           const ct = await addTransaction.mutateAsync({
-            description: `Change bills — ${safeDescription}`,
+            description: `Change bills â€” ${safeDescription}`,
             amount: money.toBase(billsChangeAmt, inputCurrency),
             original_amount: billsChangeAmt,
             original_currency: inputCurrency,
@@ -286,7 +287,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
         if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
           const ct = await addTransaction.mutateAsync({
-            description: `Change coins — ${safeDescription}`,
+            description: `Change coins â€” ${safeDescription}`,
             amount: money.toBase(coinsChangeAmt, inputCurrency),
             original_amount: coinsChangeAmt,
             original_currency: inputCurrency,
@@ -302,7 +303,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
         if (!isTWD && changeCoinsWalletId) {
           const ct = await addTransaction.mutateAsync({
-            description: `Change — ${safeDescription}`,
+            description: `Change â€” ${safeDescription}`,
             amount: baseChange,
             original_amount: rawChange,
             original_currency: inputCurrency,
@@ -327,7 +328,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       hapticSuccess()
       if (cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
         const allIds = [savedTx.id, ...changeTxIds]
-        toast.success('Cash payment saved · change routed', {
+        toast.success('Cash payment saved Â· change routed', {
           duration: 8000,
           action: {
             label: 'Undo',
@@ -371,7 +372,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
         <div className="space-y-4">
 
-          {/* ── QUICK MODE ── */}
+          {/* â”€â”€ QUICK MODE â”€â”€ */}
           {!showAdvanced && (
             <>
               {/* Type segmented control */}
@@ -439,7 +440,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Category chips — expense */}
+              {/* Category chips â€” expense */}
               {type === 'expense' && wallets.length > 0 && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Category</p>
@@ -450,7 +451,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       className="flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
                     >
                       <span>No categories yet</span>
-                      <span>Set up now →</span>
+                      <span>Set up now â†’</span>
                     </Link>
                   ) : (
                     <div className={`flex flex-wrap gap-2 ${categories.length > 10 ? 'max-h-28 overflow-y-auto' : ''}`}>
@@ -477,7 +478,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Category chips — income */}
+              {/* Category chips â€” income */}
               {type === 'income' && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Category</p>
@@ -500,7 +501,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Wallet chips — expense/income */}
+              {/* Wallet chips â€” expense/income */}
               {type !== 'transfer' && wallets.length > 0 && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Wallet</p>
@@ -534,12 +535,12 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Transfer — from/to wallet */}
+              {/* Transfer â€” from/to wallet */}
               {type === 'transfer' && (
                 wallets.length < 2 ? (
                   <Link to="/settings" onClick={handleClose} className="flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary">
                     <span>Add at least 2 wallets for transfer</span>
-                    <span>Settings →</span>
+                    <span>Settings â†’</span>
                   </Link>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -593,7 +594,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             </>
           )}
 
-          {/* ── ADVANCED MODE ── */}
+          {/* â”€â”€ ADVANCED MODE â”€â”€ */}
           {showAdvanced && (
             <>
               {/* Type + Amount + Scan */}
@@ -722,7 +723,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         className="mt-2 flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
                       >
                         <span>No categories yet</span>
-                        <span>Set up now →</span>
+                        <span>Set up now â†’</span>
                       </Link>
                     ) : (
                       <select
@@ -747,7 +748,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         className="mt-2 flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
                       >
                         <span>No wallets yet</span>
-                        <span>Add one →</span>
+                        <span>Add one â†’</span>
                       </Link>
                     ) : (
                       <select
@@ -788,7 +789,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* ── Category splitting (expense only, advanced mode) ── */}
+              {/* â”€â”€ Category splitting (expense only, advanced mode) â”€â”€ */}
               {type === 'expense' && categories.length >= 2 && (
                 <div className="rounded-[1.25rem] border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -851,7 +852,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
                             aria-label={`Remove portion ${i + 1}`}
                           >
-                            ×
+                            Ã—
                           </button>
                         </div>
                       ))}
@@ -868,7 +869,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               + Add portion
                             </button>
                             <span className={`text-xs font-bold ${remaining === 0 ? 'text-primary' : remaining > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                              {remaining === 0 ? '✓ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
+                              {remaining === 0 ? 'âœ“ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
                             </span>
                           </div>
                         )
@@ -878,7 +879,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* ── Multi-wallet payment (expense only, advanced mode, 2+ wallets) ── */}
+              {/* â”€â”€ Multi-wallet payment (expense only, advanced mode, 2+ wallets) â”€â”€ */}
               {type === 'expense' && wallets.length >= 2 && (
                 <div className="rounded-[1.25rem] border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -928,7 +929,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               setWalletSplits(next)
                             }}
                           >
-                            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coins' : w.cash_role === 'notes' ? ' · notes' : ''}</option>)}
+                            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' Â· coins' : w.cash_role === 'notes' ? ' Â· notes' : ''}</option>)}
                           </select>
                           <Input
                             aria-label={`Wallet ${i + 1} amount`}
@@ -948,7 +949,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
                             aria-label={`Remove wallet ${i + 1}`}
                           >
-                            ×
+                            Ã—
                           </button>
                         </div>
                       ))}
@@ -968,7 +969,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               + Add wallet
                             </button>
                             <span className={`text-xs font-bold ${remaining === 0 ? 'text-primary' : remaining > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                              {remaining === 0 ? '✓ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
+                              {remaining === 0 ? 'âœ“ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
                             </span>
                           </div>
                         )
@@ -993,251 +994,30 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             </>
           )}
 
-          {/* ── Cash-change assistant — shown in both modes when expense + cash wallet ── */}
-          {showCashAssistant && (() => {
-            const otherWallets = wallets.filter(w => w.id !== walletId)
-            const parsedExpense = parseNumberInput(amount)
-            const parsedTenderedVal = parseNumberInput(cashTendered)
-            const changeAmount = cashEnabled && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > parsedExpense
-              ? parsedTenderedVal - parsedExpense : 0
-            const isUnderpay = cashEnabled && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > 0 && parsedTenderedVal < parsedExpense
-            const isTWD = inputCurrency === 'TWD' || selectedWallet?.currency === 'TWD'
-            const { bills: billsChange, coins: coinsChange } = isTWD
-              ? splitChangeByPolicy(changeAmount, { currency: 'TWD', routeFiftyCoinTo: getFiftyCoinRouting() })
-              : { bills: 0, coins: changeAmount }
-            const twdChips = getTwdTenderOptions(parsedExpense)
+          {/* ── Cash-change assistant — expense + cash wallet ── */}
+          {showCashAssistant && (
+            <CashChangeAssistant
+              cashEnabled={cashEnabled}
+              cashTendered={cashTendered}
+              walletId={walletId}
+              inputCurrency={inputCurrency}
+              amount={amount}
+              changeBillsWalletId={changeBillsWalletId}
+              changeCoinsWalletId={changeCoinsWalletId}
+              wallets={wallets}
+              isDesktop={isDesktop}
+              activeKeypad={activeKeypad}
+              cashKeypadActive={activeKeypad === 'cash'}
+              setCashEnabled={setCashEnabled}
+              setCashTendered={setCashTendered}
+              setChangeBillsWalletId={setChangeBillsWalletId}
+              setChangeCoinsWalletId={setChangeCoinsWalletId}
+              setActiveKeypad={setActiveKeypad}
+              onClose={handleClose}
+            />
+          )}
 
-            return (
-              <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <span>
-                    <span className="block text-sm font-extrabold text-foreground">Cash payment</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">Track bill given and route change</span>
-                  </span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={cashEnabled}
-                    aria-label="Enable cash change tracking"
-                    onClick={() => {
-                      const next = !cashEnabled
-                      setCashEnabled(next)
-                      if (next) {
-                        const coinsWallet = otherWallets.find(w => w.cash_role === 'coins')
-                        setChangeCoinsWalletId(coinsWallet?.id ?? otherWallets[0]?.id ?? '')
-                        const billsWallet = otherWallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed')
-                        setChangeBillsWalletId(billsWallet?.id ?? '')
-                        const parsedExp = parseNumberInput(amount)
-                        if (!cashTendered && parsedExp > 0 && isTWD) {
-                          setCashTendered(String(getTwdTenderOptions(parsedExp)[0]))
-                        }
-                      } else {
-                        setCashTendered('')
-                      }
-                      setActiveKeypad(null)
-                    }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${cashEnabled ? 'bg-primary' : 'bg-muted'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${cashEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                {cashEnabled && (
-                  <div className="mt-4 space-y-3">
-                    <div>
-                      <Label className="text-xs font-bold text-muted-foreground">Cash given ({isTWD ? 'TWD' : inputCurrency})</Label>
-                      <Input
-                        aria-label="Cash given"
-                        className="mt-2 cursor-pointer bg-secondary"
-                        readOnly={!isDesktop}
-                        value={cashTendered}
-                        placeholder="Amount you handed over"
-                        data-keypad-trigger="cash"
-                        onClick={() => setActiveKeypad('cash')}
-                        onFocus={() => setActiveKeypad('cash')}
-                      />
-                      {isTWD && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => { const e = parseNumberInput(amount); if (e > 0) setCashTendered(String(e)); setActiveKeypad('cash') }}
-                            className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTenderedVal === parsedExpense && parsedExpense > 0 ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
-                          >
-                            {parsedExpense > 0 ? `Exact NT$${parsedExpense.toLocaleString()}` : 'Exact'}
-                          </button>
-                          {twdChips.map(chip => (
-                            <button
-                              key={chip}
-                              type="button"
-                              onClick={() => { setCashTendered(String(chip)); setActiveKeypad('cash') }}
-                              className={`min-h-[44px] rounded-xl border px-4 text-sm font-bold transition-colors ${parsedTenderedVal === chip ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-foreground hover:border-primary hover:text-primary'}`}
-                            >
-                              NT${chip.toLocaleString()}
-                            </button>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={() => { setCashTendered(''); setActiveKeypad('cash'); setTimeout(() => (document.querySelector('[aria-label="Cash given"]') as HTMLInputElement | null)?.focus(), 50) }}
-                            className="min-h-[44px] rounded-xl border border-border bg-secondary px-4 text-sm font-bold text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                          >
-                            Custom
-                          </button>
-                        </div>
-                      )}
-                      {isUnderpay && (
-                        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
-                      )}
-                      {!isDesktop && activeKeypad === 'cash' && (
-                        <div className="-mx-4 sticky z-20 mt-3" style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }} data-money-keypad-panel>
-                          <MoneyKeypad
-                            value={cashTendered}
-                            onChange={setCashTendered}
-                            currency={inputCurrency}
-                            allowDecimal={inputCurrency !== 'IDR'}
-                            quickAmounts={isTWD ? twdChips : []}
-                            onDone={() => setActiveKeypad(null)}
-                            variant="panel"
-                            doneLabel="Confirm cash given"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {changeAmount > 0 && (
-                      <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-                        <p className="text-xs font-extrabold uppercase tracking-wide text-primary">Cash preview</p>
-                        <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                          <div className="rounded-lg bg-background/70 px-2 py-2">
-                            <p className="text-[10px] text-muted-foreground">You pay</p>
-                            <p className="text-sm font-extrabold text-foreground">{money.format(parsedExpense, inputCurrency)}</p>
-                          </div>
-                          <div className="rounded-lg bg-background/70 px-2 py-2">
-                            <p className="text-[10px] text-muted-foreground">Cash given</p>
-                            <p className="text-sm font-extrabold text-foreground">{money.format(parsedTenderedVal, inputCurrency)}</p>
-                          </div>
-                          <div className="rounded-lg bg-background/70 px-2 py-2">
-                            <p className="text-[10px] text-muted-foreground">Change</p>
-                            <p className="text-sm font-extrabold text-primary">{money.format(changeAmount, inputCurrency)}</p>
-                          </div>
-                        </div>
-                        {isTWD && billsChange > 0 && coinsChange > 0 && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            NT${billsChange.toLocaleString()} bills + NT${coinsChange.toLocaleString()} coins
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {changeAmount > 0 && otherWallets.length > 0 && (
-                      <>
-                        {isTWD && billsChange > 0 && (
-                          <div>
-                            <Label className="text-xs font-bold text-muted-foreground">
-                              Bills change (NT${billsChange.toLocaleString()}) → wallet
-                            </Label>
-                            <select
-                              aria-label="Bills change destination wallet"
-                              className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                              value={changeBillsWalletId}
-                              onChange={e => setChangeBillsWalletId(e.target.value)}
-                            >
-                              <option value="">Keep in {selectedWallet?.name}</option>
-                              {otherWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                            </select>
-                          </div>
-                        )}
-                        {isTWD && coinsChange > 0 && (
-                          <div>
-                            <Label className="text-xs font-bold text-muted-foreground">
-                              Coins change (NT${coinsChange.toLocaleString()}) → wallet
-                            </Label>
-                            <select
-                              aria-label="Coins change destination wallet"
-                              className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                              value={changeCoinsWalletId}
-                              onChange={e => setChangeCoinsWalletId(e.target.value)}
-                            >
-                              {otherWallets.map(w => (
-                                <option key={w.id} value={w.id}>
-                                  {w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                        {!isTWD && (
-                          <div>
-                            <Label className="text-xs font-bold text-muted-foreground">Change goes to</Label>
-                            <select
-                              aria-label="Change destination wallet"
-                              className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                              value={changeCoinsWalletId}
-                              onChange={e => setChangeCoinsWalletId(e.target.value)}
-                            >
-                              <option value="">Keep in same wallet</option>
-                              {otherWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                            </select>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {changeAmount > 0 && otherWallets.length === 0 && (
-                      <Link
-                        to="/settings?section=wallets"
-                        onClick={handleClose}
-                        className="flex items-center justify-between rounded-xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-3 py-2.5 text-xs font-bold text-[#FFCF73] hover:bg-[#FFCF73]/10"
-                      >
-                        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3 shrink-0" /> Set up a coin pouch wallet to route change automatically</span>
-                        <span className="ml-2 shrink-0">Settings →</span>
-                      </Link>
-                    )}
-
-                    {/* Transaction summary preview */}
-                    {changeAmount > 0 && parsedTenderedVal > 0 && (
-                      <div className="rounded-xl border border-border bg-secondary/60 px-4 py-3">
-                        <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">Summary</p>
-                        <div className="space-y-1.5 text-sm">
-                          <div className="flex justify-between gap-2">
-                            <span className="text-muted-foreground truncate">{selectedWallet?.name ?? 'Wallet'}</span>
-                            <span className="shrink-0 font-bold text-[#FF8388]">
-                              −{isTWD ? `NT$${parsedTenderedVal.toLocaleString()}` : money.format(parsedTenderedVal, inputCurrency)}
-                            </span>
-                          </div>
-                          {isTWD && billsChange > 0 && changeBillsWalletId && (
-                            <div className="flex justify-between gap-2">
-                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeBillsWalletId)?.name ?? 'Bills wallet'}</span>
-                              <span className="shrink-0 font-bold text-primary">+NT${billsChange.toLocaleString()}</span>
-                            </div>
-                          )}
-                          {isTWD && coinsChange > 0 && changeCoinsWalletId && (
-                            <div className="flex justify-between gap-2">
-                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeCoinsWalletId)?.name ?? 'Coin pouch'}</span>
-                              <span className="shrink-0 font-bold text-primary">+NT${coinsChange.toLocaleString()}</span>
-                            </div>
-                          )}
-                          {!isTWD && changeAmount > 0 && changeCoinsWalletId && (
-                            <div className="flex justify-between gap-2">
-                              <span className="text-muted-foreground truncate">{otherWallets.find(w => w.id === changeCoinsWalletId)?.name ?? 'Change wallet'}</span>
-                              <span className="shrink-0 font-bold text-primary">+{money.format(changeAmount, inputCurrency)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between gap-2 border-t border-border pt-1.5">
-                            <span className="text-muted-foreground truncate">{category || 'Expense'} recorded</span>
-                            <span className="shrink-0 font-bold text-[#FF8388]">
-                              −{isTWD ? `NT$${parsedExpense.toLocaleString()}` : money.format(parsedExpense, inputCurrency)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-
-          {/* ── Sticky save button ── */}
+          {/* â”€â”€ Sticky save button â”€â”€ */}
           <div className="sticky bottom-0 -mx-5 bg-background px-5 pb-safe-4 pt-3">
             {wallets.length === 0 ? (
               <Link
@@ -1245,7 +1025,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 onClick={onClose}
                 className="flex h-14 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
               >
-                Add a wallet to get started →
+                Add a wallet to get started â†’
               </Link>
             ) : !showAdvanced && type === 'expense' && categories.length === 0 ? (
               <Link
@@ -1253,7 +1033,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 onClick={onClose}
                 className="flex h-14 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
               >
-                Add a budget category first →
+                Add a budget category first â†’
               </Link>
             ) : (
               <Button
@@ -1266,7 +1046,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   cannotSaveTransfer
                 }
               >
-                {addTransaction.isPending ? 'Saving…' : `Add ${type}`}
+                {addTransaction.isPending ? 'Savingâ€¦' : `Add ${type}`}
               </Button>
             )}
           </div>

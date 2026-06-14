@@ -22,6 +22,7 @@ import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { getTwdTenderOptions, pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, isAiConfigured } from '@/lib/ai'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
+import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { RecurringFrequency } from '@/types'
@@ -152,7 +153,7 @@ export function AddTransaction() {
     const file = e.target.files?.[0]
     if (!file) return
     if (!isAiConfigured()) {
-      toast.error('Set up your AI API in Settings → AI Features to use receipt scanning')
+      toast.error('Set up your AI API in Settings â†’ AI Features to use receipt scanning')
       return
     }
     setScanning(true)
@@ -171,7 +172,7 @@ export function AddTransaction() {
         const matched = categories.find(c => c.name.toLowerCase() === result.category.toLowerCase())
         if (matched) setCategory(matched.name)
       }
-      toast.success('Receipt scanned — review and confirm')
+      toast.success('Receipt scanned â€” review and confirm')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Receipt scan failed')
     } finally {
@@ -240,7 +241,7 @@ export function AddTransaction() {
 
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
           const ct = await addTransaction.mutateAsync({
-            description: `Change bills — ${safeDescription}`,
+            description: `Change bills â€” ${safeDescription}`,
             amount: money.toBase(billsChangeAmt, inputCurrency),
             original_amount: billsChangeAmt,
             original_currency: inputCurrency,
@@ -256,7 +257,7 @@ export function AddTransaction() {
 
         if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
           const ct = await addTransaction.mutateAsync({
-            description: `Change coins — ${safeDescription}`,
+            description: `Change coins â€” ${safeDescription}`,
             amount: money.toBase(coinsChangeAmt, inputCurrency),
             original_amount: coinsChangeAmt,
             original_currency: inputCurrency,
@@ -272,7 +273,7 @@ export function AddTransaction() {
 
         if (!isTWD && changeCoinsWalletId) {
           const ct = await addTransaction.mutateAsync({
-            description: `Change — ${safeDescription}`,
+            description: `Change â€” ${safeDescription}`,
             amount: baseChange,
             original_amount: rawChange,
             original_currency: inputCurrency,
@@ -297,7 +298,7 @@ export function AddTransaction() {
       hapticSuccess()
       if (cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
         const allIds = [savedTx.id, ...changeTxIds]
-        toast.success('Cash payment saved · change routed', {
+        toast.success('Cash payment saved Â· change routed', {
           duration: 8000,
           action: {
             label: 'Undo',
@@ -332,7 +333,7 @@ export function AddTransaction() {
 
   return (
     <div>
-      {/* ── Page header — bleed full width past AppLayout padding ── */}
+      {/* â”€â”€ Page header â€” bleed full width past AppLayout padding â”€â”€ */}
       <div className="-mx-4 -mt-6 mb-5 flex items-center gap-2 border-b border-border bg-background px-4 py-3 sm:-mx-6 sm:px-6">
         <button
           type="button"
@@ -378,7 +379,7 @@ export function AddTransaction() {
         </button>
       </div>
 
-      {/* ── Amount section ── */}
+      {/* â”€â”€ Amount section â”€â”€ */}
       <div
         className="mb-5 cursor-pointer rounded-2xl border border-border bg-card px-4 pb-5 pt-6 text-center"
         onClick={() => setActiveKeypad('amount')}
@@ -417,7 +418,7 @@ export function AddTransaction() {
         />
       </div>
 
-      {/* ── Form fields ── */}
+      {/* â”€â”€ Form fields â”€â”€ */}
       <div className="space-y-4 pb-28">
 
         {/* Merchant / description */}
@@ -480,7 +481,7 @@ export function AddTransaction() {
                 className="mt-2 flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
               >
                 <span>No categories yet</span>
-                <span>Set up now →</span>
+                <span>Set up now â†’</span>
               </Link>
             ) : (
               <select
@@ -508,7 +509,7 @@ export function AddTransaction() {
                 className="mt-2 flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
               >
                 <span>No wallets yet</span>
-                <span>Add one →</span>
+                <span>Add one â†’</span>
               </Link>
             ) : wallets.length <= 5 ? (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -540,7 +541,7 @@ export function AddTransaction() {
           wallets.length < 2 ? (
             <Link to="/settings" className="flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary">
               <span>Add at least 2 wallets for transfer</span>
-              <span>Settings →</span>
+              <span>Settings â†’</span>
             </Link>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -570,7 +571,7 @@ export function AddTransaction() {
           )
         )}
 
-        {/* ── Cash change assistant ── */}
+        {/* â”€â”€ Cash change assistant â”€â”€ */}
         {showCashAssistant && (
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <button
@@ -685,7 +686,7 @@ export function AddTransaction() {
                   <>
                     {isTWD && billsChange > 0 && (
                       <div>
-                        <Label className="text-xs font-bold text-muted-foreground">Bills change (NT${billsChange.toLocaleString()}) → wallet</Label>
+                        <Label className="text-xs font-bold text-muted-foreground">Bills change (NT${billsChange.toLocaleString()}) â†’ wallet</Label>
                         <select
                           aria-label="Bills change destination wallet"
                           className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
@@ -699,7 +700,7 @@ export function AddTransaction() {
                     )}
                     {isTWD && coinsChange > 0 && (
                       <div>
-                        <Label className="text-xs font-bold text-muted-foreground">Coins change (NT${coinsChange.toLocaleString()}) → wallet</Label>
+                        <Label className="text-xs font-bold text-muted-foreground">Coins change (NT${coinsChange.toLocaleString()}) â†’ wallet</Label>
                         <select
                           aria-label="Coins change destination wallet"
                           className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
@@ -707,7 +708,7 @@ export function AddTransaction() {
                           onChange={e => setChangeCoinsWalletId(e.target.value)}
                         >
                           {otherWallets.map(w => (
-                            <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}</option>
+                            <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' Â· coin pouch' : ''}</option>
                           ))}
                         </select>
                       </div>
@@ -737,7 +738,7 @@ export function AddTransaction() {
                     <span className="flex items-center gap-1.5">
                       <AlertTriangle className="h-3 w-3 shrink-0" /> Set up a coin pouch wallet to route change
                     </span>
-                    <span className="ml-2 shrink-0">Settings →</span>
+                    <span className="ml-2 shrink-0">Settings â†’</span>
                   </Link>
                 )}
 
@@ -748,7 +749,7 @@ export function AddTransaction() {
                       <div className="flex justify-between gap-2">
                         <span className="truncate text-muted-foreground">{selectedWallet?.name ?? 'Wallet'}</span>
                         <span className="shrink-0 font-bold text-[#FF8388]">
-                          −{isTWD ? `NT$${parsedTenderedVal.toLocaleString()}` : money.format(parsedTenderedVal, inputCurrency)}
+                          âˆ’{isTWD ? `NT$${parsedTenderedVal.toLocaleString()}` : money.format(parsedTenderedVal, inputCurrency)}
                         </span>
                       </div>
                       {isTWD && billsChange > 0 && changeBillsWalletId && (
@@ -772,7 +773,7 @@ export function AddTransaction() {
                       <div className="flex justify-between gap-2 border-t border-border pt-1.5">
                         <span className="truncate text-muted-foreground">{category || 'Expense'} recorded</span>
                         <span className="shrink-0 font-bold text-[#FF8388]">
-                          −{isTWD ? `NT$${parsedAmount.toLocaleString()}` : money.format(parsedAmount, inputCurrency)}
+                          âˆ’{isTWD ? `NT$${parsedAmount.toLocaleString()}` : money.format(parsedAmount, inputCurrency)}
                         </span>
                       </div>
                     </div>
@@ -785,7 +786,7 @@ export function AddTransaction() {
 
       </div>
 
-      {/* ── Fixed: MoneyKeypad ── */}
+      {/* â”€â”€ Fixed: MoneyKeypad â”€â”€ */}
       {activeKeypad && (
         <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden" data-money-keypad-panel>
           <MoneyKeypad
@@ -801,7 +802,7 @@ export function AddTransaction() {
         </div>
       )}
 
-      {/* ── Fixed: Save button ── */}
+      {/* â”€â”€ Fixed: Save button â”€â”€ */}
       {!activeKeypad && (
         <div
           className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background px-4 pt-3 lg:hidden"
@@ -812,14 +813,14 @@ export function AddTransaction() {
               to="/settings"
               className="flex h-14 w-full items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
             >
-              Add a wallet to get started →
+              Add a wallet to get started â†’
             </Link>
           ) : type === 'expense' && categories.length === 0 ? (
             <Link
               to="/budget"
               className="flex h-14 w-full items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
             >
-              Add a budget category first →
+              Add a budget category first â†’
             </Link>
           ) : (
             <Button
@@ -832,7 +833,7 @@ export function AddTransaction() {
                 cannotSaveTransfer
               }
             >
-              {addTransaction.isPending ? 'Saving…' : 'Save transaction'}
+              {addTransaction.isPending ? 'Savingâ€¦' : 'Save transaction'}
             </Button>
           )}
         </div>
