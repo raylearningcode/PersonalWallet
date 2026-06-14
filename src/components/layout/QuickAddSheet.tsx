@@ -14,16 +14,14 @@ import {
   useWallets,
 } from '@/lib/queries'
 import { CURRENCIES, useMoney } from '@/lib/currency'
-import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
 import { hapticSuccess } from '@/lib/haptics'
-import { addRecurringInterval } from '@/lib/recurring'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
-import { getTwdTenderOptions, pickQuickAddWallet } from '@/lib/quickAdd'
+import { pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, isAiConfigured } from '@/lib/ai'
-import { ScanLine, Loader2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { ScanLine, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
-import type { RecurringFrequency } from '@/types'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -1005,14 +1003,10 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               changeBillsWalletId={changeBillsWalletId}
               changeCoinsWalletId={changeCoinsWalletId}
               wallets={wallets}
-              isDesktop={isDesktop}
-              activeKeypad={activeKeypad}
-              cashKeypadActive={activeKeypad === 'cash'}
               setCashEnabled={setCashEnabled}
               setCashTendered={setCashTendered}
               setChangeBillsWalletId={setChangeBillsWalletId}
               setChangeCoinsWalletId={setChangeCoinsWalletId}
-              setActiveKeypad={setActiveKeypad}
               onClose={handleClose}
             />
           )}

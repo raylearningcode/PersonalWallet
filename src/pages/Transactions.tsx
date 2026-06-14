@@ -30,7 +30,6 @@ import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
-import { getTwdTenderOptions } from '@/lib/quickAdd'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -174,19 +173,6 @@ export function Transactions() {
     setRuleNextDueDate(editingRule.next_due_date)
     setRuleEndDate(editingRule.end_date ?? '')
   }, [editingRule, money.baseCurrency])
-
-  const walletBalances = useMemo(() => {
-    const balances = new Map(wallets.map(w => [w.id, w.balance ?? 0]))
-    transactions.forEach(tx => {
-      if (tx.type === 'income' && tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) + tx.amount)
-      if (tx.type !== 'income' && tx.type !== 'transfer' && tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
-      if (tx.type === 'transfer') {
-        if (tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
-        if (tx.transfer_wallet_id) balances.set(tx.transfer_wallet_id, (balances.get(tx.transfer_wallet_id) ?? 0) + tx.amount)
-      }
-    })
-    return balances
-  }, [wallets, transactions])
 
   const moneyIn = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const moneyOut = transactions.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0)
@@ -1203,14 +1189,10 @@ export function Transactions() {
                     changeBillsWalletId={changeBillsWalletId}
                     changeCoinsWalletId={changeCoinsWalletId}
                     wallets={wallets}
-                    isDesktop={isDesktop}
-                    activeKeypad={formActiveKeypad}
-                    cashKeypadActive={false}
                     setCashEnabled={setCashEnabled}
                     setCashTendered={setCashTendered}
                     setChangeBillsWalletId={setChangeBillsWalletId}
                     setChangeCoinsWalletId={setChangeCoinsWalletId}
-                    setActiveKeypad={setFormActiveKeypad}
                   />
                 )}
               </div>

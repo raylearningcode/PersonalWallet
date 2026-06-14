@@ -19,14 +19,10 @@ export interface CashChangeAssistantProps {
   changeCoinsWalletId: string
   wallets: Wallet[]
   category?: string
-  isDesktop: boolean
-  activeKeypad: string | null
-  cashKeypadActive: boolean
   setCashEnabled: (v: boolean | ((prev: boolean) => boolean)) => void
   setCashTendered: (v: string) => void
   setChangeBillsWalletId: (v: string) => void
   setChangeCoinsWalletId: (v: string) => void
-  setActiveKeypad: (v: string | null) => void
   onClose?: () => void
 }
 
@@ -40,14 +36,10 @@ export function CashChangeAssistant({
   changeCoinsWalletId,
   wallets,
   category,
-  isDesktop,
-  activeKeypad,
-  cashKeypadActive,
   setCashEnabled,
   setCashTendered,
   setChangeBillsWalletId,
   setChangeCoinsWalletId,
-  setActiveKeypad,
   onClose,
 }: CashChangeAssistantProps) {
   const money = useMoney()
@@ -99,7 +91,6 @@ export function CashChangeAssistant({
             } else {
               setCashTendered('')
             }
-            setActiveKeypad(null)
           }}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${cashEnabled ? 'bg-primary' : 'bg-muted'}`}
         >

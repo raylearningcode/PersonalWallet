@@ -14,18 +14,15 @@ import {
   useWallets,
 } from '@/lib/queries'
 import { CURRENCIES, useMoney } from '@/lib/currency'
-import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
 import { hapticSuccess } from '@/lib/haptics'
-import { addRecurringInterval } from '@/lib/recurring'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { getTwdTenderOptions, pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, isAiConfigured } from '@/lib/ai'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
-import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
-import type { RecurringFrequency } from '@/types'
 
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 type EntryType = 'income' | 'expense' | 'transfer'

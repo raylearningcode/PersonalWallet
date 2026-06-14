@@ -26,7 +26,6 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const [walletName, setWalletName] = useState('Cash')
   const [walletType, setWalletType] = useState<'cash' | 'bank' | 'card' | 'e_wallet'>('cash')
   const [walletBalance, setWalletBalance] = useState('')
-  const [walletCurrency, setWalletCurrency] = useState(money.displayCurrency)
 
   // Step 2 state
   const [txType, setTxType] = useState<'expense' | 'income'>('expense')
@@ -44,8 +43,8 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     await addWallet.mutateAsync({
       name: walletName.trim(),
       type: walletType,
-      currency: walletCurrency,
-      balance: Number.isFinite(balance) ? money.toBase(balance, walletCurrency) : 0,
+      currency: money.displayCurrency,
+      balance: Number.isFinite(balance) ? money.toBase(balance, money.displayCurrency) : 0,
       cash_role: walletType === 'cash' ? 'mixed' : null,
     })
     toast.success('Wallet created')
