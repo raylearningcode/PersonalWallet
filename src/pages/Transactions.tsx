@@ -84,10 +84,6 @@ export function Transactions() {
     const action = new URLSearchParams(window.location.search).get('action')
     return (action === 'income' ? 'income' : 'expense') as EntryType
   })
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
-  const [installmentTotal, setInstallmentTotal] = useState('')
-  const [endDate, setEndDate] = useState('')
   const [cashEnabled, setCashEnabled] = useState(false)
   const [cashTendered, setCashTendered] = useState('')
   const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
@@ -297,10 +293,6 @@ export function Transactions() {
     setDate(new Date().toISOString().slice(0, 10))
     setType('expense')
     setCategory(categories[0]?.name ?? '')
-    setIsRecurring(false)
-    setFrequency('monthly')
-    setInstallmentTotal('')
-    setEndDate('')
     setCashEnabled(false)
     setCashTendered('')
     setChangeBillsWalletId('')
@@ -331,7 +323,6 @@ export function Transactions() {
     setWalletId(transaction.wallet_id ?? wallets[0]?.id ?? '')
     setTransferWalletId(transaction.transfer_wallet_id ?? wallets.find(wallet => wallet.id !== transaction.wallet_id)?.id ?? '')
     setType(transaction.type === 'income' || transaction.type === 'transfer' ? transaction.type : 'expense')
-    setIsRecurring(false)
     if (transaction.cash_tendered && transaction.cash_tendered > 0) {
       const origCurrency = transaction.original_currency ?? money.displayCurrency
       const tenderedInOrig = money.fromBase(transaction.cash_tendered, origCurrency)
@@ -397,7 +388,6 @@ export function Transactions() {
     const baseAmount = money.toBase(parsedAmount, inputCurrency)
     const baseTendered = cashEnabled ? money.toBase(parsedTendered, inputCurrency) : 0
     const baseChange = Math.max(0, baseTendered - baseAmount)
-    const parsedInstallments = parseInt(installmentTotal.replace(/[^\d]/g, ''), 10)
 
     // Compute split data
     const computedSplitPortions = splitEnabled && splitPortions.length >= 2
@@ -591,26 +581,6 @@ export function Transactions() {
             recurring_rule_id: null, recurring_due_date: null, date,
             needs_review: false, is_system_generated: true,
             linked_transaction_id: savedTx.id, cash_tendered: null,
-          })
-        }
-        if (isRecurring) {
-          const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
-          await addRecurringRule.mutateAsync({
-            description: description.trim(),
-            amount: baseAmount,
-            original_amount: parsedAmount,
-            original_currency: inputCurrency,
-            type,
-            category: type === 'transfer' ? 'Transfer' : txCategory,
-            wallet_id: walletId || null,
-            transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
-            start_date: date,
-            next_due_date: addRecurringInterval(date, frequency),
-            frequency,
-            end_date: endDate || null,
-            installment_total: Number.isFinite(parsedInstallments) ? parsedInstallments : null,
-            installment_paid: Number.isFinite(parsedInstallments) ? 1 : 0,
-            active: !completedAtStart,
           })
         }
         toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · change routed to wallet` : 'Transaction added')
@@ -885,7 +855,7 @@ export function Transactions() {
           <div key={label} className="relative rounded-[1.4rem] border border-border bg-card px-6 py-5">
             <span className={`absolute right-7 top-7 h-4 w-4 rounded-full ${dot}`} />
             <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="mt-4 break-words text-[1.65rem] font-extrabold leading-none text-foreground sm:text-[2rem]">{value}</p>
+            <p className="mt-4 break-words text-[1.35rem] font-extrabold leading-tight text-foreground sm:text-[2rem]">{value}</p>
             <p className="mt-6 text-sm text-muted-foreground">{sub}</p>
           </div>
         ))}
@@ -933,7 +903,7 @@ export function Transactions() {
               </div>
               <Input
                 aria-label="Amount"
-                readOnly
+                readOnly={!isDesktop}
                 data-keypad-trigger="amount"
                 className="mx-auto h-16 w-full cursor-pointer border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
                 value={amount}
@@ -1161,7 +1131,7 @@ export function Transactions() {
                       <Label className="text-xs font-bold text-muted-foreground">Fee amount ({inputCurrency})</Label>
                       <Input
                         aria-label="Transfer fee amount"
-                        readOnly
+                        readOnly={!isDesktop}
                         className="mt-2 bg-secondary"
                         value={transferFeeAmount}
                         placeholder="0"
@@ -1458,45 +1428,6 @@ export function Transactions() {
                   )
                 })()}
 
-                {/* Recurring */}
-                {!editingTransaction && (
-                  <div className="rounded-[1.25rem] border border-border bg-card p-4">
-                    <label className="flex items-center justify-between gap-4">
-                      <span>
-                        <span className="block text-sm font-extrabold text-foreground">Recurring / Installment</span>
-                        <span className="mt-1 block text-xs text-muted-foreground">For rent, subscriptions, salary, or installments.</span>
-                      </span>
-                      <input
-                        aria-label="Recurring / Installment"
-                        type="checkbox"
-                        className="h-5 w-5 accent-primary"
-                        checked={isRecurring}
-                        onChange={event => setIsRecurring(event.target.checked)}
-                      />
-                    </label>
-                    {isRecurring && (
-                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                          <Label className="text-xs font-bold text-muted-foreground">Repeat</Label>
-                          <select aria-label="Recurring frequency" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={frequency} onChange={event => setFrequency(event.target.value as RecurringFrequency)}>
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="yearly">Yearly</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label className="text-xs font-bold text-muted-foreground">Installments</Label>
-                          <Input aria-label="Installment count" className="mt-2 bg-secondary" inputMode="numeric" value={installmentTotal} onChange={event => setInstallmentTotal(formatNumberInput(event.target.value))} placeholder="Empty = no limit" />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <Label className="text-xs font-bold text-muted-foreground">End date</Label>
-                          <Input aria-label="Recurring end date" className="mt-2 bg-secondary" type="date" value={endDate} onChange={event => setEndDate(event.target.value)} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
             {editingTransaction?.needs_review && (
@@ -2281,8 +2212,22 @@ export function Transactions() {
             const transferWallet = wallets.find(w => w.id === tx.transfer_wallet_id)
             const changeAmount = tx.cash_tendered && tx.cash_tendered > 0 ? tx.cash_tendered - (tx.original_amount ?? tx.amount) : 0
             const linkedChangeTx = transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated)
+            const navigateToForm = (fn: () => void) => { setDetailTx(null); setTimeout(fn, 200) }
             return (
               <div>
+                {/* Mobile close handle — larger touch target than the tiny X */}
+                {!isDesktop && (
+                  <div className="flex items-center justify-between px-6 pb-2 pt-1">
+                    <span className="text-xs font-bold text-muted-foreground">Transaction detail</span>
+                    <button
+                      type="button"
+                      className="rounded-full bg-secondary px-4 py-2 text-sm font-bold text-foreground active:scale-95"
+                      onClick={() => setDetailTx(null)}
+                    >
+                      Done
+                    </button>
+                  </div>
+                )}
                 <div className="px-6 pb-4 pt-2">
                   <SheetHeader className="mb-4 text-left">
                     <SheetTitle className="text-base font-extrabold">{tx.description}</SheetTitle>
@@ -2419,7 +2364,7 @@ export function Transactions() {
                     <Button
                       className="h-14 flex-1 gap-2"
                       variant="secondary"
-                      onClick={() => { setDetailTx(null); openEditForm(tx) }}
+                      onClick={() => navigateToForm(() => openEditForm(tx))}
                     >
                       <Pencil size={15} />Edit
                     </Button>

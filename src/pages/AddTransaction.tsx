@@ -65,12 +65,7 @@ export function AddTransaction() {
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
   const [transferWalletId, setTransferWalletId] = useState('')
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
-  const [installmentTotal, setInstallmentTotal] = useState('')
-  const [endDate, setEndDate] = useState('')
   const [scanning, setScanning] = useState(false)
-  const [showRecurring, setShowRecurring] = useState(false)
   const [showCashSection, setShowCashSection] = useState(paramCash)
   const [activeKeypad, setActiveKeypadRaw] = useState<ActiveKeypad>(null)
 
@@ -145,11 +140,6 @@ export function AddTransaction() {
     setCategory(categories[0]?.name ?? '')
     setWalletId(wallets[0]?.id ?? '')
     setTransferWalletId(wallets[1]?.id ?? '')
-    setIsRecurring(false)
-    setShowRecurring(false)
-    setFrequency('monthly')
-    setInstallmentTotal('')
-    setEndDate('')
     setShowCashSection(false)
     setActiveKeypad(null)
     setCashEnabled(false)
@@ -220,7 +210,6 @@ export function AddTransaction() {
     const baseAmount = money.toBase(parsedAmount, inputCurrency)
     const baseTendered = cashEnabled ? money.toBase(parsedTendered, inputCurrency) : 0
     const baseChange = Math.max(0, baseTendered - baseAmount)
-    const parsedInstallments = parseInt(installmentTotal.replace(/[^\d]/g, ''), 10)
 
     const payload = {
       description: safeDescription,
@@ -300,27 +289,6 @@ export function AddTransaction() {
         if (changeTxIds.length > 0) {
           await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: changeTxIds[0] })
         }
-      }
-
-      if (isRecurring) {
-        const completedAtStart = Number.isFinite(parsedInstallments) && parsedInstallments <= 1
-        await addRecurringRule.mutateAsync({
-          description: safeDescription,
-          amount: baseAmount,
-          original_amount: parsedAmount,
-          original_currency: inputCurrency,
-          type,
-          category: type === 'transfer' ? 'Transfer' : (selectedCategory || 'Other'),
-          wallet_id: walletId || null,
-          transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
-          start_date: date,
-          next_due_date: addRecurringInterval(date, frequency),
-          frequency,
-          end_date: endDate || null,
-          installment_total: Number.isFinite(parsedInstallments) ? parsedInstallments : null,
-          installment_paid: Number.isFinite(parsedInstallments) ? 1 : 0,
-          active: !completedAtStart,
-        })
       }
 
       if (walletId) localStorage.setItem(LAST_WALLET_KEY, walletId)
@@ -429,7 +397,7 @@ export function AddTransaction() {
           <Input
             ref={amountInputRef}
             aria-label="Amount"
-            readOnly
+            readOnly={!isDesktop}
             className="h-16 w-48 cursor-pointer border-0 bg-transparent text-center text-5xl font-extrabold shadow-none focus-visible:ring-0"
             value={amount}
             placeholder="0"
@@ -653,7 +621,7 @@ export function AddTransaction() {
                   <Input
                     aria-label="Cash given"
                     className="mt-2 cursor-pointer bg-secondary"
-                    readOnly
+                    readOnly={!isDesktop}
                     value={cashTendered}
                     placeholder="Amount you handed over"
                     data-keypad-trigger="cash"
@@ -815,71 +783,6 @@ export function AddTransaction() {
           </div>
         )}
 
-        {/* ── Recurring / Installment ── */}
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-4"
-            onClick={() => setShowRecurring(v => !v)}
-          >
-            <span>
-              <span className="block text-sm font-extrabold text-foreground">Recurring / Installment</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">Rent, subscriptions, salary, or installments.</span>
-            </span>
-            <div className="flex items-center gap-2">
-              <span
-                role="switch"
-                aria-checked={isRecurring}
-                aria-label="Recurring / Installment"
-                onClick={e => { e.stopPropagation(); setIsRecurring(!isRecurring); setShowRecurring(true) }}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors ${isRecurring ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${isRecurring ? 'translate-x-6' : 'translate-x-1'}`} />
-              </span>
-              {showRecurring ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </div>
-          </button>
-
-          {isRecurring && showRecurring && (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-bold text-muted-foreground">Repeat</Label>
-                <select
-                  aria-label="Recurring frequency"
-                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                  value={frequency}
-                  onChange={e => setFrequency(e.target.value as RecurringFrequency)}
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-              <div>
-                <Label className="text-xs font-bold text-muted-foreground">Installments</Label>
-                <Input
-                  aria-label="Installment count"
-                  className="mt-2 bg-secondary"
-                  inputMode="numeric"
-                  value={installmentTotal}
-                  onChange={e => setInstallmentTotal(formatNumberInput(e.target.value))}
-                  placeholder="No limit"
-                />
-              </div>
-              <div className="col-span-2">
-                <Label className="text-xs font-bold text-muted-foreground">End date</Label>
-                <Input
-                  aria-label="Recurring end date"
-                  className="mt-2 bg-secondary"
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* ── Fixed: MoneyKeypad ── */}

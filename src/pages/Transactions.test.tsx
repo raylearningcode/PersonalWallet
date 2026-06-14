@@ -176,31 +176,6 @@ describe('Transactions', () => {
     }))
   })
 
-  it('creates a recurring installment rule from the transaction form', async () => {
-    renderTx()
-
-    fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
-    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Laptop cicilan' } })
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '1000' } })
-    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-27' } })
-    fireEvent.click(screen.getByLabelText('Recurring / Installment'))
-    fireEvent.change(screen.getByLabelText('Recurring frequency'), { target: { value: 'monthly' } })
-    fireEvent.change(screen.getByLabelText('Installment count'), { target: { value: '12' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }))
-
-    await waitFor(() => expect(addRecurringRule).toHaveBeenCalledWith(expect.objectContaining({
-      description: 'Laptop cicilan',
-      original_amount: 1000,
-      original_currency: 'TWD',
-      frequency: 'monthly',
-      start_date: '2026-05-27',
-      next_due_date: '2026-06-27',
-      installment_total: 12,
-      installment_paid: 1,
-      active: true,
-    })))
-  })
-
   it('asks with an in-app dialog before deleting a transaction', () => {
     renderTx()
 

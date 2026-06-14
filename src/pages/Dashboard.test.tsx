@@ -18,6 +18,8 @@ vi.mock('@/lib/queries', () => ({
   useWallets: () => ({ data: [] }),
   useRecurringRules: () => ({ data: [] }),
   useGoals: () => ({ data: [] }),
+  useAddTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddWallet: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/lib/currency', () => ({

@@ -4,6 +4,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AndroidBackHandler } from '@/components/native/AndroidBackHandler'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthSession, useRecurringRules } from '@/lib/queries'
+import { hasGuestData } from '@/lib/localStore'
 import { getQueue } from '@/lib/offlineCache'
 import { processSyncQueue } from '@/lib/syncQueue'
 import { scheduleUpcomingBillNotifications } from '@/lib/notifications'
@@ -16,6 +17,7 @@ import { MoreSheet } from './MoreSheet'
 import { QuickAddSheet } from './QuickAddSheet'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 import { NotificationsSheet } from './NotificationsSheet'
+import { OnboardingFlow, isOnboardingDone } from '@/components/onboarding/OnboardingFlow'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { DollarSign, ArrowLeftRight, TrendingUp, Target, RefreshCw, Banknote } from 'lucide-react'
 
@@ -69,6 +71,7 @@ export function AppLayout() {
   const [offline, setOffline] = useState(() => !navigator.onLine)
   const [syncing, setSyncing] = useState(false)
   const isGuest = session === null
+  const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone() && !hasGuestData())
 
   const openQuickAction = (actionType: QuickAddType | 'cash') => {
     localStorage.setItem(LAST_QUICK_ACTION_KEY, actionType)
@@ -182,6 +185,9 @@ export function AppLayout() {
     <div className="min-h-screen bg-background">
       <AndroidBackHandler closeTopSheet={closeTopSheet} />
       <ResponsiveToaster />
+      {showOnboarding && (
+        <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
+      )}
       <Sidebar profileOpen={profileOpen} onProfileOpenChange={setProfileOpen} />
       <main
         className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-28 sm:px-6 lg:ml-[240px] lg:w-[calc(100vw-275px)] lg:max-w-[1440px] lg:px-0 lg:py-6 lg:pb-8 lg:pr-8"
