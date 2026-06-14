@@ -37,6 +37,10 @@ vi.mock('@/lib/gemini', () => ({
   scanReceipt: vi.fn(),
 }))
 
+vi.mock('@/hooks/useIsDesktop', () => ({
+  useIsDesktop: () => false,
+}))
+
 describe('QuickAddSheet keypad behavior', () => {
   it('opens the money keypad from the amount field and closes it from confirm', () => {
     render(

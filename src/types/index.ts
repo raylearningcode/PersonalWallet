@@ -16,7 +16,19 @@ export interface Transaction {
   is_system_generated?: boolean | null
   linked_transaction_id?: string | null
   cash_tendered?: number | null
+  split_portions?: SplitPortion[] | null
+  wallet_splits?: WalletSplit[] | null
   created_at?: string
+}
+
+export interface SplitPortion {
+  category: string
+  amount: number
+}
+
+export interface WalletSplit {
+  wallet_id: string
+  amount: number
 }
 
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -66,16 +78,6 @@ export interface BudgetCategory {
   created_at?: string
 }
 
-export interface BudgetRule {
-  id: string
-  user_id?: string | null
-  name: string
-  category: string
-  rule_type: 'cap' | 'minimum' | 'flexible' | 'emergency_months'
-  value: number
-  created_at?: string
-}
-
 export interface AllocationItem {
   name: string
   pct: number
@@ -93,6 +95,33 @@ export interface InvestmentConfig {
   duration_years: number
   current_value: number
   allocations: AllocationItem[]
+  inflation_rate?: number
+  lump_sum?: number
+  created_at?: string
+}
+
+export type AssetType = 'stock' | 'crypto' | 'etf' | 'bond' | 'other'
+
+export interface Holding {
+  id: string
+  user_id?: string | null
+  name: string
+  ticker: string
+  asset_type: AssetType
+  quantity: number
+  buy_price: number
+  buy_date: string
+  currency: string
+  current_price?: number | null
+  created_at?: string
+}
+
+export interface DividendLog {
+  id: string
+  user_id?: string | null
+  holding_id: string
+  amount: number
+  date: string
   created_at?: string
 }
 

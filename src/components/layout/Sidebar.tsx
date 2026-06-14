@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { BarChart3, Calculator, CreditCard, HardDrive, LayoutDashboard, PieChart, RefreshCw, Settings, Shield, Target, TrendingUp, User, Coins } from 'lucide-react'
+import { BarChart3, Calculator, CalendarDays, CreditCard, HardDrive, LayoutDashboard, PieChart, RefreshCw, Settings, Shield, Target, TrendingUp, User, Coins } from 'lucide-react'
 import { useGoals, useAuthSession, useSignIn, useSignUp, useSignOut, useAppSettings } from '@/lib/queries'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ const navItems = [
   { to: '/transactions', label: 'Transactions', icon: CreditCard },
   { to: '/budget', label: 'Budget', icon: PieChart },
   { to: '/goals', label: 'Goals', icon: Target },
+  { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/estimation', label: 'Planning', icon: Calculator },
   { to: '/subscriptions', label: 'Recurring', icon: RefreshCw },
   { to: '/investing', label: 'Investing', icon: TrendingUp },

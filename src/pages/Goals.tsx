@@ -431,7 +431,7 @@ export function Goals() {
         }
       />
 
-      <div className="mb-8 hidden lg:grid lg:grid-cols-4 lg:gap-6">
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
         <StatCard
           label="Goals set"
           value={String(goals.length)}

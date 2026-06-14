@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
-  useBudgetRules, useAddBudgetRule,
   useRenameWallet, useUpdateWallet,
   useAuthSession, useSignIn, useSignUp, useSignOut,
   useWallets, useAddWallet, useDeleteWallet,
@@ -22,22 +21,20 @@ import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { X, Eye, EyeOff, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
+import { X, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
-import { getGeminiKey, saveGeminiKey } from '@/lib/gemini'
 import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
 import { parseNumberInput, formatNumberInput } from '@/lib/numberInput'
 import { getQueue } from '@/lib/offlineCache'
 
-const tabs = ['profile', 'wallets', 'categories', 'ai', 'security', 'backup'] as const
+const tabs = ['profile', 'wallets', 'categories', 'security', 'backup'] as const
 type SettingsTab = typeof tabs[number]
 const TAB_META: Record<SettingsTab, { label: string; desc: string; Icon: ElementType; color: string }> = {
   profile:    { label: 'Profile',        desc: 'Name, currency & account',  Icon: User,        color: '#A9F5C7' },
   wallets:    { label: 'Wallets',        desc: 'Cash, bank & cards',        Icon: WalletIcon,  color: '#93C5FD' },
   categories: { label: 'Categories',     desc: 'Budget categories',         Icon: Tag,         color: '#FFD276' },
-  ai:         { label: 'AI Features',    desc: 'Gemini AI integration',     Icon: Sparkles,    color: '#C4AEFF' },
   security:   { label: 'Security',       desc: 'PIN lock & privacy',        Icon: Shield,      color: '#FADBEA' },
   backup:     { label: 'Backup & Export',desc: 'Export & import data',      Icon: HardDrive,   color: '#F8DCDC' },
 }
@@ -80,13 +77,11 @@ export function Settings() {
   const updateWallet = useUpdateWallet()
   const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
-  const { data: budgetRules = [] } = useBudgetRules()
   const { data: investmentConfig } = useInvestmentConfig()
   const { data: estimationPlans = [] } = useEstimationPlans()
   const addWallet = useAddWallet()
   const deleteWallet = useDeleteWallet()
   const addTransaction = useAddTransaction()
-  const addBudgetRule = useAddBudgetRule()
   const saveInvestmentConfig = useSaveInvestmentConfig()
   const upsertEstimationPlan = useUpsertEstimationPlan()
 
@@ -142,6 +137,7 @@ export function Settings() {
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
   const [walletCashRole, setWalletCashRole] = useState<CashRole | ''>('')
   const [walletInitBalance, setWalletInitBalance] = useState('')
+  const [showAddWallet, setShowAddWallet] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
@@ -153,8 +149,6 @@ export function Settings() {
   const [lastExportDate, setLastExportDate] = useState(() => localStorage.getItem('finpath_last_export') ?? '')
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
-  const [geminiKey, setGeminiKey] = useState(() => getGeminiKey() ?? '')
-  const [showGeminiKey, setShowGeminiKey] = useState(false)
   const [fiftyCoinRouting, setFiftyCoinRoutingState] = useState<FiftyCoinRouting>(() => getFiftyCoinRouting())
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
@@ -359,7 +353,6 @@ export function Settings() {
     settings,
     wallets,
     budget_categories: categories,
-    budget_rules: budgetRules,
     investment_config: investmentConfig,
     estimation_plans: estimationPlans,
     transactions,
@@ -416,7 +409,6 @@ export function Settings() {
     const data = backupPreview ? (backupPreview.parsed as Record<string, unknown[]>) : JSON.parse(backupText)
     for (const wallet of (data.wallets as Record<string, unknown>[] ?? [])) await addWallet.mutateAsync(stripSystemFields(wallet) as Parameters<typeof addWallet.mutateAsync>[0])
     for (const category of (data.budget_categories as Record<string, unknown>[] ?? [])) await addCategory.mutateAsync(stripSystemFields(category) as Parameters<typeof addCategory.mutateAsync>[0])
-    for (const rule of (data.budget_rules as Record<string, unknown>[] ?? [])) await addBudgetRule.mutateAsync(stripSystemFields(rule) as Parameters<typeof addBudgetRule.mutateAsync>[0])
     if (data.investment_config) await saveInvestmentConfig.mutateAsync(stripSystemFields(data.investment_config as Record<string, unknown>))
     for (const plan of (data.estimation_plans as Record<string, unknown>[] ?? [])) await upsertEstimationPlan.mutateAsync(stripSystemFields(plan) as Parameters<typeof upsertEstimationPlan.mutateAsync>[0])
     for (const tx of (data.transactions as Record<string, unknown>[] ?? [])) await addTransaction.mutateAsync(stripSystemFields(tx) as Parameters<typeof addTransaction.mutateAsync>[0])
@@ -490,7 +482,7 @@ export function Settings() {
       {/* Mobile: native-style settings list (shown when no page selected) */}
       {!effectiveTab && (
         <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
-          {tabs.filter(t => t !== 'ai').map((tab) => {
+          {tabs.map((tab) => {
             const { label, desc, Icon, color } = TAB_META[tab]
             return (
               <button
@@ -572,10 +564,10 @@ export function Settings() {
               </CardContent>
             </Card>
           )}
-          <Card className="mb-8 lg:hidden">
+          <Card className="mb-8">
             <CardHeader>
               <CardTitle className="text-xl">Account access</CardTitle>
-              <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. On desktop, use the profile icon in the sidebar.</p>
+              <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. You can also use the profile icon in the sidebar.</p>
             </CardHeader>
             <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
               {session ? (
@@ -692,7 +684,14 @@ export function Settings() {
             <p className="text-sm text-muted-foreground">Add cash wallets, bank accounts, cards, and e-wallets for transaction tracking.</p>
           </CardHeader>
           <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
+            {!showAddWallet ? (
+              <Button variant="secondary" className="w-full" onClick={() => setShowAddWallet(true)}>+ Add wallet</Button>
+            ) : (
             <div className="space-y-4 rounded-2xl border border-border bg-secondary/40 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-extrabold text-foreground">New wallet</p>
+                <button onClick={() => setShowAddWallet(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+              </div>
               <div>
                 <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Wallet type</p>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -756,7 +755,8 @@ export function Settings() {
                 <Button onClick={handleAddWallet} disabled={addWallet.isPending || !walletName.trim()}>Add wallet</Button>
               </div>
             </div>
-            <div className="max-h-[320px] overflow-y-auto space-y-5 pr-1">
+            )}
+            <div className="space-y-5 pr-1">
               {walletGroups.map(group => (
                 <div key={group.type}>
                   <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -934,94 +934,6 @@ export function Settings() {
         </Card>
       )}
 
-      {/* AI Features tab */}
-      {effectiveTab === 'ai' && !isDesktop && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-xl">AI status</CardTitle>
-            <p className="text-sm text-muted-foreground">Desktop setup required for API keys. Mobile only shows whether AI is enabled.</p>
-          </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6">
-            <div className={`rounded-2xl border px-4 py-3 ${geminiKey ? 'border-primary/30 bg-primary/5' : 'border-[#FFCF73]/30 bg-[#FFCF73]/5'}`}>
-              <p className={`text-sm font-extrabold ${geminiKey ? 'text-primary' : 'text-[#FFCF73]'}`}>
-                {geminiKey ? 'AI enabled' : 'AI disabled'}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {geminiKey
-                  ? 'Receipt scanning and generated insights can use your saved desktop setup.'
-                  : 'Set up your Gemini API key from desktop to enable AI summaries and receipt scanning.'}
-              </p>
-            </div>
-            <Button variant="secondary" className="w-full" onClick={() => toast.info('Open FinPath on desktop, then go to Settings -> AI status.')}>
-              Open on desktop
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-      {effectiveTab === 'ai' && isDesktop && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-xl">AI Features</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Power receipt scanning and spending insights with the free{' '}
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="font-bold text-primary underline-offset-2 hover:underline">
-                Gemini API
-              </a>
-              . Get a free key at aistudio.google.com.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            {/* Privacy explanation */}
-            <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
-              <Shield className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <div className="space-y-2 text-sm">
-                <p className="font-bold text-foreground">What FinPath AI can access:</p>
-                <ul className="space-y-1 text-muted-foreground">
-                  <li>· Your spending categories and amounts</li>
-                  <li>· Budget limits and usage percentages</li>
-                  <li>· Goal names and progress</li>
-                  <li>· Monthly income and expense totals</li>
-                </ul>
-                <p className="font-bold text-foreground">What is NOT shared:</p>
-                <p className="text-muted-foreground">Transaction descriptions, merchant names, wallet details, or any personal account info.</p>
-                <p className="text-xs text-primary">Your API key is stored only in your browser's localStorage. It is never sent to FinPath's servers.</p>
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">Gemini API key</Label>
-              <div className="mt-2 flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    aria-label="Gemini API key"
-                    className="bg-secondary pr-10 font-mono text-sm"
-                    type={showGeminiKey ? 'text' : 'password'}
-                    value={geminiKey}
-                    onChange={e => setGeminiKey(e.target.value)}
-                    placeholder="AIzaSy…"
-                  />
-                  <button
-                    type="button"
-                    aria-label={showGeminiKey ? 'Hide key' : 'Show key'}
-                    onClick={() => setShowGeminiKey(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showGeminiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <Button
-                  onClick={() => {
-                    saveGeminiKey(geminiKey.trim())
-                    toast.success(geminiKey.trim() ? 'Gemini API key saved' : 'Gemini API key removed')
-                  }}
-                >
-                  Save
-                </Button>
-              </div>
-              {geminiKey && <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><Check className="h-3 w-3 shrink-0" /> Key saved — receipt scanning and AI insights are enabled</p>}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Security tab */}
       {effectiveTab === 'security' && (

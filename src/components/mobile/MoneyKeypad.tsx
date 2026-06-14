@@ -77,7 +77,8 @@ export function MoneyKeypad({
   if (isPanel) {
     return (
       <div
-        className="rounded-t-[2rem] border border-border bg-[#171717] px-3 pb-4 pt-2 shadow-2xl"
+        className="rounded-t-[2rem] border border-border bg-[#171717] px-3 pt-2 shadow-2xl"
+        style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
         data-testid="money-keypad"
       >
         <div className="mx-auto mb-3 h-1.5 w-16 rounded-full bg-white/10" />

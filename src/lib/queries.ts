@@ -7,9 +7,10 @@ import {
 import type {
   AppSettings,
   BudgetCategory,
-  BudgetRule,
+  DividendLog,
   EstimationPlan,
   Goal,
+  Holding,
   InvestmentConfig,
   RecurringRule,
   Transaction,
@@ -25,6 +26,8 @@ import {
   localGetInvestment, localSaveInvestment,
   localGetPlans, localUpsertPlan,
   localGetGoals, localAddGoal, localUpdateGoal, localDeleteGoal,
+  localGetHoldings, localAddHolding, localUpdateHolding, localDeleteHolding,
+  localGetDividends, localAddDividend, localDeleteDividend,
   hasGuestData, clearGuestData, getGuestDataForMigration,
 } from './localStore'
 
@@ -33,11 +36,12 @@ const accountQueryKeys = [
   ['recurring_rules'],
   ['wallets'],
   ['budget_categories'],
-  ['budget_rules'],
   ['investment_config'],
   ['estimation_plans'],
   ['app_settings'],
   ['goals'],
+  ['holdings'],
+  ['dividends'],
 ]
 
 async function getCurrentUserId() {
@@ -58,15 +62,9 @@ function invalidateAccountQueries(qc: ReturnType<typeof useQueryClient>) {
   accountQueryKeys.forEach(queryKey => qc.invalidateQueries({ queryKey }))
 }
 
-async function requireUserId(action: string) {
-  const userId = await getCurrentUserId()
-  if (!userId) throw new Error(`Log in before ${action}.`)
-  return userId
-}
-
 async function migrateGuestDataToAccount(userId: string): Promise<number> {
   const guestData = getGuestDataForMigration()
-  const { transactions, wallets, categories, rules, plans, goals, investment } = guestData
+  const { transactions, wallets, categories, rules, plans, goals, investment, holdings, dividends } = guestData
   const strip = <T extends { user_id?: string | null; created_at?: string }>(
     items: T[]
   ): (Omit<T, 'user_id'> & { user_id: string })[] =>
@@ -105,9 +103,17 @@ async function migrateGuestDataToAccount(userId: string): Promise<number> {
     const { error } = await supabase.from('investment_config').insert({ ...inv, user_id: userId })
     if (error) throw error
   }
+  if (holdings.length) {
+    const { error } = await supabase.from('holdings').insert(strip(holdings))
+    if (error) throw error
+  }
+  if (dividends.length) {
+    const { error } = await supabase.from('dividend_logs').insert(strip(dividends))
+    if (error) throw error
+  }
 
   clearGuestData()
-  return wallets.length + categories.length + rules.length + transactions.length + plans.length + goals.length + (investment ? 1 : 0)
+  return wallets.length + categories.length + rules.length + transactions.length + plans.length + goals.length + (investment ? 1 : 0) + holdings.length + dividends.length
 }
 
 export function useTransactions(filter = 'all') {
@@ -685,33 +691,6 @@ export function useUpdateBudgetCategory() {
   })
 }
 
-export function useBudgetRules() {
-  return useQuery({
-    queryKey: ['budget_rules'],
-    queryFn: async () => {
-      const userId = await getCurrentUserId()
-      if (!userId) return []
-      return fetchWithCache<BudgetRule[]>('budget_rules', async () => {
-        const { data, error } = await supabase.from('budget_rules').select('*').eq('user_id', userId)
-        if (error) throw error
-        return data as BudgetRule[]
-      }, [])
-    },
-  })
-}
-
-export function useAddBudgetRule() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (rule: Omit<BudgetRule, 'id' | 'created_at'>) => {
-      const userId = await requireUserId('adding budget rules')
-      const { data, error } = await supabase.from('budget_rules').insert({ ...rule, user_id: userId }).select().single()
-      if (error) throw error
-      return data as BudgetRule
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['budget_rules'] }),
-  })
-}
 
 export function useInvestmentConfig() {
   return useQuery({
@@ -981,6 +960,185 @@ export function useSaveAppSettings() {
   })
 }
 
+// ─── Holdings ─────────────────────────────────────────────────────────────────
+
+export function useHoldings() {
+  return useQuery({
+    queryKey: ['holdings'],
+    queryFn: async () => {
+      const userId = await getCurrentUserId()
+      if (!userId) return localGetHoldings()
+      return fetchWithCache<Holding[]>('holdings', async () => {
+        const { data, error } = await supabase.from('holdings').select('*').eq('user_id', userId).order('created_at')
+        if (error) throw error
+        return (data ?? []) as Holding[]
+      }, [])
+    },
+  })
+}
+
+export function useAddHolding() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (holding: Omit<Holding, 'id' | 'created_at'>) => {
+      const userId = await getCurrentUserId()
+      if (!userId) return localAddHolding(holding)
+      const tempId = crypto.randomUUID()
+      const tempItem: Holding = { ...holding, id: tempId, user_id: userId, created_at: new Date().toISOString() }
+      if (isOffline()) {
+        cacheAddItem('holdings', tempItem)
+        enqueue({ table: 'holdings', op: 'insert', data: { ...holding, user_id: userId, id: tempId }, userId })
+        return tempItem
+      }
+      try {
+        const { data, error } = await supabase.from('holdings').insert({ ...holding, user_id: userId }).select().single()
+        if (error) throw error
+        return data as Holding
+      } catch (e) {
+        if (isNetworkError(e)) {
+          cacheAddItem('holdings', tempItem)
+          enqueue({ table: 'holdings', op: 'insert', data: { ...holding, user_id: userId, id: tempId }, userId })
+          return tempItem
+        }
+        throw e
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['holdings'] }),
+  })
+}
+
+export function useUpdateHolding() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<Omit<Holding, 'created_at'>> & { id: string }) => {
+      const userId = await getCurrentUserId()
+      if (!userId) return localUpdateHolding(id, patch)
+      if (isOffline()) {
+        cacheUpdateItem('holdings', id, patch)
+        enqueue({ table: 'holdings', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })
+        return { id, ...patch } as Holding
+      }
+      try {
+        const { data, error } = await supabase.from('holdings').update(patch).eq('id', id).eq('user_id', userId).select().single()
+        if (error) throw error
+        return data as Holding
+      } catch (e) {
+        if (isNetworkError(e)) {
+          cacheUpdateItem('holdings', id, patch)
+          enqueue({ table: 'holdings', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })
+          return { id, ...patch } as Holding
+        }
+        throw e
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['holdings'] }),
+  })
+}
+
+export function useDeleteHolding() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const userId = await getCurrentUserId()
+      if (!userId) { localDeleteHolding(id); return }
+      if (isOffline()) {
+        cacheDeleteItem('holdings', id)
+        enqueue({ table: 'holdings', op: 'delete', matchId: id, userId })
+        return
+      }
+      try {
+        const { error } = await supabase.from('holdings').delete().eq('id', id).eq('user_id', userId)
+        if (error) throw error
+      } catch (e) {
+        if (isNetworkError(e)) {
+          cacheDeleteItem('holdings', id)
+          enqueue({ table: 'holdings', op: 'delete', matchId: id, userId })
+          return
+        }
+        throw e
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['holdings'] }),
+  })
+}
+
+// ─── Dividend Logs ────────────────────────────────────────────────────────────
+
+export function useDividends(holdingId?: string) {
+  return useQuery({
+    queryKey: ['dividends', holdingId ?? 'all'],
+    queryFn: async () => {
+      const userId = await getCurrentUserId()
+      if (!userId) return localGetDividends(holdingId)
+      const cacheKey = `dividends_${holdingId ?? 'all'}`
+      return fetchWithCache<DividendLog[]>(cacheKey, async () => {
+        let q = supabase.from('dividend_logs').select('*').eq('user_id', userId).order('date', { ascending: false })
+        if (holdingId) q = q.eq('holding_id', holdingId)
+        const { data, error } = await q
+        if (error) throw error
+        return (data ?? []) as DividendLog[]
+      }, [])
+    },
+  })
+}
+
+export function useAddDividend() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (log: Omit<DividendLog, 'id' | 'created_at'>) => {
+      const userId = await getCurrentUserId()
+      if (!userId) return localAddDividend(log)
+      const tempId = crypto.randomUUID()
+      const tempItem: DividendLog = { ...log, id: tempId, user_id: userId, created_at: new Date().toISOString() }
+      if (isOffline()) {
+        cacheAddItem('dividends', tempItem)
+        enqueue({ table: 'dividend_logs', op: 'insert', data: { ...log, user_id: userId, id: tempId }, userId })
+        return tempItem
+      }
+      try {
+        const { data, error } = await supabase.from('dividend_logs').insert({ ...log, user_id: userId }).select().single()
+        if (error) throw error
+        return data as DividendLog
+      } catch (e) {
+        if (isNetworkError(e)) {
+          cacheAddItem('dividends', tempItem)
+          enqueue({ table: 'dividend_logs', op: 'insert', data: { ...log, user_id: userId, id: tempId }, userId })
+          return tempItem
+        }
+        throw e
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dividends'] }),
+  })
+}
+
+export function useDeleteDividend() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const userId = await getCurrentUserId()
+      if (!userId) { localDeleteDividend(id); return }
+      if (isOffline()) {
+        cacheDeleteItem('dividends', id)
+        enqueue({ table: 'dividend_logs', op: 'delete', matchId: id, userId })
+        return
+      }
+      try {
+        const { error } = await supabase.from('dividend_logs').delete().eq('id', id).eq('user_id', userId)
+        if (error) throw error
+      } catch (e) {
+        if (isNetworkError(e)) {
+          cacheDeleteItem('dividends', id)
+          enqueue({ table: 'dividend_logs', op: 'delete', matchId: id, userId })
+          return
+        }
+        throw e
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dividends'] }),
+  })
+}
+
 export function useAuthSession() {
   return useQuery({
     queryKey: ['auth_session'],
@@ -1046,11 +1204,12 @@ export function useSignOut() {
       qc.setQueryData(['recurring_rules'], [])
       qc.setQueryData(['wallets'], [])
       qc.setQueryData(['budget_categories'], [])
-      qc.setQueryData(['budget_rules'], [])
       qc.setQueryData(['investment_config'], null)
       qc.setQueryData(['estimation_plans'], [])
       qc.setQueryData(['app_settings'], null)
       qc.setQueryData(['goals'], [])
+      qc.setQueryData(['holdings'], [])
+      qc.setQueryData(['dividends'], [])
       invalidateAccountQueries(qc)
     },
   })

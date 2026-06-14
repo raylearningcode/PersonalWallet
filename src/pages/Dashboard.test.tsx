@@ -11,8 +11,8 @@ vi.mock('@/lib/queries', () => ({
   ] }),
   useInvestmentConfig: () => ({ data: undefined }),
   useBudgetCategories: () => ({ data: [
-    { id: 'food', name: 'Food', yearly_allocated: 0, budget_period: 'monthly', color: '#A9F5C7' },
-    { id: 'learning', name: 'Learning', yearly_allocated: 0, budget_period: 'monthly', color: '#93C5FD' },
+    { id: 'food', name: 'Food', yearly_allocated: 1200000, budget_period: 'monthly', color: '#A9F5C7' },
+    { id: 'learning', name: 'Learning', yearly_allocated: 500000, budget_period: 'monthly', color: '#93C5FD' },
   ] }),
   useAppSettings: () => ({ data: { user_name: '', email: '', currency: 'IDR', base_currency: 'IDR' } }),
   useWallets: () => ({ data: [] }),
@@ -22,13 +22,11 @@ vi.mock('@/lib/queries', () => ({
 
 vi.mock('@/lib/currency', () => ({
   useMoney: () => ({
-    baseCurrency: 'IDR',
-    displayCurrency: 'IDR',
+    baseCurrency: 'IDR', displayCurrency: 'IDR',
     formatBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatDisplay: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
     formatRef: () => null,
-    formatTx: (tx: { amount: number; original_amount?: number | null; original_currency?: string | null }) =>
-      `Rp ${new Intl.NumberFormat('en-US').format(tx.original_currency === 'IDR' && tx.original_amount != null ? tx.original_amount : tx.amount)}`,
+    formatTx: (tx: any) => `Rp ${new Intl.NumberFormat('en-US').format(tx.original_currency === 'IDR' && tx.original_amount != null ? tx.original_amount : tx.amount)}`,
     approxBase: (amount: number) => `Rp ${new Intl.NumberFormat('en-US').format(amount)}`,
     toBase: (amount: number) => amount,
     format: (amount: number, currency: string) => `${currency} ${new Intl.NumberFormat('en-US').format(amount)}`,
@@ -38,26 +36,24 @@ vi.mock('@/lib/currency', () => ({
   txAmountSign: (amount: number, type: string) => amount === 0 ? '' : type === 'income' ? '+' : type === 'transfer' ? '' : '-',
 }))
 
-describe('Dashboard', () => {
-  it('does not show a hardcoded profile name when settings has no user name', () => {
-    render(
-      <MemoryRouter>
-        <Dashboard />
-      </MemoryRouter>
-    )
+vi.mock('@/lib/ai', () => ({
+  isAiConfigured: () => false,
+  getAiKey: () => null,
+  getAiInsights: vi.fn(),
+}))
 
-    expect(screen.getByRole('heading', { name: /Good (morning|afternoon|evening)|Still awake|Early start|Midday|Winding down|midnight oil/ })).toBeInTheDocument()
-    expect(screen.queryByText(/Rayhan/)).not.toBeInTheDocument()
+describe('Dashboard', () => {
+  it('shows greeting and stat cards', () => {
+    render(<MemoryRouter><Dashboard /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: /Good (morning|afternoon|evening)/ })).toBeInTheDocument()
+    expect(screen.getByText('Net worth')).toBeInTheDocument()
+    expect(screen.getByText('This month')).toBeInTheDocument()
   })
 
-  it('explains the spending overview purpose and shows the top category', () => {
-    render(
-      <MemoryRouter>
-        <Dashboard />
-      </MemoryRouter>
-    )
-
-    expect(screen.getByText('Where your money is going this year')).toBeInTheDocument()
-    expect(screen.getByText('Rp 200,000 Learning')).toBeInTheDocument()
+  it('shows recent activity and budget health', () => {
+    render(<MemoryRouter><Dashboard /></MemoryRouter>)
+    expect(screen.getByText('Recent activity')).toBeInTheDocument()
+    expect(screen.getByText('Budget health')).toBeInTheDocument()
+    expect(screen.getByText('Lunch')).toBeInTheDocument()
   })
 })

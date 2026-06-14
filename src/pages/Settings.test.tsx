@@ -119,6 +119,7 @@ describe('Settings', () => {
     renderSettings()
 
     fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ Add wallet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Card' }))
     fireEvent.change(screen.getByLabelText('Wallet name'), { target: { value: 'Taiwan card' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }))

@@ -14,8 +14,23 @@ export function getDaysRemainingInMonth(date = new Date()) {
 export function getWalletBalances(wallets: Wallet[], transactions: Transaction[]) {
   const balances = new Map(wallets.map(wallet => [wallet.id, wallet.balance ?? 0]))
   transactions.forEach(tx => {
-    if (tx.type === 'income' && tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) + tx.amount)
-    if (tx.type !== 'income' && tx.type !== 'transfer' && tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
+    // Income
+    if (tx.type === 'income' && tx.wallet_id) {
+      balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) + tx.amount)
+    }
+    // Expense — with wallet splits support
+    if (tx.type !== 'income' && tx.type !== 'transfer') {
+      if (tx.wallet_splits && tx.wallet_splits.length > 0) {
+        // Multi-wallet: deduct from each wallet according to its split portion
+        tx.wallet_splits.forEach(ws => {
+          balances.set(ws.wallet_id, (balances.get(ws.wallet_id) ?? 0) - ws.amount)
+        })
+      } else if (tx.wallet_id) {
+        // Single wallet: deduct full amount
+        balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
+      }
+    }
+    // Transfer
     if (tx.type === 'transfer') {
       if (tx.wallet_id) balances.set(tx.wallet_id, (balances.get(tx.wallet_id) ?? 0) - tx.amount)
       if (tx.transfer_wallet_id) balances.set(tx.transfer_wallet_id, (balances.get(tx.transfer_wallet_id) ?? 0) + tx.amount)

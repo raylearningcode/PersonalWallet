@@ -715,7 +715,7 @@ export function Subscriptions() {
       {expenses.some(r => r.active) && (
         <div className="mb-8">
           <h2 className="mb-3 text-lg font-extrabold text-foreground">3-month outlook</h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {monthlyOutlook.map(({ label, total, count }) => (
               <div key={label} className="rounded-2xl border border-border bg-secondary px-4 py-3">
                 <p className="text-xs font-bold text-muted-foreground">{label}</p>

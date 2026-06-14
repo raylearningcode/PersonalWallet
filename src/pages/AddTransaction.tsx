@@ -20,7 +20,7 @@ import { hapticSuccess } from '@/lib/haptics'
 import { addRecurringInterval } from '@/lib/recurring'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { getTwdTenderOptions, pickQuickAddWallet } from '@/lib/quickAdd'
-import { scanReceipt, getGeminiKey } from '@/lib/gemini'
+import { scanReceipt, isAiConfigured } from '@/lib/ai'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { toast } from 'sonner'
@@ -161,8 +161,8 @@ export function AddTransaction() {
   const handleReceiptImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!getGeminiKey()) {
-      toast.error('Add a Gemini API key in Settings → AI Features to use receipt scanning')
+    if (!isAiConfigured()) {
+      toast.error('Set up your AI API in Settings → AI Features to use receipt scanning')
       return
     }
     setScanning(true)

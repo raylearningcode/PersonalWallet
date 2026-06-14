@@ -1,4 +1,4 @@
-import type { AppSettings, BudgetCategory, EstimationPlan, Goal, InvestmentConfig, RecurringRule, Transaction, Wallet } from '@/types'
+import type { AppSettings, BudgetCategory, DividendLog, EstimationPlan, Goal, Holding, InvestmentConfig, RecurringRule, Transaction, Wallet } from '@/types'
 import { getDueRecurringOccurrences, getNextRecurringState } from './recurring'
 
 const PFX = 'finpath_guest_'
@@ -247,6 +247,52 @@ export function localDeleteGoal(id: string): void {
   save('goals', localGetGoals().filter(g => g.id !== id))
 }
 
+// ─── Guest-mode holdings ──────────────────────────────────────────────────────
+
+export function localGetHoldings(): Holding[] {
+  return load<Holding[]>('holdings', [])
+}
+
+export function localAddHolding(holding: Omit<Holding, 'id' | 'created_at'>): Holding {
+  const holdings = localGetHoldings()
+  const item: Holding = { ...holding, id: newId(), created_at: nowIso() }
+  holdings.push(item)
+  save('holdings', holdings)
+  return item
+}
+
+export function localUpdateHolding(id: string, patch: Partial<Omit<Holding, 'id' | 'created_at'>>): Holding {
+  const holdings = localGetHoldings()
+  const idx = holdings.findIndex(h => h.id === id)
+  if (idx === -1) throw new Error('Holding not found')
+  holdings[idx] = { ...holdings[idx], ...patch }
+  save('holdings', holdings)
+  return holdings[idx]
+}
+
+export function localDeleteHolding(id: string): void {
+  save('holdings', localGetHoldings().filter(h => h.id !== id))
+}
+
+// ─── Guest-mode dividend logs ─────────────────────────────────────────────────
+
+export function localGetDividends(holdingId?: string): DividendLog[] {
+  const all = load<DividendLog[]>('dividends', [])
+  return holdingId ? all.filter(d => d.holding_id === holdingId) : all
+}
+
+export function localAddDividend(log: Omit<DividendLog, 'id' | 'created_at'>): DividendLog {
+  const all = localGetDividends()
+  const item: DividendLog = { ...log, id: newId(), created_at: nowIso() }
+  all.push(item)
+  save('dividends', all)
+  return item
+}
+
+export function localDeleteDividend(id: string): void {
+  save('dividends', localGetDividends().filter(d => d.id !== id))
+}
+
 // ─── Guest mode helpers ───────────────────────────────────────────────────────
 
 export function hasGuestData(): boolean {
@@ -262,7 +308,7 @@ export function hasGuestData(): boolean {
 }
 
 export function clearGuestData(): void {
-  const keys = ['transactions', 'wallets', 'categories', 'rules', 'settings', 'investment', 'plans', 'goals']
+  const keys = ['transactions', 'wallets', 'categories', 'rules', 'settings', 'investment', 'plans', 'goals', 'holdings', 'dividends']
   keys.forEach(k => {
     if (typeof window !== 'undefined') localStorage.removeItem(PFX + k)
   })
@@ -277,5 +323,7 @@ export function getGuestDataForMigration() {
     plans: localGetPlans(),
     goals: localGetGoals(),
     investment: localGetInvestment(),
+    holdings: localGetHoldings(),
+    dividends: localGetDividends(),
   }
 }

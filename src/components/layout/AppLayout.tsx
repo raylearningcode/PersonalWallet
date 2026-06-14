@@ -215,8 +215,8 @@ export function AppLayout() {
             </button>
           </div>
         )}
-        <div className="pointer-events-none mb-4 flex items-start justify-end lg:mb-0 lg:absolute lg:right-8 lg:top-6">
-          <div className="pointer-events-auto">
+        <div className="mb-4 flex items-start justify-end lg:mb-2 lg:-mt-1">
+          <div>
             <NotificationsSheet />
           </div>
         </div>

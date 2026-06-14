@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -106,9 +106,23 @@ export function Reports() {
   const [clickedBucket, setClickedBucket] = useState<string | null>(null)
   const [showInternalMoves, setShowInternalMoves] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [importText, setImportText] = useState('')
   const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    if (!showExportMenu) return
+    const handler = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showExportMenu])
 
   const allTxDates = useMemo(() => transactions.map(t => t.date), [transactions])
   const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate, allTxDates), [periodDate, range, allTxDates])
@@ -466,21 +480,28 @@ export function Reports() {
                 Cash movements ({internalMovesTx.length})
               </button>
             )}
-            <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportCSV} disabled={rangeTx.length === 0}>
-              <Download className="h-4 w-4" />
-              Export period
-            </Button>
-            <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportAllCSV} disabled={transactions.length === 0}>
-              <Download className="h-4 w-4" />
-              Export all
-            </Button>
-            <Button size="sm" variant="secondary" className="gap-2" onClick={() => window.print()}>
-              <FileText className="h-4 w-4" />
-              Export PDF
-            </Button>
+            <div className="relative" ref={exportMenuRef}>
+              <Button size="sm" variant="secondary" className="gap-2" onClick={() => setShowExportMenu(v => !v)}>
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-2xl border border-border bg-card p-1.5 shadow-xl">
+                  <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-foreground hover:bg-secondary" onClick={() => { handleExportCSV(); setShowExportMenu(false) }} disabled={rangeTx.length === 0}>
+                    <Download className="h-4 w-4" /> Export CSV (this period)
+                  </button>
+                  <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-foreground hover:bg-secondary" onClick={() => { handleExportAllCSV(); setShowExportMenu(false) }} disabled={transactions.length === 0}>
+                    <Download className="h-4 w-4" /> Export CSV (all data)
+                  </button>
+                  <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-foreground hover:bg-secondary" onClick={() => { window.print(); setShowExportMenu(false) }}>
+                    <FileText className="h-4 w-4" /> Print to PDF
+                  </button>
+                </div>
+              )}
+            </div>
             <Button size="sm" variant="secondary" className="gap-2" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" />
-              Import CSV
+              Import
             </Button>
           </div>
         )}
@@ -690,7 +711,7 @@ export function Reports() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] lg:gap-8">
+      <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

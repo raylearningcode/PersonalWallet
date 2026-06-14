@@ -20,11 +20,12 @@ import { hapticSuccess } from '@/lib/haptics'
 import { addRecurringInterval } from '@/lib/recurring'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { getTwdTenderOptions, pickQuickAddWallet } from '@/lib/quickAdd'
-import { scanReceipt, getGeminiKey } from '@/lib/gemini'
+import { scanReceipt, isAiConfigured } from '@/lib/ai'
 import { ScanLine, Loader2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { RecurringFrequency } from '@/types'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 type EntryType = 'income' | 'expense' | 'transfer'
@@ -34,6 +35,7 @@ const LAST_CATEGORY_KEY = 'finpath_last_category'
 const LAST_WALLET_KEY = 'finpath_last_wallet'
 
 export function QuickAddSheet({ open, onClose, initialType, initialCash }: { open: boolean; onClose: () => void; initialType?: EntryType; initialCash?: boolean }) {
+  const isDesktop = useIsDesktop()
   const money = useMoney()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
@@ -76,6 +78,13 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const [cashTendered, setCashTendered] = useState('')
   const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
   const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
+
+  // Category splitting
+  const [splitEnabled, setSplitEnabled] = useState(false)
+  const [splitPortions, setSplitPortions] = useState<{ category: string; amount: string }[]>([])
+  // Multi-wallet payment
+  const [multiWalletEnabled, setMultiWalletEnabled] = useState(false)
+  const [walletSplits, setWalletSplits] = useState<{ wallet_id: string; amount: string }[]>([])
 
   const amountInputRef = useRef<HTMLInputElement>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -147,6 +156,10 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     setCashTendered('')
     setChangeCoinsWalletId('')
     setChangeBillsWalletId('')
+    setSplitEnabled(false)
+    setSplitPortions([])
+    setMultiWalletEnabled(false)
+    setWalletSplits([])
   }
 
   const handleClose = () => {
@@ -157,8 +170,8 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const handleReceiptImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!getGeminiKey()) {
-      toast.error('Add a Gemini API key in Settings → AI Features to use receipt scanning')
+    if (!isAiConfigured()) {
+      toast.error('Set up your AI API in Settings → AI Features to use receipt scanning')
       return
     }
     setScanning(true)
@@ -219,20 +232,37 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     const baseChange = Math.max(0, baseTendered - baseAmount)
     const parsedInstallments = parseInt(installmentTotal.replace(/[^\d]/g, ''), 10)
 
+    // Compute split portions (in base currency)
+    const computedSplitPortions = splitEnabled && splitPortions.length >= 2
+      ? splitPortions
+          .map(p => ({ category: p.category, amount: money.toBase(parseNumberInput(p.amount), inputCurrency) }))
+          .filter(p => p.amount > 0)
+      : null
+
+    // Compute wallet splits (in base currency)
+    const computedWalletSplits = multiWalletEnabled && walletSplits.length >= 2
+      ? walletSplits
+          .map(w => ({ wallet_id: w.wallet_id, amount: money.toBase(parseNumberInput(w.amount), inputCurrency) }))
+          .filter(w => w.amount > 0)
+      : null
+
     const payload = {
       description: safeDescription,
       amount: baseAmount,
       original_amount: parsedAmount,
       original_currency: inputCurrency,
       type,
-      category: type === 'transfer' ? 'Transfer' : (selectedCategory || 'Other'),
-      wallet_id: walletId || null,
+      category: type === 'transfer' ? 'Transfer'
+        : (computedSplitPortions ? 'Split' : (selectedCategory || 'Other')),
+      wallet_id: computedWalletSplits ? null : (walletId || null),
       transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
       recurring_rule_id: null,
       recurring_due_date: null,
       date,
       needs_review: false,
       cash_tendered: cashEnabled && baseTendered > 0 ? baseTendered : null,
+      split_portions: computedSplitPortions,
+      wallet_splits: computedWalletSplits,
     }
 
     try {
@@ -424,7 +454,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 />
               </div>
 
-              {activeKeypad === 'amount' && (
+              {!isDesktop && activeKeypad === 'amount' && (
                 <div className="-mx-5 sticky z-20" style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }} data-money-keypad-panel>
                   <MoneyKeypad
                     value={amount}
@@ -664,7 +694,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 />
               </div>
 
-              {activeKeypad === 'amount' && (
+              {!isDesktop && activeKeypad === 'amount' && (
                 <div className="-mx-5 sticky z-20" style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }} data-money-keypad-panel>
                   <MoneyKeypad
                     value={amount}
@@ -785,6 +815,196 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       {wallets.map(w => <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}</option>)}
                     </select>
                   </div>
+                </div>
+              )}
+
+              {/* ── Category splitting (expense only, advanced mode) ── */}
+              {type === 'expense' && categories.length >= 2 && (
+                <div className="rounded-[1.25rem] border border-border bg-card p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-extrabold text-foreground">Split across categories</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">Divide this expense into multiple budget categories</span>
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={splitEnabled}
+                      aria-label="Split across categories"
+                      onClick={() => {
+                        const next = !splitEnabled
+                        setSplitEnabled(next)
+                        if (next) {
+                          // Initialize with 2 empty portions
+                          setSplitPortions([
+                            { category: categories[0]?.name ?? '', amount: '' },
+                            { category: categories[1]?.name ?? categories[0]?.name ?? '', amount: '' },
+                          ])
+                        } else { setSplitPortions([]) }
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${splitEnabled ? 'bg-primary' : 'bg-muted'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${splitEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  {splitEnabled && (
+                    <div className="mt-3 space-y-2">
+                      {splitPortions.map((p, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <select
+                            aria-label={`Portion ${i + 1} category`}
+                            className="h-10 flex-1 rounded-lg border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                            value={p.category}
+                            onChange={e => {
+                              const next = [...splitPortions]
+                              next[i] = { ...next[i], category: e.target.value }
+                              setSplitPortions(next)
+                            }}
+                          >
+                            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          </select>
+                          <Input
+                            aria-label={`Portion ${i + 1} amount`}
+                            className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={p.amount}
+                            onChange={e => {
+                              const next = [...splitPortions]
+                              next[i] = { ...next[i], amount: e.target.value }
+                              setSplitPortions(next)
+                            }}
+                          />
+                          <button
+                            onClick={() => setSplitPortions(sp => sp.filter((_, j) => j !== i))}
+                            disabled={splitPortions.length <= 2}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
+                            aria-label={`Remove portion ${i + 1}`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      {(() => {
+                        const total = splitPortions.reduce((s, p) => s + parseNumberInput(p.amount), 0)
+                        const mainAmount = parseNumberInput(amount)
+                        const remaining = mainAmount - total
+                        return (
+                          <div className="flex items-center justify-between gap-2 pt-1">
+                            <button
+                              onClick={() => setSplitPortions(sp => [...sp, { category: categories[0]?.name ?? '', amount: '' }])}
+                              className="text-xs font-bold text-primary hover:underline"
+                            >
+                              + Add portion
+                            </button>
+                            <span className={`text-xs font-bold ${remaining === 0 ? 'text-primary' : remaining > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
+                              {remaining === 0 ? '✓ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
+                            </span>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Multi-wallet payment (expense only, advanced mode, 2+ wallets) ── */}
+              {type === 'expense' && wallets.length >= 2 && (
+                <div className="rounded-[1.25rem] border border-border bg-card p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-extrabold text-foreground">Pay from multiple wallets</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">E.g. $100 from notes + $2 from coins for a $102 expense</span>
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={multiWalletEnabled}
+                      aria-label="Pay from multiple wallets"
+                      onClick={() => {
+                        const next = !multiWalletEnabled
+                        setMultiWalletEnabled(next)
+                        if (next) {
+                          const notesWallet = wallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed' || w.type === 'cash')
+                          const coinsWallet = wallets.find(w => w.cash_role === 'coins' && w.id !== notesWallet?.id)
+                          const initial: { wallet_id: string; amount: string }[] = []
+                          if (notesWallet) initial.push({ wallet_id: notesWallet.id, amount: '' })
+                          if (coinsWallet) initial.push({ wallet_id: coinsWallet.id, amount: '' })
+                          if (initial.length < 2) {
+                            const others = wallets.filter(w => !initial.find(i => i.wallet_id === w.id))
+                            while (initial.length < 2 && others.length > 0) {
+                              initial.push({ wallet_id: others.shift()!.id, amount: '' })
+                            }
+                          }
+                          setWalletSplits(initial)
+                        } else { setWalletSplits([]) }
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${multiWalletEnabled ? 'bg-primary' : 'bg-muted'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${multiWalletEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  {multiWalletEnabled && (
+                    <div className="mt-3 space-y-2">
+                      {walletSplits.map((ws, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <select
+                            aria-label={`Wallet ${i + 1}`}
+                            className="h-10 flex-1 rounded-lg border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
+                            value={ws.wallet_id}
+                            onChange={e => {
+                              const next = [...walletSplits]
+                              next[i] = { ...next[i], wallet_id: e.target.value }
+                              setWalletSplits(next)
+                            }}
+                          >
+                            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coins' : w.cash_role === 'notes' ? ' · notes' : ''}</option>)}
+                          </select>
+                          <Input
+                            aria-label={`Wallet ${i + 1} amount`}
+                            className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={ws.amount}
+                            onChange={e => {
+                              const next = [...walletSplits]
+                              next[i] = { ...next[i], amount: e.target.value }
+                              setWalletSplits(next)
+                            }}
+                          />
+                          <button
+                            onClick={() => setWalletSplits(ws2 => ws2.filter((_, j) => j !== i))}
+                            disabled={walletSplits.length <= 2}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
+                            aria-label={`Remove wallet ${i + 1}`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      {(() => {
+                        const total = walletSplits.reduce((s, ws) => s + parseNumberInput(ws.amount), 0)
+                        const mainAmount = parseNumberInput(amount)
+                        const remaining = mainAmount - total
+                        return (
+                          <div className="flex items-center justify-between gap-2 pt-1">
+                            <button
+                              onClick={() => {
+                                const unused = wallets.find(w => !walletSplits.find(ws => ws.wallet_id === w.id))
+                                setWalletSplits(ws2 => [...ws2, { wallet_id: unused?.id ?? wallets[0].id, amount: '' }])
+                              }}
+                              className="text-xs font-bold text-primary hover:underline"
+                            >
+                              + Add wallet
+                            </button>
+                            <span className={`text-xs font-bold ${remaining === 0 ? 'text-primary' : remaining > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
+                              {remaining === 0 ? '✓ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
+                            </span>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -958,7 +1178,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       {isUnderpay && (
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
                       )}
-                      {activeKeypad === 'cash' && (
+                      {!isDesktop && activeKeypad === 'cash' && (
                         <div className="-mx-4 sticky z-20 mt-3" style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }} data-money-keypad-panel>
                           <MoneyKeypad
                             value={cashTendered}

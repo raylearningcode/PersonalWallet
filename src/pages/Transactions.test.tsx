@@ -233,7 +233,7 @@ describe('Transactions', () => {
     renderTx()
 
     expect(screen.queryByRole('tab', { name: /recurring/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /needs review/i })).not.toBeInTheDocument()
+    // Needs review tab is now always visible in the filter bar
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.click(screen.getByRole('button', { name: 'Income' }))
 

@@ -69,13 +69,6 @@ describe('Settings mobile behavior', () => {
     expect(screen.queryByText('Change routing')).not.toBeInTheDocument()
   })
 
-  it('shows mobile AI status instead of API key setup', () => {
-    renderSettings('/settings?section=ai')
-
-    expect(screen.getByText('AI status')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Gemini API key')).not.toBeInTheDocument()
-  })
-
   it('hides raw backup JSON import on mobile', () => {
     renderSettings('/settings?section=backup')
 

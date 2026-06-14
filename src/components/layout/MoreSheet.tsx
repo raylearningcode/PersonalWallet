@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Monitor, Plus, RefreshCw, Settings, Target, Wallet } from 'lucide-react'
+import { BarChart2, CalendarDays, Monitor, Plus, RefreshCw, Settings, Target, Wallet } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
@@ -18,6 +18,7 @@ const MORE_NAV_GROUPS = [
     label: 'Review',
     items: [
       { to: '/reports', label: 'Reports', Icon: BarChart2, color: '#93C5FD' },
+      { to: '/calendar', label: 'Calendar', Icon: CalendarDays, color: '#FFD276' },
     ],
   },
   {

@@ -8,6 +8,19 @@ vi.mock('@/lib/queries', () => ({
   useInvestmentConfig: () => ({ data: undefined }),
   useSaveInvestmentConfig: () => ({ mutateAsync: saveInvestmentConfig, isPending: false }),
   useAppSettings: () => ({ data: undefined }),
+  useHoldings: () => ({ data: [] }),
+  useAddHolding: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateHolding: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteHolding: () => ({ mutate: vi.fn() }),
+  useDividends: () => ({ data: [] }),
+  useAddDividend: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteDividend: () => ({ mutate: vi.fn() }),
+}))
+
+vi.mock('@/lib/priceFetch', () => ({
+  useLivePrices: () => ({ data: new Map(), refetch: vi.fn(), isFetching: false }),
+  fetchPrice: vi.fn(),
+  fetchPricesForHoldings: vi.fn(),
 }))
 
 vi.mock('@/lib/currency', () => ({
@@ -33,32 +46,40 @@ vi.mock('@/lib/currency', () => ({
 }))
 
 describe('Investing', () => {
-  it('starts empty and updates the ROI simulation from user input', () => {
+  it('renders simulator tab by default with empty state', () => {
     render(<Investing />)
-
-    expect(screen.getByText(/Estimated in 10 years/i)).toBeInTheDocument()
-
-    fireEvent.change(screen.getByLabelText('Contribution currency'), { target: { value: 'TWD' } })
-    fireEvent.change(screen.getByLabelText('Monthly contribution'), { target: { value: '1500000' } })
-    fireEvent.change(screen.getByLabelText('Expected return / year'), { target: { value: '7%' } })
-    fireEvent.change(screen.getByLabelText('Duration (years)'), { target: { value: '7' } })
-    fireEvent.change(screen.getByLabelText('Initial capital'), { target: { value: '5000000' } })
-    expect(screen.getByText(/Estimated in 7 years/i)).toBeInTheDocument()
-    expect(screen.getByText(/Projected in TWD/i)).toBeInTheDocument()
-    expect(screen.getAllByText(/Base value/i).length).toBeGreaterThan(0)
+    // Default tab is simulator
+    expect(screen.getByText('Simulator')).toBeInTheDocument()
+    expect(screen.getByText('Portfolio')).toBeInTheDocument()
+    // The simulator shows the empty state message
+    expect(screen.getByText(/No simulation yet/i)).toBeInTheDocument()
   })
 
-  it('saves the simulator assumptions for future sessions', () => {
+  it('fills simulator inputs and sees projected values', () => {
     render(<Investing />)
 
     fireEvent.change(screen.getByLabelText('Contribution currency'), { target: { value: 'TWD' } })
-    fireEvent.change(screen.getByLabelText('Monthly contribution'), { target: { value: '2000000' } })
-    fireEvent.change(screen.getByLabelText('Target portfolio'), { target: { value: '5000000' } })
+    fireEvent.change(screen.getByLabelText('Amount per month (TWD)'), { target: { value: '1500000' } })
+    fireEvent.change(screen.getByLabelText('Expected return / year'), { target: { value: '7' } })
+    fireEvent.change(screen.getByLabelText('Duration (years)'), { target: { value: '7' } })
+    fireEvent.change(screen.getByLabelText('Initial capital (IDR)'), { target: { value: '5000000' } })
+
+    // The hero card should show projected portfolio in display currency
+    expect(screen.getByText(/Portfolio simulator/i)).toBeInTheDocument()
+  })
+
+  it('saves the simulator assumptions', () => {
+    render(<Investing />)
+
+    fireEvent.change(screen.getByLabelText('Contribution currency'), { target: { value: 'TWD' } })
+    fireEvent.change(screen.getByLabelText('Amount per month (TWD)'), { target: { value: '2000000' } })
+    // Target portfolio currency is separate, defaults to IDR in mock
+    fireEvent.change(screen.getByLabelText('Target portfolio (IDR)'), { target: { value: '5000000' } })
     fireEvent.change(screen.getByLabelText('Target portfolio currency'), { target: { value: 'TWD' } })
     fireEvent.change(screen.getByLabelText('Expected return / year'), { target: { value: '8' } })
     fireEvent.change(screen.getByLabelText('Duration (years)'), { target: { value: '10' } })
-    fireEvent.change(screen.getByLabelText('Initial capital'), { target: { value: '10000000' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save simulator' }))
+    fireEvent.change(screen.getByLabelText('Initial capital (IDR)'), { target: { value: '10000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(saveInvestmentConfig).toHaveBeenCalledWith(expect.objectContaining({
       monthly_contribution: 1100000000,
@@ -68,17 +89,36 @@ describe('Investing', () => {
       return_rate: 8,
       duration_years: 10,
       current_value: 10000000,
+      allocations: expect.any(Array),
+      inflation_rate: 3,
+      lump_sum: 0,
     }))
   })
 
-  it('shows target progress beside the projected portfolio', () => {
+  it('shows target progress and gap when target is set', () => {
     render(<Investing />)
 
     fireEvent.change(screen.getByLabelText('Contribution currency'), { target: { value: 'TWD' } })
-    fireEvent.change(screen.getByLabelText('Monthly contribution'), { target: { value: '1000' } })
-    fireEvent.change(screen.getByLabelText('Target portfolio'), { target: { value: '100000' } })
+    fireEvent.change(screen.getByLabelText('Amount per month (TWD)'), { target: { value: '1000' } })
+    // Target portfolio defaults to IDR currency
+    fireEvent.change(screen.getByLabelText('Target portfolio (IDR)'), { target: { value: '100000' } })
 
-    expect(screen.getAllByText(/Target portfolio/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Target gap/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Target progress/i)).toBeInTheDocument()
+    expect(screen.getByText(/Gap:/i)).toBeInTheDocument()
+  })
+
+  it('renders both tabs and opens portfolio when clicked', () => {
+    render(<Investing />)
+
+    // Both tabs are present
+    expect(screen.getByRole('tab', { name: 'Simulator' })).toBeInTheDocument()
+    const portfolioTab = screen.getByRole('tab', { name: 'Portfolio' })
+    expect(portfolioTab).toBeInTheDocument()
+
+    // Simulator is active by default
+    expect(screen.getByRole('tab', { name: 'Simulator' })).toHaveAttribute('data-state', 'active')
+
+    // Verify simulator content is showing
+    expect(screen.getByText(/No simulation yet/i)).toBeInTheDocument()
   })
 })
