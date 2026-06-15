@@ -268,55 +268,75 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
           : { bills: 0, coins: rawChange }
 
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
-          const ct = await addTransaction.mutateAsync({
-            description: `Change bills â€” ${safeDescription}`,
-            amount: money.toBase(billsChangeAmt, inputCurrency),
-            original_amount: billsChangeAmt,
-            original_currency: inputCurrency,
-            type: 'transfer', category: 'Transfer',
-            wallet_id: walletId || null,
-            transfer_wallet_id: changeBillsWalletId,
-            recurring_rule_id: null, recurring_due_date: null, date,
-            needs_review: false, is_system_generated: true,
-            linked_transaction_id: savedTx.id, cash_tendered: null,
-          })
-          if (ct?.id) changeTxIds.push(ct.id)
+          try {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change bills â€” ${safeDescription}`,
+              amount: money.toBase(billsChangeAmt, inputCurrency),
+              original_amount: billsChangeAmt,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeBillsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            if (ct?.id) changeTxIds.push(ct.id)
+          } catch (err) {
+            console.error('Failed to create bills change transaction:', err)
+            toast.error(`Failed to route bills change: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          }
         }
 
         if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
-          const ct = await addTransaction.mutateAsync({
-            description: `Change coins â€” ${safeDescription}`,
-            amount: money.toBase(coinsChangeAmt, inputCurrency),
-            original_amount: coinsChangeAmt,
-            original_currency: inputCurrency,
-            type: 'transfer', category: 'Transfer',
-            wallet_id: walletId || null,
-            transfer_wallet_id: changeCoinsWalletId,
-            recurring_rule_id: null, recurring_due_date: null, date,
-            needs_review: false, is_system_generated: true,
-            linked_transaction_id: savedTx.id, cash_tendered: null,
-          })
-          if (ct?.id) changeTxIds.push(ct.id)
+          try {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change coins â€” ${safeDescription}`,
+              amount: money.toBase(coinsChangeAmt, inputCurrency),
+              original_amount: coinsChangeAmt,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            if (ct?.id) changeTxIds.push(ct.id)
+          } catch (err) {
+            console.error('Failed to create coins change transaction:', err)
+            toast.error(`Failed to route coins change: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          }
         }
 
         if (!isTWD && changeCoinsWalletId) {
-          const ct = await addTransaction.mutateAsync({
-            description: `Change â€” ${safeDescription}`,
-            amount: baseChange,
-            original_amount: rawChange,
-            original_currency: inputCurrency,
-            type: 'transfer', category: 'Transfer',
-            wallet_id: walletId || null,
-            transfer_wallet_id: changeCoinsWalletId,
-            recurring_rule_id: null, recurring_due_date: null, date,
-            needs_review: false, is_system_generated: true,
-            linked_transaction_id: savedTx.id, cash_tendered: null,
-          })
-          if (ct?.id) changeTxIds.push(ct.id)
+          try {
+            const ct = await addTransaction.mutateAsync({
+              description: `Change â€” ${safeDescription}`,
+              amount: baseChange,
+              original_amount: rawChange,
+              original_currency: inputCurrency,
+              type: 'transfer', category: 'Transfer',
+              wallet_id: walletId || null,
+              transfer_wallet_id: changeCoinsWalletId,
+              recurring_rule_id: null, recurring_due_date: null, date,
+              needs_review: false, is_system_generated: true,
+              linked_transaction_id: savedTx.id, cash_tendered: null,
+            })
+            if (ct?.id) changeTxIds.push(ct.id)
+          } catch (err) {
+            console.error('Failed to create change transaction:', err)
+            toast.error(`Failed to route change: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          }
         }
 
         if (changeTxIds.length > 0) {
-          await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: changeTxIds[0] })
+          try {
+            await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: changeTxIds[0] })
+          } catch (err) {
+            console.error('Failed to link transactions:', err)
+            toast.error(`Failed to link transactions: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          }
         }
       }
 

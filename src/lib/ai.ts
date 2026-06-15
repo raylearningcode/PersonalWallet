@@ -24,25 +24,35 @@ async function callGemini(systemInstruction: string, parts: GeminiPart[]): Promi
   const key = getGeminiKey()
   if (!key) throw new Error('No Gemini API key configured. Please set VITE_GEMINI_API_KEY.')
 
-  const res = await fetch(`${GEMINI_URL}?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemInstruction }] },
-      contents: [{ role: 'user', parts }],
-      generationConfig: { temperature: 0.4, topP: 0.9 },
-    }),
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000)
 
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`Gemini API error ${res.status}: ${body}`)
-  }
+  try {
+    const res = await fetch(`${GEMINI_URL}?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: 'user', parts }],
+        generationConfig: { temperature: 0.4, topP: 0.9 },
+      }),
+      signal: controller.signal,
+    })
 
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`Gemini API error ${res.status}: ${body}`)
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) throw new Error('Gemini API returned empty response')
+    return text
+  } finally {
+    clearTimeout(timeoutId)
   }
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 }
 
 // ─── Receipt Scanning (OCR Mode) ────────────────────────────────────────────
@@ -131,7 +141,9 @@ export async function getAiInsights(data: InsightInput): Promise<InsightResult[]
     : '  • No active goals'
 
   const cashflowGap = data.monthlyIncome - data.monthlySpent
-  const dailyBurn = data.daysLeftInMonth > 0 ? (data.monthlySpent / (30 - data.daysLeftInMonth)) : 0
+  const dailyBurn = data.daysLeftInMonth > 0 && data.daysLeftInMonth < 30
+    ? (data.monthlySpent / (30 - data.daysLeftInMonth))
+    : 0
   const projectedMonthlySpend = dailyBurn * 30
 
   const prompt = `FINANCIAL DATA — analyse and respond:
