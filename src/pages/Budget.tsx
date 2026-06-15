@@ -7,7 +7,7 @@ import {
   useAddBudgetCategory,
   useDeleteBudgetCategory,
 } from '@/lib/queries'
-import { Lightbulb, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { Lightbulb, ChevronLeft, ChevronRight, Plus, AlertTriangle } from 'lucide-react'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -363,13 +363,29 @@ export function Budget() {
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-6">
+      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:gap-6">
         <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.formatRef(totalAllocated) ?? 'Blended monthly equivalent'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.formatRef(hasData ? remaining : 0) ?? 'Safe inside active periods'} badgeVariant={hasData && remaining < 0 ? 'danger' : 'success'} />
+        <StatCard label="Daily allowance" value={isCurrentMonth && daysLeft > 0 ? fmt(Math.max(0, remaining) / daysLeft) : '—'} sub={isCurrentMonth ? `${daysLeft} days left this month` : 'Current month only'} badgeVariant={hasData && remaining < 0 ? 'danger' : undefined} />
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% of budget used` : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>
 
-      {hasData && (
+      {isCurrentMonth && hasData && forecasts.length > 0 && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
+          <div>
+            <p className="text-sm font-extrabold text-foreground">Spending pace alert</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {forecasts.length === 1
+                ? `${forecasts[0].name} is on track to overspend by ${fmt(forecasts[0].overspend)} this month.`
+                : `${forecasts.length} categories are on track to overspend — ${forecasts.map(f => f.name).join(', ')}.`
+              }
+            </p>
+          </div>
+        </div>
+      )}
+
+      {hasData && forecasts.length === 0 && (
         <div className="mb-8 rounded-2xl border border-border bg-secondary px-5 py-4">
           <p className="text-xs font-bold text-muted-foreground">Overspend risk explanation</p>
           <p className="mt-1 text-sm text-foreground">

@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown, SlidersHorizontal, AlertTriangle } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown, SlidersHorizontal, AlertTriangle, CalendarDays } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -101,6 +101,8 @@ export function Transactions() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [bulkCategorySheet, setBulkCategorySheet] = useState(false)
   const [bulkCategoryTarget, setBulkCategoryTarget] = useState('')
+  const [bulkDateSheet, setBulkDateSheet] = useState(false)
+  const [bulkDate, setBulkDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const [filterWalletId, setFilterWalletId] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -715,6 +717,20 @@ export function Transactions() {
     a.download = `finpath-selected-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     toast.success(`${selected.length} transaction${selected.length !== 1 ? 's' : ''} exported`)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const bulkRetime = async () => {
+    if (!bulkDate) return
+    const toUpdate = sortedTransactions.filter(tx => selectedIds.has(tx.id))
+    try {
+      for (const tx of toUpdate) await updateTransaction.mutateAsync({ id: tx.id, date: bulkDate })
+      toast.success(`Date updated on ${toUpdate.length} transaction${toUpdate.length !== 1 ? 's' : ''}`)
+    } catch {
+      toast.error('Failed to update some dates')
+    }
+    setBulkDateSheet(false)
     setSelectMode(false)
     setSelectedIds(new Set())
   }
@@ -1895,6 +1911,14 @@ export function Transactions() {
               <Button
                 size="sm"
                 variant="secondary"
+                onClick={() => { setBulkDate(new Date().toISOString().slice(0, 10)); setBulkDateSheet(true) }}
+              >
+                <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
+                Retime
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={bulkMarkReviewed}
                 disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
               >
@@ -1955,6 +1979,26 @@ export function Transactions() {
           </div>
         </SheetContent>
       </Sheet>
+      {/* Bulk retime sheet */}
+      <Sheet open={bulkDateSheet} onOpenChange={open => { if (!open) setBulkDateSheet(false) }}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-6' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-6'}>
+          <SheetHeader className="mb-5">
+            <SheetTitle>Change date for {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
+            <SheetDescription>All selected transactions will be moved to this date.</SheetDescription>
+          </SheetHeader>
+          <div className="mb-5">
+            <Label className="mb-2 block text-xs text-muted-foreground">New date</Label>
+            <Input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} className="bg-secondary" />
+          </div>
+          <div className="flex gap-3">
+            <Button className="flex-1" onClick={bulkRetime} disabled={!bulkDate}>
+              Apply to {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}
+            </Button>
+            <Button variant="secondary" onClick={() => setBulkDateSheet(false)}>Cancel</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget ? `Delete ${deleteTarget.description}?` : ''}

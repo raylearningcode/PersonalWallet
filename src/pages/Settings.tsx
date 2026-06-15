@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { useMoney } from '@/lib/currency'
-import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin } from '@/components/layout/PinLock'
+import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin, registerBiometric, BIOMETRIC_CRED_KEY } from '@/components/layout/PinLock'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
@@ -149,6 +149,8 @@ export function Settings() {
   const [lastExportDate, setLastExportDate] = useState(() => localStorage.getItem('finpath_last_export') ?? '')
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
+  const [biometricEnabled, setBiometricEnabled] = useState(() => Boolean(localStorage.getItem(BIOMETRIC_CRED_KEY)))
+  const [biometricRegistering, setBiometricRegistering] = useState(false)
   const [fiftyCoinRouting, setFiftyCoinRoutingState] = useState<FiftyCoinRouting>(() => getFiftyCoinRouting())
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
@@ -229,10 +231,30 @@ export function Settings() {
     toast.success('PIN lock enabled')
   }
 
+  const handleEnableBiometric = async () => {
+    setBiometricRegistering(true)
+    const ok = await registerBiometric()
+    setBiometricRegistering(false)
+    if (ok) {
+      setBiometricEnabled(true)
+      toast.success('Biometric unlock enabled')
+    } else {
+      toast.error('Biometric setup failed — try again or use PIN only')
+    }
+  }
+
+  const handleDisableBiometric = () => {
+    localStorage.removeItem(BIOMETRIC_CRED_KEY)
+    setBiometricEnabled(false)
+    toast.success('Biometric unlock removed')
+  }
+
   const handleDisablePin = () => {
     localStorage.removeItem(PIN_STORAGE_KEY)
+    localStorage.removeItem(BIOMETRIC_CRED_KEY)
     sessionStorage.removeItem(PIN_SESSION_KEY)
     setPinEnabled(false)
+    setBiometricEnabled(false)
     toast.success('PIN lock removed')
   }
 
@@ -964,6 +986,31 @@ export function Settings() {
                   />
                 </div>
                 <Button onClick={handleEnablePin} disabled={pinInput.length !== 4}>Enable PIN</Button>
+              </div>
+            )}
+
+            {/* Biometric unlock */}
+            {pinEnabled && (
+              <div className="rounded-2xl border border-border bg-secondary p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-foreground">Biometric unlock</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Use fingerprint or face ID instead of PIN</p>
+                  </div>
+                  {biometricEnabled ? (
+                    <Button variant="secondary" size="sm" onClick={handleDisableBiometric}>Remove</Button>
+                  ) : (
+                    <Button size="sm" onClick={handleEnableBiometric} disabled={biometricRegistering}>
+                      {biometricRegistering ? 'Setting up…' : 'Set up'}
+                    </Button>
+                  )}
+                </div>
+                {biometricEnabled && (
+                  <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2">
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                    <p className="text-xs font-bold text-primary">Biometric unlock active</p>
+                  </div>
+                )}
               </div>
             )}
 

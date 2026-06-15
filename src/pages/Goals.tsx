@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets, useAddTransaction, useAddRecurringRule } from '@/lib/queries'
+import { useGoals, useAddGoal, useUpdateGoal, useDeleteGoal, useWallets, useAddTransaction, useAddRecurringRule, useTransactions } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,6 +67,7 @@ export function Goals() {
   const isDesktop = useIsDesktop()
   const { data: goals = [] } = useGoals()
   const { data: wallets = [] } = useWallets()
+  const { data: transactions = [] } = useTransactions()
   const addGoal = useAddGoal()
   const updateGoal = useUpdateGoal()
   const deleteGoal = useDeleteGoal()
@@ -757,6 +758,37 @@ export function Goals() {
                     </div>
                   )}
                 </div>
+
+                {/* Linked transactions */}
+                {(() => {
+                  const linked = transactions
+                    .filter(tx =>
+                      tx.type !== 'income' &&
+                      (tx.category === 'Goals' && tx.description.includes(g.name)) ||
+                      (tx.category === g.category && tx.type !== 'transfer')
+                    )
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .slice(0, 5)
+                  if (linked.length === 0) return null
+                  return (
+                    <div className="border-t border-border px-6 py-4">
+                      <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Related transactions</p>
+                      <div className="space-y-2">
+                        {linked.map(tx => (
+                          <div key={tx.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/50 px-3 py-2.5">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                              <p className="text-xs text-muted-foreground">{tx.date} · {tx.category}</p>
+                            </div>
+                            <span className="shrink-0 text-sm font-extrabold text-foreground">
+                              {money.formatDisplay(tx.original_amount ?? tx.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Action buttons */}
                 <div className="sticky bottom-0 border-t border-border bg-background px-6 pt-4 pb-safe-4">
