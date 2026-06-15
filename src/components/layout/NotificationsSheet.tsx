@@ -8,7 +8,14 @@ import { Bell, AlertTriangle, Clock, Target, BellOff, X, CheckCheck } from 'luci
 
 export function NotificationsSheet() {
   const [open, setOpen] = useState(false)
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('finpath_dismissed_notifications')
+      return new Set(stored ? JSON.parse(stored) : [])
+    } catch {
+      return new Set()
+    }
+  })
   const money = useMoney()
   const { data: transactions = [] } = useTransactions()
   const { data: categories = [] } = useBudgetCategories()
@@ -26,11 +33,24 @@ export function NotificationsSheet() {
 
   const isDesktop = useIsDesktop()
 
-  const dismiss = (id: string) => setDismissedIds(prev => new Set([...prev, id]))
-  const dismissAll = () => setDismissedIds(new Set(allNotifications.map(n => n.id)))
-  const resetOnReopen = () => {
-    // Reset dismissed when reopening so user sees fresh notifications
-    if (!open) setDismissedIds(new Set())
+  const dismiss = (id: string) => {
+    const updated = new Set([...dismissedIds, id])
+    setDismissedIds(updated)
+    try {
+      localStorage.setItem('finpath_dismissed_notifications', JSON.stringify(Array.from(updated)))
+    } catch (err) {
+      console.warn('Failed to save dismissed notifications:', err)
+    }
+  }
+
+  const dismissAll = () => {
+    const updated = new Set(allNotifications.map(n => n.id))
+    setDismissedIds(updated)
+    try {
+      localStorage.setItem('finpath_dismissed_notifications', JSON.stringify(Array.from(updated)))
+    } catch (err) {
+      console.warn('Failed to save dismissed notifications:', err)
+    }
   }
 
   if (badgeCount === 0 && !open) {
@@ -57,7 +77,7 @@ export function NotificationsSheet() {
       <button
         type="button"
         aria-label={`${badgeCount} notification${badgeCount === 1 ? '' : 's'}`}
-        onClick={() => { setOpen(true); setDismissedIds(new Set()) }}
+        onClick={() => setOpen(true)}
         className="relative flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
       >
         <Bell className="h-4 w-4" />
@@ -68,7 +88,7 @@ export function NotificationsSheet() {
         )}
       </button>
 
-      <Sheet open={open} onOpenChange={v => { setOpen(v); if (!v) resetOnReopen() }}>
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm' : 'max-h-[80dvh] overflow-y-auto rounded-t-3xl border-border bg-background pb-safe-10'}>
           <SheetHeader>
             <div className="flex items-center justify-between gap-3">
