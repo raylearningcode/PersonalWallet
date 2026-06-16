@@ -304,7 +304,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
           try {
             const ct = await addTransaction.mutateAsync({
-              description: `Change bills ?EUR" ${safeDescription}`,
+              description: `Change bills – ${safeDescription}`,
               amount: money.toBase(billsChangeAmt, inputCurrency),
               original_amount: billsChangeAmt,
               original_currency: inputCurrency,
@@ -325,7 +325,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
           try {
             const ct = await addTransaction.mutateAsync({
-              description: `Change coins ?EUR" ${safeDescription}`,
+              description: `Change coins – ${safeDescription}`,
               amount: money.toBase(coinsChangeAmt, inputCurrency),
               original_amount: coinsChangeAmt,
               original_currency: inputCurrency,
@@ -346,7 +346,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         if (!isTWD && changeCoinsWalletId) {
           try {
             const ct = await addTransaction.mutateAsync({
-              description: `Change ?EUR" ${safeDescription}`,
+              description: `Change – ${safeDescription}`,
               amount: baseChange,
               original_amount: rawChange,
               original_currency: inputCurrency,
@@ -492,7 +492,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Category chips ?EUR" expense */}
+              {/* Category chips – expense */}
               {type === 'expense' && wallets.length > 0 && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Category</p>
@@ -530,7 +530,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Category chips ?EUR" income */}
+              {/* Category chips – income */}
               {type === 'income' && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Category</p>
@@ -553,7 +553,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Wallet chips ?EUR" expense/income */}
+              {/* Wallet chips – expense/income */}
               {type !== 'transfer' && wallets.length > 0 && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Wallet</p>
@@ -587,7 +587,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Transfer ?EUR" from/to wallet */}
+              {/* Transfer – from/to wallet */}
               {type === 'transfer' && (
                 wallets.length < 2 ? (
                   <Link to="/settings" onClick={handleClose} className="flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary">
@@ -1133,7 +1133,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   cannotSaveTransfer
                 }
               >
-                {addTransaction.isPending ? 'Saving?EUR?' : `Add ${type}`}
+                {addTransaction.isPending ? 'Saving…' : `Add ${type}`}
               </Button>
             )}
           </div>
