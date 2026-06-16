@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { QuickLog } from '@/components/dashboard/QuickLog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -134,11 +133,6 @@ export function Dashboard() {
         <StatCard label="Savings rate" value={`${savingsRate}%`} sub={savingsRate >= 20 ? 'On track' : savingsRate >= 10 ? 'Could improve' : 'Needs attention'} badgeVariant={savingsRate >= 20 ? 'success' : savingsRate >= 10 ? 'warning' : 'danger'} />
       </div>
 
-      {/* Quick log */}
-      <div className="mb-6">
-        <QuickLog />
-      </div>
-
       {/* Review queue */}
       {reviewCount > 0 && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-3">
@@ -232,7 +226,14 @@ export function Dashboard() {
                 {isAiConfigured() ? (
                   <Button size="sm" variant="secondary" onClick={handleGetInsights} disabled={loadingInsights} className="gap-2">{loadingInsights ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{aiInsights ? 'Refresh' : 'Generate'}</Button>
                 ) : <span className="text-xs text-muted-foreground">API not configured</span>}
-                <button type="button" aria-label="Dismiss" onClick={() => { localStorage.setItem('finpath_ai_dismissed', '1'); setAiCardDismissed(true) }} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>
+                <button type="button" aria-label="Dismiss" onClick={() => {
+                  try {
+                    localStorage.setItem('finpath_ai_dismissed', '1')
+                    setAiCardDismissed(true)
+                  } catch (err) {
+                    console.error('Failed to save AI dismissal:', err)
+                  }
+                }} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>
               </div>
             </div>
           </CardHeader>

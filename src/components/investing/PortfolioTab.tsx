@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { AllocationEditor } from './AllocationEditor'
+import { RebalancingHelper } from './RebalancingHelper'
 import { toast } from 'sonner'
 import { RefreshCw, Plus, Trash2, TrendingDown, TrendingUp, Pencil, HelpCircle } from 'lucide-react'
 import type { AssetType, Holding, AllocationItem } from '@/types'
@@ -491,6 +492,14 @@ export function PortfolioTab() {
             )}
           </CardContent>
         </Card>
+
+        {/* Rebalancing Helper */}
+        {portfolioStats.totalCurrentValueBase > 0 && (
+          <RebalancingHelper
+            allocations={portfolioStats.allocations}
+            totalValue={portfolioStats.totalCurrentValueBase}
+          />
+        )}
 
         {/* Portfolio Allocation (read-only, auto-generated) */}
         <Card>

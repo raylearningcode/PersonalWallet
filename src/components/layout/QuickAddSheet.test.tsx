@@ -32,8 +32,8 @@ vi.mock('@/lib/currency', () => ({
   }),
 }))
 
-vi.mock('@/lib/gemini', () => ({
-  getGeminiKey: () => '',
+vi.mock('@/lib/ai', () => ({
+  isAiConfigured: () => false,
   scanReceipt: vi.fn(),
 }))
 

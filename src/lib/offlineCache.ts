@@ -4,7 +4,11 @@ const QUEUE_KEY = 'finpath_sync_queue'
 // ─── Read cache (mirrors last-known Supabase data) ────────────────────────────
 
 export function cacheSet(key: string, data: unknown) {
-  try { localStorage.setItem(CACHE_PFX + key, JSON.stringify(data)) } catch {}
+  try {
+    localStorage.setItem(CACHE_PFX + key, JSON.stringify(data))
+  } catch (err) {
+    console.warn(`Failed to cache ${key}:`, err instanceof Error ? err.message : 'Unknown error')
+  }
 }
 
 export function cacheGet<T>(key: string): T | null {
@@ -53,12 +57,20 @@ export function getQueue(): QueuedMutation[] {
 export function enqueue(mutation: Omit<QueuedMutation, 'id' | 'timestamp'>) {
   const queue = getQueue()
   queue.push({ ...mutation, id: crypto.randomUUID(), timestamp: Date.now() })
-  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue)) } catch {}
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
+  } catch (err) {
+    console.warn('Failed to enqueue mutation:', err instanceof Error ? err.message : 'Unknown error')
+  }
 }
 
 export function removeFromQueue(id: string) {
   const queue = getQueue().filter(item => item.id !== id)
-  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue)) } catch {}
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
+  } catch (err) {
+    console.warn('Failed to remove from queue:', err instanceof Error ? err.message : 'Unknown error')
+  }
 }
 
 // ─── Network detection ────────────────────────────────────────────────────────

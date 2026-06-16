@@ -15,8 +15,9 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { addRecurringInterval } from '@/lib/recurring'
 import { toast } from 'sonner'
-import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight, AlertTriangle, Check } from 'lucide-react'
+import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight, AlertTriangle, Check, Download } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
+import { exportRulesToICal, downloadICal } from '@/lib/calendarExport'
 
 const FREQ_LABELS: Record<string, string> = {
   daily: 'Daily',
@@ -287,6 +288,22 @@ export function Subscriptions() {
     }
   }
 
+  const handleExportCalendar = () => {
+    const activeExpenses = expenses.filter(r => r.active && r.type !== 'income')
+    if (activeExpenses.length === 0) {
+      toast.error('No active recurring bills to export')
+      return
+    }
+    try {
+      const ical = exportRulesToICal(activeExpenses, money.displayCurrency)
+      downloadICal(ical)
+      toast.success(`${activeExpenses.length} recurring bill${activeExpenses.length !== 1 ? 's' : ''} exported to calendar`)
+    } catch (err) {
+      toast.error('Failed to export calendar')
+      console.error(err)
+    }
+  }
+
   const handleAdd = async () => {
     const amount = parseNumberInput(addForm.amount)
     if (!addForm.description.trim() || amount <= 0) {
@@ -554,9 +571,20 @@ export function Subscriptions() {
         subtitle="Monitor bills, income streams, and subscriptions. Pause or cancel unwanted recurring payments."
         action={
           !showAddForm ? (
-            <Button className="gap-2" onClick={() => setShowAddForm(true)}>
-              <Plus className="h-4 w-4" /> Add subscription
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleExportCalendar}
+                disabled={expenses.filter(r => r.active && r.type !== 'income').length === 0}
+              >
+                <Download className="h-4 w-4" /> Export calendar
+              </Button>
+              <Button className="gap-2" onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4" /> Add subscription
+              </Button>
+            </div>
           ) : undefined
         }
       />

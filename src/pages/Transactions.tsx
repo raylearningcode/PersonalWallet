@@ -21,13 +21,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown, SlidersHorizontal, AlertTriangle } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown, SlidersHorizontal, AlertTriangle, CalendarDays } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
+import { pushUndo, popUndo } from '@/lib/undoStack'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
@@ -101,6 +102,8 @@ export function Transactions() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [bulkCategorySheet, setBulkCategorySheet] = useState(false)
   const [bulkCategoryTarget, setBulkCategoryTarget] = useState('')
+  const [bulkDateSheet, setBulkDateSheet] = useState(false)
+  const [bulkDate, setBulkDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const [filterWalletId, setFilterWalletId] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -586,12 +589,29 @@ export function Transactions() {
     const linkedId = deleteTarget.linked_transaction_id
     // Find ALL system-generated transfers linked to this expense
     const allLinked = transactions.filter(tx => tx.linked_transaction_id === deleteTarget.id && tx.is_system_generated)
+    const toRestore = [deleteTarget, ...(linkedId && !allLinked.find(tx => tx.id === linkedId) ? [transactions.find(tx => tx.id === linkedId)] : []), ...allLinked].filter(Boolean) as Transaction[]
+    const undoId = pushUndo(toRestore)
     setDeleteTarget(null)
     try {
       await del.mutateAsync(deleteTarget.id)
       if (linkedId && !allLinked.find(tx => tx.id === linkedId)) await del.mutateAsync(linkedId)
       for (const tx of allLinked) await del.mutateAsync(tx.id)
-      toast.success('Transaction deleted')
+      toast.success('Transaction deleted', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            const restored = popUndo(undoId)
+            if (restored) {
+              try {
+                for (const tx of restored) await addTransaction.mutateAsync(tx)
+                toast.success('Transaction restored')
+              } catch {
+                toast.error('Failed to restore transaction')
+              }
+            }
+          },
+        },
+      })
     } catch {
       toast.error('Failed to delete transaction')
     }
@@ -674,9 +694,25 @@ export function Transactions() {
       transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated).forEach(t => linkedIds.add(t.id))
     })
     const deleteSet = new Set([...toDelete.map(t => t.id), ...linkedIds])
+    const undoId = pushUndo(toDelete)
     try {
       for (const id of deleteSet) await del.mutateAsync(id)
-      toast.success(`${toDelete.length} transaction${toDelete.length === 1 ? '' : 's'} deleted`)
+      toast.success(`${toDelete.length} transaction${toDelete.length === 1 ? '' : 's'} deleted`, {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            const restored = popUndo(undoId)
+            if (restored) {
+              try {
+                for (const tx of restored) await addTransaction.mutateAsync(tx)
+                toast.success(`${restored.length} transaction${restored.length === 1 ? '' : 's'} restored`)
+              } catch {
+                toast.error('Failed to restore transactions')
+              }
+            }
+          },
+        },
+      })
     } catch {
       toast.error('Failed to delete some transactions')
     }
@@ -715,6 +751,20 @@ export function Transactions() {
     a.download = `finpath-selected-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     toast.success(`${selected.length} transaction${selected.length !== 1 ? 's' : ''} exported`)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const bulkRetime = async () => {
+    if (!bulkDate) return
+    const toUpdate = sortedTransactions.filter(tx => selectedIds.has(tx.id))
+    try {
+      for (const tx of toUpdate) await updateTransaction.mutateAsync({ id: tx.id, date: bulkDate })
+      toast.success(`Date updated on ${toUpdate.length} transaction${toUpdate.length !== 1 ? 's' : ''}`)
+    } catch {
+      toast.error('Failed to update some dates')
+    }
+    setBulkDateSheet(false)
     setSelectMode(false)
     setSelectedIds(new Set())
   }
@@ -1895,6 +1945,14 @@ export function Transactions() {
               <Button
                 size="sm"
                 variant="secondary"
+                onClick={() => { setBulkDate(new Date().toISOString().slice(0, 10)); setBulkDateSheet(true) }}
+              >
+                <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
+                Retime
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={bulkMarkReviewed}
                 disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
               >
@@ -1955,6 +2013,26 @@ export function Transactions() {
           </div>
         </SheetContent>
       </Sheet>
+      {/* Bulk retime sheet */}
+      <Sheet open={bulkDateSheet} onOpenChange={open => { if (!open) setBulkDateSheet(false) }}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-6' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-6'}>
+          <SheetHeader className="mb-5">
+            <SheetTitle>Change date for {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
+            <SheetDescription>All selected transactions will be moved to this date.</SheetDescription>
+          </SheetHeader>
+          <div className="mb-5">
+            <Label className="mb-2 block text-xs text-muted-foreground">New date</Label>
+            <Input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} className="bg-secondary" />
+          </div>
+          <div className="flex gap-3">
+            <Button className="flex-1" onClick={bulkRetime} disabled={!bulkDate}>
+              Apply to {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}
+            </Button>
+            <Button variant="secondary" onClick={() => setBulkDateSheet(false)}>Cancel</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget ? `Delete ${deleteTarget.description}?` : ''}
