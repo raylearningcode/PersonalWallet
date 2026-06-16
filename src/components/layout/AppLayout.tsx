@@ -8,6 +8,7 @@ import { hasGuestData } from '@/lib/localStore'
 import { getQueue } from '@/lib/offlineCache'
 import { processSyncQueue } from '@/lib/syncQueue'
 import { scheduleUpcomingBillNotifications } from '@/lib/notifications'
+import { useKeyboardShortcuts } from '@/lib/keyboard'
 import { toast, Toaster } from 'sonner'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useMoney } from '@/lib/currency'
@@ -15,6 +16,7 @@ import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { MoreSheet } from './MoreSheet'
 import { QuickAddSheet } from './QuickAddSheet'
+import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 import { NotificationsSheet } from './NotificationsSheet'
 import { OnboardingFlow, isOnboardingDone } from '@/components/onboarding/OnboardingFlow'
@@ -56,6 +58,7 @@ export function AppLayout() {
   const { data: session } = useAuthSession()
   const [moreOpen, setMoreOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const keyboardVisible = useKeyboardVisible()
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddType, setQuickAddType] = useState<QuickAddType>('expense')
@@ -72,6 +75,21 @@ export function AppLayout() {
   const [syncing, setSyncing] = useState(false)
   const isGuest = session === null
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone() && !hasGuestData())
+
+  useKeyboardShortcuts({
+    'Add Expense': () => openQuickAction('expense'),
+    'Add Income': () => openQuickAction('income'),
+    'Transfer': () => openQuickAction('transfer'),
+    'Dashboard': () => navigate('/'),
+    'Transactions': () => navigate('/transactions'),
+    'Budget': () => navigate('/budget'),
+    'Goals': () => navigate('/goals'),
+    'Recurring': () => navigate('/subscriptions'),
+    'Reports': () => navigate('/reports'),
+    'Settings': () => { if (isDesktop) setProfileOpen(true); else navigate('/settings') },
+    'Help': () => setShortcutsOpen(true),
+    'Escape': () => { setQuickAddOpen(false); setMoreOpen(false); setQuickActionsOpen(false) },
+  })
 
   const openQuickAction = (actionType: QuickAddType | 'cash') => {
     localStorage.setItem(LAST_QUICK_ACTION_KEY, actionType)
@@ -283,6 +301,8 @@ export function AppLayout() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </div>
   )
 }

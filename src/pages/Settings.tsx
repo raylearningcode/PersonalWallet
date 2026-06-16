@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { useMoney } from '@/lib/currency'
 import { PIN_STORAGE_KEY, PIN_SESSION_KEY, hashPin, registerBiometric, BIOMETRIC_CRED_KEY } from '@/components/layout/PinLock'
+import { generateTOTPSecret, generateTOTPQRCode, verifyTOTP } from '@/lib/totp'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
@@ -151,6 +152,12 @@ export function Settings() {
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
   const [biometricEnabled, setBiometricEnabled] = useState(() => Boolean(localStorage.getItem(BIOMETRIC_CRED_KEY)))
   const [biometricRegistering, setBiometricRegistering] = useState(false)
+  const [totpEnabled, setTotpEnabled] = useState(() => Boolean(localStorage.getItem('finpath_totp_secret')))
+  const [totpSetup, setTotpSetup] = useState(false)
+  const [totpSecret, setTotpSecret] = useState('')
+  const [totpQRCode, setTotpQRCode] = useState('')
+  const [totpToken, setTotpToken] = useState('')
+  const [totpVerifying, setTotpVerifying] = useState(false)
   const [fiftyCoinRouting, setFiftyCoinRoutingState] = useState<FiftyCoinRouting>(() => getFiftyCoinRouting())
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
@@ -256,6 +263,42 @@ export function Settings() {
     setPinEnabled(false)
     setBiometricEnabled(false)
     toast.success('PIN lock removed')
+  }
+
+  const handleStartTotpSetup = async () => {
+    const secret = await generateTOTPSecret()
+    setTotpSecret(secret)
+    const email = session?.user.email || 'user@finpath.app'
+    const qrUrl = generateTOTPQRCode(secret, email)
+    setTotpQRCode(qrUrl)
+    setTotpSetup(true)
+  }
+
+  const handleVerifyAndEnableTOTP = async () => {
+    if (totpToken.length !== 6) {
+      toast.error('Enter 6-digit code')
+      return
+    }
+    setTotpVerifying(true)
+    const valid = await verifyTOTP(totpSecret, totpToken)
+    setTotpVerifying(false)
+    if (valid) {
+      localStorage.setItem('finpath_totp_secret', totpSecret)
+      setTotpEnabled(true)
+      setTotpSetup(false)
+      setTotpToken('')
+      setTotpSecret('')
+      setTotpQRCode('')
+      toast.success('Two-factor authentication enabled')
+    } else {
+      toast.error('Invalid code — try again')
+    }
+  }
+
+  const handleDisableTOTP = () => {
+    localStorage.removeItem('finpath_totp_secret')
+    setTotpEnabled(false)
+    toast.success('Two-factor authentication disabled')
   }
 
   const handleAddCategory = async () => {
@@ -1013,6 +1056,68 @@ export function Settings() {
                 )}
               </div>
             )}
+
+            {/* Two-factor authentication (TOTP) */}
+            <div className="rounded-2xl border border-border bg-secondary p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-bold text-foreground">Two-factor authentication</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Add an extra layer of security with TOTP</p>
+                </div>
+                {totpEnabled ? (
+                  <Button variant="secondary" size="sm" onClick={handleDisableTOTP}>Remove</Button>
+                ) : (
+                  <Button size="sm" onClick={handleStartTotpSetup} disabled={totpSetup}>
+                    {totpSetup ? 'Setting up...' : 'Set up'}
+                  </Button>
+                )}
+              </div>
+              {totpEnabled && (
+                <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  <p className="text-xs font-bold text-primary">2FA enabled</p>
+                </div>
+              )}
+              {totpSetup && totpQRCode && (
+                <div className="space-y-3 pt-3 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground">1. Scan this QR code with an authenticator app:</p>
+                  <img src={totpQRCode} alt="TOTP QR Code" className="h-48 w-48 rounded-lg border border-border" />
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">2. Or enter manually:</p>
+                    <code className="block rounded bg-background px-3 py-2 font-mono text-sm text-foreground">{totpSecret}</code>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">3. Enter 6-digit code to confirm</Label>
+                    <div className="mt-2 flex gap-2">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={totpToken}
+                        onChange={e => setTotpToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="w-24 text-center"
+                      />
+                      <Button size="sm" onClick={handleVerifyAndEnableTOTP} disabled={totpToken.length !== 6 || totpVerifying}>
+                        {totpVerifying ? 'Verifying...' : 'Verify'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setTotpSetup(false)
+                          setTotpToken('')
+                          setTotpSecret('')
+                          setTotpQRCode('')
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Privacy & Data info */}
             <div className="rounded-2xl border border-border bg-secondary p-4 text-sm space-y-2">
