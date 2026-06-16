@@ -209,7 +209,7 @@ export function Dashboard() {
                   <p className="text-sm font-bold text-foreground">{rule.description}</p>
                   <p className="text-xs text-muted-foreground">Due {rule.next_due_date} · {rule.category}</p>
                 </div>
-                <span className="text-sm font-extrabold text-foreground">{money.formatTx({ amount: rule.amount, original_amount: rule.original_amount, original_currency: rule.original_currency, type: rule.type } as any)}</span>
+                <span className="text-sm font-extrabold text-foreground">{money.formatTx({ amount: rule.amount, original_amount: rule.original_amount, original_currency: rule.original_currency })}</span>
               </div>
             ))}
           </CardContent>
