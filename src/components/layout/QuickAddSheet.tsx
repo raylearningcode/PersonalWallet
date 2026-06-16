@@ -424,7 +424,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
         <div className="space-y-4">
 
-          {/* ?"EUR?"EUR QUICK MODE ?"EUR?"EUR */}
+          {/* -- QUICK MODE -- */}
           {!showAdvanced && (
             <>
               {/* Type segmented control */}
@@ -646,7 +646,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             </>
           )}
 
-          {/* ?"EUR?"EUR ADVANCED MODE ?"EUR?"EUR */}
+          {/* -- ADVANCED MODE -- */}
           {showAdvanced && (
             <>
               {/* Type + Amount + Scan */}
@@ -853,7 +853,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* ?"EUR?"EUR Category splitting (expense only, advanced mode) ?"EUR?"EUR */}
+              {/* -- Category splitting (expense only, advanced mode) -- */}
               {type === 'expense' && categories.length >= 2 && (
                 <div className="rounded-[1.25rem] border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -916,7 +916,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
                             aria-label={`Remove portion ${i + 1}`}
                           >
-                            ?--
+                            ×
                           </button>
                         </div>
                       ))}
@@ -933,7 +933,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               + Add portion
                             </button>
                             <span className={`text-xs font-bold ${remaining === 0 ? 'text-primary' : remaining > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                              {remaining === 0 ? '?oe" Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
+                              {remaining === 0 ? '✓ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
                             </span>
                           </div>
                         )
@@ -943,7 +943,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* ?"EUR?"EUR Multi-wallet payment (expense only, advanced mode, 2+ wallets) ?"EUR?"EUR */}
+              {/* -- Multi-wallet payment (expense only, advanced mode, 2+ wallets) -- */}
               {type === 'expense' && wallets.length >= 2 && (
                 <div className="rounded-[1.25rem] border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -1013,7 +1013,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
                             aria-label={`Remove wallet ${i + 1}`}
                           >
-                            ?--
+                            ×
                           </button>
                         </div>
                       ))}
@@ -1033,7 +1033,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               + Add wallet
                             </button>
                             <span className={`text-xs font-bold ${remaining === 0 ? 'text-primary' : remaining > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                              {remaining === 0 ? '?oe" Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
+                              {remaining === 0 ? '✓ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
                             </span>
                           </div>
                         )
@@ -1077,7 +1077,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             />
           )}
 
-          {/* ?"EUR?"EUR Sticky save button ?"EUR?"EUR */}
+          {/* -- Sticky save button -- */}
           <div className="sticky bottom-0 -mx-5 bg-background px-5 pb-safe-4 pt-3">
             {wallets.length === 0 ? (
               <Link

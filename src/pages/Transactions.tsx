@@ -603,7 +603,28 @@ export function Transactions() {
             const restored = popUndo(undoId)
             if (restored) {
               try {
-                for (const tx of restored) await addTransaction.mutateAsync(tx)
+                for (const tx of restored) {
+                  const payload = {
+                    description: tx.description,
+                    amount: tx.amount,
+                    original_amount: tx.original_amount ?? tx.amount,
+                    original_currency: tx.original_currency ?? money.baseCurrency,
+                    type: tx.type,
+                    category: tx.category,
+                    wallet_id: tx.wallet_id,
+                    transfer_wallet_id: tx.transfer_wallet_id,
+                    recurring_rule_id: tx.recurring_rule_id,
+                    recurring_due_date: tx.recurring_due_date,
+                    date: tx.date,
+                    needs_review: tx.needs_review,
+                    cash_tendered: tx.cash_tendered,
+                    split_portions: tx.split_portions,
+                    wallet_splits: tx.wallet_splits,
+                    is_system_generated: tx.is_system_generated,
+                    linked_transaction_id: tx.linked_transaction_id,
+                  }
+                  await addTransaction.mutateAsync(payload)
+                }
                 toast.success('Transaction restored')
               } catch {
                 toast.error('Failed to restore transaction')
@@ -704,7 +725,28 @@ export function Transactions() {
             const restored = popUndo(undoId)
             if (restored) {
               try {
-                for (const tx of restored) await addTransaction.mutateAsync(tx)
+                for (const tx of restored) {
+                  const payload = {
+                    description: tx.description,
+                    amount: tx.amount,
+                    original_amount: tx.original_amount ?? tx.amount,
+                    original_currency: tx.original_currency ?? money.baseCurrency,
+                    type: tx.type,
+                    category: tx.category,
+                    wallet_id: tx.wallet_id,
+                    transfer_wallet_id: tx.transfer_wallet_id,
+                    recurring_rule_id: tx.recurring_rule_id,
+                    recurring_due_date: tx.recurring_due_date,
+                    date: tx.date,
+                    needs_review: tx.needs_review,
+                    cash_tendered: tx.cash_tendered,
+                    split_portions: tx.split_portions,
+                    wallet_splits: tx.wallet_splits,
+                    is_system_generated: tx.is_system_generated,
+                    linked_transaction_id: tx.linked_transaction_id,
+                  }
+                  await addTransaction.mutateAsync(payload)
+                }
                 toast.success(`${restored.length} transaction${restored.length === 1 ? '' : 's'} restored`)
               } catch {
                 toast.error('Failed to restore transactions')
