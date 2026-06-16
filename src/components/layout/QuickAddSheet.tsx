@@ -1038,6 +1038,33 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                           </div>
                         )
                       })()}
+
+                      {/* Balance preview for multi-wallet */}
+                      {Number.isFinite(parseNumberInput(amount)) && parseNumberInput(amount) > 0 && walletSplits.every(ws => parseNumberInput(ws.amount) > 0) && (
+                        <div className="rounded-xl border border-border bg-card p-4 space-y-2 mt-4">
+                          <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Balance preview</p>
+                          <div className="space-y-2 text-sm">
+                            {walletSplits.map((ws, i) => {
+                              const wallet = wallets.find(w => w.id === ws.wallet_id)
+                              const walletBalance = wallet?.balance ?? 0
+                              const splitAmount = parseNumberInput(ws.amount)
+                              const newBalance = walletBalance - money.toBase(splitAmount, inputCurrency)
+                              return (
+                                <div key={i} className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">{wallet?.name}</span>
+                                  <span className="font-extrabold text-foreground">
+                                    {money.formatDisplay(walletBalance)} → {money.formatDisplay(newBalance)}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                            <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                              <span className="text-muted-foreground">{category ?? 'Expense'} recorded</span>
+                              <span className="font-extrabold text-primary">{money.format(parseNumberInput(amount), inputCurrency)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
