@@ -1289,6 +1289,7 @@ export function Transactions() {
                     changeBillsWalletId={changeBillsWalletId}
                     changeCoinsWalletId={changeCoinsWalletId}
                     wallets={wallets}
+                    category={category}
                     setCashEnabled={setCashEnabled}
                     setCashTendered={setCashTendered}
                     setChangeBillsWalletId={setChangeBillsWalletId}
