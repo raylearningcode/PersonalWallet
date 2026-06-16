@@ -84,8 +84,8 @@ export function Subscriptions() {
   const [editForm, setEditForm] = useState(() => emptyAddForm(money.displayCurrency))
 
   useEffect(() => {
-    setAddForm(f => ({ ...f, currency: f.currency ? f.currency : money.displayCurrency }))
-    if (!editTarget) setEditForm(f => ({ ...f, currency: f.currency ? f.currency : money.displayCurrency }))
+    setAddForm(f => ({ ...f, currency: f.currency || money.displayCurrency }))
+    if (!editTarget) setEditForm(f => ({ ...f, currency: f.currency || money.displayCurrency }))
   }, [money.displayCurrency, editTarget])
 
   const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>('all')
@@ -235,7 +235,7 @@ export function Subscriptions() {
       frequency: rule.frequency,
       category: rule.category,
       walletId: rule.wallet_id ?? '',
-      startDate: rule.next_due_date ?? rule.start_date,
+      startDate: rule.start_date ?? rule.next_due_date,
       endDate: rule.end_date ?? '',
       logFirstPayment: false,
     })
@@ -251,7 +251,7 @@ export function Subscriptions() {
       frequency: rule.frequency,
       category: rule.category,
       walletId: rule.wallet_id ?? '',
-      startDate: rule.next_due_date ?? rule.start_date,
+      startDate: rule.start_date ?? rule.next_due_date,
       endDate: rule.end_date ?? '',
       logFirstPayment: false,
     })

@@ -65,6 +65,13 @@ export function CashChangeAssistant({
   const hasCoins = coinsChange > 0
   const showChips = isTWD
 
+  // Currency-safe balance helpers
+  // Convert an inputCurrency amount into wallet's native currency for correct display
+  const toWalletCurrency = (amt: number, walletCurrency: string) =>
+    money.fromBase(money.toBase(amt, inputCurrency), walletCurrency)
+  const fmtWallet = (bal: number, walletCurrency: string) => money.format(bal, walletCurrency)
+  const selectedWalletCurrency = selectedWallet?.currency ?? money.baseCurrency
+
   return (
     <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
       <div className="flex items-center justify-between gap-4">
@@ -144,8 +151,8 @@ export function CashChangeAssistant({
             {isUnderpay && (
               <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#FF8388]"><AlertTriangle className="h-3 w-3 shrink-0" /> Cash given must be at least the expense amount</p>
             )}
-            {!isUnderpay && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > 0 && walletCurrentBal < money.toBase(parsedTenderedVal, inputCurrency) && (
-              <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#FFCF73]"><AlertTriangle className="h-3 w-3 shrink-0" /> Wallet balance {money.formatBase(walletCurrentBal)} may be lower than cash given</p>
+            {!isUnderpay && Number.isFinite(parsedTenderedVal) && parsedTenderedVal > 0 && walletCurrentBal < toWalletCurrency(parsedTenderedVal, selectedWalletCurrency) && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#FFCF73]"><AlertTriangle className="h-3 w-3 shrink-0" /> Wallet balance {fmtWallet(walletCurrentBal, selectedWalletCurrency)} may be lower than cash given</p>
             )}
           </div>
 
@@ -249,36 +256,42 @@ export function CashChangeAssistant({
             <div className="rounded-xl border border-border bg-card p-4 space-y-2">
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Balance preview</p>
               <div className="space-y-2 text-sm">
+                {/* Spending wallet: decreases by tendered amount */}
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">{selectedWallet?.name}</span>
                   <span className="font-extrabold text-foreground">
-                    {money.formatDisplay(walletCurrentBal)} → {money.formatDisplay(walletCurrentBal - money.toBase(parsedTenderedVal, inputCurrency))}
+                    {fmtWallet(walletCurrentBal, selectedWalletCurrency)} → {fmtWallet(walletCurrentBal - toWalletCurrency(parsedTenderedVal, selectedWalletCurrency), selectedWalletCurrency)}
                   </span>
                 </div>
-                {hasBills && changeBillsWalletId && changeBillsWalletId !== walletId && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeBillsWalletId)?.name}</span>
-                    <span className="font-extrabold text-foreground">
-                      {money.formatDisplay(walletBalances.get(changeBillsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeBillsWalletId) ?? 0) + money.toBase(billsChange, inputCurrency))}
-                    </span>
-                  </div>
-                )}
-                {hasCoins && changeCoinsWalletId && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeCoinsWalletId)?.name}</span>
-                    <span className="font-extrabold text-foreground">
-                      {money.formatDisplay(walletBalances.get(changeCoinsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeCoinsWalletId) ?? 0) + money.toBase(coinsChange, inputCurrency))}
-                    </span>
-                  </div>
-                )}
-                {!isTWD && changeAmount > 0 && changeCoinsWalletId && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeCoinsWalletId)?.name}</span>
-                    <span className="font-extrabold text-foreground">
-                      {money.formatDisplay(walletBalances.get(changeCoinsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeCoinsWalletId) ?? 0) + money.toBase(changeAmount, inputCurrency))}
-                    </span>
-                  </div>
-                )}
+                {/* Bills change wallet: increases by bills change */}
+                {hasBills && changeBillsWalletId && changeBillsWalletId !== walletId && (() => {
+                  const w = wallets.find(x => x.id === changeBillsWalletId)
+                  const cur = w?.currency ?? money.baseCurrency
+                  const bal = walletBalances.get(changeBillsWalletId) ?? 0
+                  return (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">{w?.name}</span>
+                      <span className="font-extrabold text-foreground">
+                        {fmtWallet(bal, cur)} → {fmtWallet(bal + toWalletCurrency(billsChange, cur), cur)}
+                      </span>
+                    </div>
+                  )
+                })()}
+                {/* Coins change wallet: increases by coins change (TWD) or full change (non-TWD) */}
+                {(hasCoins || (!isTWD && changeAmount > 0)) && changeCoinsWalletId && (() => {
+                  const w = wallets.find(x => x.id === changeCoinsWalletId)
+                  const cur = w?.currency ?? money.baseCurrency
+                  const bal = walletBalances.get(changeCoinsWalletId) ?? 0
+                  const received = isTWD ? coinsChange : changeAmount
+                  return (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">{w?.name}</span>
+                      <span className="font-extrabold text-foreground">
+                        {fmtWallet(bal, cur)} → {fmtWallet(bal + toWalletCurrency(received, cur), cur)}
+                      </span>
+                    </div>
+                  )
+                })()}
                 <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
                   <span className="text-muted-foreground">{category ?? 'Expense'} recorded</span>
                   <span className="font-extrabold text-primary">{money.format(parsedExpense, inputCurrency)}</span>
