@@ -630,8 +630,8 @@ export function Goals() {
               ? Math.ceil(remaining / Math.max(1, daysLeft / 30))
               : null
             const now = new Date()
-            const monthsSoFar = g.deadline
-              ? Math.max(1, (new Date(g.deadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))
+            const monthsSoFar = g.created_at
+              ? Math.max(1, (now.getTime() - new Date(g.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30))
               : 6
             const monthlyRate = g.current_amount / Math.max(1, monthsSoFar)
             const monthsToComplete = monthlyRate > 0 && !done ? Math.ceil(remaining / monthlyRate) : null
@@ -763,9 +763,10 @@ export function Goals() {
                 {(() => {
                   const linked = transactions
                     .filter(tx =>
-                      tx.type !== 'income' &&
-                      (tx.category === 'Goals' && tx.description.includes(g.name)) ||
-                      (tx.category === g.category && tx.type !== 'transfer')
+                      tx.type !== 'income' && (
+                        (tx.category === 'Goals' && tx.description.includes(g.name)) ||
+                        (tx.category === g.category && tx.type !== 'transfer')
+                      )
                     )
                     .sort((a, b) => b.date.localeCompare(a.date))
                     .slice(0, 5)

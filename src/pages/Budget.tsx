@@ -157,9 +157,9 @@ export function Budget() {
   const categoriesWithSpent = useMemo(() =>
     categories.map(cat => ({
       ...cat,
-      budget_period: cat.budget_period ?? 'yearly',
+      budget_period: cat.budget_period ?? 'monthly',
       spent: expenseTransactions
-        .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period ?? 'yearly', periodDate))
+        .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period ?? 'monthly', periodDate))
         .reduce((s, t) => s + t.amount, 0),
     })),
     [categories, expenseTransactions]
