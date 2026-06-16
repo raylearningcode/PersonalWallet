@@ -407,8 +407,6 @@ export function Transactions() {
     }
 
     const editingTx = editingTransaction
-    setIsFormOpen(false)
-    resetForm()
     try {
       if (editingTx) {
         await updateTransaction.mutateAsync({ id: editingTx.id, ...payload })
@@ -576,8 +574,10 @@ export function Transactions() {
         }
         toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · change routed to wallet` : 'Transaction added')
       }
-    } catch {
-      toast.error('Failed to save transaction')
+      setIsFormOpen(false)
+      resetForm()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save transaction')
     }
   }
 
@@ -646,21 +646,28 @@ export function Transactions() {
   }
 
   const handleDuplicateTransaction = async (tx: Transaction) => {
-    await addTransaction.mutateAsync({
-      description: tx.description,
-      amount: tx.amount,
-      original_amount: tx.original_amount ?? tx.amount,
-      original_currency: tx.original_currency ?? money.baseCurrency,
-      type: tx.type,
-      category: tx.category,
-      wallet_id: tx.wallet_id,
-      transfer_wallet_id: tx.transfer_wallet_id,
-      recurring_rule_id: null,
-      recurring_due_date: null,
-      date: new Date().toISOString().slice(0, 10),
-      needs_review: false,
-    })
-    toast.success('Transaction duplicated')
+    try {
+      await addTransaction.mutateAsync({
+        description: tx.description,
+        amount: tx.amount,
+        original_amount: tx.original_amount ?? tx.amount,
+        original_currency: tx.original_currency ?? money.baseCurrency,
+        type: tx.type,
+        category: tx.category,
+        wallet_id: tx.wallet_id,
+        transfer_wallet_id: tx.transfer_wallet_id,
+        recurring_rule_id: null,
+        recurring_due_date: null,
+        date: new Date().toISOString().slice(0, 10),
+        needs_review: false,
+        cash_tendered: null,
+        split_portions: tx.split_portions,
+        wallet_splits: tx.wallet_splits,
+      })
+      toast.success('Transaction duplicated')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to duplicate transaction')
+    }
   }
 
   const handleMarkReviewed = (id: string) => {

@@ -193,6 +193,10 @@ export function AddTransaction() {
       toast.error('Please select a wallet')
       return
     }
+    if (type === 'expense' && !selectedCategory) {
+      toast.error('Please select a category')
+      return
+    }
 
     const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
     if (cashEnabled && type === 'expense' && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedAmount) {
