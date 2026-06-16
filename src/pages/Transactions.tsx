@@ -28,6 +28,7 @@ import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { formatDate } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
+import { pushUndo, popUndo } from '@/lib/undoStack'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
@@ -588,12 +589,29 @@ export function Transactions() {
     const linkedId = deleteTarget.linked_transaction_id
     // Find ALL system-generated transfers linked to this expense
     const allLinked = transactions.filter(tx => tx.linked_transaction_id === deleteTarget.id && tx.is_system_generated)
+    const toRestore = [deleteTarget, ...(linkedId && !allLinked.find(tx => tx.id === linkedId) ? [transactions.find(tx => tx.id === linkedId)] : []), ...allLinked].filter(Boolean) as Transaction[]
+    const undoId = pushUndo(toRestore)
     setDeleteTarget(null)
     try {
       await del.mutateAsync(deleteTarget.id)
       if (linkedId && !allLinked.find(tx => tx.id === linkedId)) await del.mutateAsync(linkedId)
       for (const tx of allLinked) await del.mutateAsync(tx.id)
-      toast.success('Transaction deleted')
+      toast.success('Transaction deleted', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            const restored = popUndo(undoId)
+            if (restored) {
+              try {
+                for (const tx of restored) await addTransaction.mutateAsync(tx)
+                toast.success('Transaction restored')
+              } catch {
+                toast.error('Failed to restore transaction')
+              }
+            }
+          },
+        },
+      })
     } catch {
       toast.error('Failed to delete transaction')
     }
@@ -676,9 +694,25 @@ export function Transactions() {
       transactions.filter(t => t.linked_transaction_id === tx.id && t.is_system_generated).forEach(t => linkedIds.add(t.id))
     })
     const deleteSet = new Set([...toDelete.map(t => t.id), ...linkedIds])
+    const undoId = pushUndo(toDelete)
     try {
       for (const id of deleteSet) await del.mutateAsync(id)
-      toast.success(`${toDelete.length} transaction${toDelete.length === 1 ? '' : 's'} deleted`)
+      toast.success(`${toDelete.length} transaction${toDelete.length === 1 ? '' : 's'} deleted`, {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            const restored = popUndo(undoId)
+            if (restored) {
+              try {
+                for (const tx of restored) await addTransaction.mutateAsync(tx)
+                toast.success(`${restored.length} transaction${restored.length === 1 ? '' : 's'} restored`)
+              } catch {
+                toast.error('Failed to restore transactions')
+              }
+            }
+          },
+        },
+      })
     } catch {
       toast.error('Failed to delete some transactions')
     }

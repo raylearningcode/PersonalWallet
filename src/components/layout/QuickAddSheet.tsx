@@ -20,7 +20,8 @@ import { hapticSuccess } from '@/lib/haptics'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, isAiConfigured } from '@/lib/ai'
-import { ScanLine, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { takePhotoWithCamera, isNativeCameraAvailable } from '@/lib/camera'
+import { ScanLine, Loader2, ChevronDown, ChevronUp, Camera as CameraIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
@@ -55,6 +56,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   const [scanning, setScanning] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [activeKeypad, setActiveKeypadRaw] = useState<ActiveKeypad>(null)
+  const [nativeCameraAvailable, setNativeCameraAvailable] = useState(false)
 
   const setActiveKeypad = (next: ActiveKeypad) => {
     setActiveKeypadRaw(next)
@@ -104,6 +106,10 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
   useEffect(() => {
     setInputCurrency(money.displayCurrency)
   }, [money.displayCurrency])
+
+  useEffect(() => {
+    isNativeCameraAvailable().then(setNativeCameraAvailable)
+  }, [])
 
   // Reset type to initialType and auto-focus when sheet opens
   useEffect(() => {
@@ -162,7 +168,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     const file = e.target.files?.[0]
     if (!file) return
     if (!isAiConfigured()) {
-      toast.error('Set up your AI API in Settings â†’ AI Features to use receipt scanning')
+      toast.error('Set up your AI API in Settings > AI Features to use receipt scanning')
       return
     }
     setScanning(true)
@@ -181,12 +187,40 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         const matched = categories.find(c => c.name.toLowerCase() === result.category.toLowerCase())
         if (matched) setCategory(matched.name)
       }
-      toast.success('Receipt scanned â€” review and confirm')
+      toast.success('Receipt scanned - review and confirm')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Receipt scan failed')
     } finally {
       setScanning(false)
       if (receiptInputRef.current) receiptInputRef.current.value = ''
+    }
+  }
+
+  const handleNativeCamera = async () => {
+    if (!isAiConfigured()) {
+      toast.error('Set up your AI API in Settings > AI Features to use receipt scanning')
+      return
+    }
+    setScanning(true)
+    try {
+      const base64 = await takePhotoWithCamera()
+      if (!base64) {
+        toast.error('Failed to capture photo')
+        return
+      }
+      const result = await scanReceipt(base64, 'image/jpeg')
+      if (result.description) setDescription(result.description)
+      if (result.amount) setAmount(result.amount)
+      if (result.date) setDate(result.date)
+      if (result.category) {
+        const matched = categories.find(c => c.name.toLowerCase() === result.category.toLowerCase())
+        if (matched) setCategory(matched.name)
+      }
+      toast.success('Receipt scanned - review and confirm')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Receipt scan failed')
+    } finally {
+      setScanning(false)
     }
   }
 
@@ -270,7 +304,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
           try {
             const ct = await addTransaction.mutateAsync({
-              description: `Change bills â€” ${safeDescription}`,
+              description: `Change bills ?EUR" ${safeDescription}`,
               amount: money.toBase(billsChangeAmt, inputCurrency),
               original_amount: billsChangeAmt,
               original_currency: inputCurrency,
@@ -291,7 +325,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
           try {
             const ct = await addTransaction.mutateAsync({
-              description: `Change coins â€” ${safeDescription}`,
+              description: `Change coins ?EUR" ${safeDescription}`,
               amount: money.toBase(coinsChangeAmt, inputCurrency),
               original_amount: coinsChangeAmt,
               original_currency: inputCurrency,
@@ -312,7 +346,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
         if (!isTWD && changeCoinsWalletId) {
           try {
             const ct = await addTransaction.mutateAsync({
-              description: `Change â€” ${safeDescription}`,
+              description: `Change ?EUR" ${safeDescription}`,
               amount: baseChange,
               original_amount: rawChange,
               original_currency: inputCurrency,
@@ -346,7 +380,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       hapticSuccess()
       if (cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
         const allIds = [savedTx.id, ...changeTxIds]
-        toast.success('Cash payment saved Â· change routed', {
+        toast.success('Cash payment saved ?? change routed', {
           duration: 8000,
           action: {
             label: 'Undo',
@@ -390,7 +424,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
         <div className="space-y-4">
 
-          {/* â”€â”€ QUICK MODE â”€â”€ */}
+          {/* ?"EUR?"EUR QUICK MODE ?"EUR?"EUR */}
           {!showAdvanced && (
             <>
               {/* Type segmented control */}
@@ -458,7 +492,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Category chips â€” expense */}
+              {/* Category chips ?EUR" expense */}
               {type === 'expense' && wallets.length > 0 && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Category</p>
@@ -469,7 +503,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       className="flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
                     >
                       <span>No categories yet</span>
-                      <span>Set up now â†’</span>
+                      <span>Set up now ?+'</span>
                     </Link>
                   ) : (
                     <div className={`flex flex-wrap gap-2 ${categories.length > 10 ? 'max-h-28 overflow-y-auto' : ''}`}>
@@ -496,7 +530,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Category chips â€” income */}
+              {/* Category chips ?EUR" income */}
               {type === 'income' && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Category</p>
@@ -519,7 +553,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Wallet chips â€” expense/income */}
+              {/* Wallet chips ?EUR" expense/income */}
               {type !== 'transfer' && wallets.length > 0 && (
                 <div>
                   <p className="mb-2 text-sm font-bold text-foreground">Wallet</p>
@@ -553,12 +587,12 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* Transfer â€” from/to wallet */}
+              {/* Transfer ?EUR" from/to wallet */}
               {type === 'transfer' && (
                 wallets.length < 2 ? (
                   <Link to="/settings" onClick={handleClose} className="flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary">
                     <span>Add at least 2 wallets for transfer</span>
-                    <span>Settings â†’</span>
+                    <span>Settings ?+'</span>
                   </Link>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -612,7 +646,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             </>
           )}
 
-          {/* â”€â”€ ADVANCED MODE â”€â”€ */}
+          {/* ?"EUR?"EUR ADVANCED MODE ?"EUR?"EUR */}
           {showAdvanced && (
             <>
               {/* Type + Amount + Scan */}
@@ -656,15 +690,27 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                     onClick={() => setActiveKeypad('amount')}
                     onFocus={() => setActiveKeypad('amount')}
                   />
-                  <button
-                    type="button"
-                    aria-label="Scan receipt"
-                    onClick={() => receiptInputRef.current?.click()}
-                    disabled={scanning}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
-                  >
-                    {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
-                  </button>
+                  {nativeCameraAvailable ? (
+                    <button
+                      type="button"
+                      aria-label="Capture receipt with camera"
+                      onClick={handleNativeCamera}
+                      disabled={scanning}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
+                    >
+                      {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <CameraIcon className="h-4 w-4" />}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="Scan receipt"
+                      onClick={() => receiptInputRef.current?.click()}
+                      disabled={scanning}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
+                    >
+                      {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+                    </button>
+                  )}
                   <input
                     ref={receiptInputRef}
                     type="file"
@@ -741,7 +787,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         className="mt-2 flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
                       >
                         <span>No categories yet</span>
-                        <span>Set up now â†’</span>
+                        <span>Set up now ?+'</span>
                       </Link>
                     ) : (
                       <select
@@ -766,7 +812,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                         className="mt-2 flex h-11 items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-bold text-primary hover:bg-primary/10"
                       >
                         <span>No wallets yet</span>
-                        <span>Add one â†’</span>
+                        <span>Add one ?+'</span>
                       </Link>
                     ) : (
                       <select
@@ -807,7 +853,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* â”€â”€ Category splitting (expense only, advanced mode) â”€â”€ */}
+              {/* ?"EUR?"EUR Category splitting (expense only, advanced mode) ?"EUR?"EUR */}
               {type === 'expense' && categories.length >= 2 && (
                 <div className="rounded-[1.25rem] border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -870,7 +916,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
                             aria-label={`Remove portion ${i + 1}`}
                           >
-                            Ã—
+                            ?--
                           </button>
                         </div>
                       ))}
@@ -887,7 +933,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               + Add portion
                             </button>
                             <span className={`text-xs font-bold ${remaining === 0 ? 'text-primary' : remaining > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                              {remaining === 0 ? 'âœ“ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
+                              {remaining === 0 ? '?oe" Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
                             </span>
                           </div>
                         )
@@ -897,7 +943,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 </div>
               )}
 
-              {/* â”€â”€ Multi-wallet payment (expense only, advanced mode, 2+ wallets) â”€â”€ */}
+              {/* ?"EUR?"EUR Multi-wallet payment (expense only, advanced mode, 2+ wallets) ?"EUR?"EUR */}
               {type === 'expense' && wallets.length >= 2 && (
                 <div className="rounded-[1.25rem] border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -947,7 +993,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               setWalletSplits(next)
                             }}
                           >
-                            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' Â· coins' : w.cash_role === 'notes' ? ' Â· notes' : ''}</option>)}
+                            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' ?? coins' : w.cash_role === 'notes' ? ' ?? notes' : ''}</option>)}
                           </select>
                           <Input
                             aria-label={`Wallet ${i + 1} amount`}
@@ -967,7 +1013,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
                             aria-label={`Remove wallet ${i + 1}`}
                           >
-                            Ã—
+                            ?--
                           </button>
                         </div>
                       ))}
@@ -987,7 +1033,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               + Add wallet
                             </button>
                             <span className={`text-xs font-bold ${remaining === 0 ? 'text-primary' : remaining > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                              {remaining === 0 ? 'âœ“ Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
+                              {remaining === 0 ? '?oe" Fully allocated' : remaining > 0 ? `${money.format(remaining, inputCurrency)} remaining` : `${money.format(Math.abs(remaining), inputCurrency)} over`}
                             </span>
                           </div>
                         )
@@ -1012,7 +1058,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             </>
           )}
 
-          {/* ── Cash-change assistant — expense + cash wallet ── */}
+          {/* -- Cash-change assistant -- expense + cash wallet -- */}
           {showCashAssistant && (
             <CashChangeAssistant
               cashEnabled={cashEnabled}
@@ -1031,7 +1077,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
             />
           )}
 
-          {/* â”€â”€ Sticky save button â”€â”€ */}
+          {/* ?"EUR?"EUR Sticky save button ?"EUR?"EUR */}
           <div className="sticky bottom-0 -mx-5 bg-background px-5 pb-safe-4 pt-3">
             {wallets.length === 0 ? (
               <Link
@@ -1039,7 +1085,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 onClick={onClose}
                 className="flex h-14 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
               >
-                Add a wallet to get started â†’
+                Add a wallet to get started ?+'
               </Link>
             ) : !showAdvanced && type === 'expense' && categories.length === 0 ? (
               <Link
@@ -1047,7 +1093,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                 onClick={onClose}
                 className="flex h-14 w-full items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
               >
-                Add a budget category first â†’
+                Add a budget category first ?+'
               </Link>
             ) : (
               <Button
@@ -1060,7 +1106,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                   cannotSaveTransfer
                 }
               >
-                {addTransaction.isPending ? 'Savingâ€¦' : `Add ${type}`}
+                {addTransaction.isPending ? 'Saving?EUR?' : `Add ${type}`}
               </Button>
             )}
           </div>
