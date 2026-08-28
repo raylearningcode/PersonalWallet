@@ -7,6 +7,15 @@ type Rates = Record<string, number>
 
 const KNOWN_CODES = new Set(CURRENCIES.map(c => c.toLowerCase()))
 
+// True for codes the app can actually convert — CURRENCIES and the fallback
+// rates table define exactly the same set. Values stored in any other code
+// (e.g. HKD/SGD/GBP from Yahoo tickers) cannot be converted to base currency;
+// callers building base-currency totals must exclude them rather than
+// surfacing raw amounts as if they were base.
+export function isKnownCurrency(code: string): boolean {
+  return KNOWN_CODES.has(code.toLowerCase())
+}
+
 const FALLBACK_USD_RATES: Rates = {
   usd: 1,
   idr: 16320,

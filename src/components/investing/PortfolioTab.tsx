@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useHoldings, useAddHolding, useUpdateHolding, useDeleteHolding, useDividends, useAddDividend, useDeleteDividend } from '@/lib/queries'
 import { useLivePrices } from '@/lib/priceFetch'
-import { useMoney, CURRENCIES } from '@/lib/currency'
+import { useMoney, CURRENCIES, isKnownCurrency } from '@/lib/currency'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -74,9 +74,17 @@ export function PortfolioTab() {
   const portfolioStats = useMemo(() => {
     let totalInvestedBase = 0
     let totalCurrentValueBase = 0
+    let excludedCount = 0
     const typeTotals: Record<string, number> = {}
 
     holdings.forEach(h => {
+      // Skip holdings whose currency the app cannot convert to base (e.g. HKD/SGD/GBP
+      // from Yahoo tickers). Folding their raw value into base-currency totals would
+      // silently produce wrong sums; individual rows stay visible in their own currency.
+      if (!isKnownCurrency(h.currency)) {
+        excludedCount += 1
+        return
+      }
       // Convert buy price from holding currency to base currency
       const buyPriceBase = money.toBase(h.buy_price, h.currency)
       const investedBase = h.quantity * buyPriceBase
@@ -112,7 +120,7 @@ export function PortfolioTab() {
     const totalGainBase = totalCurrentValueBase - totalInvestedBase
     const gainPct = totalInvestedBase > 0 ? ((totalCurrentValueBase / totalInvestedBase) - 1) * 100 : 0
 
-    return { totalInvestedBase, totalCurrentValueBase, totalGainBase, gainPct, allocations }
+    return { totalInvestedBase, totalCurrentValueBase, totalGainBase, gainPct, allocations, excludedCount }
   }, [holdings, livePrices, money.baseCurrency, money.rates])
 
   const totalDividendsBase = useMemo(
@@ -256,6 +264,12 @@ export function PortfolioTab() {
         </div>
       </div>
 
+      {portfolioStats.excludedCount > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {portfolioStats.excludedCount} holding{portfolioStats.excludedCount === 1 ? '' : 's'} with unsupported currency excluded from totals
+        </p>
+      )}
+
       {/* Holdings + Allocation */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         {/* Holdings List */}
@@ -339,6 +353,7 @@ export function PortfolioTab() {
                 {/* Holdings rows */}
                 {holdings.map(h => {
                   const isEditing = editingId === h.id
+                  const currencyKnown = isKnownCurrency(h.currency)
                   // Live price in holding's currency → convert to base for display
                   const livePriceRaw = livePrices?.get(h.ticker)
                   const currentPriceRaw = livePriceRaw?.price ?? h.current_price ?? h.buy_price
@@ -349,6 +364,8 @@ export function PortfolioTab() {
                   const gainBase = currentValueBase - investedBase
                   const gainPct = investedBase > 0 ? ((currentValueBase / investedBase) - 1) * 100 : 0
                   const holdingDividends = dividends.filter(d => d.holding_id === h.id).reduce((sum, d) => sum + d.amount, 0)
+                  // Unknown currencies can't convert to base — show values in the holding's own currency
+                  const fmtValue = (v: number) => currencyKnown ? money.formatDisplay(v) : money.format(v, h.currency)
 
                   if (isEditing) {
                     return (
@@ -395,6 +412,9 @@ export function PortfolioTab() {
                             <p className="font-extrabold text-foreground truncate">{h.name}</p>
                             {h.ticker && <span className="text-xs font-bold text-muted-foreground font-mono">{h.ticker}</span>}
                             <span className="text-xs text-muted-foreground">· {h.currency}</span>
+                            {!currencyKnown && (
+                              <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">currency unsupported</span>
+                            )}
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             {h.quantity} units × {money.format(h.buy_price, h.currency)}/unit · bought {h.buy_date}
@@ -428,7 +448,7 @@ export function PortfolioTab() {
                         <div className="rounded-lg bg-secondary px-3 py-2">
                           <p className="text-[10px] text-muted-foreground">Current value</p>
                           <p className="text-sm font-extrabold text-foreground">
-                            {money.formatDisplay(currentValueBase)}
+                            {fmtValue(currentValueBase)}
                           </p>
                           {h.currency !== money.baseCurrency && (
                             <p className="text-[10px] text-muted-foreground">≈ {money.format(currentPriceRaw * h.quantity, h.currency)}</p>
@@ -437,7 +457,7 @@ export function PortfolioTab() {
                         <div className={`rounded-lg px-3 py-2 ${gainBase >= 0 ? 'bg-primary/10' : 'bg-destructive/10'}`}>
                           <p className="text-[10px] text-muted-foreground">Gain/Loss</p>
                           <p className={`text-sm font-extrabold ${gainBase >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                            {gainBase >= 0 ? '+' : ''}{money.formatDisplay(Math.abs(gainBase))}
+                            {gainBase >= 0 ? '+' : ''}{fmtValue(Math.abs(gainBase))}
                           </p>
                           <p className={`text-[10px] font-bold ${gainPct >= 0 ? 'text-primary' : 'text-destructive'}`}>
                             {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(1)}%

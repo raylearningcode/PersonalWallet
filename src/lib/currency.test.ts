@@ -75,3 +75,18 @@ describe('formatCurrency', () => {
     expect(currency.formatCurrency(1234.5, 'KRW')).toBe('1234.5 KRW')
   })
 })
+
+describe('isKnownCurrency', () => {
+  it('returns true for every supported code, case-insensitively', () => {
+    for (const code of ['USD', 'IDR', 'TWD', 'EUR', 'JPY']) {
+      expect(currency.isKnownCurrency(code)).toBe(true)
+      expect(currency.isKnownCurrency(code.toLowerCase())).toBe(true)
+    }
+  })
+
+  it('returns false for unknown/legacy codes', () => {
+    for (const code of ['HKD', 'SGD', 'GBP', 'KRW', 'CNY', 'AUD', '']) {
+      expect(currency.isKnownCurrency(code)).toBe(false)
+    }
+  })
+})

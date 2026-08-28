@@ -25,6 +25,7 @@ vi.mock('@/lib/priceFetch', () => ({
 
 vi.mock('@/lib/currency', () => ({
   CURRENCIES: ['USD', 'IDR', 'TWD', 'EUR', 'JPY'],
+  isKnownCurrency: (code: string) => ['USD', 'IDR', 'TWD', 'EUR', 'JPY'].includes(code),
   useMoney: () => ({
     baseCurrency: 'IDR',
     displayCurrency: 'TWD',
