@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
+const WISHLIST_TYPES = ['Want', 'Need', 'Work', 'Travel', 'Gift', 'Later']
 
 type EstimatePeriod = 'monthly' | 'yearly'
 
@@ -232,7 +233,11 @@ export function Estimation() {
       setExpenseItems(newExpense)
     }
     setEditItem(null)
-    await saveToBackend(newIncome, newExpense, wishlistItems, notes)
+    try {
+      await saveToBackend(newIncome, newExpense, wishlistItems, notes)
+    } catch {
+      toast.error('Failed to save edit — change shown locally but may not persist')
+    }
   }
 
   const startEditWishlist = (id: string) => {
@@ -255,27 +260,39 @@ export function Estimation() {
     )
     setWishlistItems(newWishlist)
     setEditWishlistId(null)
-    await saveToBackend(incomeItems, expenseItems, newWishlist, notes)
+    try {
+      await saveToBackend(incomeItems, expenseItems, newWishlist, notes)
+    } catch {
+      toast.error('Failed to save edit — change shown locally but may not persist')
+    }
   }
 
   const convertToGoal = async (item: WishlistItem) => {
     const GOAL_COLORS = ['#A9F5C7', '#93C5FD', '#FADBEA', '#FFD276', '#C4AEFF']
     const color = GOAL_COLORS[Math.floor(Math.random() * GOAL_COLORS.length)]
-    await addGoal.mutateAsync({
-      name: item.name,
-      target_amount: item.amount,
-      current_amount: 0,
-      color,
-      category: item.type || 'Other',
-      notes: item.note || '',
-      deadline: null,
-    })
-    toast.success(`"${item.name}" added as a goal`)
+    try {
+      await addGoal.mutateAsync({
+        name: item.name,
+        target_amount: item.amount,
+        current_amount: 0,
+        color,
+        category: item.type || 'Other',
+        notes: item.note || '',
+        deadline: null,
+      })
+      toast.success(`"${item.name}" added as a goal`)
+    } catch {
+      toast.error('Failed to add goal — please try again')
+    }
   }
 
   const handleSave = async () => {
-    await saveToBackend(incomeItems, expenseItems, wishlistItems, notes)
-    toast.success('Estimation plan saved')
+    try {
+      await saveToBackend(incomeItems, expenseItems, wishlistItems, notes)
+      toast.success('Estimation plan saved')
+    } catch {
+      toast.error('Failed to save plan — please try again')
+    }
   }
 
   const handleClearAll = async () => {
@@ -284,8 +301,12 @@ export function Estimation() {
     setWishlistItems([])
     setNotes('')
     setShowClearConfirm(false)
-    await saveToBackend([], [], [], '')
-    toast.success('Plan data cleared')
+    try {
+      await saveToBackend([], [], [], '')
+      toast.success('Plan data cleared')
+    } catch {
+      toast.error('Failed to clear plan — data may still be saved')
+    }
   }
 
   const confirmDeleteSelected = async () => {
@@ -297,7 +318,11 @@ export function Estimation() {
     setExpenseItems(newExpense)
     setWishlistItems(newWishlist)
     setDeleteTarget(null)
-    await saveToBackend(newIncome, newExpense, newWishlist, notes)
+    try {
+      await saveToBackend(newIncome, newExpense, newWishlist, notes)
+    } catch {
+      toast.error('Failed to delete — item may still be saved')
+    }
   }
 
   return (
@@ -722,12 +747,7 @@ export function Estimation() {
                 <div>
                   <Label className="text-xs text-muted-foreground">Type</Label>
                   <select aria-label="Wishlist type" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
-                    <option value="Need">Need</option>
-                    <option value="Want">Want</option>
-                    <option value="Later">Later</option>
-                    <option value="Work">Work</option>
-                    <option value="Travel">Travel</option>
-                    <option value="Gift">Gift</option>
+                    {WISHLIST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="sm:col-span-2">
@@ -755,7 +775,7 @@ export function Estimation() {
                       <div className="flex gap-2">
                         <Input className="bg-card text-sm" inputMode="decimal" value={editWishlistAmount} onChange={e => setEditWishlistAmount(formatNumberInput(e.target.value))} placeholder="Amount" />
                         <select className="h-11 flex-1 rounded-md border border-input bg-card px-2 text-sm font-bold text-foreground outline-none" value={editWishlistType} onChange={e => setEditWishlistType(e.target.value)}>
-                          {['Want','Need','Work','Travel','Gift'].map(t => <option key={t} value={t}>{t}</option>)}
+                          {WISHLIST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
                       <Input className="bg-card text-sm" value={editWishlistNote} onChange={e => setEditWishlistNote(e.target.value)} placeholder="Note" />
