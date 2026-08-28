@@ -3,6 +3,11 @@ import { Input } from '@/components/ui/input'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 
+// Module-scoped registry: at most one MoneyField keypad may be open at a time
+// (spec §5). Holds the stable close handle of the currently-open instance, or
+// null when no keypad is open.
+let keypadOwner: (() => void) | null = null
+
 export function MoneyField(props: {
   value: string
   onChange: (v: string) => void
@@ -17,17 +22,33 @@ export function MoneyField(props: {
   const isDesktop = useIsDesktop()
   const [keypadOpen, setKeypadOpen] = useState(false)
   const fieldRef = useRef<HTMLInputElement>(null)
+  // Stable per-instance close handle: its identity must survive re-renders
+  // (the value prop changes on every keypad digit) so the module-level
+  // ownership comparisons hold. It delegates to the latest setOpen via ref.
+  const setOpenRef = useRef<(open: boolean) => void>(() => {})
+  const myCloseFn = useRef<() => void>(() => setOpenRef.current(false))
 
   const setOpen = (open: boolean) => {
+    if (open) {
+      // Another field's keypad is open: close it first (exactly one active keypad).
+      if (keypadOwner && keypadOwner !== myCloseFn.current) keypadOwner()
+      keypadOwner = myCloseFn.current
+    } else if (keypadOwner === myCloseFn.current) {
+      keypadOwner = null
+    }
     setKeypadOpen(open)
     window.dispatchEvent(new CustomEvent('finpath-keypad-change', { detail: { active: open } }))
   }
+  setOpenRef.current = setOpen
 
-  // Close keypad when AppLayout back handler fires
+  // Close keypad when AppLayout back handler fires; release ownership on unmount
   useEffect(() => {
     const close = () => setOpen(false)
     window.addEventListener('finpath-close-keypad', close)
-    return () => window.removeEventListener('finpath-close-keypad', close)
+    return () => {
+      window.removeEventListener('finpath-close-keypad', close)
+      if (keypadOwner === myCloseFn.current) keypadOwner = null
+    }
   }, [])
 
   // Close keypad on outside tap (same convention as QuickAddSheet's sheet-level handler)

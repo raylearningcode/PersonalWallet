@@ -24,6 +24,21 @@ describe('MoneyField (mobile)', () => {
     fireEvent.click(screen.getByRole('button', { name: '5' }))
     expect(onChange).toHaveBeenCalledWith('5')
   })
+  it('keeps exactly one keypad open across multiple fields (spec §5)', () => {
+    const onChange = vi.fn()
+    const { container } = render(
+      <div>
+        <MoneyField value="" onChange={onChange} currency="USD" ariaLabel="Amount A" />
+        <MoneyField value="" onChange={onChange} currency="USD" ariaLabel="Amount B" />
+      </div>
+    )
+    fireEvent.click(screen.getByLabelText('Amount A'))
+    expect(container.querySelectorAll('[data-money-keypad-panel]')).toHaveLength(1)
+    // Opening the second field must close the first — never two stacked panels
+    fireEvent.click(screen.getByLabelText('Amount B'))
+    expect(container.querySelectorAll('[data-money-keypad-panel]')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /confirm amount/i })).toBeInTheDocument()
+  })
 })
 
 describe('MoneyField (desktop)', () => {
