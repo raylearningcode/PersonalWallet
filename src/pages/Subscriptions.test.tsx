@@ -64,6 +64,7 @@ vi.mock('@/lib/currency', () => ({
   useMoney: () => ({
     baseCurrency: 'IDR',
     displayCurrency: 'IDR',
+    toBase: (n: number) => n,
     formatDisplay: (n: number) => `Rp ${new Intl.NumberFormat('en-US').format(n)}`,
     formatRef: () => null,
     format: (n: number) => `Rp ${new Intl.NumberFormat('en-US').format(n)}`,
@@ -122,5 +123,14 @@ describe('Subscriptions', () => {
     fireEvent.click(ruleButtons[0])
     // Detail sheet should open - Netflix appears more times
     expect(screen.getAllByText('Netflix').length).toBeGreaterThan(1)
+  })
+
+  it('saves changes from the detail sheet', () => {
+    renderSubs()
+    const ruleButtons = screen.getAllByRole('button').filter(b => b.textContent?.includes('Netflix') && b.textContent?.includes('monthly'))
+    fireEvent.click(ruleButtons[0])
+    // Save button in the detail sheet updates the rule
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    expect(updateRule).toHaveBeenCalledWith(expect.objectContaining({ id: 'rule-1', description: 'Netflix' }))
   })
 })

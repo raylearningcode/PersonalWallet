@@ -227,6 +227,7 @@ export function Subscriptions() {
 
   const openDetail = (rule: RecurringRule) => {
     setDetailRule(rule)
+    setEditTarget(rule)
     setEditForm({
       description: rule.description,
       amount: String(rule.original_amount ?? rule.amount),
@@ -282,6 +283,7 @@ export function Subscriptions() {
       })
       setEditTarget(null)
       setEditForm(emptyAddForm(money.displayCurrency))
+      setDetailRule(null)
       toast.success('Subscription updated')
     } catch {
       toast.error('Failed to update subscription')
@@ -468,7 +470,7 @@ export function Subscriptions() {
         {/* Mobile: tap hint */}
         <p className="mt-2 text-[10px] text-muted-foreground lg:hidden">Tap card to manage</p>
 
-        {editTarget?.id === rule.id && (
+        {editTarget?.id === rule.id && !detailRule && (
           <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
             <p className="text-xs font-bold text-muted-foreground">Edit subscription</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -917,7 +919,7 @@ export function Subscriptions() {
       />
 
       {/* Recurring rule detail sheet */}
-      <Sheet open={!!detailRule} onOpenChange={open => { if (!open) setDetailRule(null) }}>
+      <Sheet open={!!detailRule} onOpenChange={open => { if (!open) { setDetailRule(null); setEditTarget(null); setEditForm(emptyAddForm(money.displayCurrency)) } }}>
         <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-safe-10'}>
           {detailRule && (() => {
             const rule = detailRule
