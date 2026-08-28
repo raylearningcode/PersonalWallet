@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -29,8 +29,11 @@ import type { CashRole, Wallet } from '@/types'
 import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
 import { parseNumberInput, formatNumberInput } from '@/lib/numberInput'
 import { getQueue } from '@/lib/offlineCache'
+import { getWalletBalances } from '@/lib/financeOs'
+import { safeGet } from '@/lib/utils'
+import { saveGeminiKey, isAiConfigured } from '@/lib/ai'
 
-const tabs = ['profile', 'wallets', 'categories', 'security', 'backup'] as const
+const tabs = ['profile', 'wallets', 'categories', 'security', 'backup', 'ai'] as const
 type SettingsTab = typeof tabs[number]
 const TAB_META: Record<SettingsTab, { label: string; desc: string; Icon: ElementType; color: string }> = {
   profile:    { label: 'Profile',        desc: 'Name, currency & account',  Icon: User,        color: '#A9F5C7' },
@@ -38,6 +41,7 @@ const TAB_META: Record<SettingsTab, { label: string; desc: string; Icon: Element
   categories: { label: 'Categories',     desc: 'Budget categories',         Icon: Tag,         color: '#FFD276' },
   security:   { label: 'Security',       desc: 'PIN lock & privacy',        Icon: Shield,      color: '#FADBEA' },
   backup:     { label: 'Backup & Export',desc: 'Export & import data',      Icon: HardDrive,   color: '#F8DCDC' },
+  ai:         { label: 'AI Features',    desc: 'Gemini key & AI insights',  Icon: Sparkles,    color: '#C4AEFF' },
 }
 
 const CURRENCIES = ['USD', 'IDR', 'TWD', 'EUR', 'JPY']
@@ -147,35 +151,26 @@ export function Settings() {
   const [backupText, setBackupText] = useState('')
   const backupFileRef = useRef<HTMLInputElement>(null)
   const [backupPreview, setBackupPreview] = useState<null | { wallets: number; categories: number; transactions: number; rules: number; parsed: unknown }>(null)
-  const [lastExportDate, setLastExportDate] = useState(() => localStorage.getItem('finpath_last_export') ?? '')
+  const [lastExportDate, setLastExportDate] = useState(() => safeGet('finpath_last_export') ?? '')
   const [pinInput, setPinInput] = useState('')
-  const [pinEnabled, setPinEnabled] = useState(() => Boolean(localStorage.getItem(PIN_STORAGE_KEY)))
-  const [biometricEnabled, setBiometricEnabled] = useState(() => Boolean(localStorage.getItem(BIOMETRIC_CRED_KEY)))
+  const [pinEnabled, setPinEnabled] = useState(() => Boolean(safeGet(PIN_STORAGE_KEY)))
+  const [biometricEnabled, setBiometricEnabled] = useState(() => Boolean(safeGet(BIOMETRIC_CRED_KEY)))
   const [biometricRegistering, setBiometricRegistering] = useState(false)
-  const [totpEnabled, setTotpEnabled] = useState(() => Boolean(localStorage.getItem('finpath_totp_secret')))
+  const [totpEnabled, setTotpEnabled] = useState(() => Boolean(safeGet('finpath_totp_secret')))
   const [totpSetup, setTotpSetup] = useState(false)
   const [totpSecret, setTotpSecret] = useState('')
   const [totpQRCode, setTotpQRCode] = useState('')
   const [totpToken, setTotpToken] = useState('')
   const [totpVerifying, setTotpVerifying] = useState(false)
   const [fiftyCoinRouting, setFiftyCoinRoutingState] = useState<FiftyCoinRouting>(() => getFiftyCoinRouting())
+  const [geminiKey, setGeminiKey] = useState(() => safeGet('finpath_gemini_key') ?? '')
+  const [aiConfigured, setAiConfigured] = useState(() => isAiConfigured())
   const [confirmDelete, setConfirmDelete] = useState<null | {
     kind: 'category' | 'wallet'
     id: string
     name: string
   }>(null)
-  const walletBalances = useMemo(() => {
-    const map = new Map(wallets.map(wallet => [wallet.id, wallet.balance ?? 0]))
-    transactions.forEach(tx => {
-      if (tx.type === 'income' && tx.wallet_id) map.set(tx.wallet_id, (map.get(tx.wallet_id) ?? 0) + tx.amount)
-      if (tx.type !== 'income' && tx.type !== 'transfer' && tx.wallet_id) map.set(tx.wallet_id, (map.get(tx.wallet_id) ?? 0) - tx.amount)
-      if (tx.type === 'transfer') {
-        if (tx.wallet_id) map.set(tx.wallet_id, (map.get(tx.wallet_id) ?? 0) - tx.amount)
-        if (tx.transfer_wallet_id) map.set(tx.transfer_wallet_id, (map.get(tx.transfer_wallet_id) ?? 0) + tx.amount)
-      }
-    })
-    return map
-  }, [transactions, wallets])
+  const walletBalances = getWalletBalances(wallets, transactions)
 
   const walletGroups = useMemo(() => {
     const groups: Record<string, typeof wallets> = {}
@@ -209,24 +204,61 @@ export function Settings() {
   }
 
   const saveProfile = async () => {
-    await saveSettings.mutateAsync(baseSettings)
-    setEditMode(false)
-    toast.success('Profile updated')
+    try {
+      await saveSettings.mutateAsync(baseSettings)
+      setEditMode(false)
+      toast.success('Profile updated')
+    } catch {
+      toast.error('Something went wrong — please try again')
+    }
   }
 
   const saveCurrency = async () => {
-    await saveSettings.mutateAsync(baseSettings)
-    toast.success('Currency saved')
+    try {
+      await saveSettings.mutateAsync(baseSettings)
+      toast.success('Currency saved')
+    } catch {
+      toast.error('Something went wrong — please try again')
+    }
   }
 
   const handleSignIn = async () => {
-    await signIn.mutateAsync({ email: authEmail, password: authPassword })
-    toast.success('Logged in')
+    try {
+      await signIn.mutateAsync({ email: authEmail, password: authPassword })
+      toast.success('Logged in')
+    } catch {
+      toast.error('Something went wrong — please try again')
+    }
   }
 
   const handleSignUp = async () => {
-    await signUp.mutateAsync({ email: authEmail, password: authPassword })
-    toast.success('Signup started. Check your email if confirmation is enabled.')
+    try {
+      await signUp.mutateAsync({ email: authEmail, password: authPassword })
+      toast.success('Signup started. Check your email if confirmation is enabled.')
+    } catch {
+      toast.error('Something went wrong — please try again')
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut.mutateAsync()
+      toast.success('Logged out')
+    } catch {
+      toast.error('Something went wrong — please try again')
+    }
+  }
+
+  const handleSaveAiKey = () => {
+    const key = geminiKey.trim()
+    try {
+      saveGeminiKey(key)
+      setGeminiKey('')
+      setAiConfigured(isAiConfigured())
+      toast.success(key ? 'AI key saved' : 'AI key removed')
+    } catch {
+      toast.error('Something went wrong — please try again')
+    }
   }
 
   const handleEnablePin = () => {
@@ -569,15 +601,19 @@ export function Settings() {
               </button>
             )
           })}
-          <div className="flex items-center gap-4 px-4 py-3.5">
+          <Link
+            to="/desktop-tools"
+            className="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-muted/40"
+          >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C4AEFF]/20">
               <Sparkles className="h-5 w-5 text-[#C4AEFF]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-muted-foreground">Desktop tools</p>
+              <p className="font-bold text-foreground">Desktop tools</p>
               <p className="text-xs text-muted-foreground">AI, Investing & Planning — open on a larger screen</p>
             </div>
-          </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </Link>
         </div>
       )}
 
@@ -641,7 +677,7 @@ export function Settings() {
                     <p className="font-bold text-foreground">Logged in</p>
                     <p className="text-sm text-muted-foreground">{session.user.email}</p>
                   </div>
-                  <Button variant="secondary" disabled={signOut.isPending} onClick={() => signOut.mutateAsync()}>Log out</Button>
+                  <Button variant="secondary" disabled={signOut.isPending} onClick={handleSignOut}>Log out</Button>
                 </div>
               ) : (
                 <div className="grid max-w-md grid-cols-1 items-end gap-4">
@@ -1281,6 +1317,40 @@ export function Settings() {
           </CardContent>
         </Card>
         </>
+      )}
+
+      {/* AI Features tab */}
+      {effectiveTab === 'ai' && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-xl">AI Features</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Paste your Gemini API key to enable AI insights and receipt scanning. The key is stored on this device and
+              sent only to Google's Gemini API.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
+              <p className="text-xs font-bold text-muted-foreground">
+                AI status: <span className={aiConfigured ? 'text-primary' : 'text-foreground'}>{aiConfigured ? 'Configured' : 'Not configured'}</span>
+              </p>
+            </div>
+            <div className="flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <Label className="text-sm text-muted-foreground">Gemini API key</Label>
+                <Input
+                  aria-label="Gemini API key"
+                  className="mt-2 bg-secondary font-mono"
+                  type="password"
+                  value={geminiKey}
+                  onChange={event => setGeminiKey(event.target.value)}
+                  placeholder="Paste your key — e.g. AIza…"
+                />
+              </div>
+              <Button onClick={handleSaveAiKey}>Save key</Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <ConfirmDialog
