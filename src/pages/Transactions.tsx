@@ -30,6 +30,7 @@ import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { pushUndo, popUndo } from '@/lib/undoStack'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
@@ -1089,8 +1090,8 @@ export function Transactions() {
                           value={p.category} onChange={e => { const n = [...splitPortions]; n[i] = { ...n[i], category: e.target.value }; setSplitPortions(n) }}>
                           {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                         </select>
-                        <Input aria-label={`Portion ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" inputMode="decimal" placeholder="0"
-                          value={p.amount} onChange={e => { const n = [...splitPortions]; n[i] = { ...n[i], amount: e.target.value }; setSplitPortions(n) }} />
+                        <MoneyField ariaLabel={`Portion ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" placeholder="0"
+                          value={p.amount} currency={inputCurrency} onChange={v => { const n = [...splitPortions]; n[i] = { ...n[i], amount: v }; setSplitPortions(n) }} />
                         <button onClick={() => setSplitPortions(sp => sp.filter((_, j) => j !== i))} disabled={splitPortions.length <= 2}
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label={`Remove portion ${i + 1}`}>×</button>
                       </div>
@@ -1144,8 +1145,8 @@ export function Transactions() {
                           value={ws.wallet_id} onChange={e => { const n = [...walletSplits]; n[i] = { ...n[i], wallet_id: e.target.value }; setWalletSplits(n) }}>
                           {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coins' : w.cash_role === 'notes' ? ' · notes' : ''}</option>)}
                         </select>
-                        <Input aria-label={`Wallet ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" inputMode="decimal" placeholder="0"
-                          value={ws.amount} onChange={e => { const n = [...walletSplits]; n[i] = { ...n[i], amount: e.target.value }; setWalletSplits(n) }} />
+                        <MoneyField ariaLabel={`Wallet ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" placeholder="0"
+                          value={ws.amount} currency={inputCurrency} onChange={v => { const n = [...walletSplits]; n[i] = { ...n[i], amount: v }; setWalletSplits(n) }} />
                         <button onClick={() => setWalletSplits(ws2 => ws2.filter((_, j) => j !== i))} disabled={walletSplits.length <= 2}
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label={`Remove wallet ${i + 1}`}>×</button>
                       </div>
@@ -1321,7 +1322,7 @@ export function Transactions() {
               </div>
               <div className="flex-1">
                 <Label className="text-sm font-bold text-foreground">Amount</Label>
-                <Input aria-label="Rule amount" className="mt-2 bg-secondary" inputMode="decimal" value={ruleAmount} onChange={e => setRuleAmount(formatNumberInput(e.target.value))} />
+                <MoneyField ariaLabel="Rule amount" className="mt-2 bg-secondary" value={ruleAmount} currency={ruleInputCurrency} onChange={v => setRuleAmount(formatNumberInput(v))} />
               </div>
             </div>
             <div>
