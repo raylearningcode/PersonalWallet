@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { Reports } from './Reports'
 
+const now = new Date()
+const thisMonthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+const prevMonthLabel = prev.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
 vi.mock('@/lib/queries', () => ({
   useTransactions: () => ({ data: [
     { id: 'tx-1', description: 'Lunch', amount: 550000, original_amount: 1000, original_currency: 'TWD', type: 'expense', category: 'Food', wallet_id: 'cash', transfer_wallet_id: null, date: '2026-05-21', needs_review: false },
@@ -47,13 +52,13 @@ describe('Reports', () => {
     render(<MemoryRouter><Reports /></MemoryRouter>)
 
     // Period label appears in both the header and the mobile sticky bar
-    expect(screen.getAllByText('June 2026').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(thisMonthLabel).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/No transactions in this period\./).length).toBeGreaterThan(0)
-    // Go back to May 2026 where mock transactions exist
+    // Go back to the previous month
     fireEvent.click(screen.getAllByRole('button', { name: 'Previous period' })[0])
-    expect(screen.getAllByText('May 2026').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(prevMonthLabel).length).toBeGreaterThan(0)
     // Go forward again
     fireEvent.click(screen.getAllByRole('button', { name: 'Next period' })[0])
-    expect(screen.getAllByText('June 2026').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(thisMonthLabel).length).toBeGreaterThan(0)
   })
 })

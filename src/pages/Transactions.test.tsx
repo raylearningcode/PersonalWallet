@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { Transactions } from './Transactions'
 
+const d = new Date()
+const thisMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+const formatGroupHeading = (day: number) =>
+  new Date(d.getFullYear(), d.getMonth(), day).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
+
 const renderTx = () => render(<MemoryRouter><Transactions /></MemoryRouter>)
 
 const addTransaction = vi.fn()
@@ -26,7 +33,7 @@ const mockTransactions = [{
   category: 'Food',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-06-01',
+  date: `${thisMonth}-01`,
   needs_review: false,
 }, {
   id: 'tx-3',
@@ -38,7 +45,7 @@ const mockTransactions = [{
   category: 'Transport',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-06-01',
+  date: `${thisMonth}-01`,
   needs_review: false,
 }, {
   id: 'tx-2',
@@ -50,7 +57,7 @@ const mockTransactions = [{
   category: 'Wage',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-06-02',
+  date: `${thisMonth}-02`,
   needs_review: false,
 }]
 
@@ -149,7 +156,7 @@ describe('Transactions', () => {
       category: 'Food',
       wallet_id: 'cash',
       transfer_wallet_id: null,
-      date: '2026-06-01',
+      date: `${thisMonth}-01`,
       type: 'expense',
     }))
   })
@@ -197,8 +204,8 @@ describe('Transactions', () => {
   it('groups history by date and shows note/category/price columns', () => {
     renderTx()
 
-    expect(screen.getByRole('heading', { name: '2 Jun 2026' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '1 Jun 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: formatGroupHeading(2) })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: formatGroupHeading(1) })).toBeInTheDocument()
     expect(screen.getAllByText('Item name').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Note').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Price').length).toBeGreaterThan(0)

@@ -41,6 +41,12 @@ vi.mock('@/hooks/useIsDesktop', () => ({
   useIsDesktop: () => false,
 }))
 
+vi.mock('@/lib/camera', () => ({
+  takePhotoWithCamera: vi.fn(async () => null),
+  isNativeCameraAvailable: vi.fn(async () => false),
+  pickPhotoFromLibrary: vi.fn(),
+}))
+
 describe('QuickAddSheet keypad behavior', () => {
   it('opens the money keypad from the amount field and closes it from confirm', () => {
     render(
