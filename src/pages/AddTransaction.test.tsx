@@ -54,6 +54,7 @@ beforeEach(() => {
   mockToastError.mockClear()
   mockToastSuccess.mockClear()
   mockAddTransactionMutate.mockResolvedValue({ id: 'tx1' })
+  localStorage.clear()
 })
 
 function renderPage() {
@@ -86,6 +87,25 @@ describe('AddTransaction validation', () => {
 
     expect(mockToastError).toHaveBeenCalledWith('Cash given must be at least the expense amount')
     expect(mockAddTransactionMutate).not.toHaveBeenCalled()
+  })
+
+  it('does not trap saves when ?cash=true but the wallet is not a cash wallet', async () => {
+    render(
+      <MemoryRouter initialEntries={['/?cash=true']}>
+        <AddTransaction />
+      </MemoryRouter>
+    )
+
+    // ?cash=true auto-picks the cash wallet and enables cash mode; switching
+    // to a card wallet must keep cash disabled (no re-enable, no switch UI),
+    // so the save is not blocked by the "Enter the cash amount given" check.
+    fireEvent.click(screen.getByRole('button', { name: 'Debit card' }))
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save transaction' }))
+
+    await waitFor(() => expect(mockAddTransactionMutate).toHaveBeenCalledTimes(1))
+    expect(mockToastError).not.toHaveBeenCalledWith('Enter the cash amount given')
   })
 
   it('routes cash change through a second transfer and links it to the main transaction', async () => {

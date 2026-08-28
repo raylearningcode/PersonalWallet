@@ -72,6 +72,11 @@ export function AddTransaction() {
   const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
   const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
 
+  // Whether the ?cash=true initial cash state has already been applied (open-once
+  // semantics, like QuickAddSheet's initialCash) — wallet changes must never
+  // force cash back on and fight the user's manual toggle.
+  const initialCashAppliedRef = useRef(false)
+
   const receiptInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -95,14 +100,21 @@ export function AddTransaction() {
   }, [categories, category])
 
   useEffect(() => {
-    if (paramCash && wallets.length > 0) {
+    if (!paramCash || wallets.length === 0) return
+    // Apply the ?cash=true enablement only once (open semantics) and only for
+    // a cash wallet — the switch UI (showCashAssistant) requires a cash
+    // wallet, so forcing cashEnabled on for any other wallet would trap every
+    // save behind "Enter the cash amount given" with no way to turn it off.
+    const selected = wallets.find(w => w.id === walletId)
+    if (!initialCashAppliedRef.current && selected?.type === 'cash') {
+      initialCashAppliedRef.current = true
       setCashEnabled(true)
-      const coinsWallet = wallets.find(w => w.cash_role === 'coins')
-      const billsWallet = wallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed')
-      const otherWallets = wallets.filter(w => w.id !== walletId)
-      setChangeCoinsWalletId(coinsWallet?.id ?? otherWallets[0]?.id ?? '')
-      setChangeBillsWalletId(billsWallet?.id ?? '')
     }
+    const coinsWallet = wallets.find(w => w.cash_role === 'coins')
+    const billsWallet = wallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed')
+    const otherWallets = wallets.filter(w => w.id !== walletId)
+    setChangeCoinsWalletId(coinsWallet?.id ?? otherWallets[0]?.id ?? '')
+    setChangeBillsWalletId(billsWallet?.id ?? '')
   }, [paramCash, wallets, walletId])
 
   const merchantSuggestion = useMemo(
@@ -179,13 +191,15 @@ export function AddTransaction() {
       return
     }
 
-    // Cash validation
+    // Cash validation — only when the cash UI is actually shown (cash wallet):
+    // a cash-enabled state with a non-cash wallet has no switch to turn it
+    // off, so it must never block the save.
     const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
-    if (cashEnabled && type === 'expense' && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedAmount) {
+    if (cashEnabled && showCashAssistant && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedAmount) {
       toast.error('Cash given must be at least the expense amount')
       return
     }
-    if (cashEnabled && type === 'expense' && (!Number.isFinite(parseNumberInput(cashTendered)) || parseNumberInput(cashTendered) <= 0)) {
+    if (cashEnabled && showCashAssistant && (!Number.isFinite(parseNumberInput(cashTendered)) || parseNumberInput(cashTendered) <= 0)) {
       toast.error('Enter the cash amount given'); return
     }
 

@@ -100,9 +100,14 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     if (open) {
       if (initialType) setType(initialType)
       if (initialCash) {
-        setCashEnabled(true)
         const last = localStorage.getItem(LAST_WALLET_KEY)
-        setWalletId(pickQuickAddWallet(wallets, last, true)?.id ?? '')
+        const picked = pickQuickAddWallet(wallets, last, true)
+        setWalletId(picked?.id ?? '')
+        // Only enable cash when the picked wallet is actually a cash wallet —
+        // the switch UI (showCashAssistant) requires one, so enabling cash
+        // for any other wallet would trap the save behind
+        // "Enter the cash amount given".
+        if (picked?.type === 'cash') setCashEnabled(true)
       }
       setInputCurrency(money.displayCurrency)
     }
@@ -221,9 +226,11 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
       return
     }
 
-    // Cash validation
+    // Cash validation — only when the cash UI is actually shown (cash wallet):
+    // a cash-enabled state with a non-cash wallet has no switch to turn it
+    // off, so it must never block the save.
     const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
-    if (cashEnabled && type === 'expense' && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedAmount) {
+    if (cashEnabled && showCashAssistant && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedAmount) {
       toast.error('Cash given must be at least the expense amount')
       return
     }
@@ -233,7 +240,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
     if (splitError) { toast.error(splitError); return }
     const walletSplitError = multiWalletEnabled ? validateWalletSplits(parsedAmount, walletSplits, inputCurrency) : null
     if (walletSplitError) { toast.error(walletSplitError); return }
-    if (cashEnabled && type === 'expense' && (!Number.isFinite(parseNumberInput(cashTendered)) || parseNumberInput(cashTendered) <= 0)) {
+    if (cashEnabled && showCashAssistant && (!Number.isFinite(parseNumberInput(cashTendered)) || parseNumberInput(cashTendered) <= 0)) {
       toast.error('Enter the cash amount given'); return
     }
 
