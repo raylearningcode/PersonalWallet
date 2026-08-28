@@ -32,6 +32,10 @@ jobs:
 
       - name: Build web app
         run: npm run build
+        env:
+          # Public values (same as .env.example) — baked into the APK so it boots.
+          VITE_SUPABASE_URL: https://ctrigcpfccvokoxfzcil.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_fq7cieGFtdutY2caI9-HGA_i87HUutU
 
       - name: Sync Capacitor assets
         run: npx cap sync android
