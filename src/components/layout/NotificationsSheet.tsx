@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTransactions, useBudgetCategories, useRecurringRules, useGoals } from '@/lib/queries'
 import { computeNotifications } from '@/lib/notifications'
 import { useMoney } from '@/lib/currency'
@@ -27,7 +27,27 @@ export function NotificationsSheet() {
     [transactions, categories, recurringRules, goals, money.formatDisplay]
   )
 
-  const visibleNotifications = allNotifications.filter(n => !dismissedIds.has(n.id))
+  const liveIds = useMemo(() => new Set(allNotifications.map(n => n.id)), [allNotifications])
+
+  // Prune dismissed ids that no longer match a live notification so stale dismissals
+  // can't suppress new alerts for re-created rules/goals/categories.
+  const prunedDismissed = useMemo(() => {
+    if (dismissedIds.size === 0) return dismissedIds
+    const next = new Set([...dismissedIds].filter(id => liveIds.has(id)))
+    return next.size === dismissedIds.size ? dismissedIds : next
+  }, [dismissedIds, liveIds])
+
+  useEffect(() => {
+    if (prunedDismissed === dismissedIds) return
+    setDismissedIds(prunedDismissed)
+    try {
+      localStorage.setItem('finpath_dismissed_notifications', JSON.stringify(Array.from(prunedDismissed)))
+    } catch (err) {
+      console.warn('Failed to save dismissed notifications:', err)
+    }
+  }, [prunedDismissed, dismissedIds])
+
+  const visibleNotifications = allNotifications.filter(n => !prunedDismissed.has(n.id))
   const criticalCount = visibleNotifications.filter(n => n.severity === 'critical').length
   const badgeCount = visibleNotifications.length
 
@@ -55,7 +75,7 @@ export function NotificationsSheet() {
 
   if (badgeCount === 0 && !open) {
     // Only show the bell if there are notifications OR sheet is open
-    if (dismissedIds.size === 0 || allNotifications.length === 0) return null
+    if (prunedDismissed.size === 0 || allNotifications.length === 0) return null
   }
 
   const iconMap: Record<string, React.ReactNode> = {
