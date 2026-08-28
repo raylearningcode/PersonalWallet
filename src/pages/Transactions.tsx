@@ -1796,7 +1796,8 @@ export function Transactions() {
                         if (swipeRef.current.wasSwipe) { swipeRef.current.wasSwipe = false; return }
                         if (swipeOpenId === tx.id) { setSwipeOpenId(null); return }
                         if (longPressRef.current) { longPressRef.current = false; return }
-                        selectMode ? toggleSelectId(tx.id) : setDetailTx(tx)
+                        if (selectMode) toggleSelectId(tx.id)
+                        else setDetailTx(tx)
                       }}
                     >
                       <div className="flex items-start justify-between gap-3">
