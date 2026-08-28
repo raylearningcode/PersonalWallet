@@ -449,7 +449,7 @@ export function PortfolioTab() {
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary text-xs text-destructive hover:text-red-300"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary text-xs text-destructive hover:text-[#FF8388]"
                             onClick={() => { if (window.confirm(`Delete ${h.name}?`)) deleteHolding.mutate(h.id) }}
                             aria-label={`Delete ${h.name}`}
                           >
@@ -576,7 +576,7 @@ export function PortfolioTab() {
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-extrabold text-primary">{money.formatDisplay(d.amount)}</span>
                       <button
-                        className="text-xs text-destructive hover:text-red-300"
+                        className="text-xs text-destructive hover:text-[#FF8388]"
                         onClick={() => deleteDividend.mutate(d.id)}
                         aria-label="Delete dividend"
                       >

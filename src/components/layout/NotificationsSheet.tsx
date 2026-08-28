@@ -94,7 +94,7 @@ export function NotificationsSheet() {
   }
 
   const styleMap: Record<string, { border: string; bg: string; text: string; dot: string }> = {
-    critical: { border: 'border-red-500/30', bg: 'bg-red-500/5', text: 'text-red-400', dot: 'bg-red-500' },
+    critical: { border: 'border-[#FF8388]/30', bg: 'bg-[#FF8388]/5', text: 'text-[#FF8388]', dot: 'bg-[#FF8388]' },
     warning:  { border: 'border-[#FFCF73]/30', bg: 'bg-[#FFCF73]/5', text: 'text-[#FFCF73]', dot: 'bg-[#FFCF73]' },
     info:     { border: 'border-border', bg: 'bg-secondary', text: 'text-muted-foreground', dot: 'bg-muted-foreground' },
   }
@@ -109,7 +109,7 @@ export function NotificationsSheet() {
       >
         <Bell className="h-4 w-4" />
         {badgeCount > 0 && (
-          <span className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold text-white ${criticalCount > 0 ? 'bg-red-500' : 'bg-[#FFCF73] text-background'}`}>
+          <span className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold text-white ${criticalCount > 0 ? 'bg-[#FF8388]' : 'bg-[#FFCF73] text-background'}`}>
             {badgeCount > 9 ? '9+' : badgeCount}
           </span>
         )}

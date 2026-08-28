@@ -20,7 +20,7 @@ import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 import { NotificationsSheet } from './NotificationsSheet'
 import { OnboardingFlow, isOnboardingDone } from '@/components/onboarding/OnboardingFlow'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DollarSign, ArrowLeftRight, TrendingUp, Target, RefreshCw, Banknote } from 'lucide-react'
 
 type QuickAddType = 'expense' | 'income' | 'transfer'
@@ -282,6 +282,7 @@ export function AppLayout() {
       {/* Long-press action picker */}
       <Sheet open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
         <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-10">
+          <SheetTitle className="sr-only">Quick actions</SheetTitle>
           <h2 className="mb-1 text-lg font-extrabold text-foreground">Quick add</h2>
           <p className="mb-5 text-sm text-muted-foreground">What do you want to record?</p>
           <div className="space-y-2">

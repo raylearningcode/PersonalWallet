@@ -66,7 +66,7 @@ export function CashChangeAssistant({
   const showChips = isTWD
 
   return (
-    <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
+    <div className="rounded-[1.4rem] border border-primary/20 bg-primary/5 p-4">
       <div className="flex items-center justify-between gap-4">
         <span>
           <span className="block text-sm font-extrabold text-foreground">Cash payment</span>

@@ -943,7 +943,7 @@ export function Transactions() {
           })()}
           <div className="space-y-5">
             {/* Type selector + big amount — always visible */}
-            <div className="rounded-[1.25rem] border border-border bg-card p-4 text-center">
+            <div className="rounded-[1.4rem] border border-border bg-card p-4 text-center">
               <div className="mx-auto mb-3 inline-flex rounded-full border border-border bg-secondary p-1">
                 {(['expense', 'income', 'transfer'] as const).map(item => (
                   <button
@@ -1066,7 +1066,7 @@ export function Transactions() {
 
             {/* ── Category splitting (expense only) ── */}
             {type === 'expense' && categories.length >= 2 && (
-              <div className="rounded-[1.25rem] border border-border bg-card p-4">
+              <div className="rounded-[1.4rem] border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span>
                     <span className="block text-sm font-extrabold text-foreground">Split across categories</span>
@@ -1113,7 +1113,7 @@ export function Transactions() {
 
             {/* ── Multi-wallet payment (expense only, 2+ wallets) ── */}
             {type === 'expense' && wallets.length >= 2 && (
-              <div className="rounded-[1.25rem] border border-border bg-card p-4">
+              <div className="rounded-[1.4rem] border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span>
                     <span className="block text-sm font-extrabold text-foreground">Pay from multiple wallets</span>
@@ -1168,7 +1168,7 @@ export function Transactions() {
 
             {/* Transfer fee */}
             {type === 'transfer' && (
-              <div className="rounded-[1.25rem] border border-border bg-card p-4">
+              <div className="rounded-[1.4rem] border border-border bg-card p-4">
                 <label className="flex cursor-pointer items-center justify-between gap-4">
                   <span>
                     <span className="block text-sm font-extrabold text-foreground">Transfer fee</span>

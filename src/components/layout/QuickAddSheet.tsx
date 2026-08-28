@@ -382,7 +382,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
               </div>
 
               {/* Big amount input */}
-              <div className="rounded-[1.25rem] border border-border bg-card px-4 pb-4 pt-5 text-center">
+              <div className="rounded-[1.4rem] border border-border bg-card px-4 pb-4 pt-5 text-center">
                 <div className="flex items-center justify-center gap-2">
                   <span className="text-xl font-bold text-muted-foreground">{inputCurrency}</span>
                   <MoneyField
@@ -560,7 +560,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
           {showAdvanced && (
             <>
               {/* Type + Amount + Scan */}
-              <div className="rounded-[1.25rem] border border-border bg-card p-4 text-center">
+              <div className="rounded-[1.4rem] border border-border bg-card p-4 text-center">
                 <div className="mx-auto mb-3 inline-flex rounded-full border border-border bg-secondary p-1">
                   {(['income', 'expense', 'transfer'] as const).map(t => (
                     <button
@@ -750,7 +750,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
               {/* —— Category splitting (expense only, advanced mode) —— */}
               {type === 'expense' && categories.length >= 2 && (
-                <div className="rounded-[1.25rem] border border-border bg-card p-4">
+                <div className="rounded-[1.4rem] border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-4">
                     <span>
                       <span className="block text-sm font-extrabold text-foreground">Split across categories</span>
@@ -839,7 +839,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
 
               {/* —— Multi-wallet payment (expense only, advanced mode, 2+ wallets) —— */}
               {type === 'expense' && wallets.length >= 2 && (
-                <div className="rounded-[1.25rem] border border-border bg-card p-4">
+                <div className="rounded-[1.4rem] border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-4">
                     <span>
                       <span className="block text-sm font-extrabold text-foreground">Pay from multiple wallets</span>
