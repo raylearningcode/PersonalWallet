@@ -17,10 +17,15 @@ export function NotificationsSheet() {
     }
   })
   const money = useMoney()
-  const { data: transactions = [] } = useTransactions()
-  const { data: categories = [] } = useBudgetCategories()
-  const { data: recurringRules = [] } = useRecurringRules()
-  const { data: goals = [] } = useGoals()
+  const { data: transactions = [], isPending: transactionsPending } = useTransactions()
+  const { data: categories = [], isPending: categoriesPending } = useBudgetCategories()
+  const { data: recurringRules = [], isPending: rulesPending } = useRecurringRules()
+  const { data: goals = [], isPending: goalsPending } = useGoals()
+
+  // While any feeding query is pending, liveIds is temporarily empty. Pruning
+  // dismissals then would wipe (and persist the wipe of) the dismissal set on
+  // every cold start, so skip pruning until all queries have loaded.
+  const queriesPending = transactionsPending || categoriesPending || rulesPending || goalsPending
 
   const allNotifications = useMemo(
     () => computeNotifications(transactions, categories, recurringRules, goals, money.formatDisplay),
@@ -32,12 +37,14 @@ export function NotificationsSheet() {
   // Prune dismissed ids that no longer match a live notification so stale dismissals
   // can't suppress new alerts for re-created rules/goals/categories.
   const prunedDismissed = useMemo(() => {
+    if (queriesPending) return dismissedIds
     if (dismissedIds.size === 0) return dismissedIds
     const next = new Set([...dismissedIds].filter(id => liveIds.has(id)))
     return next.size === dismissedIds.size ? dismissedIds : next
-  }, [dismissedIds, liveIds])
+  }, [dismissedIds, liveIds, queriesPending])
 
   useEffect(() => {
+    if (queriesPending) return
     if (prunedDismissed === dismissedIds) return
     setDismissedIds(prunedDismissed)
     try {
@@ -45,7 +52,7 @@ export function NotificationsSheet() {
     } catch (err) {
       console.warn('Failed to save dismissed notifications:', err)
     }
-  }, [prunedDismissed, dismissedIds])
+  }, [prunedDismissed, dismissedIds, queriesPending])
 
   const visibleNotifications = allNotifications.filter(n => !prunedDismissed.has(n.id))
   const criticalCount = visibleNotifications.filter(n => n.severity === 'critical').length
