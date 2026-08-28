@@ -205,13 +205,19 @@ export function Subscriptions() {
     }
   }
 
+  const closeDetailSheet = () => {
+    setDetailRule(null)
+    setEditTarget(null)
+    setEditForm(emptyAddForm(money.displayCurrency))
+  }
+
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
       await deleteRule.mutateAsync(deleteTarget.id)
       toast.success('Subscription deleted')
       setDeleteTarget(null)
-      setDetailRule(null)
+      closeDetailSheet()
     } catch {
       toast.error('Failed to delete subscription')
     }
@@ -281,9 +287,7 @@ export function Subscriptions() {
         next_due_date: editForm.startDate,
         end_date: editForm.endDate || null,
       })
-      setEditTarget(null)
-      setEditForm(emptyAddForm(money.displayCurrency))
-      setDetailRule(null)
+      closeDetailSheet()
       toast.success('Subscription updated')
     } catch {
       toast.error('Failed to update subscription')
@@ -919,7 +923,7 @@ export function Subscriptions() {
       />
 
       {/* Recurring rule detail sheet */}
-      <Sheet open={!!detailRule} onOpenChange={open => { if (!open) { setDetailRule(null); setEditTarget(null); setEditForm(emptyAddForm(money.displayCurrency)) } }}>
+      <Sheet open={!!detailRule} onOpenChange={open => { if (!open) { closeDetailSheet() } }}>
         <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-safe-10'}>
           {detailRule && (() => {
             const rule = detailRule
@@ -1040,7 +1044,7 @@ export function Subscriptions() {
                 {rule.active && days <= 3 && (
                   <button
                     type="button"
-                    onClick={() => { logPaymentNow(rule); setDetailRule(null) }}
+                    onClick={() => { logPaymentNow(rule); closeDetailSheet() }}
                     disabled={addTransaction.isPending || updateRule.isPending}
                     className="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary/10 font-bold text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
                   >
@@ -1068,7 +1072,7 @@ export function Subscriptions() {
                   <button
                     type="button"
                     aria-label="Delete subscription"
-                    onClick={() => { setDeleteTarget(rule); setDetailRule(null) }}
+                    onClick={() => { setDeleteTarget(rule); closeDetailSheet() }}
                     className="flex h-14 items-center justify-center rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/10 px-5 font-bold text-[#FF8388] hover:bg-[#FF8388]/20"
                   >
                     <Trash2 className="h-4 w-4" />
