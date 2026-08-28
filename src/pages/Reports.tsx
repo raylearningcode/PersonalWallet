@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
+import { todayLocal, toLocalDateStr } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, Download, Upload, FileText, FileDown, TrendingUp, TrendingDown, X } from 'lucide-react'
 import { generateReportHTML, downloadPDF, escapeHtml } from '@/lib/pdfExport'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, ReferenceLine } from 'recharts'
@@ -191,8 +192,8 @@ export function Reports() {
     return Array.from({ length: 12 }, (_, i) => {
       const mStart = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1)
       const mEnd = new Date(now.getFullYear(), now.getMonth() - 11 + i + 1, 1)
-      const s = mStart.toISOString().slice(0, 10)
-      const e = mEnd.toISOString().slice(0, 10)
+      const s = toLocalDateStr(mStart)
+      const e = toLocalDateStr(mEnd)
       const mTx = transactions.filter(t => !t.is_system_generated && t.date >= s && t.date < e)
       const inc = mTx.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0)
       const exp = mTx.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((a, t) => a + t.amount, 0)
@@ -218,7 +219,7 @@ export function Reports() {
   }, [wallets, rangeTx])
 
   const trendData = useMemo(() => {
-    const toStr = (d: Date) => d.toISOString().slice(0, 10)
+    const toStr = (d: Date) => toLocalDateStr(d)
     const bucket = (txList: typeof rangeTx) => ({
       expenses: txList.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0),
       income: txList.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
@@ -270,7 +271,7 @@ export function Reports() {
     const idx = trendData.findIndex(d => d.label === clickedBucket)
     if (idx < 0) return []
     // Recompute the date range for this bucket
-    const toStr = (d: Date) => d.toISOString().slice(0, 10)
+    const toStr = (d: Date) => toLocalDateStr(d)
     let bucketStart: Date, bucketEnd: Date
     if (range === 'week') {
       bucketStart = new Date(rangeStart); bucketStart.setDate(rangeStart.getDate() + idx)
@@ -419,7 +420,7 @@ export function Reports() {
 
   const handleExportAllCSV = () => {
     const allNonSystem = transactions.filter(t => !t.is_system_generated)
-    buildCSV(allNonSystem, `all-${new Date().toISOString().slice(0, 10)}`)
+    buildCSV(allNonSystem, `all-${todayLocal()}`)
     toast.success(`Exported ${allNonSystem.length} transactions`)
   }
 

@@ -31,7 +31,7 @@ import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from 
 import { parseNumberInput, formatNumberInput } from '@/lib/numberInput'
 import { getQueue } from '@/lib/offlineCache'
 import { getWalletBalances } from '@/lib/financeOs'
-import { safeGet } from '@/lib/utils'
+import { safeGet, todayLocal } from '@/lib/utils'
 import { saveGeminiKey, isAiConfigured } from '@/lib/ai'
 
 const tabs = ['profile', 'wallets', 'categories', 'security', 'backup', 'ai'] as const
@@ -468,10 +468,10 @@ export function Settings() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `finpath-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `finpath-backup-${todayLocal()}.json`
     a.click()
     URL.revokeObjectURL(url)
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayLocal()
     localStorage.setItem('finpath_last_export', today)
     setLastExportDate(today)
     toast.success('Backup downloaded')

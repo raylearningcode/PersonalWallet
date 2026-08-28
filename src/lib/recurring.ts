@@ -1,4 +1,5 @@
 import type { RecurringFrequency, RecurringRule } from '@/types'
+import { todayLocal } from './utils'
 
 function parseDateParts(value: string) {
   const [year, month, day] = value.split('-').map(Number)
@@ -38,7 +39,7 @@ export function addRecurringInterval(date: string, frequency: RecurringFrequency
   return formatDate(nextYear, nextMonth, Math.min(day, daysInMonth(nextYear, nextMonth)))
 }
 
-export function getDueRecurringOccurrences(rule: RecurringRule, today = new Date().toISOString().slice(0, 10)) {
+export function getDueRecurringOccurrences(rule: RecurringRule, today = todayLocal()) {
   if (!rule.active) return []
   const occurrences: string[] = []
   let dueDate = rule.next_due_date

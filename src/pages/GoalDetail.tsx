@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
-import { safeGet } from '@/lib/utils'
+import { safeGet, todayLocal, toLocalDateStr } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AlertTriangle, ArrowLeft, Bookmark, Check, Pencil, Trash2, TrendingUp, Zap } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
@@ -121,7 +121,7 @@ export function GoalDetail() {
     const target = goal
     const wallet = wallets.find(w => w.id === contributeWalletId)
     const newAmount = target.current_amount + amount
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayLocal()
     setContributeAmount('')
     setContributeWalletId('')
     setContributeRepeat(false)
@@ -157,7 +157,7 @@ export function GoalDetail() {
             wallet_id: wallet.id,
             transfer_wallet_id: null,
             start_date: today,
-            next_due_date: nextMonth.toISOString().slice(0, 10),
+            next_due_date: toLocalDateStr(nextMonth),
             frequency: 'monthly',
             end_date: target.deadline ?? null,
             installment_total: null,
@@ -481,7 +481,7 @@ export function GoalDetail() {
                     } else {
                       d.setMonth(d.getMonth() + (shortcut.months ?? 0))
                     }
-                    const value = d.toISOString().slice(0, 10)
+                    const value = toLocalDateStr(d)
                     return (
                       <button
                         key={shortcut.label}

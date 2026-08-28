@@ -12,7 +12,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
-import { safeGet } from '@/lib/utils'
+import { safeGet, todayLocal, toLocalDateStr } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AlertTriangle, Bookmark, Check, ChevronRight, Plus, Pencil, Trash2, Target, TrendingUp, Copy, Zap } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
@@ -180,7 +180,7 @@ export function Goals() {
     const target = sheetGoal
     const wallet = wallets.find(w => w.id === contributeWalletId)
     const newAmount = target.current_amount + amount
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayLocal()
     setContributeAmount('')
     setContributeWalletId('')
     setContributeRepeat(false)
@@ -216,7 +216,7 @@ export function Goals() {
             wallet_id: wallet.id,
             transfer_wallet_id: null,
             start_date: today,
-            next_due_date: nextMonth.toISOString().slice(0, 10),
+            next_due_date: toLocalDateStr(nextMonth),
             frequency: 'monthly',
             end_date: target.deadline ?? null,
             installment_total: null,
@@ -375,7 +375,7 @@ export function Goals() {
               } else {
                 target.setMonth(target.getMonth() + (shortcut.months ?? 0))
               }
-              const value = target.toISOString().slice(0, 10)
+              const value = toLocalDateStr(target)
               return (
                 <button
                   key={shortcut.label}

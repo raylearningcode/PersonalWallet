@@ -14,6 +14,7 @@ import { parseNumberInput } from '@/lib/numberInput'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { addRecurringInterval } from '@/lib/recurring'
+import { todayLocal, toLocalDateStr } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight, AlertTriangle, Check, Download } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
@@ -46,7 +47,7 @@ function nextDueFrom(startDate: string, frequency: RecurringFrequency): string {
     else if (frequency === 'monthly') d.setMonth(d.getMonth() + 1)
     else d.setFullYear(d.getFullYear() + 1)
   }
-  return d.toISOString().slice(0, 10)
+  return toLocalDateStr(d)
 }
 
 const emptyAddForm = (currency = '') => ({
@@ -57,7 +58,7 @@ const emptyAddForm = (currency = '') => ({
   frequency: 'monthly' as RecurringFrequency,
   category: '',
   walletId: '',
-  startDate: new Date().toISOString().slice(0, 10),
+  startDate: todayLocal(),
   endDate: '' as string,
   logFirstPayment: true,
 })
@@ -180,7 +181,7 @@ export function Subscriptions() {
   }
 
   const logPaymentNow = async (rule: RecurringRule) => {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayLocal()
     try {
       await addTransaction.mutateAsync({
         description: rule.description,
@@ -316,7 +317,7 @@ export function Subscriptions() {
       toast.error('Description and amount are required')
       return
     }
-    const startDate = addForm.startDate || new Date().toISOString().slice(0, 10)
+    const startDate = addForm.startDate || todayLocal()
     const category = addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions')
     const currency = addForm.currency || money.displayCurrency
     try {

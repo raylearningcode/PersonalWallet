@@ -88,12 +88,27 @@ describe('balancing helpers', () => {
 
   it('getUnmatchedExpenses returns only unmatched expenses in the month', () => {
     const unmatched = getUnmatchedExpenses(txs, cats, periodDate)
-    expect(unmatched.map(t => t.id).sort()).toEqual(['b', 'c', 'd'])
+    expect(unmatched.map(t => t.id).sort()).toEqual(['b', 'c'])
   })
 
-  it('getSplitRemainders sums unallocated split leftovers', () => {
-    // split 'd': 50 - (40+5) = 5
-    expect(getSplitRemainders(txs, periodDate)).toBe(5)
+  it('getSplitRemainders is a split’s amount minus its budget-matched portions', () => {
+    // split 'd': 50 - 40 (Food portion matches) = 10 = 5 unmatched portion + 5 unallocated gap
+    expect(getSplitRemainders(txs, cats, periodDate)).toBe(10)
+  })
+
+  it('getSplitRemainders is 0 for a fully allocated, fully matched split', () => {
+    const t = [tx({ id: 'h', category: 'Split2', amount: 60, split_portions: [
+      { category: 'Food', amount: 40 }, { category: 'Food', amount: 20 },
+    ] })]
+    expect(getSplitRemainders(t, cats, periodDate)).toBe(0)
+  })
+
+  it('getSplitRemainders is the full amount for a split with no matching portions', () => {
+    // contribution to balancing never exceeds the split's amount
+    const t = [tx({ id: 'i', category: 'Split3', amount: 70, split_portions: [
+      { category: 'Old Category', amount: 70 },
+    ] })]
+    expect(getSplitRemainders(t, cats, periodDate)).toBe(70)
   })
 
   it('getSplitAttribution attributes portions to matching categories', () => {
@@ -103,9 +118,9 @@ describe('balancing helpers', () => {
     expect(att['old category']).toBeUndefined()
   })
 
-  it('getBalancingSpent = unmatched total + remainders', () => {
-    // unmatched: 12 + 8 + 50 = 70; remainders: 5
-    expect(getBalancingSpent(txs, cats, periodDate)).toBe(75)
+  it('getBalancingSpent = unmatched total + split balancing shares', () => {
+    // unmatched: 12 + 8 = 20 (split 'd' is excluded); split share: 10
+    expect(getBalancingSpent(txs, cats, periodDate)).toBe(30)
   })
 
   it('is case-insensitive on category names', () => {
