@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuthSession, useSignIn, useSignUp } from '@/lib/queries'
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
 import { Input } from '@/components/ui/input'
@@ -19,8 +19,7 @@ export function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
 
   if (session) {
-    navigate('/', { replace: true })
-    return null
+    return <Navigate to="/" replace />
   }
 
   const handleSignIn = async () => {

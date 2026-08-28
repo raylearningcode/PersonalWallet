@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Navigate, useParams, useNavigate } from 'react-router-dom'
 import { useGoals, useWallets, useUpdateGoal, useDeleteGoal, useAddTransaction, useAddRecurringRule } from '@/lib/queries'
 import { useMoney } from '@/lib/currency'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { safeGet } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AlertTriangle, ArrowLeft, Bookmark, Check, Pencil, Trash2, TrendingUp, Zap } from 'lucide-react'
 import { PINNED_GOAL_KEY } from '@/components/layout/Sidebar'
@@ -71,12 +72,11 @@ export function GoalDetail() {
   const [form, setForm] = useState<FormState>(emptyForm())
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [formKeypad, setFormKeypad] = useState<'target_amount' | 'current_amount' | null>(null)
-  const [pinnedGoalId, setPinnedGoalId] = useState(() => localStorage.getItem(PINNED_GOAL_KEY) ?? '')
+  const [pinnedGoalId, setPinnedGoalId] = useState(() => safeGet(PINNED_GOAL_KEY) ?? '')
 
   // Desktop redirects to /goals — desktop uses the sheet
   if (isDesktop) {
-    navigate('/goals', { replace: true })
-    return null
+    return <Navigate to="/goals" replace />
   }
 
   const goal = goals.find(g => g.id === id)

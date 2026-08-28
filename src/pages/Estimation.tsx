@@ -13,6 +13,7 @@ import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
 import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown, Plus } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { safeGet } from '@/lib/utils'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
@@ -72,7 +73,7 @@ export function Estimation() {
   const [editWishlistAmount, setEditWishlistAmount] = useState('')
   const [editWishlistType, setEditWishlistType] = useState('Want')
   const [editWishlistNote, setEditWishlistNote] = useState('')
-  const [planningTipDismissed, setPlanningTipDismissed] = useState(() => localStorage.getItem(PLANNING_TIP_KEY) === '1')
+  const [planningTipDismissed, setPlanningTipDismissed] = useState(() => safeGet(PLANNING_TIP_KEY) === '1')
   const [incomeSheetOpen, setIncomeSheetOpen] = useState(false)
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false)
   const [wishlistSheetOpen, setWishlistSheetOpen] = useState(false)
