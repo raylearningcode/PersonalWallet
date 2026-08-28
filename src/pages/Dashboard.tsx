@@ -10,6 +10,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { isInBudgetPeriod } from '@/lib/budget'
 import { getWalletBalances } from '@/lib/financeOs'
+import { safeGet } from '@/lib/utils'
 import { getAiInsights, isAiConfigured, type InsightResult } from '@/lib/ai'
 import { computeStreak } from '@/lib/streak'
 import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, ChevronRight } from 'lucide-react'
@@ -29,7 +30,7 @@ export function Dashboard() {
   const [aiInsights, setAiInsights] = useState<InsightResult[] | null>(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [insightsError, setInsightsError] = useState<string | null>(null)
-  const [aiCardDismissed, setAiCardDismissed] = useState(() => localStorage.getItem('finpath_ai_dismissed') === '1')
+  const [aiCardDismissed, setAiCardDismissed] = useState(() => safeGet('finpath_ai_dismissed') === '1')
 
   // ─── Computed ─────────────────────────────────────────────────────────
   const walletBalances = useMemo(() => getWalletBalances(wallets, transactions), [wallets, transactions])
@@ -60,13 +61,13 @@ export function Dashboard() {
     const spent = monthTx.filter(t => t.type !== 'income' && t.category === c.name && isInBudgetPeriod(t.date, c.budget_period)).reduce((s, t) => s + t.amount, 0)
     const pct = c.yearly_allocated > 0 ? Math.min(100, Math.round((spent / c.yearly_allocated) * 100)) : 0
     return { ...c, spent, pct }
-  }).sort((a, b) => b.pct - a.pct).slice(0, 5)
+  }).sort((a, b) => b.pct - a.pct).slice(0, 10)
 
   // Upcoming bills
-  const upcomingBills = recurringRules.filter(r => r.active && r.type !== 'income').sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 3)
+  const upcomingBills = recurringRules.filter(r => r.active && r.type !== 'income').sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 7)
 
   // Recent activity
-  const recentTx = transactions.slice(0, 5)
+  const recentTx = transactions.slice(0, 8)
 
   // ─── AI handler ───────────────────────────────────────────────────────
   const handleGetInsights = async () => {
