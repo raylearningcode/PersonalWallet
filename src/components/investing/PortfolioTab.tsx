@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { todayLocal } from '@/lib/utils'
 import { AllocationEditor } from './AllocationEditor'
 import { RebalancingHelper } from './RebalancingHelper'
 import { MoneyField } from '@/components/mobile/MoneyField'
@@ -57,7 +58,7 @@ export function PortfolioTab() {
   const [addType, setAddType] = useState<AssetType>('stock')
   const [addQty, setAddQty] = useState('')
   const [addPrice, setAddPrice] = useState('')
-  const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [addDate, setAddDate] = useState(todayLocal)
   const [addCurrency, setAddCurrency] = useState('USD')
 
   // Edit holding state
@@ -69,7 +70,7 @@ export function PortfolioTab() {
   // Add dividend form
   const [dividendHolding, setDividendHolding] = useState<string | null>(null)
   const [dividendAmount, setDividendAmount] = useState('')
-  const [dividendDate, setDividendDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [dividendDate, setDividendDate] = useState(todayLocal)
 
   // Compute portfolio stats (all values converted to base currency)
   const portfolioStats = useMemo(() => {
@@ -210,17 +211,29 @@ export function PortfolioTab() {
     if (holdings.length === 0) { toast.error('No holdings to refresh'); return }
     try {
       const result = await refreshPrices()
+      let ok = 0
+      let n = 0
+      let failures = 0
       if (result.data) {
         for (const h of holdings) {
           const fetched = result.data.get(h.ticker)
           if (fetched && h.current_price !== fetched.price) {
-            // Store the raw fetched price in the holding's currency
-            await updateHolding.mutateAsync({ id: h.id, current_price: fetched.price })
+            n += 1
+            try {
+              // Store the raw fetched price in the holding's currency
+              await updateHolding.mutateAsync({ id: h.id, current_price: fetched.price })
+              ok += 1
+            } catch {
+              failures += 1
+            }
           }
         }
       }
-      const updated = result.data ? Array.from(result.data.keys()).length : 0
-      toast.success(updated > 0 ? `${updated} prices updated` : 'Prices already up to date')
+      if (n === 0) {
+        toast.success('Prices already up to date')
+      } else {
+        toast.success(`Updated ${ok} of ${n} prices${failures ? ` — ${failures} failed` : ''}`)
+      }
     } catch {
       toast.error('Failed to fetch some prices — check ticker symbols')
     }
@@ -479,7 +492,7 @@ export function PortfolioTab() {
                           onClick={() => {
                             setDividendHolding(dividendHolding === h.id ? null : h.id)
                             setDividendAmount('')
-                            setDividendDate(new Date().toISOString().slice(0, 10))
+                            setDividendDate(todayLocal())
                           }}
                         >
                           {dividendHolding === h.id ? 'Cancel' : '+ Log dividend'}

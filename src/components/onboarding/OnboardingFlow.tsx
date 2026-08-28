@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { useAddWallet, useAddTransaction, useWallets, useBudgetCategories } from '@/lib/queries'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { todayLocal } from '@/lib/utils'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { toast } from 'sonner'
 import { Wallet, ReceiptText, LayoutDashboard, ArrowRight, Check } from 'lucide-react'
@@ -41,13 +42,18 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const handleCreateWallet = async () => {
     if (!walletName.trim()) { toast.error('Enter a wallet name'); return }
     const balance = parseNumberInput(walletBalance)
-    await addWallet.mutateAsync({
-      name: walletName.trim(),
-      type: walletType,
-      currency: money.displayCurrency,
-      balance: Number.isFinite(balance) ? money.toBase(balance, money.displayCurrency) : 0,
-      cash_role: walletType === 'cash' ? 'mixed' : null,
-    })
+    try {
+      await addWallet.mutateAsync({
+        name: walletName.trim(),
+        type: walletType,
+        currency: money.displayCurrency,
+        balance: Number.isFinite(balance) ? money.toBase(balance, money.displayCurrency) : 0,
+        cash_role: walletType === 'cash' ? 'mixed' : null,
+      })
+    } catch {
+      toast.error('Setup step failed — please try again')
+      return
+    }
     toast.success('Wallet created')
     setStep(2)
   }
@@ -58,20 +64,25 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     const walletToUse = wallets[0]
     if (!walletToUse) { toast.error('Create a wallet first'); return }
     const cat = txCategory || categories[0]?.name || 'General'
-    await addTransaction.mutateAsync({
-      description: txType === 'expense' ? cat : 'My first income',
-      amount: money.toBase(parsed, money.displayCurrency),
-      original_amount: parsed,
-      original_currency: money.displayCurrency,
-      type: txType,
-      category: txType === 'income' ? 'Wage' : cat,
-      wallet_id: walletToUse.id,
-      transfer_wallet_id: null,
-      recurring_rule_id: null,
-      recurring_due_date: null,
-      date: new Date().toISOString().slice(0, 10),
-      needs_review: false,
-    })
+    try {
+      await addTransaction.mutateAsync({
+        description: txType === 'expense' ? cat : 'My first income',
+        amount: money.toBase(parsed, money.displayCurrency),
+        original_amount: parsed,
+        original_currency: money.displayCurrency,
+        type: txType,
+        category: txType === 'income' ? 'Wage' : cat,
+        wallet_id: walletToUse.id,
+        transfer_wallet_id: null,
+        recurring_rule_id: null,
+        recurring_due_date: null,
+        date: todayLocal(),
+        needs_review: false,
+      })
+    } catch {
+      toast.error('Setup step failed — please try again')
+      return
+    }
     toast.success('Transaction logged')
     setStep(3)
   }

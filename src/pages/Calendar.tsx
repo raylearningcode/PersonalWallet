@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ChevronLeft, ChevronRight, ArrowDown, ArrowUp, X } from 'lucide-react'
+import { toLocalDateStr, todayLocal } from '@/lib/utils'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -17,9 +18,6 @@ function daysInMonth(year: number, month: number): number {
 }
 function firstDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 1).getDay()
-}
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10)
 }
 
 // ─── Color scales ────────────────────────────────────────────────────────────
@@ -265,7 +263,7 @@ function MonthlyCalendar() {
             const amount = data?.total ?? 0
             const hasIncome = (data?.income ?? 0) > 0
             const bg = amount > 0 ? heatColor(amount, maxDaily) : 'transparent'
-            const today = dateStr === todayStr()
+            const today = dateStr === todayLocal()
 
             return (
               <button
@@ -365,7 +363,7 @@ function YearlyHeatmap() {
   while (current.getFullYear() <= viewYear || weeks.length < 53) {
     const week: { date: string; month: number }[] = []
     for (let row = 0; row < 7; row++) {
-      week.push({ date: current.toISOString().slice(0, 10), month: current.getMonth() })
+      week.push({ date: toLocalDateStr(current), month: current.getMonth() })
       current.setDate(current.getDate() + 1)
     }
     weeks.push(week)
