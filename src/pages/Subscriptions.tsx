@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { parseNumberInput } from '@/lib/numberInput'
-import { MoneyInput } from '@/components/shared/MoneyInput'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { addRecurringInterval } from '@/lib/recurring'
 import { toast } from 'sonner'
@@ -492,7 +492,9 @@ export function Subscriptions() {
                   >
                     {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <MoneyInput className="flex-1 bg-secondary text-sm" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+                  <div className="flex-1">
+                    <MoneyField ariaLabel="Edit subscription amount" className="bg-secondary text-sm" value={editForm.amount} currency={editForm.currency} onChange={v => setEditField('amount', v)} />
+                  </div>
                 </div>
               </div>
               <div>
@@ -630,12 +632,16 @@ export function Subscriptions() {
                   >
                     {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <MoneyInput
-                    className="flex-1 bg-secondary"
-                    value={addForm.amount}
-                    onValueChange={v => setField('amount', v)}
-                    placeholder="0"
-                  />
+                  <div className="flex-1">
+                    <MoneyField
+                      ariaLabel="New subscription amount"
+                      className="bg-secondary"
+                      value={addForm.amount}
+                      currency={addForm.currency}
+                      onChange={v => setField('amount', v)}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </div>
               <div>
@@ -990,7 +996,9 @@ export function Subscriptions() {
                         >
                           {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <MoneyInput className="flex-1 bg-secondary" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+                        <div className="flex-1">
+                          <MoneyField ariaLabel="Subscription detail amount" className="bg-secondary" value={editForm.amount} currency={editForm.currency} onChange={v => setEditField('amount', v)} />
+                        </div>
                       </div>
                     </div>
                     <div>

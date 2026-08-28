@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { useAddWallet, useAddTransaction, useWallets, useBudgetCategories } from '@/lib/queries'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { toast } from 'sonner'
 import { Wallet, ReceiptText, LayoutDashboard, ArrowRight, Check } from 'lucide-react'
 
@@ -109,7 +110,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
               </div>
               <div>
                 <Label className="text-sm font-bold">Starting balance (optional)</Label>
-                <Input className="mt-1.5 bg-secondary" value={walletBalance} onChange={e => setWalletBalance(formatNumberInput(e.target.value))} inputMode="decimal" placeholder="0" />
+                <MoneyField ariaLabel="Starting balance" className="mt-1.5 bg-secondary" value={walletBalance} currency={money.displayCurrency} onChange={v => setWalletBalance(formatNumberInput(v))} placeholder="0" />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
@@ -147,7 +148,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
                   Income
                 </button>
               </div>
-              <Input className="bg-secondary text-center text-2xl font-extrabold" value={txAmount} onChange={e => setTxAmount(formatNumberInput(e.target.value))} inputMode="decimal" placeholder="0" />
+              <MoneyField ariaLabel="Transaction amount" className="bg-secondary text-center text-2xl font-extrabold" value={txAmount} currency={money.displayCurrency} onChange={v => setTxAmount(formatNumberInput(v))} placeholder="0" />
               {categories.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {categories.slice(0, 6).map(c => (

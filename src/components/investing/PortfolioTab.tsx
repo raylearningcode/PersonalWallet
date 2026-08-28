@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { AllocationEditor } from './AllocationEditor'
 import { RebalancingHelper } from './RebalancingHelper'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { toast } from 'sonner'
 import { RefreshCw, Plus, Trash2, TrendingDown, TrendingUp, Pencil, HelpCircle } from 'lucide-react'
 import type { AssetType, Holding, AllocationItem } from '@/types'
@@ -334,7 +335,7 @@ export function PortfolioTab() {
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground">Buy price (per unit in {addCurrency})</Label>
-                        <Input aria-label="Buy price" className="mt-1 h-9 rounded-lg bg-card text-sm" inputMode="decimal" placeholder="150" value={addPrice} onChange={e => setAddPrice(e.target.value)} />
+                        <MoneyField ariaLabel="Buy price" className="mt-1 h-9 rounded-lg bg-card text-sm" placeholder="150" value={addPrice} currency={addCurrency} onChange={v => setAddPrice(v)} />
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground">Buy date</Label>
@@ -396,7 +397,7 @@ export function PortfolioTab() {
                           </div>
                           <div>
                             <Label className="text-xs text-muted-foreground">Buy price ({h.currency})</Label>
-                            <Input className="mt-0.5 h-8 rounded-lg bg-card text-xs" inputMode="decimal" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
+                            <MoneyField ariaLabel="Edit buy price" className="mt-0.5 h-8 rounded-lg bg-card text-xs" value={editPrice} currency={h.currency} onChange={v => setEditPrice(v)} />
                           </div>
                         </div>
                       </div>
@@ -492,8 +493,8 @@ export function PortfolioTab() {
                         <div className="mt-2 grid grid-cols-[1fr_1fr_auto] items-end gap-2 rounded-lg border border-border bg-secondary p-2">
                           <div>
                             <Label className="text-[10px] text-muted-foreground">Amount</Label>
-                            <Input aria-label="Dividend amount" className="mt-0.5 h-8 rounded-lg bg-card text-xs" inputMode="decimal" placeholder="0"
-                              value={dividendAmount} onChange={e => setDividendAmount(e.target.value)} />
+                            <MoneyField ariaLabel="Dividend amount" className="mt-0.5 h-8 rounded-lg bg-card text-xs" placeholder="0"
+                              value={dividendAmount} currency={money.displayCurrency} onChange={v => setDividendAmount(v)} />
                           </div>
                           <div>
                             <Label className="text-[10px] text-muted-foreground">Date</Label>
