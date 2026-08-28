@@ -1,5 +1,6 @@
 import type { AppSettings, BudgetCategory, DividendLog, EstimationPlan, Goal, Holding, InvestmentConfig, RecurringRule, Transaction, Wallet } from '@/types'
 import { getDueRecurringOccurrences, getNextRecurringState } from './recurring'
+import { todayLocal } from './utils'
 
 const PFX = 'finpath_guest_'
 
@@ -120,7 +121,7 @@ export function localDeleteRule(id: string): void {
   save('rules', localGetRules().filter(r => r.id !== id))
 }
 
-export function localRunDueRules(today = new Date().toISOString().slice(0, 10)): number {
+export function localRunDueRules(today = todayLocal()): number {
   const rules = localGetRules().filter(r => r.active && r.next_due_date <= today)
   const existingTxs = localGetTransactions()
   let count = 0
