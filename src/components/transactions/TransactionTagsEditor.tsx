@@ -10,8 +10,10 @@ export function TransactionTagsEditor({ transactionId }: { transactionId: string
   const [showAddTag, setShowAddTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [newTagColor, setNewTagColor] = useState(getDefaultTagColors()[0])
-  const allTags = useMemo(() => getTags(), [])
-  const txTags = useMemo(() => getTransactionTags(transactionId), [transactionId])
+  // Bumped after each mutation so tag lists (read from localStorage) re-render
+  const [refreshKey, setRefreshKey] = useState(0)
+  const allTags = useMemo(() => getTags(), [refreshKey])
+  const txTags = useMemo(() => getTransactionTags(transactionId), [transactionId, refreshKey])
   const availableTags = useMemo(() => allTags.filter(t => !txTags.some(tx => tx.id === t.id)), [allTags, txTags])
 
   const handleAddTag = () => {
@@ -19,22 +21,46 @@ export function TransactionTagsEditor({ transactionId }: { transactionId: string
       toast.error('Tag name required')
       return
     }
-    const tag = addTag(newTagName.trim(), newTagColor)
-    addTagToTransaction(transactionId, tag.id)
-    setNewTagName('')
-    setNewTagColor(getDefaultTagColors()[0])
-    setShowAddTag(false)
-    toast.success(`Tag "${tag.name}" added`)
+    try {
+      const tag = addTag(newTagName.trim(), newTagColor)
+      if (!addTagToTransaction(transactionId, tag.id)) {
+        toast.error('Failed to add tag')
+        return
+      }
+      setNewTagName('')
+      setNewTagColor(getDefaultTagColors()[0])
+      setShowAddTag(false)
+      setRefreshKey(k => k + 1)
+      toast.success(`Tag "${tag.name}" added`)
+    } catch {
+      toast.error('Failed to add tag')
+    }
   }
 
   const handleRemoveTag = (tagId: string) => {
-    removeTagFromTransaction(transactionId, tagId)
-    toast.success('Tag removed')
+    try {
+      if (!removeTagFromTransaction(transactionId, tagId)) {
+        toast.error('Failed to remove tag')
+        return
+      }
+      setRefreshKey(k => k + 1)
+      toast.success('Tag removed')
+    } catch {
+      toast.error('Failed to remove tag')
+    }
   }
 
   const handleQuickAddTag = (tagId: string) => {
-    addTagToTransaction(transactionId, tagId)
-    toast.success('Tag added')
+    try {
+      if (!addTagToTransaction(transactionId, tagId)) {
+        toast.error('Failed to add tag')
+        return
+      }
+      setRefreshKey(k => k + 1)
+      toast.success('Tag added')
+    } catch {
+      toast.error('Failed to add tag')
+    }
   }
 
   return (

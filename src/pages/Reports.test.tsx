@@ -2,6 +2,18 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { Reports } from './Reports'
+import { downloadPDF, generateReportHTML } from '@/lib/pdfExport'
+
+vi.mock('@/lib/pdfExport', () => {
+  const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
+  return {
+    escapeHtml,
+    generateReportHTML: vi.fn((title: string, subtitle: string, _summary: { label: string; value: string }[], tableHTML: string) =>
+      `<h1>${title}</h1><p>${subtitle}</p>${tableHTML}`),
+    downloadPDF: vi.fn(),
+    generatePDFFromHTML: vi.fn(),
+  }
+})
 
 const now = new Date()
 const thisMonthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -60,5 +72,26 @@ describe('Reports', () => {
     // Go forward again
     fireEvent.click(screen.getAllByRole('button', { name: 'Next period' })[0])
     expect(screen.getAllByText(thisMonthLabel).length).toBeGreaterThan(0)
+  })
+
+  it('downloads a PDF report from the header button', () => {
+    render(<MemoryRouter><Reports /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'PDF' }))
+
+    expect(generateReportHTML).toHaveBeenCalledWith(
+      expect.stringContaining('FinPath Report'),
+      expect.stringContaining('All wallets'),
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Income', variant: 'positive' }),
+        expect.objectContaining({ label: 'Expenses', variant: 'negative' }),
+        expect.objectContaining({ label: 'Top category' }),
+      ]),
+      expect.any(String),
+    )
+    expect(downloadPDF).toHaveBeenCalledWith(
+      expect.stringContaining('<h1>FinPath Report'),
+      expect.stringContaining('finpath-report-'),
+    )
   })
 })

@@ -33,6 +33,7 @@ import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
+import { TransactionTagsEditor } from '@/components/transactions/TransactionTagsEditor'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -2226,6 +2227,14 @@ export function Transactions() {
                         </button>
                       </div>
                     )}
+                  </div>
+
+                  {/* Tags */}
+                  <div className="mt-4">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+                      <Tag size={13} />Tags
+                    </p>
+                    <TransactionTagsEditor transactionId={tx.id} />
                   </div>
 
                   {/* Merchant search shortcut */}
