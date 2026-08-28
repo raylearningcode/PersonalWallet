@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main, claude/webapp-improvements-md-QmqNB]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -26,6 +26,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run tests
+        run: npm test -- --run
 
       - name: Build web app
         run: npm run build
