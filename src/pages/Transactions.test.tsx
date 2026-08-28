@@ -19,6 +19,7 @@ const addRecurringRule = vi.fn()
 const updateRecurringRule = vi.fn()
 const deleteRecurringRule = vi.fn()
 const runDueRecurringRules = vi.fn()
+
 const mockWallets = [
   { id: 'cash', name: 'Cash', type: 'cash' as const, balance: 0, currency: 'IDR' },
   { id: 'card', name: 'Debit card', type: 'card' as const, balance: 0, currency: 'IDR' },
@@ -61,10 +62,12 @@ const mockTransactions = [{
   needs_review: false,
 }]
 
+let txData: typeof mockTransactions = mockTransactions
+
 vi.mock('@/lib/queries', () => ({
-  useTransactions: () => ({ data: mockTransactions }),
+  useTransactions: () => ({ data: txData }),
   useDeleteTransaction: () => ({ mutate: deleteTransaction, mutateAsync: deleteTransaction }),
-  useMarkReviewed: () => ({ mutate: vi.fn() }),
+  useMarkReviewed: () => ({ mutate: vi.fn(), mutateAsync: vi.fn() }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
   useUpdateTransaction: () => ({ mutateAsync: updateTransaction, isPending: false }),
   useWallets: () => ({ data: mockWallets }),
@@ -105,6 +108,7 @@ vi.mock('@/lib/currency', () => ({
 
 describe('Transactions', () => {
   beforeEach(() => {
+    txData = mockTransactions
     addTransaction.mockClear()
     updateTransaction.mockClear()
     deleteTransaction.mockClear()
@@ -232,6 +236,28 @@ describe('Transactions', () => {
     expect(screen.getByText('Old lunch')).toBeInTheDocument()
     expect(screen.queryByText('Bus')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Show all transactions/i })).toBeInTheDocument()
+  })
+
+  it('shows a Net flow stat alongside Money in and Money out', () => {
+    renderTx()
+
+    expect(screen.getByText('Money in')).toBeInTheDocument()
+    expect(screen.getByText('Money out')).toBeInTheDocument()
+    expect(screen.getByText('Net flow')).toBeInTheDocument()
+    expect(screen.getByText('+NT$3,880')).toBeInTheDocument()
+    expect(screen.getByText('1 income entries')).toBeInTheDocument()
+    expect(screen.getByText('2 expenses')).toBeInTheDocument()
+    expect(screen.getByText('3 transactions')).toBeInTheDocument()
+  })
+
+  it('offers a "Show all dates" escape hatch in the empty state when a date filter is active', () => {
+    txData = []
+    renderTx()
+
+    expect(screen.getByText('No transactions in this period')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all dates' }))
+    expect(screen.getByText('No transactions yet')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Show all dates' })).not.toBeInTheDocument()
   })
 
   it('keeps the expense category box compact and scrollable', () => {
