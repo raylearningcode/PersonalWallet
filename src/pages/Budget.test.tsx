@@ -125,4 +125,21 @@ describe('Budget', () => {
     renderBudget()
     expect(screen.getByText(/Unassigned spending/)).toBeInTheDocument()
   })
+
+  it('shows a single Balancing row with combined spent when the category exists', () => {
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    mockCategories = [
+      { id: 'cat-1', name: 'Food', yearly_allocated: 600000, budget_period: 'monthly' as const, color: '#A9F5C7', spent: 200000, group: 'Living' },
+      { id: 'cat-bal', name: 'Balancing', yearly_allocated: 0, budget_period: 'monthly' as const, color: '#64748B', spent: 0, group: 'Other' },
+    ]
+    mockTransactions = [
+      { id: 'tx-other', amount: 150000, category: 'Other', type: 'expense' as const, date: `${currentMonth}-01`, wallet_id: 'w1', description: 'Mystery purchase', needs_review: false, transfer_wallet_id: null, original_amount: 150000, original_currency: 'IDR' },
+    ]
+    renderBudget()
+    expect(screen.getAllByText('Balancing')).toHaveLength(1)
+    expect(screen.getByText('Includes unknown & unallocated')).toBeInTheDocument()
+    expect(screen.getByText('Rp 150,000')).toBeInTheDocument()
+    expect(screen.queryByText(/Unassigned spending/)).not.toBeInTheDocument()
+  })
 })

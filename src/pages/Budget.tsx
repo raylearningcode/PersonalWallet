@@ -158,6 +158,7 @@ export function Budget() {
     `${currentYear}-${String(periodDate.getMonth() + 1).padStart(2, '0')}-${daysInMonth}`,
     [currentYear, periodDate, daysInMonth]
   )
+  const balancingSpent = getBalancingSpent(expenseTransactions, categories, periodDate)
 
   const categoriesWithSpent = useMemo(() => {
     const att = getSplitAttribution(expenseTransactions, categories, periodDate)
@@ -171,16 +172,16 @@ export function Budget() {
           return true
         })
         .reduce((s, t) => s + t.amount, 0)
+      const isBalancing = cat.name.toLowerCase() === 'balancing'
       return {
         ...cat,
         budget_period: cat.budget_period ?? 'yearly',
-        spent: direct + (att[cat.name.toLowerCase()] ?? 0),
+        spent: direct + (att[cat.name.toLowerCase()] ?? 0) + (isBalancing ? balancingSpent : 0),
       }
     })
-  }, [categories, expenseTransactions, periodDate, lastDayOfViewedMonth])
+  }, [categories, expenseTransactions, periodDate, lastDayOfViewedMonth, balancingSpent])
 
   const monthsElapsed = periodDate.getMonth() + 1
-  const balancingSpent = getBalancingSpent(expenseTransactions, categories, periodDate)
   const balancingCat = categoriesWithSpent.find(c => c.name.toLowerCase() === 'balancing')
   // Normalize all categories to a monthly equivalent so monthly and yearly budgets can be summed fairly
   const totalAllocated = useMemo(() => categoriesWithSpent.reduce((s, c) => {
@@ -190,8 +191,9 @@ export function Budget() {
     const catTotal = categoriesWithSpent.reduce((s, c) => {
       return s + (c.budget_period === 'yearly' ? c.spent / Math.max(1, monthsElapsed) : c.spent)
     }, 0)
-    return catTotal + balancingSpent
-  }, [categoriesWithSpent, monthsElapsed, balancingSpent])
+    // balancingCat's spent already includes balancingSpent; only add it when no Balancing category exists
+    return catTotal + (balancingCat ? 0 : balancingSpent)
+  }, [categoriesWithSpent, monthsElapsed, balancingSpent, balancingCat])
   const remaining = totalAllocated - totalSpent
 
   const daysElapsed = isCurrentMonth ? today.getDate() : (isPastMonth ? daysInMonth : 0)
@@ -519,6 +521,7 @@ export function Budget() {
                             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
                           )}
                           {items.map(cat => {
+                            const isBalancing = cat.name.toLowerCase() === 'balancing'
                             const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
                             const barColor = getBarColor(pct, cat.color)
                             const catDailyAllowance = cat.budget_period === 'monthly' && cat.yearly_allocated > cat.spent && daysLeft > 0
@@ -546,9 +549,14 @@ export function Budget() {
                                 aria-label={`Open ${cat.name} budget details`}
                               >
                                 <div className="mb-2 flex items-center justify-between gap-2 text-sm lg:contents">
-                                  <div className="flex min-w-0 items-center gap-2">
-                                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-                                    <span className="truncate font-bold text-foreground">{cat.name}</span>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                      <span className="truncate font-bold text-foreground">{cat.name}</span>
+                                    </div>
+                                    {isBalancing && (
+                                      <p className="mt-0.5 pl-5 text-[11px] leading-tight text-muted-foreground">Includes unknown & unallocated</p>
+                                    )}
                                   </div>
                                   <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{primaryValue}</span>
                                   <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{secondaryValue}</span>
@@ -620,44 +628,40 @@ export function Budget() {
                           {showGroups && (
                             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
                           )}
-                          {items.map(cat => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => {
-                                if (isDesktop) openSheet(cat)
-                                else navigate(`/category/${encodeURIComponent(cat.name)}`)
-                              }}
-                              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995]"
-                              aria-label={`Open ${cat.name} details`}
-                            >
-                              <div className="flex min-w-0 items-center gap-2">
-                                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-                                <span className="truncate font-bold text-foreground">{cat.name}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>No budget</span>
-                                <ChevronRight className="h-4 w-4" />
-                              </div>
-                            </button>
-                          ))}
+                          {items.map(cat => {
+                            const isBalancing = cat.name.toLowerCase() === 'balancing'
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => {
+                                  if (isDesktop) openSheet(cat)
+                                  else navigate(`/category/${encodeURIComponent(cat.name)}`)
+                                }}
+                                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995]"
+                                aria-label={`Open ${cat.name} details`}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                    <span className="truncate font-bold text-foreground">{cat.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{isBalancing ? fmt(cat.spent) : 'No budget'}</span>
+                                    <ChevronRight className="h-4 w-4" />
+                                  </div>
+                                </div>
+                                {isBalancing && (
+                                  <p className="mt-0.5 text-xs text-muted-foreground">Includes unknown & unallocated</p>
+                                )}
+                              </button>
+                            )
+                          })}
                         </div>
                       ))}
                     </div>
                   )
                 })()}
-                {balancingCat && (
-                  <div className="rounded-xl border border-border bg-secondary px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: balancingCat.color }} />
-                        <span className="truncate font-bold text-foreground">{balancingCat.name}</span>
-                      </div>
-                      <span className="tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground">{fmt(balancingCat.spent + balancingSpent)}</span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Includes unknown & unallocated</p>
-                  </div>
-                )}
               </>
             ) : (
               <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-12 text-center">
