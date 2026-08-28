@@ -300,10 +300,15 @@ export function Settings() {
   const handleStartTotpSetup = async () => {
     const secret = await generateTOTPSecret()
     setTotpSecret(secret)
-    const email = session?.user.email || 'user@finpath.app'
-    const qrUrl = generateTOTPQRCode(secret, email)
-    setTotpQRCode(qrUrl)
     setTotpSetup(true)
+    const email = session?.user.email || 'user@finpath.app'
+    try {
+      // Local QR generation — the secret never leaves the device.
+      const qrDataUrl = await generateTOTPQRCode(secret, email)
+      setTotpQRCode(qrDataUrl)
+    } catch (err) {
+      console.warn('TOTP QR generation failed — manual entry below still works', err)
+    }
   }
 
   const handleVerifyAndEnableTOTP = async () => {

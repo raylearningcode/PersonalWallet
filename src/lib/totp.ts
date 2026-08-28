@@ -1,3 +1,5 @@
+import QRCode from 'qrcode'
+
 // Simple TOTP implementation for 2FA
 
 const TOTP_WINDOW = 30 // seconds
@@ -57,14 +59,15 @@ export async function verifyTOTP(secret: string, token: string): Promise<boolean
   }
 }
 
-export function generateTOTPQRCode(secret: string, email: string, issuer = 'FinPath'): string {
+// Generate the QR code locally so the TOTP secret never leaves the device.
+export async function generateTOTPQRCode(secret: string, email: string, issuer = 'FinPath'): Promise<string> {
   const accountName = encodeURIComponent(email)
   const issuerName = encodeURIComponent(issuer)
   const label = `${issuerName}:${accountName}`
   const params = `secret=${secret}&issuer=${issuerName}`
   const otpauthURL = `otpauth://totp/${label}?${params}`
 
-  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(otpauthURL)}`
+  return QRCode.toDataURL(otpauthURL)
 }
 
 async function computeHMAC(secret: ArrayBuffer, counter: number): Promise<Uint8Array> {

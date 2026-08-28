@@ -1,9 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 
-export const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL || 'https://ctrigcpfccvokoxfzcil.supabase.co'
+const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const envAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-export const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_fq7cieGFtdutY2caI9-HGA_i87HUutU'
+// Fail fast instead of silently running against a hardcoded fallback.
+if (!envUrl || !envAnonKey) {
+  throw new Error(
+    'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment (e.g. .env.local — see .env.example).'
+  )
+}
+
+export const supabaseUrl = envUrl
+export const supabaseAnonKey = envAnonKey
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)

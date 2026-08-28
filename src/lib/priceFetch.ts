@@ -43,11 +43,24 @@ const COINGECKO_IDS: Record<string, string> = {
   bnb: 'binancecoin',
 }
 
+const FETCH_TIMEOUT_MS = 8000
+
+// Abort the request after 8s so a hanging upstream never blocks the UI forever.
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 async function fetchCryptoPrice(ticker: string): Promise<{ price: number; currency: string }> {
   const id = COINGECKO_IDS[ticker.toLowerCase()]
   if (!id) throw new Error(`Unknown crypto ticker: ${ticker}`)
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`,
     { headers: { accept: 'application/json' } }
   )
@@ -60,7 +73,7 @@ async function fetchCryptoPrice(ticker: string): Promise<{ price: number; curren
 
 async function fetchStockPrice(ticker: string): Promise<{ price: number; currency: string }> {
   // Use Yahoo Finance unofficial API (free, no key required)
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`
   )
   if (!res.ok) throw new Error(`Yahoo Finance returned ${res.status}`)
@@ -105,10 +118,11 @@ export async function fetchPricesForHoldings(
           }
           const result = await fetchPrice(holding.asset_type, key)
           results.set(key, result)
-        } catch {
-          // If fetch fails, keep last known price from holding record
+        } catch (err) {
+          // If fetch fails or times out, keep the last known price from the holding record
           if (holding.current_price != null) {
             results.set(key, { price: holding.current_price, currency: holding.currency })
+            console.warn(`[priceFetch] Could not refresh ${key}; keeping last known price`, err)
           }
         }
       })
