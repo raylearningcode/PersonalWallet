@@ -261,9 +261,9 @@ export function Settings() {
     }
   }
 
-  const handleEnablePin = () => {
+  const handleEnablePin = async () => {
     if (pinInput.length !== 4) return
-    localStorage.setItem(PIN_STORAGE_KEY, hashPin(pinInput))
+    localStorage.setItem(PIN_STORAGE_KEY, await hashPin(pinInput))
     sessionStorage.setItem(PIN_SESSION_KEY, '1')
     setPinInput('')
     setPinEnabled(true)
