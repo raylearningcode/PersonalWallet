@@ -4,8 +4,19 @@ import { Investing } from './Investing'
 
 const saveInvestmentConfig = vi.fn()
 
+// Mutable holders so tests can simulate a reload (config present) and a rate refetch
+const { investConfigData, moneyRates, bumpRates } = vi.hoisted(() => {
+  const investConfigData: { value: unknown } = { value: undefined }
+  const moneyRates: { value: object } = { value: {} }
+  return {
+    investConfigData,
+    moneyRates,
+    bumpRates: () => { moneyRates.value = {} },
+  }
+})
+
 vi.mock('@/lib/queries', () => ({
-  useInvestmentConfig: () => ({ data: undefined }),
+  useInvestmentConfig: () => ({ data: investConfigData.value }),
   useSaveInvestmentConfig: () => ({ mutateAsync: saveInvestmentConfig, isPending: false }),
   useAppSettings: () => ({ data: undefined }),
   useHoldings: () => ({ data: [] }),
@@ -29,6 +40,7 @@ vi.mock('@/lib/currency', () => ({
   useMoney: () => ({
     baseCurrency: 'IDR',
     displayCurrency: 'TWD',
+    rates: moneyRates.value,
     toBase: (amount: number, currency: string) => currency === 'TWD' ? amount * 550 : amount,
     fromBase: (amount: number, currency = 'TWD') => currency === 'TWD' ? amount / 550 : amount,
     format: (amount: number, currency: string) =>
@@ -47,6 +59,11 @@ vi.mock('@/lib/currency', () => ({
 }))
 
 describe('Investing', () => {
+  beforeEach(() => {
+    investConfigData.value = undefined
+    saveInvestmentConfig.mockClear()
+  })
+
   it('renders simulator tab by default with empty state', () => {
     render(<Investing />)
     // Default tab is simulator
@@ -121,5 +138,58 @@ describe('Investing', () => {
 
     // Verify simulator content is showing
     expect(screen.getByText(/No simulation yet/i)).toBeInTheDocument()
+  })
+
+  it('round-trips a weekly contribution amount and frequency through save and reload', () => {
+    const { unmount } = render(<Investing />)
+
+    fireEvent.change(screen.getByLabelText('Contribution frequency'), { target: { value: 'weekly' } })
+    fireEvent.change(screen.getByLabelText('Contribution currency'), { target: { value: 'TWD' } })
+    fireEvent.change(screen.getByLabelText('Amount per week (TWD)'), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText('Expected return / year'), { target: { value: '8' } })
+    fireEvent.change(screen.getByLabelText('Duration (years)'), { target: { value: '10' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    // Persisted: monthly-equivalent (1000/week × 52/12) × TWD→IDR conversion + the frequency
+    expect(saveInvestmentConfig).toHaveBeenCalledWith(expect.objectContaining({
+      monthly_contribution: 1000 * (52 / 12) * 550,
+      contribution_frequency: 'weekly',
+      contribution_currency: 'TWD',
+    }))
+
+    unmount()
+
+    // Reload — hydrate from the saved config: per-period field must be 1000/week again
+    investConfigData.value = {
+      id: 'cfg-1',
+      monthly_contribution: 1000 * (52 / 12) * 550,
+      contribution_frequency: 'weekly',
+      contribution_currency: 'TWD',
+      target_portfolio: 0,
+      target_currency: 'IDR',
+      return_rate: 8,
+      duration_years: 10,
+      current_value: 0,
+      allocations: [],
+      inflation_rate: 3,
+      lump_sum: 0,
+    }
+    render(<Investing />)
+
+    expect(screen.getByLabelText('Amount per week (TWD)')).toHaveValue('1,000')
+  })
+
+  it('keeps the in-progress draft when exchange rates refetch', () => {
+    const { rerender } = render(<Investing />)
+
+    fireEvent.change(screen.getByLabelText('Amount per month (IDR)'), { target: { value: '250000' } })
+    fireEvent.change(screen.getByLabelText('Expected return / year'), { target: { value: '7' } })
+
+    // A refetch produces a new emptySimulator object; the draft must survive it
+    bumpRates()
+    rerender(<Investing />)
+
+    expect(screen.getByLabelText('Amount per month (IDR)')).toHaveValue('250,000')
+    expect(screen.getByLabelText('Expected return / year')).toHaveValue('7')
   })
 })

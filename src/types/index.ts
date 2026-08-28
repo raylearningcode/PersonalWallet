@@ -88,6 +88,7 @@ export interface InvestmentConfig {
   id: string
   user_id?: string | null
   monthly_contribution: number
+  contribution_frequency?: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
   contribution_currency?: string
   target_portfolio?: number
   target_currency?: string

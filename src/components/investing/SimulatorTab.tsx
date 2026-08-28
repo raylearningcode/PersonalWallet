@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInvestmentConfig, useSaveInvestmentConfig } from '@/lib/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -66,15 +66,19 @@ export function SimulatorTab() {
   const savedContributionCurrency = investConfig?.contribution_currency ?? money.baseCurrency
   const savedTargetCurrency = investConfig?.target_currency ?? money.baseCurrency
 
-  const emptySimulator: SimulatorValues = useMemo(() => ({
-    monthlyContribution: money.fromBase(investConfig?.monthly_contribution ?? 0, savedContributionCurrency),
-    targetPortfolio: money.fromBase(investConfig?.target_portfolio ?? 0, savedTargetCurrency),
-    annualReturnRate: investConfig?.return_rate ?? 8,
-    durationYears: investConfig?.duration_years ?? 10,
-    initialCapital: investConfig?.current_value ?? 0,
-    inflationRate: investConfig?.inflation_rate ?? 3,
-    lumpSum: investConfig?.lump_sum ?? 0,
-  }), [investConfig, money.baseCurrency, money.rates, savedContributionCurrency, savedTargetCurrency])
+  const emptySimulator: SimulatorValues = useMemo(() => {
+    const freq: ContributionFrequency = investConfig?.contribution_frequency ?? 'monthly'
+    return {
+      // monthly_contribution is stored as the monthly-equivalent; divide back to the per-period amount
+      monthlyContribution: money.fromBase(investConfig?.monthly_contribution ?? 0, savedContributionCurrency) / FREQ_TO_MONTHLY[freq],
+      targetPortfolio: money.fromBase(investConfig?.target_portfolio ?? 0, savedTargetCurrency),
+      annualReturnRate: investConfig?.return_rate ?? 8,
+      durationYears: investConfig?.duration_years ?? 10,
+      initialCapital: investConfig?.current_value ?? 0,
+      inflationRate: investConfig?.inflation_rate ?? 3,
+      lumpSum: investConfig?.lump_sum ?? 0,
+    }
+  }, [investConfig, money.baseCurrency, money.rates, savedContributionCurrency, savedTargetCurrency])
 
   const [draft, setDraft] = useState<SimulatorValues>({
     monthlyContribution: 0, targetPortfolio: 0, annualReturnRate: 0, durationYears: 0, initialCapital: 0, inflationRate: 3, lumpSum: 0,
@@ -88,12 +92,19 @@ export function SimulatorTab() {
   const [chartMax, setChartMax] = useState(() => Math.min(30, Math.max(investConfig?.duration_years ?? 0, 10)))
   const [inflationEnabled, setInflationEnabled] = useState(true)
 
+  const lastHydratedId = useRef<string | null | undefined>(undefined)
+
   useEffect(() => {
+    // Hydrate only when the saved config changes — a rate refetch produces a new
+    // emptySimulator object but must not wipe the user's in-progress draft.
+    if (lastHydratedId.current === (investConfig?.id ?? null)) return
+    lastHydratedId.current = investConfig?.id ?? null
     setDraft(emptySimulator)
+    setContributionFrequency(investConfig?.contribution_frequency ?? 'monthly')
     setContributionCurrency(savedContributionCurrency)
     setTargetCurrency(savedTargetCurrency)
     setChartMax(Math.min(30, Math.max(emptySimulator.durationYears, 10)))
-  }, [emptySimulator, savedContributionCurrency, savedTargetCurrency])
+  }, [emptySimulator, investConfig?.id, savedContributionCurrency, savedTargetCurrency])
 
   useEffect(() => {
     if (investConfig?.allocations && investConfig.allocations.length > 0) setAllocation(investConfig.allocations)
@@ -161,6 +172,7 @@ export function SimulatorTab() {
       await saveInvestmentConfig.mutateAsync({
         id: investConfig?.id,
         monthly_contribution: draftBase.monthlyContribution,
+        contribution_frequency: contributionFrequency,
         contribution_currency: contributionCurrency,
         target_portfolio: draftBase.targetPortfolio,
         target_currency: targetCurrency,
@@ -182,6 +194,7 @@ export function SimulatorTab() {
       await saveInvestmentConfig.mutateAsync({
         id: investConfig?.id,
         monthly_contribution: draftBase.monthlyContribution,
+        contribution_frequency: contributionFrequency,
         contribution_currency: contributionCurrency,
         target_portfolio: draftBase.targetPortfolio,
         target_currency: targetCurrency,
