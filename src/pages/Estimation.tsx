@@ -13,6 +13,7 @@ import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
 import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown, Plus } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { safeGet } from '@/lib/utils'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -571,7 +572,7 @@ export function Estimation() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
-                  <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                  <MoneyField value={incomeAmount} onChange={v => setIncomeAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} placeholder="0" />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Period</Label>
@@ -623,7 +624,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
-                <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                <MoneyField value={incomeAmount} onChange={v => setIncomeAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} placeholder="0" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
@@ -653,7 +654,7 @@ export function Estimation() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
-                  <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                  <MoneyField value={expenseAmount} onChange={v => setExpenseAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} placeholder="0" />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Period</Label>
@@ -705,7 +706,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
-                <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                <MoneyField value={expenseAmount} onChange={v => setExpenseAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} placeholder="0" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
@@ -742,7 +743,7 @@ export function Estimation() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
-                  <Input aria-label="Wishlist amount" className="mt-2 bg-secondary" inputMode="decimal" value={wishlistAmount} onChange={event => setWishlistAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                  <MoneyField value={wishlistAmount} onChange={v => setWishlistAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Wishlist amount" className="mt-2 bg-secondary" placeholder="0" />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Type</Label>
@@ -773,7 +774,7 @@ export function Estimation() {
                     <div key={item.id} className="space-y-2 rounded-2xl border border-primary/30 bg-secondary p-4">
                       <Input className="bg-card text-sm" value={editWishlistName} onChange={e => setEditWishlistName(e.target.value)} placeholder="Item name" />
                       <div className="flex gap-2">
-                        <Input className="bg-card text-sm" inputMode="decimal" value={editWishlistAmount} onChange={e => setEditWishlistAmount(formatNumberInput(e.target.value))} placeholder="Amount" />
+                        <MoneyField value={editWishlistAmount} onChange={v => setEditWishlistAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Wishlist edit amount" className="bg-card text-sm" placeholder="Amount" />
                         <select className="h-11 flex-1 rounded-md border border-input bg-card px-2 text-sm font-bold text-foreground outline-none" value={editWishlistType} onChange={e => setEditWishlistType(e.target.value)}>
                           {WISHLIST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
@@ -833,7 +834,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
-                <Input aria-label="Wishlist amount" className="mt-2 bg-secondary" inputMode="decimal" value={wishlistAmount} onChange={event => setWishlistAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                <MoneyField value={wishlistAmount} onChange={v => setWishlistAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Wishlist amount" className="mt-2 bg-secondary" placeholder="0" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
@@ -920,7 +921,7 @@ function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount
           <div key={item.id} className="space-y-2 rounded-2xl border border-primary/30 bg-secondary px-4 py-3">
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.5fr)_minmax(100px,0.45fr)_auto_auto] items-center gap-2">
               <Input className="h-11 bg-card text-sm" value={editName} onChange={e => onEditNameChange(e.target.value)} placeholder="Name" />
-              <Input className="h-11 bg-card text-sm" inputMode="decimal" value={editAmount} onChange={e => onEditAmountChange(e.target.value)} placeholder="Amount" />
+              <MoneyField value={editAmount} onChange={onEditAmountChange} currency={displayCurrency} ariaLabel="Edit amount" className="h-11 bg-card text-sm" placeholder="Amount" />
               <select className="h-11 rounded-md border border-input bg-card px-2 text-xs font-bold text-foreground outline-none" value={editPeriod} onChange={e => onEditPeriodChange(e.target.value)}>
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>

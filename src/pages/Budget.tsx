@@ -17,6 +17,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod, getSplitAttribution, getBalancingSpent } from '@/lib/budget'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
@@ -730,14 +731,16 @@ export function Budget() {
                   onChange={e => setAddName(e.target.value)}
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    aria-label="Budget amount"
-                    inputMode="decimal"
-                    className="min-w-0 flex-1 bg-secondary text-sm font-bold"
-                    placeholder={`Budget amount (${money.baseCurrency})`}
-                    value={addAmount}
-                    onChange={e => setAddAmount(formatNumberInput(e.target.value))}
-                  />
+                  <div className="min-w-0 flex-1">
+                    <MoneyField
+                      value={addAmount}
+                      onChange={v => setAddAmount(formatNumberInput(v))}
+                      currency={money.baseCurrency}
+                      ariaLabel="Budget amount"
+                      className="bg-secondary text-sm font-bold"
+                      placeholder={`Budget amount (${money.baseCurrency})`}
+                    />
+                  </div>
                   <select
                     aria-label="New category budget period"
                     className="h-11 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"

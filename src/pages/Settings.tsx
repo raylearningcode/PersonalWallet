@@ -24,6 +24,7 @@ import { generateTOTPSecret, generateTOTPQRCode, verifyTOTP } from '@/lib/totp'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
 import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
@@ -849,15 +850,16 @@ export function Settings() {
                   onKeyDown={event => event.key === 'Enter' && handleAddWallet()}
                   placeholder={`Name — e.g. ${WALLET_NAME_HINTS[walletType] ?? 'My wallet'}`}
                 />
-                <Input
-                  aria-label="Initial balance (optional)"
-                  className="bg-background sm:w-32"
-                  value={walletInitBalance}
-                  onChange={e => setWalletInitBalance(formatNumberInput(e.target.value))}
-                  onKeyDown={event => event.key === 'Enter' && handleAddWallet()}
-                  placeholder="Balance (opt.)"
-                  inputMode="decimal"
-                />
+                <div onKeyDown={event => event.key === 'Enter' && handleAddWallet()}>
+                  <MoneyField
+                    value={walletInitBalance}
+                    onChange={v => setWalletInitBalance(formatNumberInput(v))}
+                    currency={money.displayCurrency}
+                    ariaLabel="Initial balance (optional)"
+                    className="bg-background sm:w-32"
+                    placeholder="Balance (opt.)"
+                  />
+                </div>
                 <Button onClick={handleAddWallet} disabled={addWallet.isPending || !walletName.trim()}>Add wallet</Button>
               </div>
             </div>
