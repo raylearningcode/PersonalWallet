@@ -153,7 +153,34 @@ Behavior fixes (both flows):
   DesktopTools AI link to the new Settings AI section.
 - Onboarding/empty states already good; keep skeletons/retry patterns.
 
-## 5. Tests, lint, CI, dependencies
+## 5. Mobile money keypad (custom keypad on mobile, external keyboard on desktop)
+
+**Current state:** `MoneyKeypad` exists (`src/components/mobile/MoneyKeypad.tsx`) and is used for
+the main amount in QuickAddSheet and the Budget sheet, but most other money inputs still open
+the native phone keyboard: split portion amounts, wallet split amounts, cash tendered, Budget
+add-category amount, Estimation, Goals contribution, CategoryDetail, Settings wallet balance.
+Inconsistent, and the native keyboard breaks the app's custom design on mobile.
+
+**Requirement:**
+
+- Build a reusable `MoneyField` component (`src/components/mobile/MoneyField.tsx`):
+  - **Mobile** (via `useIsDesktop`): input is `readOnly`; tapping/focusing opens the
+    `MoneyKeypad` panel; native keyboard never appears.
+  - **Desktop**: plain editable input; external keyboard works; keypad panel never renders.
+  - Props: value/onChange, currency (drives decimals + TWD quick amounts), optional aria-label,
+    placeholder, done label. Renders the sticky keypad panel itself with safe-area handling and
+    closes on outside tap/scroll (existing `finpath-keypad-change` event pattern extended so
+    only one keypad is active per screen; opening a second money field moves the keypad to it).
+- Replace every money input app-wide with `MoneyField`:
+  - QuickAddSheet: amount, cash tendered, each split portion, each wallet split
+  - AddTransaction: amount, cash tendered, split portions
+  - Budget: add-category amount + sheet budget amount (migrate existing keypad usage to MoneyField)
+  - CategoryDetail, Goals (contribution), Estimation (all money inputs),
+    Settings (wallet starting balance)
+- Tests: MoneyField unit tests (mobile → keypad opens, desktop → editable input, IDR integer
+  mode, TWD quick amounts); page flows verify save with keypad-entered values.
+
+## 6. Tests, lint, CI, dependencies
 
 - Fix all 5 failing suites:
   - `@capacitor/camera` dependency added (suite loads) + `vi.mock('@/lib/camera')` in
@@ -177,12 +204,13 @@ Behavior fixes (both flows):
   tooling to devDependencies. Defer majors (Tailwind 4, TS 7, jest-dom 7, jsdom 30).
 - Add a README (setup, env vars, cap sync workflow).
 
-## 6. Delivery & verification
+## 7. Delivery & verification
 
 - Branch `claude/fix-polish-balancing`, pushed as a PR to `raylearningcode/PersonalWallet`.
 - Verification gate before merge: `npm run build` green, full `npm test -- --run` green,
   `npm run lint` green, manual smoke of QuickAddSheet + AddTransaction on desktop widths and
-  mobile widths (split, cash, coins routing), Budget balancing row visible.
+  mobile widths (split, cash, coins routing, custom keypad on all money fields, native keyboard
+  never opens on mobile), Budget balancing row visible.
 
 ## Out of scope (explicitly)
 
