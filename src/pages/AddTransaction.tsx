@@ -275,7 +275,9 @@ export function AddTransaction() {
       } else {
         toast.success('Transaction added')
       }
-      navigate('/transactions', { replace: true })
+      // Go back to where the user came from; fall back to history if opened directly.
+      if (window.history.length > 1) navigate(-1)
+      else navigate('/transactions', { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save transaction')
     }
@@ -426,18 +428,35 @@ export function AddTransaction() {
                 <span>No categories yet</span>
                 <span>Set up now →</span>
               </Link>
+            ) : type === 'income' ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {INCOME_CATEGORIES.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCategory(c)}
+                    className={`rounded-full px-3.5 py-2 text-sm font-bold transition-colors ${category === c ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             ) : (
-              <select
-                aria-label="Category"
-                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-              >
-                {type === 'income'
-                  ? INCOME_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)
-                  : categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
-                }
-              </select>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {categories.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCategory(c.name)}
+                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold transition-colors ${category === c.name ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {c.icon
+                      ? <span className="leading-none">{c.icon}</span>
+                      : <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />}
+                    {c.name}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}

@@ -1677,6 +1677,36 @@ export function Transactions() {
           )
         })()}
 
+        {/* Mobile category chips — one-tap per-category history */}
+        {!isDesktop && !txPending && !txError && expenseCategoryTotals.length > 0 && (
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('')}
+              className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-bold transition-colors ${!selectedCategory ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}
+            >
+              All
+            </button>
+            {expenseCategoryTotals.map(([name, value]) => {
+              const cat = categories.find(c => c.name === name)
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setSelectedCategory(selectedCategory === name ? '' : name)}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold transition-colors ${selectedCategory === name ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}
+                >
+                  {cat?.icon
+                    ? <span className="leading-none">{cat.icon}</span>
+                    : <span className="h-2 w-2 rounded-full" style={{ background: cat?.color ?? '#888' }} />}
+                  {name}
+                  <span className="text-xs opacity-70">{value.count}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {txPending ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -1720,6 +1750,16 @@ export function Transactions() {
                     {/* Swipe-to-reveal actions */}
                     {!selectMode && (
                       <div className="absolute inset-y-0 right-0 flex items-stretch">
+                        {tx.needs_review && (
+                          <button
+                            type="button"
+                            aria-label="Mark reviewed"
+                            className="flex w-[60px] items-center justify-center bg-[#FFCF73]/90 text-black"
+                            onClick={() => { setSwipeOpenId(null); handleMarkReviewed(tx.id) }}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           aria-label="Edit"
@@ -1742,7 +1782,7 @@ export function Transactions() {
                       type="button"
                       className={`relative z-10 w-full rounded-xl border px-4 py-3 text-left transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary hover:border-border/80 hover:bg-muted/30'}`}
                       style={{
-                        transform: swipeOpenId === tx.id ? 'translateX(-120px)' : 'translateX(0px)',
+                        transform: swipeOpenId === tx.id ? `translateX(-${tx.needs_review ? 180 : 120}px)` : 'translateX(0px)',
                         transition: 'transform 0.2s ease-out',
                       }}
                       onPointerDown={(e) => {
@@ -2141,16 +2181,26 @@ export function Transactions() {
                     </div>
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className="text-sm text-muted-foreground">Category</span>
-                      <div className="flex items-center gap-1.5">
-                        {categoryColorMap.has(tx.category) && (
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
-                        )}
-                        <span className="text-sm font-bold text-foreground">
-                          {tx.split_portions && tx.split_portions.length > 0
-                            ? `Split (${tx.split_portions.length})`
-                            : tx.category}
-                        </span>
-                      </div>
+                      {tx.split_portions && tx.split_portions.length > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          {categoryColorMap.has(tx.category) && (
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
+                          )}
+                          <span className="text-sm font-bold text-foreground">Split ({tx.split_portions.length})</span>
+                        </div>
+                      ) : (
+                        <Link
+                          to={`/category/${encodeURIComponent(tx.category)}`}
+                          onClick={() => setDetailTx(null)}
+                          className="flex items-center gap-1.5"
+                        >
+                          {categoryColorMap.has(tx.category) && (
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColorMap.get(tx.category) }} />
+                          )}
+                          <span className="text-sm font-bold text-primary underline-offset-2 hover:underline">{tx.category}</span>
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Link>
+                      )}
                     </div>
                     {wallet && (
                       <div className="flex items-center justify-between px-4 py-3">

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -17,6 +18,7 @@ import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X
 
 export function Dashboard() {
   const money = useMoney()
+  const isDesktop = useIsDesktop()
   const fmt = money.formatDisplay
   const { data: transactions = [], isPending: txPending } = useTransactions()
   const { data: investConfig } = useInvestmentConfig()
@@ -150,9 +152,29 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Budget health + Recent activity */}
+      {/* Recent activity (first on mobile) + Budget health */}
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="order-1 lg:order-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Recent activity</CardTitle>
+            <Link to="/transactions" className="text-xs font-bold text-primary hover:underline">View all <ChevronRight className="inline h-3 w-3" /></Link>
+          </CardHeader>
+          <CardContent className="space-y-1 px-5 pb-5">
+            {recentTx.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No transactions yet.</p>
+            ) : recentTx.slice(0, 5).map(tx => (
+              <Link key={tx.id} to="/transactions" className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-secondary transition-colors">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                  <p className="text-xs text-muted-foreground">{tx.category} · {tx.date.slice(5)}</p>
+                </div>
+                <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>{txAmountSign(tx.amount, tx.type)}{fmt(tx.amount)}</span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="order-2 lg:order-1">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Budget health</CardTitle>
             <Link to="/budget" className="text-xs font-bold text-primary hover:underline">View all <ChevronRight className="inline h-3 w-3" /></Link>
@@ -172,26 +194,6 @@ export function Dashboard() {
                 </div>
               )
             })}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Recent activity</CardTitle>
-            <Link to="/transactions" className="text-xs font-bold text-primary hover:underline">View all <ChevronRight className="inline h-3 w-3" /></Link>
-          </CardHeader>
-          <CardContent className="space-y-1 px-5 pb-5">
-            {recentTx.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No transactions yet.</p>
-            ) : recentTx.map(tx => (
-              <Link key={tx.id} to="/transactions" className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-secondary transition-colors">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
-                  <p className="text-xs text-muted-foreground">{tx.category} · {tx.date.slice(5)}</p>
-                </div>
-                <span className={`shrink-0 text-sm font-extrabold ${txAmountColor(tx.amount, tx.type)}`}>{txAmountSign(tx.amount, tx.type)}{fmt(tx.amount)}</span>
-              </Link>
-            ))}
           </CardContent>
         </Card>
       </div>
@@ -217,8 +219,8 @@ export function Dashboard() {
         </Card>
       )}
 
-      {/* AI Insights */}
-      {!aiCardDismissed && (
+      {/* AI Insights — hidden on mobile until a key is configured (no dead-end card) */}
+      {!aiCardDismissed && (isAiConfigured() || isDesktop) && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-4">
