@@ -9,12 +9,18 @@ const { addWallet, addCategory, addTransaction } = vi.hoisted(() => ({
   addTransaction: vi.fn(async () => ({ id: 't1' })),
 }))
 
+const state = vi.hoisted(() => ({ wallets: [] as { id: string; name: string; type: string }[] }))
+
 vi.mock('@/lib/queries', () => ({
-  useWallets: () => ({ data: [] }),
+  useWallets: () => ({ data: state.wallets }),
   useBudgetCategories: () => ({ data: [] }),
   useAddWallet: () => ({ mutateAsync: addWallet, isPending: false }),
   useAddBudgetCategory: () => ({ mutateAsync: addCategory, isPending: false }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
+}))
+
+vi.mock('@/hooks/useIsDesktop', () => ({
+  useIsDesktop: () => true,
 }))
 
 vi.mock('@/lib/currency', () => ({
@@ -31,13 +37,28 @@ vi.mock('@/lib/currency', () => ({
 describe('OnboardingFlow', () => {
   beforeEach(() => {
     localStorage.clear()
+    state.wallets = []
     addWallet.mockClear()
     addCategory.mockClear()
     addTransaction.mockClear()
   })
 
-  it('auto-seeds a default Cash wallet and all starter categories on first run', async () => {
+  it('shows the welcome screen first, with branding and skip', () => {
+    const onComplete = vi.fn()
+    render(<OnboardingFlow onComplete={onComplete} />)
+
+    expect(screen.getByText('Welcome to FinPath')).toBeInTheDocument()
+    expect(screen.getByText('Log in seconds')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Skip for now'))
+    expect(localStorage.getItem('finpath_onboarding_complete')).toBe('1')
+    expect(onComplete).toHaveBeenCalled()
+  })
+
+  it('auto-seeds a default Cash wallet and all starter categories after Get started', async () => {
     render(<OnboardingFlow onComplete={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /get started/i }))
 
     await waitFor(() => expect(addWallet).toHaveBeenCalledTimes(1))
     expect(addWallet).toHaveBeenCalledWith({
@@ -66,9 +87,29 @@ describe('OnboardingFlow', () => {
   it('continues to the first-transaction step after auto-setup', async () => {
     render(<OnboardingFlow onComplete={vi.fn()} />)
 
+    fireEvent.click(screen.getByRole('button', { name: /get started/i }))
     const continueBtn = await screen.findByRole('button', { name: /continue/i })
     fireEvent.click(continueBtn)
 
     expect(await screen.findByText('Log your first transaction')).toBeInTheDocument()
+  })
+
+  it('finish screen shows the feature tour and completes onboarding', async () => {
+    // The seeded wallet appears (simulates the query refetch after seeding).
+    state.wallets = [{ id: 'w1', name: 'Cash', type: 'cash' }]
+    const onComplete = vi.fn()
+    render(<OnboardingFlow onComplete={onComplete} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /get started/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /continue/i }))
+    fireEvent.change(await screen.findByLabelText('Transaction amount'), { target: { value: '50000' } })
+    fireEvent.click(screen.getByRole('button', { name: /log it/i }))
+
+    expect(await screen.findByText("You're all set!")).toBeInTheDocument()
+    expect(screen.getByText('Quick add')).toBeInTheDocument()
+    expect(screen.getByText('Balancing budget')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /start using finpath/i }))
+    expect(onComplete).toHaveBeenCalled()
   })
 })
