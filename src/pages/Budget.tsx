@@ -385,7 +385,7 @@ export function Budget() {
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-6">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-6">
         <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.formatRef(totalAllocated) ?? 'Blended monthly equivalent'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.formatRef(hasData ? remaining : 0) ?? 'Safe inside active periods'} badgeVariant={hasData && remaining < 0 ? 'danger' : 'success'} />
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% of budget used` : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
@@ -546,7 +546,7 @@ export function Budget() {
                                   if (isDesktop) openSheet(cat)
                                   else navigate(`/category/${encodeURIComponent(cat.name)}`)
                                 }}
-                                className="w-full rounded-xl border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] lg:items-center lg:gap-4 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
+                                className="w-full rounded-xl border border-border/50 bg-secondary/30 p-3 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] lg:items-center lg:gap-4 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
                                 aria-label={`Open ${cat.name} budget details`}
                               >
                                 <div className="mb-2 flex items-center justify-between gap-2 text-sm lg:contents">

@@ -912,8 +912,8 @@ export function Transactions() {
             { label: 'Money out', value: money.formatDisplay(moneyOut), dot: 'bg-[#FF8388]', sub: `${transactions.filter(t => t.type === 'expense').length} expenses` },
             { label: 'Net flow', value: `${net >= 0 ? '+' : ''}${money.formatDisplay(net)}`, dot: net >= 0 ? 'bg-primary' : 'bg-[#FF8388]', sub: `${netCount} transactions` },
           ]
-        })().map(({ label, value, dot, sub }) => (
-          <div key={label} className="relative rounded-[1.4rem] border border-border bg-card px-6 py-5">
+        })().map(({ label, value, dot, sub }, i) => (
+          <div key={label} className={`relative rounded-[1.4rem] border border-border bg-card px-5 py-4 ${i === 2 ? 'col-span-2 lg:col-span-1' : ''}`}>
             <span className={`absolute right-7 top-7 h-4 w-4 rounded-full ${dot}`} />
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className="mt-4 break-words text-[1.35rem] font-extrabold leading-tight text-foreground sm:text-[2rem]">{value}</p>
