@@ -33,6 +33,8 @@ export function MoneyField(props: {
       // Another field's keypad is open: close it first (exactly one active keypad).
       if (keypadOwner && keypadOwner !== myCloseFn.current) keypadOwner()
       keypadOwner = myCloseFn.current
+      // Bring the field into view so the keypad never covers it.
+      setTimeout(() => fieldRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
     } else if (keypadOwner === myCloseFn.current) {
       keypadOwner = null
     }
