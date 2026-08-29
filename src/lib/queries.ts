@@ -181,6 +181,7 @@ export function useAddTransaction() {
       if (isOffline()) {
         cacheAddItem('transactions_all', tempItem)
         if (transaction.type) cacheAddItem(`transactions_${transaction.type}`, tempItem)
+        if (transaction.needs_review) cacheAddItem('transactions_needs_review', tempItem)
         enqueue({ table: 'transactions', op: 'insert', data: { ...transaction, user_id: userId, id: tempId }, userId })
         return tempItem
       }
@@ -196,6 +197,7 @@ export function useAddTransaction() {
         if (isNetworkError(e)) {
           cacheAddItem('transactions_all', tempItem)
           if (transaction.type) cacheAddItem(`transactions_${transaction.type}`, tempItem)
+          if (transaction.needs_review) cacheAddItem('transactions_needs_review', tempItem)
           enqueue({ table: 'transactions', op: 'insert', data: { ...transaction, user_id: userId, id: tempId }, userId })
           return tempItem
         }
