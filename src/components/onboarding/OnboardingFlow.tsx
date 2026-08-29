@@ -9,7 +9,11 @@ import { todayLocal } from '@/lib/utils'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { toast } from 'sonner'
-import { Wallet, ReceiptText, LayoutDashboard, ArrowRight, Check, Loader2 } from 'lucide-react'
+import {
+  Wallet, ReceiptText, ArrowRight, Check, Loader2,
+  Zap, Coins, Scissors, Scale, Sparkles, FileDown, Target, Calendar,
+} from 'lucide-react'
+import type { ElementType } from 'react'
 
 const ONBOARDING_KEY = 'finpath_onboarding_complete'
 
@@ -17,8 +21,19 @@ export function isOnboardingDone() {
   return localStorage.getItem(ONBOARDING_KEY) === '1'
 }
 
+const FEATURE_TOUR: { icon: ElementType; title: string; desc: string }[] = [
+  { icon: Zap, title: 'Quick add', desc: 'Log expenses in two taps with the custom keypad' },
+  { icon: Coins, title: 'Cash & change', desc: 'Bills and coins routed to the right wallet automatically' },
+  { icon: Scissors, title: 'Split payments', desc: 'One purchase across categories or wallets' },
+  { icon: Scale, title: 'Balancing budget', desc: 'Unknown and leftover spending tracked automatically' },
+  { icon: Sparkles, title: 'AI insights', desc: 'Add your Gemini key anytime for smart analysis' },
+  { icon: FileDown, title: 'Reports & PDF', desc: 'Monthly reports, exportable anytime' },
+  { icon: Target, title: 'Goals', desc: 'Save toward what matters, linked to your spending' },
+  { icon: Calendar, title: 'Calendar & bills', desc: 'Upcoming bills and daily spending at a glance' },
+]
+
 export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(0)
   const money = useMoney()
   const addWallet = useAddWallet()
   const addTransaction = useAddTransaction()
@@ -68,7 +83,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     })()
   }, [wallets.length, categories.length, seedError])
 
-  // Step 1 state
+  // Step 1 (fallback) state
   const [walletName, setWalletName] = useState('Cash')
   const [walletType, setWalletType] = useState<'cash' | 'bank' | 'card' | 'e_wallet'>('cash')
   const [walletBalance, setWalletBalance] = useState('')
@@ -134,12 +149,59 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="mx-auto w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
+        {/* Progress dots */}
+        <div className="mb-5 flex items-center justify-center gap-1.5">
+          {[0, 1, 2, 3].map(i => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all ${i === step ? 'w-6 bg-primary' : 'w-1.5 bg-muted'}`}
+            />
+          ))}
+        </div>
+
+        {/* Step 0: Welcome */}
+        {step === 0 && (
+          <div className="space-y-4 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
+              <div className="h-6 w-6 rounded-lg bg-background" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-extrabold text-foreground">Welcome to FinPath</h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">Your personal finance OS — track spending, balance budgets, and grow your money, all in one place.</p>
+            </div>
+            <div className="space-y-2 text-left">
+              {[
+                { icon: Zap, title: 'Log in seconds', desc: 'Custom keypad and smart categories make daily entries effortless' },
+                { icon: Scale, title: 'Budgets that balance', desc: 'Unknown spending is tracked automatically in Balancing' },
+                { icon: Coins, title: 'Cash handled for you', desc: 'Bills and coin change routed to the right wallet every time' },
+              ].map(({ icon: Icon, title, desc }) => (
+                <div key={title} className="flex items-start gap-3 rounded-xl border border-border bg-secondary p-3">
+                  <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-extrabold text-foreground">{title}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button onClick={() => setStep(1)} className="w-full gap-2">
+              Get started <ArrowRight className="h-4 w-4" />
+            </Button>
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground"
+            >
+              Skip for now
+            </button>
+          </div>
+        )}
+
         {/* Step 1: Auto-setup (seeds Cash wallet + starter categories) */}
         {step === 1 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-sm font-extrabold text-primary">1</span>
-              <span className="text-xs font-bold text-muted-foreground">of 3</span>
             </div>
             <h2 className="text-xl font-extrabold text-foreground">{seeding ? 'Setting things up…' : 'Everything is ready'}</h2>
             <p className="text-sm text-muted-foreground">We've prepared your starting wallet and budget categories — no setup needed.</p>
@@ -215,7 +277,6 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-sm font-extrabold text-primary">2</span>
-              <span className="text-xs font-bold text-muted-foreground">of 3</span>
             </div>
             <h2 className="text-xl font-extrabold text-foreground">Log your first transaction</h2>
             <p className="text-sm text-muted-foreground">This is how you'll track daily spending. Quick and simple.</p>
@@ -261,31 +322,27 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
           </div>
         )}
 
-        {/* Step 3: Done */}
+        {/* Step 3: Done + feature tour */}
         {step === 3 && (
           <div className="space-y-4 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
               <Check className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-xl font-extrabold text-foreground">You're all set!</h2>
-            <p className="text-sm text-muted-foreground">Here's what to do next:</p>
-            <div className="space-y-2 text-left">
-              {[
-                { icon: LayoutDashboard, label: 'Dashboard', desc: 'Your financial snapshot — net worth, spending, and goals at a glance' },
-                { icon: ReceiptText, label: 'Transactions', desc: 'Browse, search, and manage all your transactions with filters and bulk actions' },
-                { icon: Wallet, label: 'Budget', desc: 'Set category budgets to track where your money goes each month' },
-              ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="flex items-start gap-3 rounded-xl border border-border bg-secondary p-3">
-                  <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <div>
-                    <p className="text-sm font-extrabold text-foreground">{label}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
-                  </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-foreground">You're all set!</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Here's what's waiting for you:</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-left">
+              {FEATURE_TOUR.map(({ icon: Icon, title, desc }) => (
+                <div key={title} className="rounded-xl border border-border bg-secondary p-2.5">
+                  <Icon className="h-4 w-4 shrink-0 text-primary" />
+                  <p className="mt-1.5 text-xs font-extrabold text-foreground">{title}</p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{desc}</p>
                 </div>
               ))}
             </div>
             <Button onClick={handleSkip} className="w-full gap-2">
-              <ArrowRight className="h-4 w-4" /> Get started
+              Start using FinPath <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         )}
