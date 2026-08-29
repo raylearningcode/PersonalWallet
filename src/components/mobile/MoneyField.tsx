@@ -83,8 +83,7 @@ export function MoneyField(props: {
       />
       {!isDesktop && keypadOpen && (
         <div
-          className="-mx-5 sticky z-20"
-          style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }}
+          className="fixed inset-x-0 bottom-0 z-[70] animate-[keypad-up_0.18s_ease-out]"
           data-money-keypad-panel
         >
           <MoneyKeypad

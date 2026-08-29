@@ -552,7 +552,9 @@ export function Budget() {
                                 <div className="mb-2 flex items-center justify-between gap-2 text-sm lg:contents">
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                      {cat.icon
+                                        ? <span className="text-base leading-none">{cat.icon}</span>
+                                        : <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />}
                                       <span className="truncate font-bold text-foreground">{cat.name}</span>
                                     </div>
                                     {isBalancing && (
@@ -644,7 +646,9 @@ export function Budget() {
                               >
                                 <div className="flex items-center justify-between gap-3">
                                   <div className="flex min-w-0 items-center gap-2">
-                                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                    {cat.icon
+                                      ? <span className="text-base leading-none">{cat.icon}</span>
+                                      : <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />}
                                     <span className="truncate font-bold text-foreground">{cat.name}</span>
                                   </div>
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">

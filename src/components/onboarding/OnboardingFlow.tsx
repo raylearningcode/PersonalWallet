@@ -72,6 +72,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
               yearly_allocated: c.yearly_allocated,
               budget_period: c.budget_period,
               color: c.color,
+              icon: c.icon,
             })
           }
         }
