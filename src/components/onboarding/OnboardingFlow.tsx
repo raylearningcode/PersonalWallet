@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAddWallet, useAddTransaction, useWallets, useBudgetCategories } from '@/lib/queries'
+import { useAddWallet, useAddTransaction, useWallets, useBudgetCategories, useAddBudgetCategory } from '@/lib/queries'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { todayLocal } from '@/lib/utils'
 import { MoneyField } from '@/components/mobile/MoneyField'
+import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { toast } from 'sonner'
-import { Wallet, ReceiptText, LayoutDashboard, ArrowRight, Check } from 'lucide-react'
+import { Wallet, ReceiptText, LayoutDashboard, ArrowRight, Check, Loader2 } from 'lucide-react'
 
 const ONBOARDING_KEY = 'finpath_onboarding_complete'
 
@@ -21,8 +22,51 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const money = useMoney()
   const addWallet = useAddWallet()
   const addTransaction = useAddTransaction()
+  const addCategory = useAddBudgetCategory()
   const { data: wallets = [] } = useWallets()
   const { data: categories = [] } = useBudgetCategories()
+
+  // Auto-seed a default Cash wallet + all starter categories on first run,
+  // so new users can start immediately without any setup.
+  const [seeding, setSeeding] = useState(true)
+  const [seedError, setSeedError] = useState(false)
+  const seededRef = useRef(false)
+
+  useEffect(() => {
+    if (seededRef.current) return
+    const needWallet = wallets.length === 0
+    const needCategories = categories.length === 0
+    if (!needWallet && !needCategories) { setSeeding(false); return }
+    if (seedError) { setSeeding(false); return }
+    seededRef.current = true
+    ;(async () => {
+      try {
+        if (needWallet) {
+          await addWallet.mutateAsync({
+            name: 'Cash',
+            type: 'cash',
+            currency: money.displayCurrency,
+            balance: 0,
+            cash_role: 'mixed',
+          })
+        }
+        if (needCategories) {
+          for (const c of DEFAULT_BUDGET_CATEGORIES) {
+            await addCategory.mutateAsync({
+              name: c.name,
+              yearly_allocated: c.yearly_allocated,
+              budget_period: c.budget_period,
+              color: c.color,
+            })
+          }
+        }
+        setSeeding(false)
+      } catch {
+        setSeedError(true)
+        setSeeding(false)
+      }
+    })()
+  }, [wallets.length, categories.length, seedError])
 
   // Step 1 state
   const [walletName, setWalletName] = useState('Cash')
@@ -90,46 +134,79 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="mx-auto w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
-        {/* Step 1: Wallet */}
+        {/* Step 1: Auto-setup (seeds Cash wallet + starter categories) */}
         {step === 1 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-sm font-extrabold text-primary">1</span>
               <span className="text-xs font-bold text-muted-foreground">of 3</span>
             </div>
-            <h2 className="text-xl font-extrabold text-foreground">Set up your wallet</h2>
-            <p className="text-sm text-muted-foreground">Where do you keep your money? You can add more wallets later.</p>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm font-bold">Name</Label>
-                <Input className="mt-1.5 bg-secondary" value={walletName} onChange={e => setWalletName(e.target.value)} placeholder="e.g. Cash, BCA, GoPay" />
+            <h2 className="text-xl font-extrabold text-foreground">{seeding ? 'Setting things up…' : 'Everything is ready'}</h2>
+            <p className="text-sm text-muted-foreground">We've prepared your starting wallet and budget categories — no setup needed.</p>
+            {seeding ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-7 w-7 animate-spin text-primary" />
               </div>
-              <div>
-                <Label className="text-sm font-bold">Type</Label>
-                <div className="mt-1.5 grid grid-cols-4 gap-2">
-                  {(['cash', 'bank', 'card', 'e_wallet'] as const).map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setWalletType(t)}
-                      className={`rounded-xl border py-2 text-xs font-bold capitalize transition-colors ${walletType === t ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground'}`}
-                    >
-                      {t.replace('_', ' ')}
-                    </button>
-                  ))}
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-secondary p-3">
+                  <Check className="h-5 w-5 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-extrabold text-foreground">Cash wallet created</p>
+                    <p className="text-xs text-muted-foreground">One simple wallet to start — add more anytime in Settings</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-secondary p-3">
+                  <Check className="h-5 w-5 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-extrabold text-foreground">{DEFAULT_BUDGET_CATEGORIES.length} starter categories added</p>
+                    <p className="text-xs text-muted-foreground">Food, Transport, Housing, Balancing and more — set budgets whenever you're ready</p>
+                  </div>
                 </div>
               </div>
-              <div>
-                <Label className="text-sm font-bold">Starting balance (optional)</Label>
-                <MoneyField ariaLabel="Starting balance" className="mt-1.5 bg-secondary" value={walletBalance} currency={money.displayCurrency} onChange={v => setWalletBalance(formatNumberInput(v))} placeholder="0" />
+            )}
+            {seedError ? (
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-bold">Name</Label>
+                    <Input className="mt-1.5 bg-secondary" value={walletName} onChange={e => setWalletName(e.target.value)} placeholder="e.g. Cash, BCA, GoPay" />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-bold">Type</Label>
+                    <div className="mt-1.5 grid grid-cols-4 gap-2">
+                      {(['cash', 'bank', 'card', 'e_wallet'] as const).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setWalletType(t)}
+                          className={`rounded-xl border py-2 text-xs font-bold capitalize transition-colors ${walletType === t ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-secondary text-muted-foreground'}`}
+                        >
+                          {t.replace('_', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-bold">Starting balance (optional)</Label>
+                    <MoneyField ariaLabel="Starting balance" className="mt-1.5 bg-secondary" value={walletBalance} currency={money.displayCurrency} onChange={v => setWalletBalance(formatNumberInput(v))} placeholder="0" />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button onClick={handleCreateWallet} disabled={addWallet.isPending} className="flex-1 gap-2">
+                    <Wallet className="h-4 w-4" /> Create wallet
+                  </Button>
+                  <Button variant="ghost" onClick={handleSkip} className="text-muted-foreground">Skip</Button>
+                </div>
+              </>
+            ) : !seeding ? (
+              <div className="flex gap-2 pt-2">
+                <Button onClick={() => setStep(2)} className="flex-1 gap-2">
+                  Continue <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" onClick={handleSkip} className="text-muted-foreground">Skip</Button>
               </div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button onClick={handleCreateWallet} disabled={addWallet.isPending} className="flex-1 gap-2">
-                <Wallet className="h-4 w-4" /> Create wallet
-              </Button>
-              <Button variant="ghost" onClick={handleSkip} className="text-muted-foreground">Skip</Button>
-            </div>
+            ) : null}
           </div>
         )}
 
