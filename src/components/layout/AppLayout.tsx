@@ -220,7 +220,7 @@ export function AppLayout() {
       )}
       <Sidebar profileOpen={profileOpen} onProfileOpenChange={setProfileOpen} />
       <main
-        className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-28 sm:px-6 lg:ml-[260px] lg:w-full lg:max-w-[1600px] lg:px-0 lg:py-6 lg:pb-8"
+        className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-28 sm:px-6 lg:ml-[240px] lg:w-full lg:max-w-[1150px] lg:px-0 lg:py-6 lg:pb-8 lg:pr-8 xl:max-w-[1300px] 2xl:max-w-[1450px]"
         style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
       >
         {offline && (
