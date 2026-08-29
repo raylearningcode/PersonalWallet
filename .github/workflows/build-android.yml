@@ -35,7 +35,7 @@ jobs:
         env:
           # Public values (same as .env.example) — baked into the APK so it boots.
           VITE_SUPABASE_URL: https://ctrigcpfccvokoxfzcil.supabase.co
-          VITE_SUPABASE_ANON_KEY: sb_publishable_fq7cieGFtdutY2caI9-HGA_i87HUutU
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0cmlnY3BmY2N2b2tveGZ6Y2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3ODM1NjUsImV4cCI6MjA5NTM1OTU2NX0.8cYhVepf6o5FOKW03Hfck_8y0ivUzXQvIc91-55TDaI
 
       - name: Sync Capacitor assets
         run: npx cap sync android
