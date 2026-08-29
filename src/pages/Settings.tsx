@@ -139,6 +139,7 @@ export function Settings() {
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [newCategory, setNewCategory] = useState('')
+  const [newCategoryIcon, setNewCategoryIcon] = useState('')
   const [walletName, setWalletName] = useState('')
   const [walletType, setWalletType] = useState<Wallet['type']>('cash')
   const [walletCashRole, setWalletCashRole] = useState<CashRole | ''>('')
@@ -350,8 +351,15 @@ export function Settings() {
       return
     }
     try {
-      await addCategory.mutateAsync({ name, yearly_allocated: 0, budget_period: 'monthly', color: '#A9F5C7' })
+      await addCategory.mutateAsync({
+        name,
+        yearly_allocated: 0,
+        budget_period: 'monthly',
+        color: '#A9F5C7',
+        icon: newCategoryIcon.trim() || null,
+      })
       setNewCategory('')
+      setNewCategoryIcon('')
       toast.success(`Category "${name}" added`)
     } catch {
       toast.error('Failed to add category — please try again')
@@ -1030,6 +1038,13 @@ export function Settings() {
             </div>
             {categories.length === 0 && <p className="text-sm text-muted-foreground">No categories yet.</p>}
             <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
+              <Input
+                aria-label="Category icon"
+                className="w-16 shrink-0 bg-secondary text-center text-lg"
+                value={newCategoryIcon}
+                onChange={event => setNewCategoryIcon(event.target.value.slice(0, 4))}
+                placeholder="🍔"
+              />
               <Input
                 className="bg-secondary"
                 value={newCategory}

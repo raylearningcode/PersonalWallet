@@ -429,10 +429,14 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               : 'bg-secondary text-muted-foreground hover:text-foreground'
                           }`}
                         >
-                          <span
-                            className="inline-block h-2 w-2 shrink-0 rounded-full"
-                            style={{ background: category === c.name ? 'currentColor' : c.color }}
-                          />
+                          {c.icon ? (
+                            <span className="text-sm leading-none">{c.icon}</span>
+                          ) : (
+                            <span
+                              className="inline-block h-2 w-2 shrink-0 rounded-full"
+                              style={{ background: category === c.name ? 'currentColor' : c.color }}
+                            />
+                          )}
                           {c.name}
                         </button>
                       ))}
@@ -693,7 +697,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                       >
                         {type === 'income'
                           ? INCOME_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)
-                          : categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
+                          : categories.map(c => <option key={c.id} value={c.name}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>)
                         }
                       </select>
                     )}
@@ -791,7 +795,7 @@ export function QuickAddSheet({ open, onClose, initialType, initialCash }: { ope
                               setSplitPortions(next)
                             }}
                           >
-                            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            {categories.map(c => <option key={c.id} value={c.name}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>)}
                           </select>
                           <MoneyField
                             value={p.amount}

@@ -63,6 +63,7 @@ create table budget_categories (
   yearly_allocated numeric not null default 0 check (yearly_allocated >= 0),
   budget_period text not null default 'yearly' check (budget_period in ('monthly', 'yearly')),
   color text not null default '#6C63FF',
+  icon text,
   created_at timestamptz default now()
 );
 

@@ -75,6 +75,7 @@ export interface BudgetCategory {
   yearly_allocated: number
   budget_period: 'monthly' | 'yearly'
   color: string
+  icon?: string | null
   created_at?: string
 }
 

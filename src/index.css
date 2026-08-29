@@ -119,3 +119,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   .border-border { border-color: #ddd !important; }
   .text-primary { color: #16a34a !important; }
 }
+
+@keyframes keypad-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
