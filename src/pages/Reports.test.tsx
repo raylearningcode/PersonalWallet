@@ -51,9 +51,9 @@ describe('Reports', () => {
   it('switches report range between week, month, and year', () => {
     render(<MemoryRouter><Reports /></MemoryRouter>)
 
-    // Range buttons appear in both the header and the mobile sticky bar
-    expect(screen.getAllByRole('button', { name: 'Week' }).length).toBeGreaterThan(0)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Month' })[0])
+    // Range dropdown appears in both the header and the mobile sticky bar
+    expect(screen.getAllByLabelText('Time range').length).toBeGreaterThan(0)
+    fireEvent.change(screen.getAllByLabelText('Time range')[0], { target: { value: 'month' } })
     expect(screen.getByText('Spending by category')).toBeInTheDocument()
     expect(screen.getByText('Category breakdown')).toBeInTheDocument()
     expect(screen.getAllByText('Food').length).toBeGreaterThan(0)

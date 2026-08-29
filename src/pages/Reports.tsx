@@ -16,7 +16,7 @@ import { ChevronLeft, ChevronRight, Download, Upload, FileText, FileDown, Trendi
 import { generateReportHTML, downloadPDF, escapeHtml } from '@/lib/pdfExport'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, ReferenceLine } from 'recharts'
 
-type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all'
+type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all' | 'custom'
 type ReportMode = 'expense' | 'income'
 
 const RANGE_LABELS: Record<ReportRange, string> = {
@@ -25,6 +25,7 @@ const RANGE_LABELS: Record<ReportRange, string> = {
   '3months': '3 months',
   year: 'Year',
   all: 'All time',
+  custom: 'Custom…',
 }
 
 const categoryColors = ['#A9F5C7', '#FADBEA', '#FFF7B5', '#D9E8FF', '#F8DCDC', '#C4AEFF', '#FFD276']
@@ -102,6 +103,8 @@ export function Reports() {
   const addTransaction = useAddTransaction()
   const [range, setRange] = useState<ReportRange>('month')
   const [periodDate, setPeriodDate] = useState(() => new Date())
+  const [customFrom, setCustomFrom] = useState(todayLocal)
+  const [customTo, setCustomTo] = useState(todayLocal)
   const [mode, setMode] = useState<ReportMode>('expense')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedWalletId, setSelectedWalletId] = useState<string>('')
@@ -127,8 +130,17 @@ export function Reports() {
   }, [showExportMenu])
 
   const allTxDates = useMemo(() => transactions.map(t => t.date), [transactions])
-  const { start: rangeStart, end: rangeEnd } = useMemo(() => getRangeBounds(range, periodDate, allTxDates), [periodDate, range, allTxDates])
-  const periodLabel = formatPeriodLabel(range, periodDate)
+  const { start: boundsStart, end: boundsEnd } = useMemo(() => getRangeBounds(range, periodDate, allTxDates), [periodDate, range, allTxDates])
+  // Custom timespan overrides the computed bounds.
+  const customBounds = useMemo(() => range === 'custom'
+    ? {
+        start: new Date(`${customFrom}T00:00:00`),
+        end: new Date(`${customTo}T23:59:59.999`),
+      }
+    : null, [range, customFrom, customTo])
+  const rangeStart = customBounds?.start ?? boundsStart
+  const rangeEnd = customBounds?.end ?? boundsEnd
+  const periodLabel = range === 'custom' ? `${customFrom} → ${customTo}` : formatPeriodLabel(range, periodDate)
 
   const internalMovesTx = useMemo(() => transactions.filter(tx => {
     if (!tx.is_system_generated) return false
@@ -144,7 +156,7 @@ export function Reports() {
     return inRange && inWallet
   }), [rangeEnd, rangeStart, transactions, selectedWalletId])
 
-  const prevDate = useMemo(() => addPeriod(periodDate, range, -1), [periodDate, range])
+  const prevDate = useMemo(() => range === 'custom' ? periodDate : addPeriod(periodDate, range, -1), [periodDate, range])
   const { start: prevStart, end: prevEnd } = useMemo(() => getRangeBounds(range, prevDate, allTxDates), [prevDate, range, allTxDates])
   const prevRangeTx = useMemo(() => transactions.filter(tx => {
     const txDate = new Date(tx.date)
@@ -470,11 +482,11 @@ export function Reports() {
         action={(
           <div className="hidden flex-wrap items-center gap-3 lg:flex">
             <div className="flex items-center rounded-full border border-border bg-secondary p-1">
-              {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
+              {range !== 'all' && range !== 'custom' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
               <span className="min-w-[118px] px-3 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-              {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
+              {range !== 'all' && range !== 'custom' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
             </div>
-            {!isCurrentPeriod && (
+            {!isCurrentPeriod && range !== 'custom' && (
               <button
                 onClick={() => setPeriodDate(new Date())}
                 className="rounded-full border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
@@ -482,17 +494,22 @@ export function Reports() {
                 Back to current
               </button>
             )}
-            <div className="flex rounded-full border border-border bg-secondary p-1">
-              {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
-                <button
-                  key={item}
-                  className={`rounded-full px-4 py-2 text-sm font-extrabold ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                  onClick={() => handleRangeChange(item)}
-                >
-                  {RANGE_LABELS[item]}
-                </button>
+            <select
+              aria-label="Time range"
+              className="h-11 rounded-full border border-border bg-secondary px-3 text-sm font-extrabold text-foreground outline-none"
+              value={range}
+              onChange={e => handleRangeChange(e.target.value as ReportRange)}
+            >
+              {(['week', 'month', '3months', 'year', 'all', 'custom'] as ReportRange[]).map(item => (
+                <option key={item} value={item}>{RANGE_LABELS[item]}</option>
               ))}
-            </div>
+            </select>
+            {range === 'custom' && (
+              <div className="flex items-center gap-2">
+                <input aria-label="Custom start date" type="date" className="h-11 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
+                <input aria-label="Custom end date" type="date" className="h-11 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={customTo} onChange={e => setCustomTo(e.target.value)} />
+              </div>
+            )}
             {wallets.length > 0 && (
               <select
                 aria-label="Filter by wallet"
@@ -545,38 +562,26 @@ export function Reports() {
       {/* Mobile sticky period bar */}
       <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden">
         <div className="flex items-center justify-between gap-2">
-          {range !== 'all' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
+          {range !== 'all' && range !== 'custom' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
           <span className="flex-1 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
-          {range !== 'all' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
-          <div className="flex rounded-full border border-border bg-secondary p-0.5">
-            {(['week', 'month', '3months', 'year', 'all'] as ReportRange[]).map(item => (
-              <button
-                key={item}
-                className={`rounded-full px-2 py-1 text-xs font-extrabold transition-colors ${range === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                onClick={() => handleRangeChange(item)}
-              >
-                {item === 'all' ? 'All' : item === '3months' ? '3M' : RANGE_LABELS[item]}
-              </button>
+          {range !== 'all' && range !== 'custom' && <button aria-label="Next period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, 1))}><ChevronRight className="h-4 w-4" /></button>}
+          <select
+            aria-label="Time range"
+            className="h-11 shrink-0 rounded-full border border-border bg-secondary px-2.5 text-xs font-extrabold text-foreground outline-none"
+            value={range}
+            onChange={e => handleRangeChange(e.target.value as ReportRange)}
+          >
+            {(['week', 'month', '3months', 'year', 'all', 'custom'] as ReportRange[]).map(item => (
+              <option key={item} value={item}>{item === '3months' ? '3 months' : RANGE_LABELS[item]}</option>
             ))}
+          </select>
+        </div>
+        {range === 'custom' && (
+          <div className="mt-2 flex items-center gap-2">
+            <input aria-label="Custom start date" type="date" className="h-11 flex-1 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
+            <input aria-label="Custom end date" type="date" className="h-11 flex-1 rounded-full border border-border bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={customTo} onChange={e => setCustomTo(e.target.value)} />
           </div>
-        </div>
-        <div className="mt-1.5 flex gap-2 overflow-x-auto pb-0.5">
-          {[
-            { label: 'This month', action: () => { handleRangeChange('month'); setPeriodDate(new Date()) } },
-            { label: 'Last month', action: () => { handleRangeChange('month'); const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); setPeriodDate(d) } },
-            { label: 'Last 3 months', action: () => { handleRangeChange('3months'); setPeriodDate(new Date()) } },
-            { label: 'This year', action: () => { handleRangeChange('year'); setPeriodDate(new Date()) } },
-            { label: 'All time', action: () => handleRangeChange('all') },
-          ].map(({ label, action }) => (
-            <button
-              key={label}
-              onClick={action}
-              className="shrink-0 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold text-muted-foreground hover:text-foreground"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        )}
       </div>
 
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">

@@ -7,8 +7,8 @@ import {
   useAddBudgetCategory,
   useDeleteBudgetCategory,
 } from '@/lib/queries'
-import { Lightbulb, ChevronLeft, ChevronRight, Plus, AlertTriangle } from 'lucide-react'
-import { StatCard } from '@/components/shared/StatCard'
+import { Lightbulb, ChevronLeft, ChevronRight, Plus, AlertTriangle, X } from 'lucide-react'
+// (StatCard no longer used here — the hero card replaced the top stat row.)
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,7 @@ import { toast } from 'sonner'
 import type { BudgetPeriod, RiskLevel } from '@/lib/budget'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDaysRemainingInMonth } from '@/lib/financeOs'
-import { formatDate } from '@/lib/utils'
+import { formatDate, safeGet } from '@/lib/utils'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 const riskVariant: Record<RiskLevel, 'success' | 'warning' | 'danger'> = {
@@ -124,6 +124,8 @@ export function Budget() {
   }
 
   const [periodDate, setPeriodDate] = useState(() => { const d = new Date(); d.setDate(1); return d })
+  const [paceAlertDismissed, setPaceAlertDismissed] = useState(() => safeGet('finpath_budget_pace_dismissed') === '1')
+  const [riskNoteDismissed, setRiskNoteDismissed] = useState(() => safeGet('finpath_budget_risk_dismissed') === '1')
   const [showAdd, setShowAdd] = useState(false)
   const [addName, setAddName] = useState('')
   const [addAmount, setAddAmount] = useState('')
@@ -385,16 +387,45 @@ export function Budget() {
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-6">
-        <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.formatRef(totalAllocated) ?? 'Blended monthly equivalent'} />
-        <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.formatRef(hasData ? remaining : 0) ?? 'Safe inside active periods'} badgeVariant={hasData && remaining < 0 ? 'danger' : 'success'} />
-        <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% of budget used` : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
+      {/* Hero: remaining this month with compact sub-stats */}
+      <div className="mb-6 rounded-[1.4rem] border border-border bg-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Remaining this month</p>
+            <p className={`mt-1 text-3xl font-extrabold tabular-nums ${hasData && remaining < 0 ? 'text-[#FF8388]' : 'text-primary'}`}>
+              {fmt(hasData ? remaining : 0)}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              of {fmt(totalAllocated)} budgeted · {hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% used` : 'No categories yet'}
+            </p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Budget</p>
+              <p className="mt-1 text-lg font-extrabold tabular-nums text-foreground">{fmt(totalAllocated)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Risk</p>
+              <p className={`mt-1 inline-block rounded-full px-3 py-1 text-sm font-extrabold ${hasData ? riskVariant[risk] === 'danger' ? 'bg-[#FF8388]/15 text-[#FF8388]' : riskVariant[risk] === 'warning' ? 'bg-[#FFCF73]/15 text-[#FFCF73]' : 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                {hasData ? risk : 'None'}
+              </p>
+            </div>
+          </div>
+        </div>
+        {hasData && totalAllocated > 0 && (
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${remaining < 0 ? 'bg-[#FF8388]' : 'bg-primary'}`}
+              style={{ width: `${Math.min(100, Math.round((totalSpent / totalAllocated) * 100))}%` }}
+            />
+          </div>
+        )}
       </div>
 
-      {isCurrentMonth && hasData && forecasts.length > 0 && (
+      {isCurrentMonth && hasData && forecasts.length > 0 && !paceAlertDismissed && (
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold text-foreground">Spending pace alert</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {forecasts.length === 1
@@ -403,19 +434,37 @@ export function Budget() {
               }
             </p>
           </div>
+          <button
+            type="button"
+            aria-label="Dismiss pace alert"
+            onClick={() => { localStorage.setItem('finpath_budget_pace_dismissed', '1'); setPaceAlertDismissed(true) }}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
-      {hasData && forecasts.length === 0 && (
-        <div className="mb-8 rounded-2xl border border-border bg-secondary px-5 py-4">
-          <p className="text-xs font-bold text-muted-foreground">Overspend risk explanation</p>
-          <p className="mt-1 text-sm text-foreground">
-            {closestToCap && closestPct >= 70
-              ? `${closestToCap.name} is your closest category at ${closestPct}%. Monitor it closely.`
-              : closestToCap
-              ? `${closestToCap.name} is your closest category at ${closestPct}%. At your current pace, you are unlikely to exceed any category this month.`
-              : 'At your current pace, you are unlikely to exceed any category this month.'}
-          </p>
+      {hasData && forecasts.length === 0 && !riskNoteDismissed && (
+        <div className="mb-8 flex items-start gap-3 rounded-2xl border border-border bg-secondary px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-muted-foreground">Overspend risk explanation</p>
+            <p className="mt-1 text-sm text-foreground">
+              {closestToCap && closestPct >= 70
+                ? `${closestToCap.name} is your closest category at ${closestPct}%. Monitor it closely.`
+                : closestToCap
+                ? `${closestToCap.name} is your closest category at ${closestPct}%. At your current pace, you are unlikely to exceed any category this month.`
+                : 'At your current pace, you are unlikely to exceed any category this month.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Dismiss risk note"
+            onClick={() => { localStorage.setItem('finpath_budget_risk_dismissed', '1'); setRiskNoteDismissed(true) }}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
