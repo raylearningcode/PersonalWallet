@@ -155,5 +155,7 @@ describe('Settings', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
 
     expect(saveAiKey).toHaveBeenCalledWith('AIza-test-key')
+    // The key stays visible (masked) after saving — it is NOT cleared.
+    expect(screen.getByLabelText('Gemini API key')).toHaveValue('AIza-test-key')
   })
 })

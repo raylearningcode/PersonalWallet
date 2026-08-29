@@ -250,13 +250,14 @@ export function Settings() {
     }
   }
 
-  const handleSaveAiKey = () => {
-    const key = geminiKey.trim()
+  const handleSaveAiKey = (keyOverride?: string) => {
+    const key = (keyOverride ?? geminiKey).trim()
     try {
       saveGeminiKey(key)
-      setGeminiKey('')
+      // Keep the key visible (masked) so it's obvious the save stuck.
+      setGeminiKey(key)
       setAiConfigured(isAiConfigured())
-      toast.success(key ? 'AI key saved' : 'AI key removed')
+      toast.success(key ? 'AI key saved on this device' : 'AI key removed')
     } catch {
       toast.error('Something went wrong — please try again')
     }
@@ -1333,7 +1334,7 @@ export function Settings() {
             <CardTitle className="text-xl">AI Features</CardTitle>
             <p className="text-sm text-muted-foreground">
               Paste your Gemini API key to enable AI insights and receipt scanning. The key is stored on this device and
-              sent only to Google's Gemini API.
+              sent only to Google's Gemini API. Uninstalling the app clears the saved key.
             </p>
           </CardHeader>
           <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
@@ -1354,7 +1355,10 @@ export function Settings() {
                   placeholder="Paste your key — e.g. AIza…"
                 />
               </div>
-              <Button onClick={handleSaveAiKey}>Save key</Button>
+              <Button onClick={() => handleSaveAiKey()}>Save key</Button>
+              {aiConfigured && (
+                <Button variant="secondary" onClick={() => handleSaveAiKey('')}>Remove key</Button>
+              )}
             </div>
           </CardContent>
         </Card>
