@@ -11,7 +11,7 @@ describe('BottomNav', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('link', { name: /Activity/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /History/ })).toBeInTheDocument()
     expect(screen.queryByText('Txns')).not.toBeInTheDocument()
   })
 })
