@@ -17,6 +17,7 @@ import type {
   Wallet,
 } from '../types'
 import { getDueRecurringOccurrences, getNextRecurringState } from './recurring'
+import { todayLocal } from './utils'
 import {
   localGetTransactions, localAddTransaction, localUpdateTransaction, localDeleteTransaction, localMarkReviewed,
   localGetWallets, localAddWallet, localDeleteWallet, localUpdateWallet,
@@ -187,7 +188,8 @@ export function useAddTransaction() {
         const { data, error } = await supabase.from('transactions').insert({ ...transaction, user_id: userId }).select().single()
         if (error) throw error
         const result = data as Transaction
-        const existing = cacheGet<Transaction[]>('transactions_all') ?? []
+        // Drop any leftover optimistic temp item with the same id so it isn't duplicated
+        const existing = (cacheGet<Transaction[]>('transactions_all') ?? []).filter(t => t.id !== tempId)
         cacheSet('transactions_all', [result, ...existing])
         return result
       } catch (e) {
@@ -369,7 +371,7 @@ export function useRunDueRecurringRules() {
   const qc = useQueryClient()
   return useMutation<number, Error, string | undefined>({
     mutationFn: async today => {
-      const runDate = today ?? new Date().toISOString().slice(0, 10)
+      const runDate = today ?? todayLocal()
       const userId = await getCurrentUserId()
       if (!userId) return localRunDueRules(runDate)
       const { data: rules, error } = await supabase

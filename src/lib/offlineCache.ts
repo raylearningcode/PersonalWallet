@@ -45,12 +45,22 @@ export type QueuedMutation = {
   upsertConflict?: string
   userId: string
   timestamp: number
+  /** Number of times this item has failed with a transient (non-network) error. Defaults to 0. */
+  attempts?: number
 }
 
 export function getQueue(): QueuedMutation[] {
   try {
     const raw = localStorage.getItem(QUEUE_KEY)
-    return raw ? (JSON.parse(raw) as QueuedMutation[]) : []
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    // Tolerate malformed entries — keep only entries that look like mutations
+    return parsed.filter((e: unknown): e is QueuedMutation =>
+      e !== null && typeof e === 'object' &&
+      typeof (e as Record<string, unknown>).op === 'string' &&
+      typeof (e as Record<string, unknown>).table === 'string'
+    )
   } catch { return [] }
 }
 
@@ -79,11 +89,10 @@ export function isOffline() {
   return typeof navigator !== 'undefined' && !navigator.onLine
 }
 
-export function isNetworkError(e: unknown): boolean {
-  if (e instanceof TypeError) return true
-  if (e instanceof Error) {
-    const msg = e.message.toLowerCase()
-    return msg.includes('network') || msg.includes('failed to fetch') || msg.includes('offline')
+export function isNetworkError(err: unknown): boolean {
+  if (err instanceof TypeError) {
+    const msg = err.message.toLowerCase()
+    return msg.includes('fetch') || msg.includes('network') || msg.includes('failed to fetch') || msg.includes('load failed')
   }
   return false
 }

@@ -13,10 +13,13 @@ import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
 import { Check, Pencil, X, Lightbulb, Target, ChevronLeft, ChevronRight, Zap, TrendingUp, TrendingDown, Plus } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { MoneyField } from '@/components/mobile/MoneyField'
+import { safeGet } from '@/lib/utils'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const PLANNING_TIP_KEY = 'finpath_planning_tip_dismissed'
+const WISHLIST_TYPES = ['Want', 'Need', 'Work', 'Travel', 'Gift', 'Later']
 
 type EstimatePeriod = 'monthly' | 'yearly'
 
@@ -72,7 +75,7 @@ export function Estimation() {
   const [editWishlistAmount, setEditWishlistAmount] = useState('')
   const [editWishlistType, setEditWishlistType] = useState('Want')
   const [editWishlistNote, setEditWishlistNote] = useState('')
-  const [planningTipDismissed, setPlanningTipDismissed] = useState(() => localStorage.getItem(PLANNING_TIP_KEY) === '1')
+  const [planningTipDismissed, setPlanningTipDismissed] = useState(() => safeGet(PLANNING_TIP_KEY) === '1')
   const [incomeSheetOpen, setIncomeSheetOpen] = useState(false)
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false)
   const [wishlistSheetOpen, setWishlistSheetOpen] = useState(false)
@@ -231,7 +234,11 @@ export function Estimation() {
       setExpenseItems(newExpense)
     }
     setEditItem(null)
-    await saveToBackend(newIncome, newExpense, wishlistItems, notes)
+    try {
+      await saveToBackend(newIncome, newExpense, wishlistItems, notes)
+    } catch {
+      toast.error('Failed to save edit — change shown locally but may not persist')
+    }
   }
 
   const startEditWishlist = (id: string) => {
@@ -254,27 +261,39 @@ export function Estimation() {
     )
     setWishlistItems(newWishlist)
     setEditWishlistId(null)
-    await saveToBackend(incomeItems, expenseItems, newWishlist, notes)
+    try {
+      await saveToBackend(incomeItems, expenseItems, newWishlist, notes)
+    } catch {
+      toast.error('Failed to save edit — change shown locally but may not persist')
+    }
   }
 
   const convertToGoal = async (item: WishlistItem) => {
     const GOAL_COLORS = ['#A9F5C7', '#93C5FD', '#FADBEA', '#FFD276', '#C4AEFF']
     const color = GOAL_COLORS[Math.floor(Math.random() * GOAL_COLORS.length)]
-    await addGoal.mutateAsync({
-      name: item.name,
-      target_amount: item.amount,
-      current_amount: 0,
-      color,
-      category: item.type || 'Other',
-      notes: item.note || '',
-      deadline: null,
-    })
-    toast.success(`"${item.name}" added as a goal`)
+    try {
+      await addGoal.mutateAsync({
+        name: item.name,
+        target_amount: item.amount,
+        current_amount: 0,
+        color,
+        category: item.type || 'Other',
+        notes: item.note || '',
+        deadline: null,
+      })
+      toast.success(`"${item.name}" added as a goal`)
+    } catch {
+      toast.error('Failed to add goal — please try again')
+    }
   }
 
   const handleSave = async () => {
-    await saveToBackend(incomeItems, expenseItems, wishlistItems, notes)
-    toast.success('Estimation plan saved')
+    try {
+      await saveToBackend(incomeItems, expenseItems, wishlistItems, notes)
+      toast.success('Estimation plan saved')
+    } catch {
+      toast.error('Failed to save plan — please try again')
+    }
   }
 
   const handleClearAll = async () => {
@@ -283,8 +302,12 @@ export function Estimation() {
     setWishlistItems([])
     setNotes('')
     setShowClearConfirm(false)
-    await saveToBackend([], [], [], '')
-    toast.success('Plan data cleared')
+    try {
+      await saveToBackend([], [], [], '')
+      toast.success('Plan data cleared')
+    } catch {
+      toast.error('Failed to clear plan — data may still be saved')
+    }
   }
 
   const confirmDeleteSelected = async () => {
@@ -296,7 +319,11 @@ export function Estimation() {
     setExpenseItems(newExpense)
     setWishlistItems(newWishlist)
     setDeleteTarget(null)
-    await saveToBackend(newIncome, newExpense, newWishlist, notes)
+    try {
+      await saveToBackend(newIncome, newExpense, newWishlist, notes)
+    } catch {
+      toast.error('Failed to delete — item may still be saved')
+    }
   }
 
   return (
@@ -545,7 +572,7 @@ export function Estimation() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
-                  <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                  <MoneyField value={incomeAmount} onChange={v => setIncomeAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} placeholder="0" />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Period</Label>
@@ -597,7 +624,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Income amount ({money.displayCurrency})</Label>
-                <Input aria-label="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={incomeAmount} onChange={event => setIncomeAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                <MoneyField value={incomeAmount} onChange={v => setIncomeAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Income amount" className={`mt-2 bg-secondary transition-colors ${incomeError && parseNumberInput(incomeAmount) <= 0 ? 'border-[#FF8388]' : ''}`} placeholder="0" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
@@ -627,7 +654,7 @@ export function Estimation() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
-                  <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                  <MoneyField value={expenseAmount} onChange={v => setExpenseAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} placeholder="0" />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Period</Label>
@@ -679,7 +706,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Expense amount ({money.displayCurrency})</Label>
-                <Input aria-label="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} inputMode="decimal" value={expenseAmount} onChange={event => setExpenseAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                <MoneyField value={expenseAmount} onChange={v => setExpenseAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Expense amount" className={`mt-2 bg-secondary transition-colors ${expenseError && parseNumberInput(expenseAmount) <= 0 ? 'border-[#FF8388]' : ''}`} placeholder="0" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Period</Label>
@@ -716,17 +743,12 @@ export function Estimation() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
-                  <Input aria-label="Wishlist amount" className="mt-2 bg-secondary" inputMode="decimal" value={wishlistAmount} onChange={event => setWishlistAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                  <MoneyField value={wishlistAmount} onChange={v => setWishlistAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Wishlist amount" className="mt-2 bg-secondary" placeholder="0" />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Type</Label>
                   <select aria-label="Wishlist type" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={wishlistType} onChange={event => setWishlistType(event.target.value)}>
-                    <option value="Need">Need</option>
-                    <option value="Want">Want</option>
-                    <option value="Later">Later</option>
-                    <option value="Work">Work</option>
-                    <option value="Travel">Travel</option>
-                    <option value="Gift">Gift</option>
+                    {WISHLIST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="sm:col-span-2">
@@ -752,9 +774,9 @@ export function Estimation() {
                     <div key={item.id} className="space-y-2 rounded-2xl border border-primary/30 bg-secondary p-4">
                       <Input className="bg-card text-sm" value={editWishlistName} onChange={e => setEditWishlistName(e.target.value)} placeholder="Item name" />
                       <div className="flex gap-2">
-                        <Input className="bg-card text-sm" inputMode="decimal" value={editWishlistAmount} onChange={e => setEditWishlistAmount(formatNumberInput(e.target.value))} placeholder="Amount" />
+                        <MoneyField value={editWishlistAmount} onChange={v => setEditWishlistAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Wishlist edit amount" className="bg-card text-sm" placeholder="Amount" />
                         <select className="h-11 flex-1 rounded-md border border-input bg-card px-2 text-sm font-bold text-foreground outline-none" value={editWishlistType} onChange={e => setEditWishlistType(e.target.value)}>
-                          {['Want','Need','Work','Travel','Gift'].map(t => <option key={t} value={t}>{t}</option>)}
+                          {WISHLIST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
                       <Input className="bg-card text-sm" value={editWishlistNote} onChange={e => setEditWishlistNote(e.target.value)} placeholder="Note" />
@@ -812,7 +834,7 @@ export function Estimation() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Amount ({money.displayCurrency})</Label>
-                <Input aria-label="Wishlist amount" className="mt-2 bg-secondary" inputMode="decimal" value={wishlistAmount} onChange={event => setWishlistAmount(formatNumberInput(event.target.value))} placeholder="0" />
+                <MoneyField value={wishlistAmount} onChange={v => setWishlistAmount(formatNumberInput(v))} currency={money.displayCurrency} ariaLabel="Wishlist amount" className="mt-2 bg-secondary" placeholder="0" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Type</Label>
@@ -899,7 +921,7 @@ function ItemList({ items, empty, fmt, onDelete, editingId, editName, editAmount
           <div key={item.id} className="space-y-2 rounded-2xl border border-primary/30 bg-secondary px-4 py-3">
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(100px,0.5fr)_minmax(100px,0.45fr)_auto_auto] items-center gap-2">
               <Input className="h-11 bg-card text-sm" value={editName} onChange={e => onEditNameChange(e.target.value)} placeholder="Name" />
-              <Input className="h-11 bg-card text-sm" inputMode="decimal" value={editAmount} onChange={e => onEditAmountChange(e.target.value)} placeholder="Amount" />
+              <MoneyField value={editAmount} onChange={onEditAmountChange} currency={displayCurrency} ariaLabel="Edit amount" className="h-11 bg-card text-sm" placeholder="Amount" />
               <select className="h-11 rounded-md border border-input bg-card px-2 text-xs font-bold text-foreground outline-none" value={editPeriod} onChange={e => onEditPeriodChange(e.target.value)}>
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>

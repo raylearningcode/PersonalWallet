@@ -38,6 +38,7 @@ const mockWallets = [
 
 vi.mock('@/lib/queries', () => ({
   useGoals: () => ({ data: mockGoals }),
+  useTransactions: () => ({ data: [] }),
   useAddGoal: () => ({ mutateAsync: addGoal, isPending: false }),
   useUpdateGoal: () => ({ mutateAsync: updateGoal, isPending: false }),
   useDeleteGoal: () => ({ mutateAsync: deleteGoal, isPending: false }),

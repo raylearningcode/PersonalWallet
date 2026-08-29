@@ -70,6 +70,15 @@ export function CategoryDetail() {
 
   const spent = useMemo(() => categoryTransactions.reduce((s, t) => s + t.amount, 0), [categoryTransactions])
 
+  const groupedByDate = useMemo(() => {
+    if (!category) return []
+    const groups = new Map<string, typeof categoryTransactions>()
+    categoryTransactions.forEach(tx => {
+      groups.set(tx.date, [...(groups.get(tx.date) ?? []), tx])
+    })
+    return [...groups.entries()]
+  }, [category, categoryTransactions])
+
   const openEdit = () => {
     if (!category) return
     setEditDraft({
@@ -135,14 +144,6 @@ export function CategoryDetail() {
   const pct = getCategoryUsedPct(spent, category.yearly_allocated)
   const barColor = getBarColor(pct, category.color)
   const leftAmt = Math.max(0, category.yearly_allocated - spent)
-
-  const groupedByDate = useMemo(() => {
-    const groups = new Map<string, typeof categoryTransactions>()
-    categoryTransactions.forEach(tx => {
-      groups.set(tx.date, [...(groups.get(tx.date) ?? []), tx])
-    })
-    return [...groups.entries()]
-  }, [categoryTransactions])
 
   return (
     <div>

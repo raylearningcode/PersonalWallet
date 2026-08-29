@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export const PIN_STORAGE_KEY = 'finpath_pin'
 export const PIN_SESSION_KEY = 'finpath_unlocked'
 export const BIOMETRIC_CRED_KEY = 'finpath_biometric_cred_id'
 
-export function hashPin(pin: string) {
-  return btoa(pin + ':finpath')
+const PIN_SALT = 'finpath-pin-salt-v1'
+const HASH_RE = /^[0-9a-f]{64}$/
+
+export async function hashPin(pin: string): Promise<string> {
+  const data = new TextEncoder().encode(`${PIN_SALT}:${pin}`)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
 async function isBiometricAvailable(): Promise<boolean> {
@@ -70,6 +75,9 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [biometricLoading, setBiometricLoading] = useState(false)
   const hasBiometricCred = !!localStorage.getItem(BIOMETRIC_CRED_KEY)
+  const digitsRef = useRef('')
+  const errorRef = useRef(false)
+  const errorTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     isBiometricAvailable().then(setBiometricAvailable)
@@ -83,33 +91,102 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [biometricAvailable])
 
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current) window.clearTimeout(errorTimerRef.current)
+    }
+  }, [])
+
+  const handleUnlock = () => {
+    try { sessionStorage.setItem(PIN_SESSION_KEY, '1') } catch { /* ignore */ }
+    onUnlock()
+  }
+
   const handleBiometric = async () => {
     setBiometricLoading(true)
     const ok = await authenticateBiometric()
     setBiometricLoading(false)
-    if (ok) onUnlock()
+    if (ok) handleUnlock()
     else setError(true)
   }
 
+  const fail = () => {
+    errorRef.current = true
+    setError(true)
+    digitsRef.current = ''
+    setDigits('')
+    if (errorTimerRef.current) window.clearTimeout(errorTimerRef.current)
+    errorTimerRef.current = window.setTimeout(() => {
+      errorRef.current = false
+      setError(false)
+      errorTimerRef.current = null
+    }, 700)
+  }
+
+  const verifyPin = async (entered: string): Promise<boolean> => {
+    try {
+      const stored = localStorage.getItem(PIN_STORAGE_KEY)
+      if (!stored) return false
+      if (HASH_RE.test(stored)) return (await hashPin(entered)) === stored
+      // Legacy btoa value — verify once via the old comparison, then upgrade in place.
+      if (stored === btoa(entered + ':finpath')) {
+        localStorage.setItem(PIN_STORAGE_KEY, await hashPin(entered))
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  }
+
   const press = (d: string) => {
-    if (error) { setError(false); return }
-    if (digits.length >= 4) return
-    const next = digits + d
+    // First press after an error resets the entry and registers the digit
+    // (instead of being swallowed like before).
+    const base = errorRef.current ? '' : digitsRef.current
+    if (errorRef.current) {
+      errorRef.current = false
+      setError(false)
+      if (errorTimerRef.current) {
+        window.clearTimeout(errorTimerRef.current)
+        errorTimerRef.current = null
+      }
+    }
+    if (base.length >= 4) return
+    const next = base + d
+    digitsRef.current = next
     setDigits(next)
     if (next.length === 4) {
-      const stored = localStorage.getItem(PIN_STORAGE_KEY)
-      if (stored === hashPin(next)) {
-        onUnlock()
-      } else {
-        setError(true)
-        setTimeout(() => { setDigits(''); setError(false) }, 700)
-      }
+      verifyPin(next).then(ok => {
+        if (ok) handleUnlock()
+        else fail()
+      })
     }
   }
 
   const del = () => {
-    if (!error) setDigits(prev => prev.slice(0, -1))
+    if (errorRef.current) return
+    const next = digitsRef.current.slice(0, -1)
+    digitsRef.current = next
+    setDigits(next)
   }
+
+  const handlersRef = useRef({ press, del })
+  handlersRef.current = { press, del }
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) { handlersRef.current.press(e.key); return }
+      if (e.key === 'Backspace') { handlersRef.current.del(); return }
+      if (e.key === 'Escape') {
+        errorRef.current = false
+        setError(false)
+        digitsRef.current = ''
+        setDigits('')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background px-6">

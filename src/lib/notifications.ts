@@ -1,5 +1,6 @@
 import type { Transaction, BudgetCategory, RecurringRule, Goal } from '@/types/index'
 import { LocalNotifications } from '@capacitor/local-notifications'
+import { safeGet, toLocalDateStr } from './utils'
 
 export type NotificationSeverity = 'critical' | 'warning' | 'info'
 
@@ -11,10 +12,44 @@ export type AppNotification = {
   severity: NotificationSeverity
 }
 
-function daysUntil(dateStr: string): number {
+/** Build a Date from 'YYYY-MM-DD' using LOCAL date parts (never UTC). */
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+export function daysUntil(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  const target = new Date(dateStr); target.setHours(0, 0, 0, 0)
+  const target = parseLocalDate(dateStr)
   return Math.round((target.getTime() - today.getTime()) / 86400000)
+}
+
+/** Stable notification id derived from a rule id, so deleted rules cancel cleanly. */
+export function ruleNotificationId(ruleId: string, kind: string): number {
+  let h = 0
+  for (const ch of `${kind}:${ruleId}`) h = (h * 31 + ch.charCodeAt(0)) | 0
+  return 9000 + (Math.abs(h) % 90000)
+}
+
+const SCHEDULED_NOTIF_IDS_KEY = 'finpath_notif_ids'
+
+function getScheduledNotificationIds(): number[] {
+  const raw = safeGet(SCHEDULED_NOTIF_IDS_KEY)
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((n): n is number => typeof n === 'number') : []
+  } catch {
+    return []
+  }
+}
+
+function setScheduledNotificationIds(ids: number[]) {
+  try {
+    localStorage.setItem(SCHEDULED_NOTIF_IDS_KEY, JSON.stringify(ids))
+  } catch {
+    // Storage unavailable — ids will be re-derived on the next schedule
+  }
 }
 
 export function computeNotifications(
@@ -26,7 +61,7 @@ export function computeNotifications(
 ): AppNotification[] {
   const notes: AppNotification[] = []
   const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+  const monthStart = toLocalDateStr(new Date(now.getFullYear(), now.getMonth(), 1))
 
   // Budget alerts
   for (const cat of categories) {
@@ -34,13 +69,16 @@ export function computeNotifications(
     const spent = transactions
       .filter(t => t.type !== 'income' && t.type !== 'transfer' && t.category === cat.name && t.date >= monthStart)
       .reduce((s, t) => s + t.amount, 0)
-    const pct = (spent / cat.yearly_allocated) * 100
+    // Yearly budgets are compared against their monthly-equivalent limit
+    // (mirrors financeOs.getCategoryInsights semantics).
+    const limit = cat.budget_period === 'yearly' ? cat.yearly_allocated / 12 : cat.yearly_allocated
+    const pct = (spent / limit) * 100
     if (pct >= 100) {
       notes.push({
         id: `budget_over_${cat.id}`,
         type: 'budget_over',
         title: `${cat.name} budget exceeded`,
-        message: `Spent ${fmt(spent)} — ${Math.round(pct - 100)}% over the ${fmt(cat.yearly_allocated)} limit.`,
+        message: `Spent ${fmt(spent)} — ${Math.round(pct - 100)}% over the ${fmt(limit)} limit.`,
         severity: 'critical',
       })
     } else if (pct >= 80) {
@@ -48,7 +86,7 @@ export function computeNotifications(
         id: `budget_warn_${cat.id}`,
         type: 'budget_warning',
         title: `${cat.name} at ${Math.round(pct)}%`,
-        message: `${fmt(cat.yearly_allocated - spent)} remaining this period.`,
+        message: `${fmt(limit - spent)} remaining this period.`,
         severity: 'warning',
       })
     }
@@ -79,7 +117,7 @@ export function computeNotifications(
 
   // Goal stalled (>10% progress and created 60+ days ago with no recent contributions would require TX links)
   // Simple heuristic: goal has < 5% progress and was created 30+ days ago
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const thirtyDaysAgo = toLocalDateStr(new Date(Date.now() - 30 * 86400000))
   for (const goal of goals) {
     if (goal.current_amount >= goal.target_amount) continue
     const pct = goal.target_amount > 0 ? goal.current_amount / goal.target_amount : 0
@@ -111,24 +149,24 @@ export async function scheduleUpcomingBillNotifications(
     }
     if (permission !== 'granted') return
 
-    const upcomingIds = recurringRules
-      .filter(r => r.active && r.type !== 'income')
-      .map((_, i) => ({ id: 9000 + i }))
-    if (upcomingIds.length > 0) {
-      await LocalNotifications.cancel({ notifications: upcomingIds }).catch(() => undefined)
+    // Cancel every previously scheduled id first (registry-based) so rules that were
+    // deleted or moved out of the reminder window are cleaned up cleanly.
+    const previousIds = getScheduledNotificationIds()
+    if (previousIds.length > 0) {
+      await LocalNotifications.cancel({ notifications: previousIds.map(id => ({ id })) }).catch(() => undefined)
     }
 
     const notifications = recurringRules
       .filter(r => r.active && r.type !== 'income')
-      .flatMap((rule, i) => {
+      .flatMap(rule => {
         const days = daysUntil(rule.next_due_date)
         if (days <= 0 || days > 3) return []
-        const at = new Date(rule.next_due_date)
+        const at = parseLocalDate(rule.next_due_date)
         at.setDate(at.getDate() - 1)
         at.setHours(9, 0, 0, 0)
         if (at <= new Date()) return []
         return [{
-          id: 9000 + i,
+          id: ruleNotificationId(rule.id, 'bill'),
           title: days === 1 ? `${rule.description} due tomorrow` : `${rule.description} in ${days} days`,
           body: `${fmt(rule.amount)} payment coming up`,
           schedule: { at },
@@ -142,6 +180,7 @@ export async function scheduleUpcomingBillNotifications(
     if (notifications.length > 0) {
       await LocalNotifications.schedule({ notifications })
     }
+    setScheduledNotificationIds(notifications.map(n => n.id))
   } catch {
     // Not native or notifications unavailable
   }

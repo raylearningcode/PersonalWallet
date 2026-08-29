@@ -8,4 +8,5 @@ export const DEFAULT_BUDGET_CATEGORIES: Array<Omit<BudgetCategory, 'id' | 'creat
   { name: 'Entertainment', yearly_allocated: 0, budget_period: 'monthly', color: '#FF8388' },
   { name: 'Investing', yearly_allocated: 0, budget_period: 'monthly', color: '#8B5CF6' },
   { name: 'Income', yearly_allocated: 0, budget_period: 'monthly', color: '#64748B' },
+  { name: 'Balancing', yearly_allocated: 0, budget_period: 'monthly', color: '#64748B' },
 ]

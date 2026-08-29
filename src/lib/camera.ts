@@ -4,7 +4,6 @@ let cameraPlugin: any = null
 async function loadCameraPlugin() {
   if (cameraPlugin) return cameraPlugin
   try {
-    // @ts-ignore - Capacitor Camera is optional, only available in native apps
     const { Camera } = await import('@capacitor/camera')
     cameraPlugin = Camera
     return Camera

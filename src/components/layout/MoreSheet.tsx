@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart2, CalendarDays, Monitor, Plus, RefreshCw, Settings, Target, Wallet } from 'lucide-react'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useGoals } from '@/lib/queries'
 import { PINNED_GOAL_KEY } from './Sidebar'
 
@@ -67,7 +67,7 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
-        <h2 className="mb-5 text-lg font-extrabold text-foreground">More</h2>
+        <SheetTitle className="mb-5 text-lg font-extrabold text-foreground">More</SheetTitle>
 
         {/* Grouped navigation */}
         <div className="mb-6 space-y-5">

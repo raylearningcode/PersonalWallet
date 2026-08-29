@@ -12,7 +12,6 @@ const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Rep
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })))
 const Goals = lazy(() => import('@/pages/Goals').then(m => ({ default: m.Goals })))
 const Subscriptions = lazy(() => import('@/pages/Subscriptions').then(m => ({ default: m.Subscriptions })))
-const Auth = lazy(() => import('@/pages/Auth').then(m => ({ default: m.Auth })))
 const DesktopTools = lazy(() => import('@/pages/DesktopTools').then(m => ({ default: m.DesktopTools })))
 const AddTransaction = lazy(() => import('@/pages/AddTransaction').then(m => ({ default: m.AddTransaction })))
 const CategoryDetail = lazy(() => import('@/pages/CategoryDetail').then(m => ({ default: m.CategoryDetail })))
@@ -76,7 +75,6 @@ export function App() {
         <Route path="investing" element={<Page><Investing /></Page>} />
         <Route path="reports" element={<Page><Reports /></Page>} />
         <Route path="settings" element={<Page><Settings /></Page>} />
-        <Route path="auth" element={<Page><Auth /></Page>} />
         <Route path="desktop-tools" element={<Page><DesktopTools /></Page>} />
         <Route path="goals" element={<Page><Goals /></Page>} />
         <Route path="subscriptions" element={<Page><Subscriptions /></Page>} />

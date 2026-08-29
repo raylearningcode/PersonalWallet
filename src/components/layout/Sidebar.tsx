@@ -41,6 +41,14 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
 
+  const handleProfileOpenChange = (open: boolean) => {
+    if (!open) {
+      setAuthEmail('')
+      setAuthPassword('')
+    }
+    onProfileOpenChange(open)
+  }
+
   useEffect(() => {
     const handler = () => setPinnedGoalId(localStorage.getItem(PINNED_GOAL_KEY) ?? '')
     window.addEventListener('finpath-goal-pinned', handler)
@@ -65,7 +73,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
     try {
       await signIn.mutateAsync({ email: authEmail, password: authPassword })
       toast.success('Signed in')
-      onProfileOpenChange(false)
+      handleProfileOpenChange(false)
     } catch {
       toast.error('Sign in failed — check your email and password')
     }
@@ -75,7 +83,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
     try {
       await signUp.mutateAsync({ email: authEmail, password: authPassword })
       toast.success('Account created — check your email to confirm')
-      onProfileOpenChange(false)
+      handleProfileOpenChange(false)
     } catch {
       toast.error('Sign up failed')
     }
@@ -83,7 +91,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
 
   const handleSignOut = async () => {
     await signOut.mutateAsync()
-    onProfileOpenChange(false)
+    handleProfileOpenChange(false)
   }
 
   return (
@@ -108,7 +116,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-extrabold transition-colors ${
+                `relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-extrabold transition-colors ${
                   isActive
                     ? 'bg-secondary text-foreground'
                     : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
@@ -118,9 +126,9 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
               {({ isActive }) => (
                 <>
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+                    <span className="absolute left-0 top-1/2 h-5 w-1.5 -translate-y-1/2 rounded-r-full bg-primary" />
                   )}
-                  <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                   {label}
                 </>
               )}
@@ -131,7 +139,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
         {/* Profile button */}
         <div className="mt-4 border-t border-border pt-3">
           <button
-            onClick={() => onProfileOpenChange(true)}
+            onClick={() => handleProfileOpenChange(true)}
             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors hover:bg-secondary"
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">
@@ -160,7 +168,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
       </aside>
 
       {/* Auth/Profile sheet */}
-      <Sheet open={profileOpen} onOpenChange={onProfileOpenChange}>
+      <Sheet open={profileOpen} onOpenChange={handleProfileOpenChange}>
         <SheetContent side="left" className="w-80 border-border bg-background p-6">
           <SheetHeader className="mb-6">
             <SheetTitle>Account</SheetTitle>
@@ -190,7 +198,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
               <button
                 key={href}
                 type="button"
-                onClick={() => { navigate(href); onProfileOpenChange(false) }}
+                onClick={() => { navigate(href); handleProfileOpenChange(false) }}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
               >
                 <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -217,11 +225,11 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
                 <p className="text-sm text-muted-foreground">Your data is saved on this device. Sign in from a keyboard-safe mobile page when you are ready to sync.</p>
                 <Button
                   className="h-12 w-full"
-                  onClick={() => { onProfileOpenChange(false); navigate('/auth') }}
+                  onClick={() => { handleProfileOpenChange(false); navigate('/auth') }}
                 >
                   Sign in to sync
                 </Button>
-                <Button variant="secondary" className="h-12 w-full" onClick={() => onProfileOpenChange(false)}>
+                <Button variant="secondary" className="h-12 w-full" onClick={() => handleProfileOpenChange(false)}>
                   Continue as guest
                 </Button>
               </div>

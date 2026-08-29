@@ -1,3 +1,5 @@
+export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
+
 export function generatePDFFromHTML(html: string, filename: string): void {
   const printWindow = window.open('', '', 'height=600,width=800')
   if (!printWindow) {
@@ -10,7 +12,7 @@ export function generatePDFFromHTML(html: string, filename: string): void {
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>${filename}</title>
+      <title>${escapeHtml(filename)}</title>
       <style>
         * {
           margin: 0;
@@ -144,17 +146,17 @@ export function generateReportHTML(title: string, subtitle: string, summary: { l
   const timestamp = now.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
   return `
-    <h1>${title}</h1>
-    <p class="subtitle">${subtitle}</p>
+    <h1>${escapeHtml(title)}</h1>
+    <p class="subtitle">${escapeHtml(subtitle)}</p>
     <p class="timestamp">Generated on ${timestamp}</p>
 
     ${summary.length > 0 ? `
       <div class="summary">
         ${summary.map(item => `
           <div class="summary-item">
-            <div class="summary-label">${item.label}</div>
+            <div class="summary-label">${escapeHtml(item.label)}</div>
             <div class="summary-value ${item.variant === 'positive' ? 'positive' : item.variant === 'negative' ? 'negative' : ''}">
-              ${item.value}
+              ${escapeHtml(item.value)}
             </div>
           </div>
         `).join('')}

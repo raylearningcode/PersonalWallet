@@ -18,6 +18,11 @@ export const KEYBOARD_SHORTCUTS = {
 export type ShortcutAction = keyof typeof KEYBOARD_SHORTCUTS
 
 export function useKeyboardShortcuts(handlers: Partial<Record<ShortcutAction, () => void>>) {
+  // Keep the latest handlers in a ref so the listener binds once but always
+  // invokes the current render's handlers (no re-subscribe per render).
+  const handlersRef = React.useRef(handlers)
+  handlersRef.current = handlers
+
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in input
@@ -29,44 +34,44 @@ export function useKeyboardShortcuts(handlers: Partial<Record<ShortcutAction, ()
       // Check each shortcut
       if (e.ctrlKey && e.key === 'n') {
         e.preventDefault()
-        handlers['Add Expense']?.()
+        handlersRef.current['Add Expense']?.()
       } else if (e.ctrlKey && e.key === 'i') {
         e.preventDefault()
-        handlers['Add Income']?.()
+        handlersRef.current['Add Income']?.()
       } else if (e.ctrlKey && e.key === 't') {
         e.preventDefault()
-        handlers['Transfer']?.()
+        handlersRef.current['Transfer']?.()
       } else if (e.ctrlKey && e.key === 'd') {
         e.preventDefault()
-        handlers['Dashboard']?.()
+        handlersRef.current['Dashboard']?.()
       } else if (e.ctrlKey && e.key === 'e') {
         e.preventDefault()
-        handlers['Transactions']?.()
+        handlersRef.current['Transactions']?.()
       } else if (e.ctrlKey && e.key === 'b') {
         e.preventDefault()
-        handlers['Budget']?.()
+        handlersRef.current['Budget']?.()
       } else if (e.ctrlKey && e.key === 'g') {
         e.preventDefault()
-        handlers['Goals']?.()
+        handlersRef.current['Goals']?.()
       } else if (e.ctrlKey && e.key === 'r') {
         e.preventDefault()
-        handlers['Recurring']?.()
+        handlersRef.current['Recurring']?.()
       } else if (e.ctrlKey && e.key === 'p') {
         e.preventDefault()
-        handlers['Reports']?.()
+        handlersRef.current['Reports']?.()
       } else if (e.ctrlKey && e.key === ',') {
         e.preventDefault()
-        handlers['Settings']?.()
+        handlersRef.current['Settings']?.()
       } else if (e.key === '?') {
         e.preventDefault()
-        handlers['Help']?.()
+        handlersRef.current['Help']?.()
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        handlers['Escape']?.()
+        handlersRef.current['Escape']?.()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handlers])
+  }, [])
 }

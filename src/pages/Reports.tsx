@@ -11,7 +11,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { getCategoryInsights } from '@/lib/financeOs'
-import { ChevronLeft, ChevronRight, Download, Upload, FileText, TrendingUp, TrendingDown, X } from 'lucide-react'
+import { todayLocal, toLocalDateStr } from '@/lib/utils'
+import { ChevronLeft, ChevronRight, Download, Upload, FileText, FileDown, TrendingUp, TrendingDown, X } from 'lucide-react'
+import { generateReportHTML, downloadPDF, escapeHtml } from '@/lib/pdfExport'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, ReferenceLine } from 'recharts'
 
 type ReportRange = 'week' | 'month' | '3months' | 'year' | 'all'
@@ -190,8 +192,8 @@ export function Reports() {
     return Array.from({ length: 12 }, (_, i) => {
       const mStart = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1)
       const mEnd = new Date(now.getFullYear(), now.getMonth() - 11 + i + 1, 1)
-      const s = mStart.toISOString().slice(0, 10)
-      const e = mEnd.toISOString().slice(0, 10)
+      const s = toLocalDateStr(mStart)
+      const e = toLocalDateStr(mEnd)
       const mTx = transactions.filter(t => !t.is_system_generated && t.date >= s && t.date < e)
       const inc = mTx.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0)
       const exp = mTx.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((a, t) => a + t.amount, 0)
@@ -217,7 +219,7 @@ export function Reports() {
   }, [wallets, rangeTx])
 
   const trendData = useMemo(() => {
-    const toStr = (d: Date) => d.toISOString().slice(0, 10)
+    const toStr = (d: Date) => toLocalDateStr(d)
     const bucket = (txList: typeof rangeTx) => ({
       expenses: txList.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0),
       income: txList.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
@@ -269,7 +271,7 @@ export function Reports() {
     const idx = trendData.findIndex(d => d.label === clickedBucket)
     if (idx < 0) return []
     // Recompute the date range for this bucket
-    const toStr = (d: Date) => d.toISOString().slice(0, 10)
+    const toStr = (d: Date) => toLocalDateStr(d)
     let bucketStart: Date, bucketEnd: Date
     if (range === 'week') {
       bucketStart = new Date(rangeStart); bucketStart.setDate(rangeStart.getDate() + idx)
@@ -418,8 +420,38 @@ export function Reports() {
 
   const handleExportAllCSV = () => {
     const allNonSystem = transactions.filter(t => !t.is_system_generated)
-    buildCSV(allNonSystem, `all-${new Date().toISOString().slice(0, 10)}`)
+    buildCSV(allNonSystem, `all-${todayLocal()}`)
     toast.success(`Exported ${allNonSystem.length} transactions`)
+  }
+
+  const handleExportPDF = async () => {
+    try {
+      const summary = [
+        { label: 'Income', value: money.formatDisplay(totalIncome), variant: 'positive' as const },
+        { label: 'Expenses', value: money.formatDisplay(totalExpenses), variant: 'negative' as const },
+        { label: 'Saved', value: money.formatDisplay(totalIncome - totalExpenses) },
+        { label: 'Top category', value: topCategory },
+      ]
+      const rows = categoryTotals.map(([name, amount]) => {
+        const count = categoryCounts[name] ?? 0
+        const share = activeTotal > 0 ? Math.round((amount / activeTotal) * 100) : 0
+        return `<tr><td>${escapeHtml(name)}</td><td>${count}</td><td>${money.formatDisplay(amount)}</td><td>${share}%</td></tr>`
+      }).join('')
+      const tableHTML = rows
+        ? `<table><thead><tr><th>Category</th><th>Count</th><th>Amount</th><th>Share</th></tr></thead><tbody>${rows}</tbody></table>`
+        : ''
+      const walletLabel = selectedWalletId ? (wallets.find(w => w.id === selectedWalletId)?.name ?? '') : 'All wallets'
+      const html = generateReportHTML(
+        `FinPath Report — ${mode}`,
+        `${periodLabel} · ${walletLabel}`,
+        summary,
+        tableHTML,
+      )
+      downloadPDF(html, `finpath-report-${range}-${periodLabel.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`)
+      toast.success('PDF generated')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'PDF export failed')
+    }
   }
 
   const today = new Date()
@@ -499,6 +531,10 @@ export function Reports() {
                 </div>
               )}
             </div>
+            <Button size="sm" variant="secondary" className="gap-2" onClick={handleExportPDF}>
+              <FileDown className="h-4 w-4" />
+              PDF
+            </Button>
             <Button size="sm" variant="secondary" className="gap-2" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" />
               Import

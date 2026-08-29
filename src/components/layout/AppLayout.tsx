@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AndroidBackHandler } from '@/components/native/AndroidBackHandler'
@@ -20,7 +20,7 @@ import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
 import { NotificationsSheet } from './NotificationsSheet'
 import { OnboardingFlow, isOnboardingDone } from '@/components/onboarding/OnboardingFlow'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DollarSign, ArrowLeftRight, TrendingUp, Target, RefreshCw, Banknote } from 'lucide-react'
 
 type QuickAddType = 'expense' | 'income' | 'transfer'
@@ -76,7 +76,7 @@ export function AppLayout() {
   const isGuest = session === null
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone() && !hasGuestData())
 
-  useKeyboardShortcuts({
+  const shortcutHandlers = useMemo(() => ({
     'Add Expense': () => openQuickAction('expense'),
     'Add Income': () => openQuickAction('income'),
     'Transfer': () => openQuickAction('transfer'),
@@ -89,7 +89,9 @@ export function AppLayout() {
     'Settings': () => { if (isDesktop) setProfileOpen(true); else navigate('/settings') },
     'Help': () => setShortcutsOpen(true),
     'Escape': () => { setQuickAddOpen(false); setMoreOpen(false); setQuickActionsOpen(false) },
-  })
+  }), [isDesktop])
+
+  useKeyboardShortcuts(shortcutHandlers)
 
   const openQuickAction = (actionType: QuickAddType | 'cash') => {
     localStorage.setItem(LAST_QUICK_ACTION_KEY, actionType)
@@ -111,6 +113,15 @@ export function AppLayout() {
   }, [])
 
   useEffect(() => {
+    processSyncQueue().catch(() => { /* queue keeps items; next sync retries */ })
+  }, [])
+
+  useEffect(() => {
+    if (!session) return
+    processSyncQueue().catch(() => { /* queue keeps items; next sync retries */ })
+  }, [session])
+
+  useEffect(() => {
     if (!('serviceWorker' in navigator)) return
     const handler = () => toast.info('FinPath updated — using the latest version')
     navigator.serviceWorker.addEventListener('controllerchange', handler)
@@ -127,6 +138,7 @@ export function AppLayout() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (moreOpen || profileOpen || quickAddOpen || shortcutsOpen || quickActionsOpen) return
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if ((e.target as HTMLElement).isContentEditable) return
@@ -143,7 +155,7 @@ export function AppLayout() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [navigate])
+  }, [navigate, moreOpen, profileOpen, quickAddOpen, shortcutsOpen, quickActionsOpen])
 
   useEffect(() => {
     if (recurringRules.length === 0) return
@@ -208,7 +220,7 @@ export function AppLayout() {
       )}
       <Sidebar profileOpen={profileOpen} onProfileOpenChange={setProfileOpen} />
       <main
-        className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-28 sm:px-6 lg:ml-[240px] lg:w-[calc(100vw-275px)] lg:max-w-[1440px] lg:px-0 lg:py-6 lg:pb-8 lg:pr-8"
+        className="min-h-screen w-full overflow-x-hidden px-4 py-6 pb-28 sm:px-6 lg:ml-[240px] lg:w-full lg:max-w-[1150px] lg:px-0 lg:py-6 lg:pb-8 lg:pr-8 xl:max-w-[1300px] 2xl:max-w-[1450px]"
         style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
       >
         {offline && (
@@ -270,6 +282,7 @@ export function AppLayout() {
       {/* Long-press action picker */}
       <Sheet open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
         <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-10">
+          <SheetTitle className="sr-only">Quick actions</SheetTitle>
           <h2 className="mb-1 text-lg font-extrabold text-foreground">Quick add</h2>
           <p className="mb-5 text-sm text-muted-foreground">What do you want to record?</p>
           <div className="space-y-2">

@@ -15,8 +15,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod } from '@/lib/budget'
+import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod, getSplitAttribution, getBalancingSpent } from '@/lib/budget'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { toast } from 'sonner'
@@ -153,26 +154,47 @@ export function Budget() {
   const expenseTransactions = transactions.filter(
     t => t.type !== 'income' && t.type !== 'transfer' && t.date.startsWith(currentYear)
   )
-
-  const categoriesWithSpent = useMemo(() =>
-    categories.map(cat => ({
-      ...cat,
-      budget_period: cat.budget_period ?? 'yearly',
-      spent: expenseTransactions
-        .filter(t => t.category === cat.name && isInBudgetPeriod(t.date, cat.budget_period ?? 'yearly', periodDate))
-        .reduce((s, t) => s + t.amount, 0),
-    })),
-    [categories, expenseTransactions]
+  // Cap yearly-category spend to transactions on/before the end of the viewed month
+  const lastDayOfViewedMonth = useMemo(() =>
+    `${currentYear}-${String(periodDate.getMonth() + 1).padStart(2, '0')}-${daysInMonth}`,
+    [currentYear, periodDate, daysInMonth]
   )
+  const balancingSpent = getBalancingSpent(expenseTransactions, categories, periodDate)
+
+  const categoriesWithSpent = useMemo(() => {
+    const att = getSplitAttribution(expenseTransactions, categories, periodDate)
+    return categories.map(cat => {
+      const direct = expenseTransactions
+        .filter(t => {
+          if (t.category !== cat.name) return false
+          const period = cat.budget_period ?? 'yearly'
+          if (!isInBudgetPeriod(t.date, period, periodDate)) return false
+          if (period === 'yearly' && t.date > lastDayOfViewedMonth) return false
+          return true
+        })
+        .reduce((s, t) => s + t.amount, 0)
+      const isBalancing = cat.name.toLowerCase() === 'balancing'
+      return {
+        ...cat,
+        budget_period: cat.budget_period ?? 'yearly',
+        spent: direct + (att[cat.name.toLowerCase()] ?? 0) + (isBalancing ? balancingSpent : 0),
+      }
+    })
+  }, [categories, expenseTransactions, periodDate, lastDayOfViewedMonth, balancingSpent])
 
   const monthsElapsed = periodDate.getMonth() + 1
+  const balancingCat = categoriesWithSpent.find(c => c.name.toLowerCase() === 'balancing')
   // Normalize all categories to a monthly equivalent so monthly and yearly budgets can be summed fairly
   const totalAllocated = useMemo(() => categoriesWithSpent.reduce((s, c) => {
     return s + (c.budget_period === 'yearly' ? c.yearly_allocated / 12 : c.yearly_allocated)
   }, 0), [categoriesWithSpent])
-  const totalSpent = useMemo(() => categoriesWithSpent.reduce((s, c) => {
-    return s + (c.budget_period === 'yearly' ? c.spent / Math.max(1, monthsElapsed) : c.spent)
-  }, 0), [categoriesWithSpent, monthsElapsed])
+  const totalSpent = useMemo(() => {
+    const catTotal = categoriesWithSpent.reduce((s, c) => {
+      return s + (c.budget_period === 'yearly' ? c.spent / Math.max(1, monthsElapsed) : c.spent)
+    }, 0)
+    // balancingCat's spent already includes balancingSpent; only add it when no Balancing category exists
+    return catTotal + (balancingCat ? 0 : balancingSpent)
+  }, [categoriesWithSpent, monthsElapsed, balancingSpent, balancingCat])
   const remaining = totalAllocated - totalSpent
 
   const daysElapsed = isCurrentMonth ? today.getDate() : (isPastMonth ? daysInMonth : 0)
@@ -363,10 +385,9 @@ export function Budget() {
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:gap-6">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-6">
         <StatCard label="Monthly budget" value={fmt(totalAllocated)} sub={money.formatRef(totalAllocated) ?? 'Blended monthly equivalent'} />
         <StatCard label="Remaining" value={fmt(hasData ? remaining : 0)} sub={money.formatRef(hasData ? remaining : 0) ?? 'Safe inside active periods'} badgeVariant={hasData && remaining < 0 ? 'danger' : 'success'} />
-        <StatCard label="Daily allowance" value={isCurrentMonth && daysLeft > 0 ? fmt(Math.max(0, remaining) / daysLeft) : '—'} sub={isCurrentMonth ? `${daysLeft} days left this month` : 'Current month only'} badgeVariant={hasData && remaining < 0 ? 'danger' : undefined} />
         <StatCard label="Overspend risk" value={hasData ? risk : 'None'} sub={hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% of budget used` : 'No categories yet'} badgeVariant={hasData ? riskVariant[risk] : undefined} />
       </div>
 
@@ -501,9 +522,10 @@ export function Budget() {
                             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
                           )}
                           {items.map(cat => {
+                            const isBalancing = cat.name.toLowerCase() === 'balancing'
                             const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
                             const barColor = getBarColor(pct, cat.color)
-                            const catDailyAllowance = cat.yearly_allocated > cat.spent && daysLeft > 0
+                            const catDailyAllowance = cat.budget_period === 'monthly' && cat.yearly_allocated > cat.spent && daysLeft > 0
                               ? (cat.yearly_allocated - cat.spent) / daysLeft
                               : null
                             const overPace = pct > monthPct
@@ -528,9 +550,14 @@ export function Budget() {
                                 aria-label={`Open ${cat.name} budget details`}
                               >
                                 <div className="mb-2 flex items-center justify-between gap-2 text-sm lg:contents">
-                                  <div className="flex min-w-0 items-center gap-2">
-                                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-                                    <span className="truncate font-bold text-foreground">{cat.name}</span>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                      <span className="truncate font-bold text-foreground">{cat.name}</span>
+                                    </div>
+                                    {isBalancing && (
+                                      <p className="mt-0.5 pl-5 text-[11px] leading-tight text-muted-foreground">Includes unknown & unallocated</p>
+                                    )}
                                   </div>
                                   <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{primaryValue}</span>
                                   <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{secondaryValue}</span>
@@ -577,6 +604,20 @@ export function Budget() {
                     })()}
                   </div>
                 )}
+                {balancingSpent > 0 && !balancingCat && (
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
+                    <div>
+                      <p className="text-sm font-extrabold text-foreground">Unassigned spending — {fmt(balancingSpent)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Unknown categories and split leftovers. Add a Balancing category to track them.</p>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={async () => {
+                      try {
+                        await addCategory.mutateAsync({ name: 'Balancing', yearly_allocated: 0, budget_period: 'monthly', color: '#64748B' })
+                        toast.success('Balancing category added')
+                      } catch { toast.error('Failed to add Balancing category') }
+                    }}>Add Balancing</Button>
+                  </div>
+                )}
                 {noBudget.length > 0 && (() => {
                   const grouped = groupCategories(noBudget)
                   const showGroups = grouped.length > 1
@@ -588,27 +629,35 @@ export function Budget() {
                           {showGroups && (
                             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
                           )}
-                          {items.map(cat => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => {
-                                if (isDesktop) openSheet(cat)
-                                else navigate(`/category/${encodeURIComponent(cat.name)}`)
-                              }}
-                              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995]"
-                              aria-label={`Open ${cat.name} details`}
-                            >
-                              <div className="flex min-w-0 items-center gap-2">
-                                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-                                <span className="truncate font-bold text-foreground">{cat.name}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>No budget</span>
-                                <ChevronRight className="h-4 w-4" />
-                              </div>
-                            </button>
-                          ))}
+                          {items.map(cat => {
+                            const isBalancing = cat.name.toLowerCase() === 'balancing'
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => {
+                                  if (isDesktop) openSheet(cat)
+                                  else navigate(`/category/${encodeURIComponent(cat.name)}`)
+                                }}
+                                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/80 active:scale-[0.995]"
+                                aria-label={`Open ${cat.name} details`}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                    <span className="truncate font-bold text-foreground">{cat.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{isBalancing ? fmt(cat.spent) : 'No budget'}</span>
+                                    <ChevronRight className="h-4 w-4" />
+                                  </div>
+                                </div>
+                                {isBalancing && (
+                                  <p className="mt-0.5 text-xs text-muted-foreground">Includes unknown & unallocated</p>
+                                )}
+                              </button>
+                            )
+                          })}
                         </div>
                       ))}
                     </div>
@@ -682,14 +731,16 @@ export function Budget() {
                   onChange={e => setAddName(e.target.value)}
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    aria-label="Budget amount"
-                    inputMode="decimal"
-                    className="min-w-0 flex-1 bg-secondary text-sm font-bold"
-                    placeholder={`Budget amount (${money.baseCurrency})`}
-                    value={addAmount}
-                    onChange={e => setAddAmount(formatNumberInput(e.target.value))}
-                  />
+                  <div className="min-w-0 flex-1">
+                    <MoneyField
+                      value={addAmount}
+                      onChange={v => setAddAmount(formatNumberInput(v))}
+                      currency={money.baseCurrency}
+                      ariaLabel="Budget amount"
+                      className="bg-secondary text-sm font-bold"
+                      placeholder={`Budget amount (${money.baseCurrency})`}
+                    />
+                  </div>
                   <select
                     aria-label="New category budget period"
                     className="h-11 rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"

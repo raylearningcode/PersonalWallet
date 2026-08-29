@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react'
 import { useHoldings, useAddHolding, useUpdateHolding, useDeleteHolding, useDividends, useAddDividend, useDeleteDividend } from '@/lib/queries'
 import { useLivePrices } from '@/lib/priceFetch'
-import { useMoney, CURRENCIES } from '@/lib/currency'
+import { useMoney, CURRENCIES, isKnownCurrency } from '@/lib/currency'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { todayLocal } from '@/lib/utils'
 import { AllocationEditor } from './AllocationEditor'
 import { RebalancingHelper } from './RebalancingHelper'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { toast } from 'sonner'
 import { RefreshCw, Plus, Trash2, TrendingDown, TrendingUp, Pencil, HelpCircle } from 'lucide-react'
 import type { AssetType, Holding, AllocationItem } from '@/types'
@@ -56,7 +58,7 @@ export function PortfolioTab() {
   const [addType, setAddType] = useState<AssetType>('stock')
   const [addQty, setAddQty] = useState('')
   const [addPrice, setAddPrice] = useState('')
-  const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [addDate, setAddDate] = useState(todayLocal)
   const [addCurrency, setAddCurrency] = useState('USD')
 
   // Edit holding state
@@ -68,15 +70,23 @@ export function PortfolioTab() {
   // Add dividend form
   const [dividendHolding, setDividendHolding] = useState<string | null>(null)
   const [dividendAmount, setDividendAmount] = useState('')
-  const [dividendDate, setDividendDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [dividendDate, setDividendDate] = useState(todayLocal)
 
   // Compute portfolio stats (all values converted to base currency)
   const portfolioStats = useMemo(() => {
     let totalInvestedBase = 0
     let totalCurrentValueBase = 0
+    let excludedCount = 0
     const typeTotals: Record<string, number> = {}
 
     holdings.forEach(h => {
+      // Skip holdings whose currency the app cannot convert to base (e.g. HKD/SGD/GBP
+      // from Yahoo tickers). Folding their raw value into base-currency totals would
+      // silently produce wrong sums; individual rows stay visible in their own currency.
+      if (!isKnownCurrency(h.currency)) {
+        excludedCount += 1
+        return
+      }
       // Convert buy price from holding currency to base currency
       const buyPriceBase = money.toBase(h.buy_price, h.currency)
       const investedBase = h.quantity * buyPriceBase
@@ -112,7 +122,7 @@ export function PortfolioTab() {
     const totalGainBase = totalCurrentValueBase - totalInvestedBase
     const gainPct = totalInvestedBase > 0 ? ((totalCurrentValueBase / totalInvestedBase) - 1) * 100 : 0
 
-    return { totalInvestedBase, totalCurrentValueBase, totalGainBase, gainPct, allocations }
+    return { totalInvestedBase, totalCurrentValueBase, totalGainBase, gainPct, allocations, excludedCount }
   }, [holdings, livePrices, money.baseCurrency, money.rates])
 
   const totalDividendsBase = useMemo(
@@ -201,17 +211,29 @@ export function PortfolioTab() {
     if (holdings.length === 0) { toast.error('No holdings to refresh'); return }
     try {
       const result = await refreshPrices()
+      let ok = 0
+      let n = 0
+      let failures = 0
       if (result.data) {
         for (const h of holdings) {
           const fetched = result.data.get(h.ticker)
           if (fetched && h.current_price !== fetched.price) {
-            // Store the raw fetched price in the holding's currency
-            await updateHolding.mutateAsync({ id: h.id, current_price: fetched.price })
+            n += 1
+            try {
+              // Store the raw fetched price in the holding's currency
+              await updateHolding.mutateAsync({ id: h.id, current_price: fetched.price })
+              ok += 1
+            } catch {
+              failures += 1
+            }
           }
         }
       }
-      const updated = result.data ? Array.from(result.data.keys()).length : 0
-      toast.success(updated > 0 ? `${updated} prices updated` : 'Prices already up to date')
+      if (n === 0) {
+        toast.success('Prices already up to date')
+      } else {
+        toast.success(`Updated ${ok} of ${n} prices${failures ? ` — ${failures} failed` : ''}`)
+      }
     } catch {
       toast.error('Failed to fetch some prices — check ticker symbols')
     }
@@ -255,6 +277,12 @@ export function PortfolioTab() {
           </p>
         </div>
       </div>
+
+      {portfolioStats.excludedCount > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {portfolioStats.excludedCount} holding{portfolioStats.excludedCount === 1 ? '' : 's'} with unsupported currency excluded from totals
+        </p>
+      )}
 
       {/* Holdings + Allocation */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
@@ -320,7 +348,7 @@ export function PortfolioTab() {
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground">Buy price (per unit in {addCurrency})</Label>
-                        <Input aria-label="Buy price" className="mt-1 h-9 rounded-lg bg-card text-sm" inputMode="decimal" placeholder="150" value={addPrice} onChange={e => setAddPrice(e.target.value)} />
+                        <MoneyField ariaLabel="Buy price" className="mt-1 h-9 rounded-lg bg-card text-sm" placeholder="150" value={addPrice} currency={addCurrency} onChange={v => setAddPrice(v)} />
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground">Buy date</Label>
@@ -339,6 +367,7 @@ export function PortfolioTab() {
                 {/* Holdings rows */}
                 {holdings.map(h => {
                   const isEditing = editingId === h.id
+                  const currencyKnown = isKnownCurrency(h.currency)
                   // Live price in holding's currency → convert to base for display
                   const livePriceRaw = livePrices?.get(h.ticker)
                   const currentPriceRaw = livePriceRaw?.price ?? h.current_price ?? h.buy_price
@@ -349,6 +378,8 @@ export function PortfolioTab() {
                   const gainBase = currentValueBase - investedBase
                   const gainPct = investedBase > 0 ? ((currentValueBase / investedBase) - 1) * 100 : 0
                   const holdingDividends = dividends.filter(d => d.holding_id === h.id).reduce((sum, d) => sum + d.amount, 0)
+                  // Unknown currencies can't convert to base — show values in the holding's own currency
+                  const fmtValue = (v: number) => currencyKnown ? money.formatDisplay(v) : money.format(v, h.currency)
 
                   if (isEditing) {
                     return (
@@ -379,7 +410,7 @@ export function PortfolioTab() {
                           </div>
                           <div>
                             <Label className="text-xs text-muted-foreground">Buy price ({h.currency})</Label>
-                            <Input className="mt-0.5 h-8 rounded-lg bg-card text-xs" inputMode="decimal" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
+                            <MoneyField ariaLabel="Edit buy price" className="mt-0.5 h-8 rounded-lg bg-card text-xs" value={editPrice} currency={h.currency} onChange={v => setEditPrice(v)} />
                           </div>
                         </div>
                       </div>
@@ -395,6 +426,9 @@ export function PortfolioTab() {
                             <p className="font-extrabold text-foreground truncate">{h.name}</p>
                             {h.ticker && <span className="text-xs font-bold text-muted-foreground font-mono">{h.ticker}</span>}
                             <span className="text-xs text-muted-foreground">· {h.currency}</span>
+                            {!currencyKnown && (
+                              <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">currency unsupported</span>
+                            )}
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             {h.quantity} units × {money.format(h.buy_price, h.currency)}/unit · bought {h.buy_date}
@@ -415,7 +449,7 @@ export function PortfolioTab() {
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary text-xs text-destructive hover:text-red-300"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary text-xs text-destructive hover:text-[#FF8388]"
                             onClick={() => { if (window.confirm(`Delete ${h.name}?`)) deleteHolding.mutate(h.id) }}
                             aria-label={`Delete ${h.name}`}
                           >
@@ -428,7 +462,7 @@ export function PortfolioTab() {
                         <div className="rounded-lg bg-secondary px-3 py-2">
                           <p className="text-[10px] text-muted-foreground">Current value</p>
                           <p className="text-sm font-extrabold text-foreground">
-                            {money.formatDisplay(currentValueBase)}
+                            {fmtValue(currentValueBase)}
                           </p>
                           {h.currency !== money.baseCurrency && (
                             <p className="text-[10px] text-muted-foreground">≈ {money.format(currentPriceRaw * h.quantity, h.currency)}</p>
@@ -437,7 +471,7 @@ export function PortfolioTab() {
                         <div className={`rounded-lg px-3 py-2 ${gainBase >= 0 ? 'bg-primary/10' : 'bg-destructive/10'}`}>
                           <p className="text-[10px] text-muted-foreground">Gain/Loss</p>
                           <p className={`text-sm font-extrabold ${gainBase >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                            {gainBase >= 0 ? '+' : ''}{money.formatDisplay(Math.abs(gainBase))}
+                            {gainBase >= 0 ? '+' : ''}{fmtValue(Math.abs(gainBase))}
                           </p>
                           <p className={`text-[10px] font-bold ${gainPct >= 0 ? 'text-primary' : 'text-destructive'}`}>
                             {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(1)}%
@@ -458,7 +492,7 @@ export function PortfolioTab() {
                           onClick={() => {
                             setDividendHolding(dividendHolding === h.id ? null : h.id)
                             setDividendAmount('')
-                            setDividendDate(new Date().toISOString().slice(0, 10))
+                            setDividendDate(todayLocal())
                           }}
                         >
                           {dividendHolding === h.id ? 'Cancel' : '+ Log dividend'}
@@ -472,8 +506,8 @@ export function PortfolioTab() {
                         <div className="mt-2 grid grid-cols-[1fr_1fr_auto] items-end gap-2 rounded-lg border border-border bg-secondary p-2">
                           <div>
                             <Label className="text-[10px] text-muted-foreground">Amount</Label>
-                            <Input aria-label="Dividend amount" className="mt-0.5 h-8 rounded-lg bg-card text-xs" inputMode="decimal" placeholder="0"
-                              value={dividendAmount} onChange={e => setDividendAmount(e.target.value)} />
+                            <MoneyField ariaLabel="Dividend amount" className="mt-0.5 h-8 rounded-lg bg-card text-xs" placeholder="0"
+                              value={dividendAmount} currency={money.displayCurrency} onChange={v => setDividendAmount(v)} />
                           </div>
                           <div>
                             <Label className="text-[10px] text-muted-foreground">Date</Label>
@@ -542,7 +576,7 @@ export function PortfolioTab() {
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-extrabold text-primary">{money.formatDisplay(d.amount)}</span>
                       <button
-                        className="text-xs text-destructive hover:text-red-300"
+                        className="text-xs text-destructive hover:text-[#FF8388]"
                         onClick={() => deleteDividend.mutate(d.id)}
                         aria-label="Delete dividend"
                       >

@@ -5,6 +5,17 @@ export const CURRENCIES = ['USD', 'IDR', 'TWD', 'EUR', 'JPY'] as const
 
 type Rates = Record<string, number>
 
+const KNOWN_CODES = new Set(CURRENCIES.map(c => c.toLowerCase()))
+
+// True for codes the app can actually convert — CURRENCIES and the fallback
+// rates table define exactly the same set. Values stored in any other code
+// (e.g. HKD/SGD/GBP from Yahoo tickers) cannot be converted to base currency;
+// callers building base-currency totals must exclude them rather than
+// surfacing raw amounts as if they were base.
+export function isKnownCurrency(code: string): boolean {
+  return KNOWN_CODES.has(code.toLowerCase())
+}
+
 const FALLBACK_USD_RATES: Rates = {
   usd: 1,
   idr: 16320,
@@ -14,6 +25,11 @@ const FALLBACK_USD_RATES: Rates = {
 }
 
 export function formatCurrency(amount: number, currency: string): string {
+  // Validate the code before Intl.NumberFormat — unknown/legacy codes would otherwise
+  // either throw (non-ISO codes) or silently mis-render; fall back to the raw value.
+  if (!KNOWN_CODES.has(currency.toLowerCase())) {
+    return `${amount} ${currency}`
+  }
   const isWhole = Number.isInteger(amount)
   const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -33,10 +49,12 @@ export function getFallbackRates(baseCurrency: string): Rates {
   )
 }
 
-export function convertCurrency(amount: number, fromCurrency: string, toCurrency: string, rates: Rates): number {
+export function convertCurrency(amount: number, fromCurrency: string, toCurrency: string, rates: Rates): number | null {
   if (fromCurrency === toCurrency) return amount
   const from = fromCurrency.toLowerCase()
   const to = toCurrency.toLowerCase()
+  // Unknown codes must not silently fall back to 1:1 math — signal the caller instead.
+  if (!KNOWN_CODES.has(from) || !KNOWN_CODES.has(to)) return null
   const fromRate = rates[from] ?? getFallbackRates(toCurrency)[from] ?? 1
   const toRate = rates[to] ?? getFallbackRates(fromCurrency)[to] ?? 1
 
@@ -80,10 +98,22 @@ export function useMoney() {
   const rates = ratesData?.rates ?? getFallbackRates(baseCurrency)
   const ratesDate = ratesData?.date ?? null
 
-  const fromBase = (amount: number, currency = displayCurrency) =>
-    convertCurrency(amount, baseCurrency, currency, rates)
-  const toBase = (amount: number, currency = displayCurrency) =>
-    convertCurrency(amount, currency, baseCurrency, rates)
+  const fromBase = (amount: number, currency = displayCurrency): number => {
+    const converted = convertCurrency(amount, baseCurrency, currency, rates)
+    if (converted === null) {
+      console.warn(`[currency] Unknown currency "${currency}" — skipping conversion, showing raw amount`)
+      return amount
+    }
+    return converted
+  }
+  const toBase = (amount: number, currency = displayCurrency): number => {
+    const converted = convertCurrency(amount, currency, baseCurrency, rates)
+    if (converted === null) {
+      console.warn(`[currency] Unknown currency "${currency}" — skipping conversion, showing raw amount`)
+      return amount
+    }
+    return converted
+  }
 
   return {
     baseCurrency,

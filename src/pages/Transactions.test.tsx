@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { Transactions } from './Transactions'
 
+const d = new Date()
+const thisMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+const formatGroupHeading = (day: number) =>
+  new Date(d.getFullYear(), d.getMonth(), day).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
+
 const renderTx = () => render(<MemoryRouter><Transactions /></MemoryRouter>)
 
 const addTransaction = vi.fn()
@@ -12,6 +19,7 @@ const addRecurringRule = vi.fn()
 const updateRecurringRule = vi.fn()
 const deleteRecurringRule = vi.fn()
 const runDueRecurringRules = vi.fn()
+
 const mockWallets = [
   { id: 'cash', name: 'Cash', type: 'cash' as const, balance: 0, currency: 'IDR' },
   { id: 'card', name: 'Debit card', type: 'card' as const, balance: 0, currency: 'IDR' },
@@ -26,7 +34,7 @@ const mockTransactions = [{
   category: 'Food',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-06-01',
+  date: `${thisMonth}-01`,
   needs_review: false,
 }, {
   id: 'tx-3',
@@ -38,7 +46,7 @@ const mockTransactions = [{
   category: 'Transport',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-06-01',
+  date: `${thisMonth}-01`,
   needs_review: false,
 }, {
   id: 'tx-2',
@@ -50,14 +58,16 @@ const mockTransactions = [{
   category: 'Wage',
   wallet_id: 'cash',
   transfer_wallet_id: null,
-  date: '2026-06-02',
+  date: `${thisMonth}-02`,
   needs_review: false,
 }]
 
+let txData: typeof mockTransactions = mockTransactions
+
 vi.mock('@/lib/queries', () => ({
-  useTransactions: () => ({ data: mockTransactions }),
+  useTransactions: () => ({ data: txData }),
   useDeleteTransaction: () => ({ mutate: deleteTransaction, mutateAsync: deleteTransaction }),
-  useMarkReviewed: () => ({ mutate: vi.fn() }),
+  useMarkReviewed: () => ({ mutate: vi.fn(), mutateAsync: vi.fn() }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
   useUpdateTransaction: () => ({ mutateAsync: updateTransaction, isPending: false }),
   useWallets: () => ({ data: mockWallets }),
@@ -98,6 +108,7 @@ vi.mock('@/lib/currency', () => ({
 
 describe('Transactions', () => {
   beforeEach(() => {
+    txData = mockTransactions
     addTransaction.mockClear()
     updateTransaction.mockClear()
     deleteTransaction.mockClear()
@@ -149,7 +160,7 @@ describe('Transactions', () => {
       category: 'Food',
       wallet_id: 'cash',
       transfer_wallet_id: null,
-      date: '2026-06-01',
+      date: `${thisMonth}-01`,
       type: 'expense',
     }))
   })
@@ -197,8 +208,8 @@ describe('Transactions', () => {
   it('groups history by date and shows note/category/price columns', () => {
     renderTx()
 
-    expect(screen.getByRole('heading', { name: '2 Jun 2026' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '1 Jun 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: formatGroupHeading(2) })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: formatGroupHeading(1) })).toBeInTheDocument()
     expect(screen.getAllByText('Item name').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Note').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Price').length).toBeGreaterThan(0)
@@ -225,6 +236,28 @@ describe('Transactions', () => {
     expect(screen.getByText('Old lunch')).toBeInTheDocument()
     expect(screen.queryByText('Bus')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Show all transactions/i })).toBeInTheDocument()
+  })
+
+  it('shows a Net flow stat alongside Money in and Money out', () => {
+    renderTx()
+
+    expect(screen.getByText('Money in')).toBeInTheDocument()
+    expect(screen.getByText('Money out')).toBeInTheDocument()
+    expect(screen.getByText('Net flow')).toBeInTheDocument()
+    expect(screen.getByText('+NT$3,880')).toBeInTheDocument()
+    expect(screen.getByText('1 income entries')).toBeInTheDocument()
+    expect(screen.getByText('2 expenses')).toBeInTheDocument()
+    expect(screen.getByText('3 transactions')).toBeInTheDocument()
+  })
+
+  it('offers a "Show all dates" escape hatch in the empty state when a date filter is active', () => {
+    txData = []
+    renderTx()
+
+    expect(screen.getByText('No transactions in this period')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all dates' }))
+    expect(screen.getByText('No transactions yet')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Show all dates' })).not.toBeInTheDocument()
   })
 
   it('keeps the expense category box compact and scrollable', () => {

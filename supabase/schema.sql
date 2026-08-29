@@ -85,6 +85,7 @@ create table investment_config (
   user_id uuid references auth.users(id) on delete cascade,
   monthly_contribution numeric not null default 0 check (monthly_contribution >= 0),
   contribution_currency text not null default 'IDR' check (contribution_currency in ('USD', 'IDR', 'TWD', 'EUR', 'JPY')),
+  contribution_frequency text,
   target_portfolio numeric not null default 0 check (target_portfolio >= 0),
   target_currency text not null default 'IDR' check (target_currency in ('USD', 'IDR', 'TWD', 'EUR', 'JPY')),
   return_rate numeric not null default 0 check (return_rate >= 0),

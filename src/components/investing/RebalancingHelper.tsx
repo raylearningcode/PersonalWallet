@@ -53,9 +53,9 @@ export function RebalancingHelper({ allocations, totalValue }: RebalancingHelper
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="text-lg">Rebalancing helper</CardTitle>
           {needsRebalance && (
-            <div className="flex items-center gap-1.5 rounded-lg bg-yellow-500/10 px-2 py-1">
-              <AlertTriangle className="h-3.5 w-3.5 text-yellow-600" />
-              <span className="text-xs font-bold text-yellow-600">Out of balance</span>
+            <div className="flex items-center gap-1.5 rounded-lg bg-[#FFCF73]/10 px-2 py-1">
+              <AlertTriangle className="h-3.5 w-3.5 text-[#FFCF73]" />
+              <span className="text-xs font-bold text-[#FFCF73]">Out of balance</span>
             </div>
           )}
         </div>

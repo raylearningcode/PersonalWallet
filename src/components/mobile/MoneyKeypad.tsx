@@ -123,7 +123,7 @@ export function MoneyKeypad({
   }
 
   return (
-    <div className="rounded-[1.25rem] border border-border bg-secondary/45 p-3" data-testid="money-keypad">
+    <div className="rounded-[1.4rem] border border-border bg-secondary/45 p-3" data-testid="money-keypad">
       <div className="grid grid-cols-3 gap-2">
         {COMPACT_KEYS.map(key => (
           <button

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
@@ -66,7 +66,7 @@ export function CashChangeAssistant({
   const showChips = isTWD
 
   return (
-    <div className="rounded-[1.25rem] border border-primary/20 bg-primary/5 p-4">
+    <div className="rounded-[1.4rem] border border-primary/20 bg-primary/5 p-4">
       <div className="flex items-center justify-between gap-4">
         <span>
           <span className="block text-sm font-extrabold text-foreground">Cash payment</span>
@@ -102,12 +102,12 @@ export function CashChangeAssistant({
         <div className="mt-4 space-y-4">
           <div>
             <Label className="text-xs font-bold text-muted-foreground">Cash given ({inputCurrency})</Label>
-            <Input
-              aria-label="Cash given"
-              className="mt-2 bg-secondary"
-              inputMode="decimal"
+            <MoneyField
               value={cashTendered}
-              onChange={e => setCashTendered(formatNumberInput(e.target.value))}
+              onChange={v => setCashTendered(formatNumberInput(v))}
+              currency={inputCurrency}
+              ariaLabel="Cash given"
+              className="mt-2 bg-secondary"
               placeholder="Amount you handed over"
             />
             {showChips && (
@@ -162,7 +162,7 @@ export function CashChangeAssistant({
                   onChange={e => setChangeBillsWalletId(e.target.value)}
                 >
                   <option value="">Keep in {selectedWallet?.name}</option>
-                  {otherWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  {otherWallets.map(w => <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}</option>)}
                 </select>
               </div>
               <div>
@@ -176,7 +176,7 @@ export function CashChangeAssistant({
                   onChange={e => setChangeCoinsWalletId(e.target.value)}
                 >
                   {otherWallets.map(w => (
-                    <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}</option>
+                    <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}</option>
                   ))}
                 </select>
               </div>
@@ -194,7 +194,7 @@ export function CashChangeAssistant({
                 onChange={e => setChangeBillsWalletId(e.target.value)}
               >
                 <option value="">Keep in {selectedWallet?.name}</option>
-                {otherWallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                {otherWallets.map(w => <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}</option>)}
               </select>
             </div>
           )}
@@ -210,7 +210,7 @@ export function CashChangeAssistant({
                 onChange={e => setChangeCoinsWalletId(e.target.value)}
               >
                 {otherWallets.map(w => (
-                  <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}</option>
+                  <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}</option>
                 ))}
               </select>
             </div>
@@ -228,7 +228,7 @@ export function CashChangeAssistant({
               >
                 <option value="">Keep in same wallet (no transfer)</option>
                 {otherWallets.map(w => (
-                  <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}</option>
+                  <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}{w.cash_role === 'coins' ? ' · coin pouch' : ''}</option>
                 ))}
               </select>
             </div>

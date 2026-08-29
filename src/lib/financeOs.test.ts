@@ -7,12 +7,17 @@ import {
 } from './financeOs'
 import type { BudgetCategory, Transaction } from '@/types'
 
+const now = new Date()
+const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+const todayMid = new Date(now.getFullYear(), now.getMonth(), 20) // mid-month, after pace math
+const todayEarly = new Date(now.getFullYear(), now.getMonth(), 5)
+
 const transactions: Transaction[] = [
-  { id: '1', description: 'Kantin', amount: 100, original_amount: 100, original_currency: 'IDR', type: 'expense', category: 'Food', date: '2026-06-01', needs_review: false },
-  { id: '2', description: 'Kantin', amount: 120, original_amount: 120, original_currency: 'IDR', type: 'expense', category: 'Food', date: '2026-06-01', needs_review: false },
-  { id: '3', description: 'Kantin', amount: 110, original_amount: 110, original_currency: 'IDR', type: 'expense', category: 'Food', date: '2026-06-01', needs_review: false },
-  { id: '4', description: 'Salary', amount: 1000, original_amount: 1000, original_currency: 'IDR', type: 'income', category: 'Wage', date: '2026-06-01', needs_review: false },
-  { id: '5', description: 'Course', amount: 300, original_amount: 300, original_currency: 'IDR', type: 'expense', category: 'Learning', date: '2026-06-01', needs_review: false },
+  { id: '1', description: 'Kantin', amount: 100, original_amount: 100, original_currency: 'IDR', type: 'expense', category: 'Food', date: `${thisMonth}-01`, needs_review: false },
+  { id: '2', description: 'Kantin', amount: 120, original_amount: 120, original_currency: 'IDR', type: 'expense', category: 'Food', date: `${thisMonth}-01`, needs_review: false },
+  { id: '3', description: 'Kantin', amount: 110, original_amount: 110, original_currency: 'IDR', type: 'expense', category: 'Food', date: `${thisMonth}-01`, needs_review: false },
+  { id: '4', description: 'Salary', amount: 1000, original_amount: 1000, original_currency: 'IDR', type: 'income', category: 'Wage', date: `${thisMonth}-01`, needs_review: false },
+  { id: '5', description: 'Course', amount: 300, original_amount: 300, original_currency: 'IDR', type: 'expense', category: 'Learning', date: `${thisMonth}-01`, needs_review: false },
 ]
 
 const categories: BudgetCategory[] = [
@@ -42,7 +47,7 @@ describe('finance OS helpers', () => {
   })
 
   it('returns category pace insights', () => {
-    const insights = getCategoryInsights(transactions, categories, new Date('2026-05-20'))
+    const insights = getCategoryInsights(transactions, categories, todayMid)
 
     expect(insights[0]).toMatchObject({ category: 'Food', usedPct: 55, overPace: false })
     expect(insights[0].message).toContain('55%')
@@ -50,8 +55,8 @@ describe('finance OS helpers', () => {
   })
 
   it('returns over-pace message when spending outpaces the calendar', () => {
-    // Day 5 of 31 = 16% through month, Food spent 330/600 = 55% — that is over pace
-    const insights = getCategoryInsights(transactions, categories, new Date('2026-05-05'))
+    // Day 5 of the month ≈ 16% through month, Food spent 330/600 = 55% — that is over pace
+    const insights = getCategoryInsights(transactions, categories, todayEarly)
     const food = insights.find(i => i.category === 'Food')!
     expect(food.overPace).toBe(true)
     expect(food.message).toContain('over pace')

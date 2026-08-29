@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PortfolioTab } from '@/components/investing/PortfolioTab'
 import { SimulatorTab } from '@/components/investing/SimulatorTab'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { safeGet } from '@/lib/utils'
 import { Monitor, X } from 'lucide-react'
 
 const INVESTING_BANNER_KEY = 'finpath_investing_banner_dismissed'
@@ -12,7 +13,7 @@ type InvestingTab = 'portfolio' | 'simulator'
 export function Investing() {
   const isDesktop = useIsDesktop()
   const [tab, setTab] = useState<InvestingTab>('simulator')
-  const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem(INVESTING_BANNER_KEY) === '1')
+  const [bannerDismissed, setBannerDismissed] = useState(() => safeGet(INVESTING_BANNER_KEY) === '1')
 
   return (
     <div>

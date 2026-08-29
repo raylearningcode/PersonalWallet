@@ -1,11 +1,13 @@
+import { todayLocal, toLocalDateStr } from './utils'
+
 export type StreakData = { current: number; longest: number }
 
 export function computeStreak(transactionDates: string[]): StreakData {
   if (transactionDates.length === 0) return { current: 0, longest: 0 }
 
   const unique = [...new Set(transactionDates)].sort().reverse() // newest first
-  const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const today = todayLocal()
+  const yesterday = toLocalDateStr(new Date(Date.now() - 86400000))
 
   // Current streak: consecutive days ending today or yesterday
   let current = 0

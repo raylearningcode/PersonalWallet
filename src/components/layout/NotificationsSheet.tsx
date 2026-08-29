@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTransactions, useBudgetCategories, useRecurringRules, useGoals } from '@/lib/queries'
 import { computeNotifications } from '@/lib/notifications'
 import { useMoney } from '@/lib/currency'
@@ -17,17 +17,44 @@ export function NotificationsSheet() {
     }
   })
   const money = useMoney()
-  const { data: transactions = [] } = useTransactions()
-  const { data: categories = [] } = useBudgetCategories()
-  const { data: recurringRules = [] } = useRecurringRules()
-  const { data: goals = [] } = useGoals()
+  const { data: transactions = [], isPending: transactionsPending } = useTransactions()
+  const { data: categories = [], isPending: categoriesPending } = useBudgetCategories()
+  const { data: recurringRules = [], isPending: rulesPending } = useRecurringRules()
+  const { data: goals = [], isPending: goalsPending } = useGoals()
+
+  // While any feeding query is pending, liveIds is temporarily empty. Pruning
+  // dismissals then would wipe (and persist the wipe of) the dismissal set on
+  // every cold start, so skip pruning until all queries have loaded.
+  const queriesPending = transactionsPending || categoriesPending || rulesPending || goalsPending
 
   const allNotifications = useMemo(
     () => computeNotifications(transactions, categories, recurringRules, goals, money.formatDisplay),
     [transactions, categories, recurringRules, goals, money.formatDisplay]
   )
 
-  const visibleNotifications = allNotifications.filter(n => !dismissedIds.has(n.id))
+  const liveIds = useMemo(() => new Set(allNotifications.map(n => n.id)), [allNotifications])
+
+  // Prune dismissed ids that no longer match a live notification so stale dismissals
+  // can't suppress new alerts for re-created rules/goals/categories.
+  const prunedDismissed = useMemo(() => {
+    if (queriesPending) return dismissedIds
+    if (dismissedIds.size === 0) return dismissedIds
+    const next = new Set([...dismissedIds].filter(id => liveIds.has(id)))
+    return next.size === dismissedIds.size ? dismissedIds : next
+  }, [dismissedIds, liveIds, queriesPending])
+
+  useEffect(() => {
+    if (queriesPending) return
+    if (prunedDismissed === dismissedIds) return
+    setDismissedIds(prunedDismissed)
+    try {
+      localStorage.setItem('finpath_dismissed_notifications', JSON.stringify(Array.from(prunedDismissed)))
+    } catch (err) {
+      console.warn('Failed to save dismissed notifications:', err)
+    }
+  }, [prunedDismissed, dismissedIds, queriesPending])
+
+  const visibleNotifications = allNotifications.filter(n => !prunedDismissed.has(n.id))
   const criticalCount = visibleNotifications.filter(n => n.severity === 'critical').length
   const badgeCount = visibleNotifications.length
 
@@ -55,7 +82,7 @@ export function NotificationsSheet() {
 
   if (badgeCount === 0 && !open) {
     // Only show the bell if there are notifications OR sheet is open
-    if (dismissedIds.size === 0 || allNotifications.length === 0) return null
+    if (prunedDismissed.size === 0 || allNotifications.length === 0) return null
   }
 
   const iconMap: Record<string, React.ReactNode> = {
@@ -67,7 +94,7 @@ export function NotificationsSheet() {
   }
 
   const styleMap: Record<string, { border: string; bg: string; text: string; dot: string }> = {
-    critical: { border: 'border-red-500/30', bg: 'bg-red-500/5', text: 'text-red-400', dot: 'bg-red-500' },
+    critical: { border: 'border-[#FF8388]/30', bg: 'bg-[#FF8388]/5', text: 'text-[#FF8388]', dot: 'bg-[#FF8388]' },
     warning:  { border: 'border-[#FFCF73]/30', bg: 'bg-[#FFCF73]/5', text: 'text-[#FFCF73]', dot: 'bg-[#FFCF73]' },
     info:     { border: 'border-border', bg: 'bg-secondary', text: 'text-muted-foreground', dot: 'bg-muted-foreground' },
   }
@@ -82,7 +109,7 @@ export function NotificationsSheet() {
       >
         <Bell className="h-4 w-4" />
         {badgeCount > 0 && (
-          <span className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold text-white ${criticalCount > 0 ? 'bg-red-500' : 'bg-[#FFCF73] text-background'}`}>
+          <span className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold text-white ${criticalCount > 0 ? 'bg-[#FF8388]' : 'bg-[#FFCF73] text-background'}`}>
             {badgeCount > 9 ? '9+' : badgeCount}
           </span>
         )}

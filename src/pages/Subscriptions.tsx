@@ -11,9 +11,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { parseNumberInput } from '@/lib/numberInput'
-import { MoneyInput } from '@/components/shared/MoneyInput'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { FREQ_MONTHS, getMonthlyImpact, getYearlyImpact } from '@/lib/subscriptionCalc'
 import { addRecurringInterval } from '@/lib/recurring'
+import { todayLocal, toLocalDateStr } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Plus, Pause, Play, Trash2, Pencil, RefreshCw, X, ChevronRight, AlertTriangle, Check, Download } from 'lucide-react'
 import type { RecurringRule, RecurringFrequency } from '@/types'
@@ -46,7 +47,7 @@ function nextDueFrom(startDate: string, frequency: RecurringFrequency): string {
     else if (frequency === 'monthly') d.setMonth(d.getMonth() + 1)
     else d.setFullYear(d.getFullYear() + 1)
   }
-  return d.toISOString().slice(0, 10)
+  return toLocalDateStr(d)
 }
 
 const emptyAddForm = (currency = '') => ({
@@ -57,7 +58,7 @@ const emptyAddForm = (currency = '') => ({
   frequency: 'monthly' as RecurringFrequency,
   category: '',
   walletId: '',
-  startDate: new Date().toISOString().slice(0, 10),
+  startDate: todayLocal(),
   endDate: '' as string,
   logFirstPayment: true,
 })
@@ -180,7 +181,7 @@ export function Subscriptions() {
   }
 
   const logPaymentNow = async (rule: RecurringRule) => {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayLocal()
     try {
       await addTransaction.mutateAsync({
         description: rule.description,
@@ -205,13 +206,19 @@ export function Subscriptions() {
     }
   }
 
+  const closeDetailSheet = () => {
+    setDetailRule(null)
+    setEditTarget(null)
+    setEditForm(emptyAddForm(money.displayCurrency))
+  }
+
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
       await deleteRule.mutateAsync(deleteTarget.id)
       toast.success('Subscription deleted')
       setDeleteTarget(null)
-      setDetailRule(null)
+      closeDetailSheet()
     } catch {
       toast.error('Failed to delete subscription')
     }
@@ -227,6 +234,7 @@ export function Subscriptions() {
 
   const openDetail = (rule: RecurringRule) => {
     setDetailRule(rule)
+    setEditTarget(rule)
     setEditForm({
       description: rule.description,
       amount: String(rule.original_amount ?? rule.amount),
@@ -280,8 +288,7 @@ export function Subscriptions() {
         next_due_date: editForm.startDate,
         end_date: editForm.endDate || null,
       })
-      setEditTarget(null)
-      setEditForm(emptyAddForm(money.displayCurrency))
+      closeDetailSheet()
       toast.success('Subscription updated')
     } catch {
       toast.error('Failed to update subscription')
@@ -310,7 +317,7 @@ export function Subscriptions() {
       toast.error('Description and amount are required')
       return
     }
-    const startDate = addForm.startDate || new Date().toISOString().slice(0, 10)
+    const startDate = addForm.startDate || todayLocal()
     const category = addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions')
     const currency = addForm.currency || money.displayCurrency
     try {
@@ -468,7 +475,7 @@ export function Subscriptions() {
         {/* Mobile: tap hint */}
         <p className="mt-2 text-[10px] text-muted-foreground lg:hidden">Tap card to manage</p>
 
-        {editTarget?.id === rule.id && (
+        {editTarget?.id === rule.id && !detailRule && (
           <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
             <p className="text-xs font-bold text-muted-foreground">Edit subscription</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -486,7 +493,9 @@ export function Subscriptions() {
                   >
                     {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <MoneyInput className="flex-1 bg-secondary text-sm" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+                  <div className="flex-1">
+                    <MoneyField ariaLabel="Edit subscription amount" className="bg-secondary text-sm" value={editForm.amount} currency={editForm.currency} onChange={v => setEditField('amount', v)} />
+                  </div>
                 </div>
               </div>
               <div>
@@ -624,12 +633,16 @@ export function Subscriptions() {
                   >
                     {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <MoneyInput
-                    className="flex-1 bg-secondary"
-                    value={addForm.amount}
-                    onValueChange={v => setField('amount', v)}
-                    placeholder="0"
-                  />
+                  <div className="flex-1">
+                    <MoneyField
+                      ariaLabel="New subscription amount"
+                      className="bg-secondary"
+                      value={addForm.amount}
+                      currency={addForm.currency}
+                      onChange={v => setField('amount', v)}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </div>
               <div>
@@ -917,7 +930,7 @@ export function Subscriptions() {
       />
 
       {/* Recurring rule detail sheet */}
-      <Sheet open={!!detailRule} onOpenChange={open => { if (!open) setDetailRule(null) }}>
+      <Sheet open={!!detailRule} onOpenChange={open => { if (!open) { closeDetailSheet() } }}>
         <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-xl overflow-y-auto border-border px-0 pb-0' : 'max-h-[92dvh] overflow-y-auto rounded-t-3xl px-0 pb-safe-10'}>
           {detailRule && (() => {
             const rule = detailRule
@@ -984,7 +997,9 @@ export function Subscriptions() {
                         >
                           {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <MoneyInput className="flex-1 bg-secondary" value={editForm.amount} onValueChange={v => setEditField('amount', v)} />
+                        <div className="flex-1">
+                          <MoneyField ariaLabel="Subscription detail amount" className="bg-secondary" value={editForm.amount} currency={editForm.currency} onChange={v => setEditField('amount', v)} />
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -1038,7 +1053,7 @@ export function Subscriptions() {
                 {rule.active && days <= 3 && (
                   <button
                     type="button"
-                    onClick={() => { logPaymentNow(rule); setDetailRule(null) }}
+                    onClick={() => { logPaymentNow(rule); closeDetailSheet() }}
                     disabled={addTransaction.isPending || updateRule.isPending}
                     className="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary/10 font-bold text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
                   >
@@ -1066,7 +1081,7 @@ export function Subscriptions() {
                   <button
                     type="button"
                     aria-label="Delete subscription"
-                    onClick={() => { setDeleteTarget(rule); setDetailRule(null) }}
+                    onClick={() => { setDeleteTarget(rule); closeDetailSheet() }}
                     className="flex h-14 items-center justify-center rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/10 px-5 font-bold text-[#FF8388] hover:bg-[#FF8388]/20"
                   >
                     <Trash2 className="h-4 w-4" />

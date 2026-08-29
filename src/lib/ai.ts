@@ -28,9 +28,9 @@ async function callGemini(systemInstruction: string, parts: GeminiPart[]): Promi
   const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${key}`, {
+    const res = await fetch(GEMINI_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemInstruction }] },
         contents: [{ role: 'user', parts }],
@@ -80,9 +80,16 @@ Example output: {"description":"Starbucks","amount":"65000","category":"Food","d
     [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }],
   )
 
-  const match = text.match(/\{[\s\S]*?\}/)
-  if (!match) throw new Error('Could not parse receipt — try a clearer photo')
-  return JSON.parse(match[0]) as ReceiptData
+  // Greedily extract from the first `{` to the LAST `}` — receipts may contain prose
+  // before/after the JSON or JSON with nested objects.
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end <= start) throw new Error('Could not parse receipt — try a clearer photo')
+  try {
+    return JSON.parse(text.slice(start, end + 1)) as ReceiptData
+  } catch {
+    throw new Error('Receipt scan returned an unreadable result — try again')
+  }
 }
 
 // ─── AI Financial Insights (Analysis Mode) ────────────────────────────────
@@ -141,10 +148,11 @@ export async function getAiInsights(data: InsightInput): Promise<InsightResult[]
     : '  • No active goals'
 
   const cashflowGap = data.monthlyIncome - data.monthlySpent
-  const dailyBurn = data.daysLeftInMonth > 0 && data.daysLeftInMonth < 30
-    ? (data.monthlySpent / (30 - data.daysLeftInMonth))
+  const daysInMonth = 30
+  const dailyBurn = data.daysLeftInMonth > 0 && data.daysLeftInMonth < daysInMonth
+    ? data.monthlySpent / Math.max(1, Math.min(daysInMonth - data.daysLeftInMonth, daysInMonth))
     : 0
-  const projectedMonthlySpend = dailyBurn * 30
+  const projectedMonthlySpend = dailyBurn * daysInMonth
 
   const prompt = `FINANCIAL DATA — analyse and respond:
 

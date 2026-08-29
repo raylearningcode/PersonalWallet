@@ -17,6 +17,12 @@ const addTransaction = vi.fn()
 const addBudgetRule = vi.fn()
 const saveInvestmentConfig = vi.fn()
 const upsertEstimationPlan = vi.fn()
+const { saveAiKey } = vi.hoisted(() => ({ saveAiKey: vi.fn() }))
+
+vi.mock('@/lib/ai', () => ({
+  saveGeminiKey: saveAiKey,
+  isAiConfigured: () => false,
+}))
 
 vi.mock('@/lib/queries', () => ({
   useAppSettings: () => ({ data: undefined }),
@@ -137,5 +143,19 @@ describe('Settings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Wallets' }))
     expect(screen.getByText('Rp 1,650,000')).toBeInTheDocument()
+  })
+
+  it('renders the AI tab with a Gemini key input and saves via the AI helper', () => {
+    renderSettings()
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI Features' }))
+    expect(screen.getByText(/Paste your Gemini API key to enable AI insights/)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Gemini API key'), { target: { value: 'AIza-test-key' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
+
+    expect(saveAiKey).toHaveBeenCalledWith('AIza-test-key')
+    // The key stays visible (masked) after saving — it is NOT cleared.
+    expect(screen.getByLabelText('Gemini API key')).toHaveValue('AIza-test-key')
   })
 })

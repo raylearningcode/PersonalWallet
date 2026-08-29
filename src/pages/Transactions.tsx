@@ -25,13 +25,15 @@ import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, S
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
-import { formatDate } from '@/lib/utils'
+import { formatDate, toLocalDateStr, todayLocal } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { pushUndo, popUndo } from '@/lib/undoStack'
 import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
+import { TransactionTagsEditor } from '@/components/transactions/TransactionTagsEditor'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -46,7 +48,7 @@ function getMonthStart() {
 }
 
 function getLastDay(year: number, month: number) {
-  return new Date(year, month, 0).toISOString().slice(0, 10)
+  return toLocalDateStr(new Date(year, month, 0))
 }
 
 export function Transactions() {
@@ -77,7 +79,7 @@ export function Transactions() {
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(todayLocal)
   const [category, setCategory] = useState('')
   const [walletId, setWalletId] = useState('')
   const [transferWalletId, setTransferWalletId] = useState('')
@@ -103,7 +105,7 @@ export function Transactions() {
   const [bulkCategorySheet, setBulkCategorySheet] = useState(false)
   const [bulkCategoryTarget, setBulkCategoryTarget] = useState('')
   const [bulkDateSheet, setBulkDateSheet] = useState(false)
-  const [bulkDate, setBulkDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [bulkDate, setBulkDate] = useState(todayLocal)
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const [filterWalletId, setFilterWalletId] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -157,13 +159,14 @@ export function Transactions() {
 
   useEffect(() => {
     if (generatedDueRef.current || recurringRules.length === 0) return
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayLocal()
     if (!recurringRules.some(rule => rule.active && rule.next_due_date <= today)) return
     generatedDueRef.current = true
     runDueRecurringRules.mutate(undefined, {
       onSuccess: count => {
         if (count > 0) toast.success(`${count} recurring payment${count === 1 ? '' : 's'} added`)
       },
+      onError: () => { toast.error('Failed to generate recurring payments'); generatedDueRef.current = false },
     })
   }, [recurringRules, runDueRecurringRules])
 
@@ -203,7 +206,7 @@ export function Transactions() {
       if (filterWalletId) visibleTransactions = visibleTransactions.filter(tx => tx.wallet_id === filterWalletId || tx.transfer_wallet_id === filterWalletId)
       return [...visibleTransactions].sort((a, b) => `${b.date}-${b.created_at ?? ''}`.localeCompare(`${a.date}-${a.created_at ?? ''}`))
     },
-    [selectedCategory, transactions, searchQuery, dateFrom, dateTo, filterWalletId]
+    [selectedCategory, transactions, searchQuery, dateFrom, dateTo, filterWalletId, wallets]
   )
   const expenseCategoryTotals = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>()
@@ -261,7 +264,7 @@ export function Transactions() {
       for (let j = i + 1; j < sorted.length; j++) {
         const a = sorted[i]; const b = sorted[j]
         const dayDiff = Math.abs(new Date(a.date).getTime() - new Date(b.date).getTime()) / 86400000
-        if (dayDiff > 2) break // sorted by date â€” once gap > 2 days, no need to scan further
+        if (dayDiff > 2) break // sorted by date — once gap > 2 days, no need to scan further
         if (a.type !== b.type) continue
         const descMatch = a.description.toLowerCase() === b.description.toLowerCase()
         const maxAmt = Math.max(a.amount, b.amount)
@@ -280,7 +283,7 @@ export function Transactions() {
     setDescription('')
     setAmount('')
     setInputCurrency(money.displayCurrency)
-    setDate(new Date().toISOString().slice(0, 10))
+    setDate(todayLocal())
     setType('expense')
     setCategory(categories[0]?.name ?? '')
     setCashEnabled(false)
@@ -362,17 +365,17 @@ export function Transactions() {
 
   const handleSaveTransaction = async () => {
     const parsedAmount = parseNumberInput(amount)
-    if (!description.trim() && type !== 'transfer') { toast.error('Please enter a merchant name'); return }
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return }
-    if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) { toast.error('Select two different wallets for a transfer'); return }
+    if (!description.trim() && type !== 'transfer') { toast.error('Please enter a merchant name'); return false }
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return false }
+    if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) { toast.error('Select two different wallets for a transfer'); return false }
     const txCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
-    if (type !== 'transfer' && (!txCategory || !walletId)) return
+    if (type !== 'transfer' && (!txCategory || !walletId)) return false
 
     // Cash change validation
     const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
     if (cashEnabled && type === 'expense' && (!Number.isFinite(parsedTendered) || parsedTendered < parsedAmount)) {
       toast.error('Cash given must be at least the expense amount')
-      return
+      return false
     }
 
     const baseAmount = money.toBase(parsedAmount, inputCurrency)
@@ -425,7 +428,7 @@ export function Transactions() {
           let firstEditChangeTxId: string | undefined
           if (isTWDEdit && billsChangeEdit > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
             const ct = await addTransaction.mutateAsync({
-              description: `Change bills â€” ${description.trim()}`,
+              description: `Change bills — ${description.trim()}`,
               amount: money.toBase(billsChangeEdit, inputCurrency),
               original_amount: billsChangeEdit,
               original_currency: inputCurrency,
@@ -440,7 +443,7 @@ export function Transactions() {
           }
           if (isTWDEdit && coinsChangeEdit > 0 && changeCoinsWalletId) {
             const ct = await addTransaction.mutateAsync({
-              description: `Change coins â€” ${description.trim()}`,
+              description: `Change coins — ${description.trim()}`,
               amount: money.toBase(coinsChangeEdit, inputCurrency),
               original_amount: coinsChangeEdit,
               original_currency: inputCurrency,
@@ -455,7 +458,7 @@ export function Transactions() {
           }
           if (!isTWDEdit && changeCoinsWalletId) {
             const ct = await addTransaction.mutateAsync({
-              description: `Change â€” ${description.trim()}`,
+              description: `Change — ${description.trim()}`,
               amount: baseChange,
               original_amount: rawChangeEdit,
               original_currency: inputCurrency,
@@ -478,7 +481,7 @@ export function Transactions() {
           if (transferFeeEnabled && parseNumberInput(transferFeeAmount) > 0) {
             const parsedFee = parseNumberInput(transferFeeAmount)
             await addTransaction.mutateAsync({
-              description: `Transfer fee${description.trim() ? ` â€” ${description.trim()}` : ''}`,
+              description: `Transfer fee${description.trim() ? ` — ${description.trim()}` : ''}`,
               amount: money.toBase(parsedFee, inputCurrency),
               original_amount: parsedFee,
               original_currency: inputCurrency,
@@ -492,6 +495,7 @@ export function Transactions() {
           }
         }
         toast.success('Transaction updated')
+        return true
       } else {
         const savedTx = await addTransaction.mutateAsync(payload)
         // Create system-generated change transfer(s) when cash given > expense
@@ -506,7 +510,7 @@ export function Transactions() {
           // Bills transfer (only if destination != spending wallet and there are bills)
           if (isTWD && billsChangeAmt > 0 && changeBillsWalletId && changeBillsWalletId !== walletId) {
             const ct = await addTransaction.mutateAsync({
-              description: `Change bills â€” ${description.trim()}`,
+              description: `Change bills — ${description.trim()}`,
               amount: money.toBase(billsChangeAmt, inputCurrency),
               original_amount: billsChangeAmt,
               original_currency: inputCurrency,
@@ -523,7 +527,7 @@ export function Transactions() {
           // Coins transfer
           if (isTWD && coinsChangeAmt > 0 && changeCoinsWalletId) {
             const ct2 = await addTransaction.mutateAsync({
-              description: `Change coins â€” ${description.trim()}`,
+              description: `Change coins — ${description.trim()}`,
               amount: money.toBase(coinsChangeAmt, inputCurrency),
               original_amount: coinsChangeAmt,
               original_currency: inputCurrency,
@@ -540,7 +544,7 @@ export function Transactions() {
           // Non-TWD: single change transfer to coinsWallet
           if (!isTWD && changeCoinsWalletId) {
             const ct3 = await addTransaction.mutateAsync({
-              description: `Change â€” ${description.trim()}`,
+              description: `Change — ${description.trim()}`,
               amount: baseChange,
               original_amount: rawChange,
               original_currency: inputCurrency,
@@ -561,7 +565,7 @@ export function Transactions() {
         if (type === 'transfer' && transferFeeEnabled && parseNumberInput(transferFeeAmount) > 0 && savedTx?.id) {
           const parsedFee = parseNumberInput(transferFeeAmount)
           await addTransaction.mutateAsync({
-            description: `Transfer fee${description.trim() ? ` â€” ${description.trim()}` : ''}`,
+            description: `Transfer fee${description.trim() ? ` — ${description.trim()}` : ''}`,
             amount: money.toBase(parsedFee, inputCurrency),
             original_amount: parsedFee,
             original_currency: inputCurrency,
@@ -573,10 +577,12 @@ export function Transactions() {
             linked_transaction_id: savedTx.id, cash_tendered: null,
           })
         }
-        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added Â· change routed to wallet` : 'Transaction added')
+        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · change routed to wallet` : 'Transaction added')
+        return true
       }
     } catch {
       toast.error('Failed to save transaction')
+      return false
     }
   }
 
@@ -620,35 +626,44 @@ export function Transactions() {
   const handleGenerateDue = () => {
     runDueRecurringRules.mutate(undefined, {
       onSuccess: count => toast.success(count > 0 ? `${count} recurring payment${count === 1 ? '' : 's'} added` : 'No recurring payment is due yet'),
+      onError: () => toast.error('Failed to generate recurring payments'),
     })
   }
 
   const handleDuplicateTransaction = async (tx: Transaction) => {
-    await addTransaction.mutateAsync({
-      description: tx.description,
-      amount: tx.amount,
-      original_amount: tx.original_amount ?? tx.amount,
-      original_currency: tx.original_currency ?? money.baseCurrency,
-      type: tx.type,
-      category: tx.category,
-      wallet_id: tx.wallet_id,
-      transfer_wallet_id: tx.transfer_wallet_id,
-      recurring_rule_id: null,
-      recurring_due_date: null,
-      date: new Date().toISOString().slice(0, 10),
-      needs_review: false,
-    })
-    toast.success('Transaction duplicated')
+    try {
+      await addTransaction.mutateAsync({
+        description: tx.description,
+        amount: tx.amount,
+        original_amount: tx.original_amount ?? tx.amount,
+        original_currency: tx.original_currency ?? money.baseCurrency,
+        type: tx.type,
+        category: tx.category,
+        wallet_id: tx.wallet_id,
+        transfer_wallet_id: tx.transfer_wallet_id,
+        recurring_rule_id: null,
+        recurring_due_date: null,
+        date: todayLocal(),
+        needs_review: false,
+      })
+      toast.success('Transaction duplicated')
+    } catch {
+      toast.error('Failed to duplicate transaction')
+    }
   }
 
-  const handleMarkReviewed = (id: string) => {
-    markReviewed.mutate(id)
-    toast.success('Marked as reviewed')
+  const handleMarkReviewed = async (id: string) => {
+    try {
+      await markReviewed.mutateAsync(id)
+      toast.success('Marked as reviewed')
+    } catch {
+      toast.error('Failed to mark as reviewed')
+    }
   }
 
   const handleAddCandidateAsRule = async (candidate: ReturnType<typeof getRecurringCandidates>[0]) => {
     if (!wallets[0]?.id) { toast.error('Add a wallet first'); return }
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayLocal()
     await addRecurringRule.mutateAsync({
       description: candidate.description,
       amount: candidate.amount,
@@ -748,7 +763,7 @@ export function Transactions() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `finpath-selected-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `finpath-selected-${todayLocal()}.csv`
     a.click()
     toast.success(`${selected.length} transaction${selected.length !== 1 ? 's' : ''} exported`)
     setSelectMode(false)
@@ -772,8 +787,12 @@ export function Transactions() {
   const bulkChangeCategory = async () => {
     if (!bulkCategoryTarget) return
     const toUpdate = sortedTransactions.filter(tx => selectedIds.has(tx.id))
-    for (const tx of toUpdate) await updateTransaction.mutateAsync({ id: tx.id, category: bulkCategoryTarget })
-    toast.success(`Category updated on ${toUpdate.length} transaction${toUpdate.length !== 1 ? 's' : ''}`)
+    try {
+      for (const tx of toUpdate) await updateTransaction.mutateAsync({ id: tx.id, category: bulkCategoryTarget })
+      toast.success(`Category updated on ${toUpdate.length} transaction${toUpdate.length !== 1 ? 's' : ''}`)
+    } catch {
+      toast.error('Failed to update some categories')
+    }
     setBulkCategorySheet(false)
     setBulkCategoryTarget('')
     setSelectMode(false)
@@ -818,7 +837,7 @@ export function Transactions() {
     if (preset === 'this-week') {
       const day = d.getDay()
       const mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
-      setDateFrom(mon.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10))
+      setDateFrom(toLocalDateStr(mon)); setDateTo(toLocalDateStr(d))
     } else if (preset === 'this-month') {
       setDateFrom(`${y}-${String(m).padStart(2, '0')}-01`); setDateTo(getLastDay(y, m))
     } else if (preset === 'last-month') {
@@ -826,7 +845,7 @@ export function Transactions() {
       setDateFrom(`${ly}-${String(lmo).padStart(2, '0')}-01`); setDateTo(getLastDay(ly, lmo))
     } else if (preset === 'last-3-months') {
       const start = new Date(y, m - 4, 1)
-      setDateFrom(start.toISOString().slice(0, 10)); setDateTo(getLastDay(y, m))
+      setDateFrom(toLocalDateStr(start)); setDateTo(getLastDay(y, m))
     } else if (preset === 'this-year') {
       setDateFrom(`${y}-01-01`); setDateTo(`${y}-12-31`)
     } else if (preset === 'all-time') {
@@ -885,10 +904,15 @@ export function Transactions() {
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-[1.4rem] bg-gradient-to-l from-card to-transparent sm:hidden" />
       </div>
       <div className="mb-9 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
-        {[
-          { label: 'Money in', value: money.formatDisplay(moneyIn), dot: 'bg-primary', sub: money.formatRef(moneyIn) ?? 'Income received' },
-          { label: 'Money out', value: money.formatDisplay(moneyOut), dot: 'bg-[#FF8388]', sub: money.formatRef(moneyOut) ?? `Across ${transactions.length} transactions` },
-        ].map(({ label, value, dot, sub }) => (
+        {(() => {
+          const net = moneyIn - moneyOut
+          const netCount = transactions.filter(t => t.type !== 'transfer').length
+          return [
+            { label: 'Money in', value: money.formatDisplay(moneyIn), dot: 'bg-primary', sub: `${transactions.filter(t => t.type === 'income').length} income entries` },
+            { label: 'Money out', value: money.formatDisplay(moneyOut), dot: 'bg-[#FF8388]', sub: `${transactions.filter(t => t.type === 'expense').length} expenses` },
+            { label: 'Net flow', value: `${net >= 0 ? '+' : ''}${money.formatDisplay(net)}`, dot: net >= 0 ? 'bg-primary' : 'bg-[#FF8388]', sub: `${netCount} transactions` },
+          ]
+        })().map(({ label, value, dot, sub }) => (
           <div key={label} className="relative rounded-[1.4rem] border border-border bg-card px-6 py-5">
             <span className={`absolute right-7 top-7 h-4 w-4 rounded-full ${dot}`} />
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -913,14 +937,14 @@ export function Transactions() {
                 <Banknote className="h-4 w-4 shrink-0 text-primary" />
                 <span className="text-muted-foreground">Cash given</span>
                 <span className="font-extrabold text-foreground">{tenderedDisplay}</span>
-                <span className="text-muted-foreground">Â· change</span>
+                <span className="text-muted-foreground">· change</span>
                 <span className="font-extrabold text-primary">{changeDisplay}</span>
               </div>
             )
           })()}
           <div className="space-y-5">
-            {/* Type selector + big amount â€” always visible */}
-            <div className="rounded-[1.25rem] border border-border bg-card p-4 text-center">
+            {/* Type selector + big amount — always visible */}
+            <div className="rounded-[1.4rem] border border-border bg-card p-4 text-center">
               <div className="mx-auto mb-3 inline-flex rounded-full border border-border bg-secondary p-1">
                 {(['expense', 'income', 'transfer'] as const).map(item => (
                   <button
@@ -983,17 +1007,17 @@ export function Transactions() {
                     if (merchantSuggestion.wallet_id) setWalletId(merchantSuggestion.wallet_id)
                     setType(merchantSuggestion.type === 'income' || merchantSuggestion.type === 'transfer' ? merchantSuggestion.type : 'expense')
                   }}
-                  aria-label="Use last merchant suggestion â€” fills in category, wallet, and type"
+                  aria-label="Use last merchant suggestion — fills in category, wallet, and type"
                 >
                   Last time: {merchantSuggestion.category}
                   {merchantSuggestion.wallet_id && wallets.find(w => w.id === merchantSuggestion.wallet_id) && (
-                    <span className="ml-1.5 opacity-70">Â· {wallets.find(w => w.id === merchantSuggestion.wallet_id)!.name}</span>
+                    <span className="ml-1.5 opacity-70">· {wallets.find(w => w.id === merchantSuggestion.wallet_id)!.name}</span>
                   )}
                 </button>
               )}
             </div>
 
-            {/* Category â€” always visible (except transfer) */}
+            {/* Category — always visible (except transfer) */}
             {type !== 'transfer' && (
               <div>
                 <Label className="text-sm font-bold text-foreground">Category</Label>
@@ -1041,9 +1065,9 @@ export function Transactions() {
               </div>
             )}
 
-            {/* â”€â”€ Category splitting (expense only) â”€â”€ */}
+            {/* ── Category splitting (expense only) ── */}
             {type === 'expense' && categories.length >= 2 && (
-              <div className="rounded-[1.25rem] border border-border bg-card p-4">
+              <div className="rounded-[1.4rem] border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span>
                     <span className="block text-sm font-extrabold text-foreground">Split across categories</span>
@@ -1067,10 +1091,10 @@ export function Transactions() {
                           value={p.category} onChange={e => { const n = [...splitPortions]; n[i] = { ...n[i], category: e.target.value }; setSplitPortions(n) }}>
                           {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                         </select>
-                        <Input aria-label={`Portion ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" inputMode="decimal" placeholder="0"
-                          value={p.amount} onChange={e => { const n = [...splitPortions]; n[i] = { ...n[i], amount: e.target.value }; setSplitPortions(n) }} />
+                        <MoneyField ariaLabel={`Portion ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" placeholder="0"
+                          value={p.amount} currency={inputCurrency} onChange={v => { const n = [...splitPortions]; n[i] = { ...n[i], amount: v }; setSplitPortions(n) }} />
                         <button onClick={() => setSplitPortions(sp => sp.filter((_, j) => j !== i))} disabled={splitPortions.length <= 2}
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label={`Remove portion ${i + 1}`}>Ã—</button>
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label={`Remove portion ${i + 1}`}>×</button>
                       </div>
                     ))}
                     {(() => {
@@ -1079,7 +1103,7 @@ export function Transactions() {
                       return (
                         <div className="flex items-center justify-between gap-2 pt-1">
                           <button onClick={() => setSplitPortions(sp => [...sp, { category: categories[0]?.name ?? '', amount: '' }])} className="text-xs font-bold text-primary hover:underline">+ Add portion</button>
-                          <span className={`text-xs font-bold ${rem === 0 ? 'text-primary' : rem > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>{rem === 0 ? 'âœ“ Fully allocated' : rem > 0 ? `${money.format(rem, inputCurrency)} remaining` : `${money.format(Math.abs(rem), inputCurrency)} over`}</span>
+                          <span className={`text-xs font-bold ${rem === 0 ? 'text-primary' : rem > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>{rem === 0 ? '✓ Fully allocated' : rem > 0 ? `${money.format(rem, inputCurrency)} remaining` : `${money.format(Math.abs(rem), inputCurrency)} over`}</span>
                         </div>
                       )
                     })()}
@@ -1088,9 +1112,9 @@ export function Transactions() {
               </div>
             )}
 
-            {/* â”€â”€ Multi-wallet payment (expense only, 2+ wallets) â”€â”€ */}
+            {/* ── Multi-wallet payment (expense only, 2+ wallets) ── */}
             {type === 'expense' && wallets.length >= 2 && (
-              <div className="rounded-[1.25rem] border border-border bg-card p-4">
+              <div className="rounded-[1.4rem] border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span>
                     <span className="block text-sm font-extrabold text-foreground">Pay from multiple wallets</span>
@@ -1120,12 +1144,12 @@ export function Transactions() {
                       <div key={i} className="flex items-center gap-2">
                         <select aria-label={`Wallet ${i + 1}`} className="h-10 flex-1 rounded-lg border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
                           value={ws.wallet_id} onChange={e => { const n = [...walletSplits]; n[i] = { ...n[i], wallet_id: e.target.value }; setWalletSplits(n) }}>
-                          {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' Â· coins' : w.cash_role === 'notes' ? ' Â· notes' : ''}</option>)}
+                          {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coins' : w.cash_role === 'notes' ? ' · notes' : ''}</option>)}
                         </select>
-                        <Input aria-label={`Wallet ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" inputMode="decimal" placeholder="0"
-                          value={ws.amount} onChange={e => { const n = [...walletSplits]; n[i] = { ...n[i], amount: e.target.value }; setWalletSplits(n) }} />
+                        <MoneyField ariaLabel={`Wallet ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" placeholder="0"
+                          value={ws.amount} currency={inputCurrency} onChange={v => { const n = [...walletSplits]; n[i] = { ...n[i], amount: v }; setWalletSplits(n) }} />
                         <button onClick={() => setWalletSplits(ws2 => ws2.filter((_, j) => j !== i))} disabled={walletSplits.length <= 2}
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label={`Remove wallet ${i + 1}`}>Ã—</button>
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label={`Remove wallet ${i + 1}`}>×</button>
                       </div>
                     ))}
                     {(() => {
@@ -1134,7 +1158,7 @@ export function Transactions() {
                       return (
                         <div className="flex items-center justify-between gap-2 pt-1">
                           <button onClick={() => { const unused = wallets.find(w => !walletSplits.find(ws2 => ws2.wallet_id === w.id)); setWalletSplits(ws2 => [...ws2, { wallet_id: unused?.id ?? wallets[0].id, amount: '' }]) }} className="text-xs font-bold text-primary hover:underline">+ Add wallet</button>
-                          <span className={`text-xs font-bold ${rem === 0 ? 'text-primary' : rem > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>{rem === 0 ? 'âœ“ Fully allocated' : rem > 0 ? `${money.format(rem, inputCurrency)} remaining` : `${money.format(Math.abs(rem), inputCurrency)} over`}</span>
+                          <span className={`text-xs font-bold ${rem === 0 ? 'text-primary' : rem > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>{rem === 0 ? '✓ Fully allocated' : rem > 0 ? `${money.format(rem, inputCurrency)} remaining` : `${money.format(Math.abs(rem), inputCurrency)} over`}</span>
                         </div>
                       )
                     })()}
@@ -1145,7 +1169,7 @@ export function Transactions() {
 
             {/* Transfer fee */}
             {type === 'transfer' && (
-              <div className="rounded-[1.25rem] border border-border bg-card p-4">
+              <div className="rounded-[1.4rem] border border-border bg-card p-4">
                 <label className="flex cursor-pointer items-center justify-between gap-4">
                   <span>
                     <span className="block text-sm font-extrabold text-foreground">Transfer fee</span>
@@ -1208,7 +1232,7 @@ export function Transactions() {
               </div>
             )}
 
-            {/* Date + Currency â€” side by side */}
+            {/* Date + Currency — side by side */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-bold text-foreground">Date</Label>
@@ -1251,8 +1275,8 @@ export function Transactions() {
               <Button
                 className="mt-4 w-full gap-2 bg-[#FFCF73] text-background hover:bg-[#FFCF73]/90 font-extrabold"
                 onClick={async () => {
-                  await handleSaveTransaction()
-                  handleMarkReviewed(editingTransaction!.id)
+                  const saved = await handleSaveTransaction()
+                  if (saved) handleMarkReviewed(editingTransaction!.id)
                   setIsFormOpen(false)
                 }}
               >
@@ -1262,7 +1286,7 @@ export function Transactions() {
             )}
             <Button className={`w-full ${editingTransaction?.needs_review ? 'mt-2' : 'mt-4'}`} onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
               {addTransaction.isPending || updateTransaction.isPending
-                ? 'Savingâ€¦'
+                ? 'Saving…'
                 : editingTransaction
                   ? `Save ${type}`
                   : `Add ${type}`}
@@ -1299,7 +1323,7 @@ export function Transactions() {
               </div>
               <div className="flex-1">
                 <Label className="text-sm font-bold text-foreground">Amount</Label>
-                <Input aria-label="Rule amount" className="mt-2 bg-secondary" inputMode="decimal" value={ruleAmount} onChange={e => setRuleAmount(formatNumberInput(e.target.value))} />
+                <MoneyField ariaLabel="Rule amount" className="mt-2 bg-secondary" value={ruleAmount} currency={ruleInputCurrency} onChange={v => setRuleAmount(formatNumberInput(v))} />
               </div>
             </div>
             <div>
@@ -1343,7 +1367,7 @@ export function Transactions() {
             onClick={() => setShowCategories(!showCategories)}
           >
             <h2 className="text-lg font-extrabold text-foreground">Expense by category</h2>
-            <span className="text-xs font-bold text-muted-foreground">{showCategories ? 'Hide' : 'Show'} Â· {expenseCategoryTotals.length} categories</span>
+            <span className="text-xs font-bold text-muted-foreground">{showCategories ? 'Hide' : 'Show'} · {expenseCategoryTotals.length} categories</span>
           </button>
           {showCategories && (
             <div data-testid="expense-category-list" className="grid max-h-[220px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -1351,7 +1375,7 @@ export function Transactions() {
                 <button
                   key={name}
                   type="button"
-                  aria-label={`Filter by ${name} â€” ${value.count} transaction${value.count === 1 ? '' : 's'}`}
+                  aria-label={`Filter by ${name} — ${value.count} transaction${value.count === 1 ? '' : 's'}`}
                   className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selectedCategory === name ? 'border-primary bg-primary/10' : 'border-border bg-secondary hover:bg-muted/50'}`}
                   onClick={() => setSelectedCategory(name)}
                 >
@@ -1389,7 +1413,7 @@ export function Transactions() {
                     Generate due
                   </Button>
                   <Button asChild size="sm" variant="secondary" onClick={e => e.stopPropagation()}>
-                    <Link to="/subscriptions">Manage â†’</Link>
+                    <Link to="/subscriptions">Manage →</Link>
                   </Button>
                 </>
               )}
@@ -1409,7 +1433,7 @@ export function Transactions() {
                     <p className="min-w-0 truncate font-extrabold text-foreground">{rule.description}</p>
                     {!rule.active && <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">Paused</span>}
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{rule.category} Â· next {rule.next_due_date}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{rule.category} · next {rule.next_due_date}</p>
                   <p className="mt-0.5 text-sm font-bold text-foreground">
                     {money.format(rule.original_amount, rule.original_currency)}
                     {rule.original_currency !== money.baseCurrency && <span className="ml-2 text-xs text-muted-foreground">~ {money.formatBase(rule.amount)}</span>}
@@ -1432,7 +1456,7 @@ export function Transactions() {
                     <div className="min-w-0">
                       <p className="truncate font-bold text-foreground">{candidate.description}</p>
                       <p className="text-xs text-muted-foreground">
-                        {candidate.category} Â· {candidate.count}Ã— Â· avg {money.formatBase(candidate.amount)}
+                        {candidate.category} · {candidate.count}× · avg {money.formatBase(candidate.amount)}
                       </p>
                     </div>
                     <Button size="sm" variant="secondary" onClick={() => handleAddCandidateAsRule(candidate)} disabled={addRecurringRule.isPending}>
@@ -1511,7 +1535,7 @@ export function Transactions() {
               {isAllTime ? 'All transactions' : monthLabel}
             </span>
             {!isAllTime && (
-              <span className="text-xs text-muted-foreground">Â· {sortedTransactions.length}</span>
+              <span className="text-xs text-muted-foreground">· {sortedTransactions.length}</span>
             )}
           </div>
           <button
@@ -1638,7 +1662,7 @@ export function Transactions() {
                 {groups.map(p => (
                   <div key={p.a.id} className="flex items-center gap-2">
                     <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                      {p.a.description} Â· {p.a.date}
+                      {p.a.description} · {p.a.date}
                     </p>
                     <button
                       className="shrink-0 rounded-full bg-[#FFCF73]/20 px-2.5 py-1 text-xs font-bold text-[#FFCF73] hover:bg-[#FFCF73]/30"
@@ -1743,6 +1767,7 @@ export function Transactions() {
                             e.currentTarget.setPointerCapture(e.pointerId)
                           } else {
                             swipeRef.current.activeId = null
+                            if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
                             return
                           }
                         }
@@ -1763,11 +1788,16 @@ export function Transactions() {
                         }
                       }}
                       onPointerLeave={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }}
+                      onPointerCancel={() => {
+                        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+                        swipeRef.current = { activeId: null, startX: 0, startY: 0, dx: 0, isSwipe: false, wasSwipe: false }
+                      }}
                       onClick={() => {
                         if (swipeRef.current.wasSwipe) { swipeRef.current.wasSwipe = false; return }
                         if (swipeOpenId === tx.id) { setSwipeOpenId(null); return }
                         if (longPressRef.current) { longPressRef.current = false; return }
-                        selectMode ? toggleSelectId(tx.id) : setDetailTx(tx)
+                        if (selectMode) toggleSelectId(tx.id)
+                        else setDetailTx(tx)
                       }}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -1791,9 +1821,9 @@ export function Transactions() {
                                 ? `Split (${tx.split_portions.length})`
                                 : tx.category}
                               {tx.wallet_splits && tx.wallet_splits.length > 0
-                                ? ` Â· ${tx.wallet_splits.length} wallets`
-                                : txWallet ? ` Â· ${txWallet.name}` : ''}
-                              {' Â· '}{formatDate(tx.date)}
+                                ? ` · ${tx.wallet_splits.length} wallets`
+                                : txWallet ? ` · ${txWallet.name}` : ''}
+                              {' · '}{formatDate(tx.date)}
                             </span>
                           </div>
                           {linkedChange.length > 0 && (() => {
@@ -1801,7 +1831,7 @@ export function Transactions() {
                             const changeWallet = wallets.find(w => w.id === linkedChange[0].wallet_id)
                             return changeAmt > 0 ? (
                               <p className="mt-1 text-[11px] text-muted-foreground/70">
-                                Cash {money.format(tx.cash_tendered!, tx.original_currency ?? money.baseCurrency)} Â· change {money.format(changeAmt, tx.original_currency ?? money.baseCurrency)}{changeWallet ? ` â†’ ${changeWallet.name}` : ''}
+                                Cash {money.format(tx.cash_tendered!, tx.original_currency ?? money.baseCurrency)} · change {money.format(changeAmt, tx.original_currency ?? money.baseCurrency)}{changeWallet ? ` → ${changeWallet.name}` : ''}
                               </p>
                             ) : null
                           })()}
@@ -1914,8 +1944,17 @@ export function Transactions() {
               </div>
             ) : (
               <div>
-                <p className="font-semibold text-foreground">No transactions yet</p>
+                <p className="font-semibold text-foreground">{dateFrom || dateTo ? 'No transactions in this period' : 'No transactions yet'}</p>
                 <p className="mt-1 text-sm text-muted-foreground">Add your first income or expense to get started.</p>
+                {dateFrom || dateTo ? (
+                  <button
+                    type="button"
+                    onClick={() => { setDateFrom(''); setDateTo('') }}
+                    className="mt-3 text-sm font-bold text-primary hover:underline"
+                  >
+                    Show all dates
+                  </button>
+                ) : null}
               </div>
             )}
             {!searchQuery && !filterWalletId && !selectedCategory && (
@@ -1927,7 +1966,7 @@ export function Transactions() {
           </div>
         )}
       </div>
-      {/* Bulk action bar â€” shown when items are selected */}
+      {/* Bulk action bar — shown when items are selected */}
       {selectMode && selectedIds.size > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card px-4 py-3 shadow-lg sm:px-6" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <div className="flex items-center justify-between gap-3">
@@ -1945,7 +1984,7 @@ export function Transactions() {
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => { setBulkDate(new Date().toISOString().slice(0, 10)); setBulkDateSheet(true) }}
+                onClick={() => { setBulkDate(todayLocal()); setBulkDateSheet(true) }}
               >
                 <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
                 Retime
@@ -2060,7 +2099,7 @@ export function Transactions() {
             const navigateToForm = (fn: () => void) => { setDetailTx(null); setTimeout(fn, 200) }
             return (
               <div>
-                {/* Mobile close handle â€” larger touch target than the tiny X */}
+                {/* Mobile close handle — larger touch target than the tiny X */}
                 {!isDesktop && (
                   <div className="flex items-center justify-between px-6 pb-2 pt-1">
                     <span className="text-xs font-bold text-muted-foreground">Transaction detail</span>
@@ -2157,7 +2196,7 @@ export function Transactions() {
                           const ctWallet = wallets.find(w => w.id === ct.wallet_id)
                           return (
                             <p key={ct.id} className="text-xs font-bold text-foreground">
-                              {money.format(ct.original_amount ?? ct.amount, ct.original_currency ?? money.baseCurrency)} â†’ {ctWallet?.name ?? 'wallet'}
+                              {money.format(ct.original_amount ?? ct.amount, ct.original_currency ?? money.baseCurrency)} → {ctWallet?.name ?? 'wallet'}
                             </p>
                           )
                         })}
@@ -2172,7 +2211,7 @@ export function Transactions() {
                             <ReceiptText size={13} />Transfer fee
                           </span>
                           <span className="text-sm font-bold text-[#FF8388]">
-                            âˆ’{money.format(feeTx.original_amount ?? feeTx.amount, feeTx.original_currency ?? money.baseCurrency)}
+                            −{money.format(feeTx.original_amount ?? feeTx.amount, feeTx.original_currency ?? money.baseCurrency)}
                           </span>
                         </div>
                       )
@@ -2191,6 +2230,14 @@ export function Transactions() {
                     )}
                   </div>
 
+                  {/* Tags */}
+                  <div className="mt-4">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+                      <Tag size={13} />Tags
+                    </p>
+                    <TransactionTagsEditor transactionId={tx.id} />
+                  </div>
+
                   {/* Merchant search shortcut */}
                   {tx.type !== 'transfer' && (
                     <button
@@ -2198,7 +2245,7 @@ export function Transactions() {
                       className="mt-3 w-full rounded-xl border border-border bg-secondary/50 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary active:scale-[0.99]"
                       onClick={() => { setDetailTx(null); setSearchQuery(tx.description); setFilter('all') }}
                     >
-                      Search all "{tx.description}" transactions â†’
+                      Search all "{tx.description}" transactions →
                     </button>
                   )}
                 </div>
