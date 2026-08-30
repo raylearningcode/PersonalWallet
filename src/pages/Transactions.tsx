@@ -29,7 +29,6 @@ import { formatDate, toLocalDateStr, todayLocal } from '@/lib/utils'
 import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { pushUndo, popUndo } from '@/lib/undoStack'
-import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { splitChangeByPolicy, getFiftyCoinRouting } from '@/lib/cashChange'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
@@ -97,8 +96,6 @@ export function Transactions() {
   const [walletSplits, setWalletSplits] = useState<{ wallet_id: string; amount: string }[]>([])
   const [transferFeeEnabled, setTransferFeeEnabled] = useState(false)
   const [transferFeeAmount, setTransferFeeAmount] = useState('')
-  const [feeKeypad, setFeeKeypad] = useState(false)
-  const [formActiveKeypad, setFormActiveKeypad] = useState<'amount' | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
@@ -292,7 +289,6 @@ export function Transactions() {
     setChangeCoinsWalletId('')
     setTransferFeeEnabled(false)
     setTransferFeeAmount('')
-    setFeeKeypad(false)
     setSplitEnabled(false)
     setSplitPortions([])
     setMultiWalletEnabled(false)
@@ -359,7 +355,6 @@ export function Transactions() {
         amount: formatNumberInput(money.fromBase(w.amount, origCurrency)),
       })))
     } else { setMultiWalletEnabled(false); setWalletSplits([]) }
-    setFeeKeypad(false)
     setIsFormOpen(true)
   }
 
@@ -922,7 +917,7 @@ export function Transactions() {
         ))}
       </div>
 
-      <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v); if (!v) { setFormActiveKeypad(null); setFeeKeypad(false) } }}>
+      <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
         <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 pb-safe-10 sm:max-w-md sm:p-6 sm:pb-safe-10">
           <SheetHeader className="mb-6 text-left">
             <SheetTitle>{editingTransaction ? 'Edit transaction' : 'New transaction'}</SheetTitle>
@@ -962,29 +957,16 @@ export function Transactions() {
                   </button>
                 ))}
               </div>
-              <Input
-                aria-label="Amount"
-                readOnly={!isDesktop}
-                data-keypad-trigger="amount"
+              <MoneyField
+                ariaLabel="Amount"
                 className="mx-auto h-16 w-full cursor-pointer border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
                 value={amount}
                 placeholder="0"
-                onChange={e => setAmount(formatNumberInput(e.target.value))}
-                onClick={() => setFormActiveKeypad('amount')}
-                onFocus={() => setFormActiveKeypad('amount')}
+                currency={inputCurrency}
+                onChange={v => setAmount(formatNumberInput(v))}
               />
               <p className="mt-1 text-xs text-muted-foreground">{inputCurrency}</p>
             </div>
-            {!isDesktop && formActiveKeypad === 'amount' && (
-              <MoneyKeypad
-                value={amount}
-                onChange={setAmount}
-                currency={inputCurrency}
-                allowDecimal
-                onDone={() => setFormActiveKeypad(null)}
-                doneLabel="Done"
-              />
-            )}
 
             {/* Description */}
             <div>
@@ -1182,7 +1164,7 @@ export function Transactions() {
                     checked={transferFeeEnabled}
                     onChange={e => {
                       setTransferFeeEnabled(e.target.checked)
-                      if (!e.target.checked) { setTransferFeeAmount(''); setFeeKeypad(false) }
+                      if (!e.target.checked) setTransferFeeAmount('')
                     }}
                   />
                 </label>
@@ -1190,26 +1172,14 @@ export function Transactions() {
                   <div className="mt-4 space-y-3">
                     <div>
                       <Label className="text-xs font-bold text-muted-foreground">Fee amount ({inputCurrency})</Label>
-                      <Input
-                        aria-label="Transfer fee amount"
-                        readOnly={!isDesktop}
+                      <MoneyField
+                        ariaLabel="Transfer fee amount"
                         className="mt-2 bg-secondary"
                         value={transferFeeAmount}
                         placeholder="0"
-                        onChange={e => setTransferFeeAmount(formatNumberInput(e.target.value))}
-                        onClick={() => setFeeKeypad(true)}
-                        onFocus={() => setFeeKeypad(true)}
+                        currency={inputCurrency}
+                        onChange={v => setTransferFeeAmount(formatNumberInput(v))}
                       />
-                      {!isDesktop && feeKeypad && (
-                        <MoneyKeypad
-                          value={transferFeeAmount}
-                          onChange={setTransferFeeAmount}
-                          currency={inputCurrency}
-                          allowDecimal
-                          onDone={() => setFeeKeypad(false)}
-                          doneLabel="Done"
-                        />
-                      )}
                     </div>
                     {parseNumberInput(transferFeeAmount) > 0 && (
                       <div className="space-y-1.5 rounded-xl border border-border bg-secondary p-3 text-sm">
@@ -1299,7 +1269,7 @@ export function Transactions() {
       </Sheet>
 
       <Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
-        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 sm:max-w-md sm:p-6">
+        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 pb-safe-10 sm:max-w-md sm:p-6 sm:pb-safe-10">
           <SheetHeader className="mb-6 text-left">
             <SheetTitle>Edit recurring rule</SheetTitle>
             <SheetDescription>Update the schedule or amount for this recurring payment.</SheetDescription>

@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod, getSplitAttribution, getBalancingSpent } from '@/lib/budget'
-import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -133,7 +132,6 @@ export function Budget() {
   const [addColor, setAddColor] = useState('#6c63ff')
 
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; name: string }>(null)
-  const [sheetKeypad, setSheetKeypad] = useState(false)
 
   const addFormRef = useRef<HTMLDivElement>(null)
   const addNameInputRef = useRef<HTMLInputElement>(null)
@@ -857,7 +855,7 @@ export function Budget() {
       />
 
       {/* Category detail sheet */}
-      <Sheet open={!!sheetCat} onOpenChange={open => { if (!open) { setSheetCat(null); setSheetKeypad(false) } }}>
+      <Sheet open={!!sheetCat} onOpenChange={open => { if (!open) setSheetCat(null) }}>
         <SheetContent
           side={isDesktop ? 'right' : 'bottom'}
           className={isDesktop
@@ -914,24 +912,13 @@ export function Budget() {
                   <p className="text-sm font-extrabold text-foreground">Edit budget</p>
                   <div>
                     <p className="mb-1 text-xs text-muted-foreground">Amount ({money.baseCurrency})</p>
-                    <Input
-                      aria-label="Budget amount"
-                      readOnly
+                    <MoneyField
+                      ariaLabel="Budget amount"
                       className="bg-secondary text-sm font-bold"
-                      value={formatNumberInput(sheetDraft.yearly_allocated)}
-                      onChange={e => setSheetDraft(d => ({ ...d, yearly_allocated: parseNumberInput(e.target.value) }))}
-                      onClick={() => setSheetKeypad(true)}
-                      onFocus={() => setSheetKeypad(true)}
+                      value={String(sheetDraft.yearly_allocated || '')}
+                      currency={money.baseCurrency}
+                      onChange={v => setSheetDraft(d => ({ ...d, yearly_allocated: parseNumberInput(v) }))}
                     />
-                    {sheetKeypad && (
-                      <MoneyKeypad
-                        value={String(sheetDraft.yearly_allocated || '')}
-                        onChange={v => setSheetDraft(d => ({ ...d, yearly_allocated: parseNumberInput(v) }))}
-                        currency={money.baseCurrency}
-                        onDone={() => setSheetKeypad(false)}
-                        doneLabel="Done"
-                      />
-                    )}
                   </div>
                   <div>
                     <p className="mb-1 text-xs text-muted-foreground">Period</p>

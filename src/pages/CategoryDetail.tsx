@@ -8,8 +8,7 @@ import { formatDate } from '@/lib/utils'
 import { txAmountColor, txAmountSign } from '@/lib/currency'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { MoneyKeypad } from '@/components/mobile/MoneyKeypad'
+import { MoneyField } from '@/components/mobile/MoneyField'
 import {
   useUpdateBudgetCategory,
   useDeleteBudgetCategory,
@@ -17,7 +16,7 @@ import {
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
-import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
+import { parseNumberInput } from '@/lib/numberInput'
 import type { BudgetPeriod } from '@/lib/budget'
 
 const PRESET_COLORS = [
@@ -42,7 +41,6 @@ export function CategoryDetail() {
   const [periodDate, setPeriodDate] = useState(() => { const d = new Date(); d.setDate(1); return d })
   const [editOpen, setEditOpen] = useState(false)
   const [editDraft, setEditDraft] = useState({ yearly_allocated: 0, budget_period: 'monthly' as BudgetPeriod, color: '#6c63ff' })
-  const [editKeypad, setEditKeypad] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -304,7 +302,7 @@ export function CategoryDetail() {
 
       {/* Menu sheet */}
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-10">
+        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
           <h2 className="mb-4 text-lg font-extrabold text-foreground">{category.name}</h2>
           <div className="space-y-2">
             <button
@@ -326,7 +324,7 @@ export function CategoryDetail() {
       </Sheet>
 
       {/* Edit sheet */}
-      <Sheet open={editOpen} onOpenChange={v => { setEditOpen(v); if (!v) setEditKeypad(false) }}>
+      <Sheet open={editOpen} onOpenChange={v => setEditOpen(v)}>
         <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-3xl border-border bg-background pb-safe-10">
           <SheetHeader className="mb-5">
             <SheetTitle>Edit budget — {category.name}</SheetTitle>
@@ -334,23 +332,13 @@ export function CategoryDetail() {
           <div className="space-y-4">
             <div>
               <p className="mb-1 text-xs text-muted-foreground">Amount ({money.baseCurrency})</p>
-              <Input
-                aria-label="Budget amount"
-                readOnly
+              <MoneyField
+                ariaLabel="Budget amount"
                 className="bg-secondary text-sm font-bold"
-                value={formatNumberInput(editDraft.yearly_allocated)}
-                onClick={() => setEditKeypad(true)}
-                onFocus={() => setEditKeypad(true)}
+                value={String(editDraft.yearly_allocated || '')}
+                currency={money.baseCurrency}
+                onChange={v => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(v) }))}
               />
-              {editKeypad && (
-                <MoneyKeypad
-                  value={String(editDraft.yearly_allocated || '')}
-                  onChange={v => setEditDraft(d => ({ ...d, yearly_allocated: parseNumberInput(v) }))}
-                  currency={money.baseCurrency}
-                  onDone={() => setEditKeypad(false)}
-                  doneLabel="Done"
-                />
-              )}
             </div>
             <div>
               <p className="mb-1 text-xs text-muted-foreground">Period</p>

@@ -281,7 +281,7 @@ export function AppLayout() {
 
       {/* Long-press action picker */}
       <Sheet open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
-        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-10">
+        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
           <SheetTitle className="sr-only">Quick actions</SheetTitle>
           <h2 className="mb-1 text-lg font-extrabold text-foreground">Quick add</h2>
           <p className="mb-5 text-sm text-muted-foreground">What do you want to record?</p>
