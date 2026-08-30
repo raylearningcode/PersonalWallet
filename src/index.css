@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    /* Slightly smaller base so the whole UI reads lighter and more minimal */
+    font-size: 15px;
+  }
   :root {
     --background: 225 44% 4%;
     --foreground: 220 40% 97%;
