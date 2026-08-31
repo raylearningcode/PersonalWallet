@@ -1,9 +1,9 @@
 // Shared transaction-entry save flow.
 //
-// QuickAddSheet, the AddTransaction page, and (previously) the Transactions
-// edit sheet each re-implemented the same validate → payload → cash-change →
-// undo-toast sequence. This module is the single implementation they all call,
-// so validation and cash routing can never drift apart again.
+// QuickAddSheet, the AddTransaction page, and the Transactions add/edit sheet
+// each re-implemented the same validate → payload → cash-change → toast
+// sequence. This module is the single implementation they all call, so
+// validation, cash routing, and edit cleanup can never drift apart again.
 
 import { parseNumberInput } from '@/lib/numberInput'
 import {
@@ -45,10 +45,19 @@ export interface SaveEntryOptions {
   walletSplits?: { wallet_id: string; amount: string }[]
   toBase: (amount: number, currency: string) => number
   addTransaction: (payload: TransactionEntryInput) => Promise<Transaction | undefined>
-  updateTransaction: (patch: { id: string; linked_transaction_id: string }) => Promise<unknown>
+  updateTransaction: (patch: { id: string } & Partial<Transaction>) => Promise<unknown>
   deleteTransaction: (id: string) => Promise<unknown>
   /** Called after a successful save (reset + close, or navigate back) */
   onDone: () => void
+  /** Edit mode: update this transaction instead of inserting a new one. */
+  editId?: string
+  /** Fields preserved through an edit (recurring linkage). */
+  editPreserve?: { recurring_rule_id: string | null; recurring_due_date: string | null }
+  /** System-generated rows linked to the edited transaction, deleted before the update. */
+  editCleanup?: { prevLinkedId: string | null; linkedTxIds: string[]; feeTxIds: string[] }
+  /** Transfer fee to (re)create on edit when type is 'transfer'. */
+  transferFeeEnabled?: boolean
+  transferFeeAmount?: string
 }
 
 /** Validates, persists the transaction, routes cash change, shows the undo toast. Returns success. */
@@ -60,6 +69,10 @@ export async function saveTransactionEntry(o: SaveEntryOptions): Promise<boolean
   }
   if (o.cannotSaveTransfer) {
     toast.error('Select two different wallets for a transfer')
+    return false
+  }
+  if (o.editId && o.type !== 'transfer' && !o.description.trim()) {
+    toast.error('Please enter a merchant name')
     return false
   }
   const selectedCategory = o.type === 'income' ? (o.category || INCOME_CATEGORIES[0]) : o.category
@@ -112,8 +125,8 @@ export async function saveTransactionEntry(o: SaveEntryOptions): Promise<boolean
       : (computedSplitPortions ? 'Split' : (selectedCategory || 'Other')),
     wallet_id: computedWalletSplits ? null : (o.walletId || null),
     transfer_wallet_id: o.type === 'transfer' ? o.transferWalletId : null,
-    recurring_rule_id: null,
-    recurring_due_date: null,
+    recurring_rule_id: o.editPreserve?.recurring_rule_id ?? null,
+    recurring_due_date: o.editPreserve?.recurring_due_date ?? null,
     date: o.date,
     needs_review: false,
     cash_tendered: o.cashEnabled && baseTendered > 0 ? baseTendered : null,
@@ -122,14 +135,31 @@ export async function saveTransactionEntry(o: SaveEntryOptions): Promise<boolean
   }
 
   try {
-    const savedTx = await o.addTransaction(payload)
+    let savedTxId: string | undefined
+
+    if (o.editId) {
+      // Edit mode: drop the previous system-generated rows, then update in place.
+      if (o.editCleanup) {
+        const { prevLinkedId, linkedTxIds, feeTxIds } = o.editCleanup
+        if (prevLinkedId && !linkedTxIds.includes(prevLinkedId)) {
+          await o.deleteTransaction(prevLinkedId)
+        }
+        for (const id of linkedTxIds) await o.deleteTransaction(id)
+        for (const id of feeTxIds) await o.deleteTransaction(id)
+      }
+      await o.updateTransaction({ id: o.editId, ...payload })
+      savedTxId = o.editId
+    } else {
+      const savedTx = await o.addTransaction(payload)
+      savedTxId = savedTx?.id
+    }
 
     // Create cash-change transfer(s)
     const changeTxIds: string[] = []
-    if (o.cashEnabled && baseChange > 0 && savedTx?.id) {
+    if (o.cashEnabled && baseChange > 0 && savedTxId) {
       const plan = planCashChange(parsedAmount, parsedTendered, o.inputCurrency)
       const changePayloads = buildChangeTransferPayloads({
-        savedTxId: savedTx.id, safeDescription, walletId: o.walletId,
+        savedTxId, safeDescription, walletId: o.walletId,
         changeBillsWalletId: o.changeBillsWalletId, changeCoinsWalletId: o.changeCoinsWalletId,
         plan, date: o.date, inputCurrency: o.inputCurrency,
         toBase: o.toBase,
@@ -144,17 +174,41 @@ export async function saveTransactionEntry(o: SaveEntryOptions): Promise<boolean
         }
       }
       if (changeTxIds.length > 0) {
-        try { await o.updateTransaction({ id: savedTx.id, linked_transaction_id: changeTxIds[0] }) }
+        try { await o.updateTransaction({ id: savedTxId, linked_transaction_id: changeTxIds[0] }) }
         catch { /* link failure is non-fatal */ }
       }
+    }
+
+    // Recreate the transfer fee row on edit
+    if (o.editId && o.type === 'transfer' && o.transferFeeEnabled && parseNumberInput(o.transferFeeAmount ?? '') > 0) {
+      const parsedFee = parseNumberInput(o.transferFeeAmount!)
+      await o.addTransaction({
+        description: `Transfer fee${safeDescription !== 'Transfer' ? ` — ${safeDescription}` : ''}`,
+        amount: o.toBase(parsedFee, o.inputCurrency),
+        original_amount: parsedFee,
+        original_currency: o.inputCurrency,
+        type: 'expense',
+        category: 'Transfer Fee',
+        wallet_id: o.walletId || null,
+        transfer_wallet_id: null,
+        recurring_rule_id: null,
+        recurring_due_date: null,
+        date: o.date,
+        needs_review: false,
+        is_system_generated: true,
+        linked_transaction_id: o.editId,
+        cash_tendered: null,
+      })
     }
 
     if (o.walletId) localStorage.setItem(LAST_WALLET_KEY, o.walletId)
     if (selectedCategory) localStorage.setItem(LAST_CATEGORY_KEY, selectedCategory)
 
     hapticSuccess()
-    if (o.cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
-      const allIds = [savedTx.id, ...changeTxIds]
+    if (o.editId) {
+      toast.success('Transaction updated')
+    } else if (o.cashEnabled && changeTxIds.length > 0 && savedTxId) {
+      const allIds = [savedTxId, ...changeTxIds]
       toast.success('Cash payment saved · change routed', {
         duration: 8000,
         action: {
