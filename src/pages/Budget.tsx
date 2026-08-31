@@ -123,7 +123,10 @@ export function Budget() {
   }
 
   const [periodDate, setPeriodDate] = useState(() => { const d = new Date(); d.setDate(1); return d })
-  const [paceAlertDismissed, setPaceAlertDismissed] = useState(() => safeGet('finpath_budget_pace_dismissed') === '1')
+  // Pace-alert dismissal is scoped to the current month — a user who dismissed
+  // it in July should see August's warning again.
+  const paceDismissKey = `finpath_budget_pace_dismissed_${new Date().getFullYear()}-${new Date().getMonth() + 1}`
+  const [paceAlertDismissed, setPaceAlertDismissed] = useState(() => safeGet(paceDismissKey) === '1')
   const [riskNoteDismissed, setRiskNoteDismissed] = useState(() => safeGet('finpath_budget_risk_dismissed') === '1')
   const [showAdd, setShowAdd] = useState(false)
   const [addName, setAddName] = useState('')
@@ -435,7 +438,7 @@ export function Budget() {
           <button
             type="button"
             aria-label="Dismiss pace alert"
-            onClick={() => { localStorage.setItem('finpath_budget_pace_dismissed', '1'); setPaceAlertDismissed(true) }}
+            onClick={() => { localStorage.setItem(paceDismissKey, '1'); setPaceAlertDismissed(true) }}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />

@@ -16,8 +16,7 @@ import {
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
-import { hapticSuccess } from '@/lib/haptics'
-import { planCashChange, buildChangeTransferPayloads } from '@/lib/cashSave'
+import { saveTransactionEntry, LAST_CATEGORY_KEY, LAST_WALLET_KEY, INCOME_CATEGORIES } from '@/lib/saveTransaction'
 import { pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, isAiConfigured } from '@/lib/ai'
 import { todayLocal } from '@/lib/utils'
@@ -26,11 +25,7 @@ import { MoneyField } from '@/components/mobile/MoneyField'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import { toast } from 'sonner'
 
-const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 type EntryType = 'income' | 'expense' | 'transfer'
-
-const LAST_CATEGORY_KEY = 'finpath_last_category'
-const LAST_WALLET_KEY = 'finpath_last_wallet'
 
 export function AddTransaction() {
   const navigate = useNavigate()
@@ -176,111 +171,22 @@ export function AddTransaction() {
   }
 
   const handleSave = async () => {
-    const parsedAmount = parseNumberInput(amount)
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Please enter a valid amount')
-      return
-    }
-    if (cannotSaveTransfer) {
-      toast.error('Select two different wallets for a transfer')
-      return
-    }
-    const selectedCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
-    if (type !== 'transfer' && !walletId) {
-      toast.error('Please select a wallet')
-      return
-    }
-
-    // Cash validation — only when the cash UI is actually shown (cash wallet):
-    // a cash-enabled state with a non-cash wallet has no switch to turn it
-    // off, so it must never block the save.
-    const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
-    if (cashEnabled && showCashAssistant && Number.isFinite(parsedTendered) && parsedTendered > 0 && parsedTendered < parsedAmount) {
-      toast.error('Cash given must be at least the expense amount')
-      return
-    }
-    if (cashEnabled && showCashAssistant && (!Number.isFinite(parseNumberInput(cashTendered)) || parseNumberInput(cashTendered) <= 0)) {
-      toast.error('Enter the cash amount given'); return
-    }
-
-    const safeDescription = description.trim() ||
-      (type === 'transfer' ? 'Transfer' :
-       type === 'income' ? `${selectedCategory || 'Income'} income` :
-       `${selectedCategory || 'Expense'} expense`)
-
-    const baseAmount = money.toBase(parsedAmount, inputCurrency)
-    const baseTendered = cashEnabled ? money.toBase(parsedTendered, inputCurrency) : 0
-    const baseChange = Math.max(0, baseTendered - baseAmount)
-
-    const payload = {
-      description: safeDescription,
-      amount: baseAmount,
-      original_amount: parsedAmount,
-      original_currency: inputCurrency,
-      type,
-      category: type === 'transfer' ? 'Transfer' : (selectedCategory || 'Other'),
-      wallet_id: walletId || null,
-      transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
-      recurring_rule_id: null,
-      recurring_due_date: null,
-      date,
-      needs_review: false,
-      cash_tendered: cashEnabled && baseTendered > 0 ? baseTendered : null,
-    }
-
-    try {
-      const savedTx = await addTransaction.mutateAsync(payload)
-
-      // Create cash-change transfer(s)
-      const changeTxIds: string[] = []
-      if (cashEnabled && baseChange > 0 && savedTx?.id) {
-        const plan = planCashChange(parsedAmount, parsedTendered, inputCurrency)
-        const changePayloads = buildChangeTransferPayloads({
-          savedTxId: savedTx.id, safeDescription, walletId,
-          changeBillsWalletId, changeCoinsWalletId,
-          plan, date, inputCurrency,
-          toBase: money.toBase,
-        })
-        for (const p of changePayloads) {
-          try {
-            const created = await addTransaction.mutateAsync(p as Parameters<typeof addTransaction.mutateAsync>[0])
-            if (created?.id) changeTxIds.push(created.id)
-          } catch (err) {
-            console.error('Failed to create change transfer:', err)
-            toast.error('Failed to route change')
-          }
-        }
-        if (changeTxIds.length > 0) {
-          try { await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: changeTxIds[0] }) }
-          catch { /* link failure is non-fatal */ }
-        }
-      }
-
-      if (walletId) localStorage.setItem(LAST_WALLET_KEY, walletId)
-      if (selectedCategory) localStorage.setItem(LAST_CATEGORY_KEY, selectedCategory)
-
-      hapticSuccess()
-      if (cashEnabled && changeTxIds.length > 0 && savedTx?.id) {
-        const allIds = [savedTx.id, ...changeTxIds]
-        toast.success('Cash payment saved · change routed', {
-          duration: 8000,
-          action: {
-            label: 'Undo',
-            onClick: async () => {
-              for (const id of allIds) await deleteTransaction.mutateAsync(id)
-              toast.success('Cash payment undone')
-            },
-          },
-        })
-      } else {
-        toast.success('Transaction added')
-      }
-      // Go back to where the user came from; fall back to history if opened directly.
-      if (window.history.length > 1) navigate(-1)
-      else navigate('/transactions', { replace: true })
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save transaction')
-    }
+    const ok = await saveTransactionEntry({
+      type, amount, inputCurrency, date, description, category, walletId, transferWalletId,
+      cannotSaveTransfer,
+      cashEnabled, cashTendered, showCashAssistant,
+      changeBillsWalletId, changeCoinsWalletId,
+      toBase: money.toBase,
+      addTransaction: addTransaction.mutateAsync,
+      updateTransaction: updateTransaction.mutateAsync,
+      deleteTransaction: deleteTransaction.mutateAsync,
+      onDone: () => {
+        // Go back to where the user came from; fall back to history if opened directly.
+        if (window.history.length > 1) navigate(-1)
+        else navigate('/transactions', { replace: true })
+      },
+    })
+    if (!ok) return
   }
 
   if (isDesktop) return null

@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
+import { verifyTOTP } from '@/lib/totp'
 
 export const PIN_STORAGE_KEY = 'finpath_pin'
 export const PIN_SESSION_KEY = 'finpath_unlocked'
 export const BIOMETRIC_CRED_KEY = 'finpath_biometric_cred_id'
+export const TOTP_SECRET_KEY = 'finpath_totp_secret'
+
+const MAX_PIN_ATTEMPTS = 5
+const PIN_LOCKOUT_MS = 30_000
 
 const PIN_SALT = 'finpath-pin-salt-v1'
 const HASH_RE = /^[0-9a-f]{64}$/
@@ -70,14 +75,29 @@ export async function authenticateBiometric(): Promise<boolean> {
 }
 
 export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
+  const [stage, setStage] = useState<'pin' | 'totp'>('pin')
   const [digits, setDigits] = useState('')
   const [error, setError] = useState(false)
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [biometricLoading, setBiometricLoading] = useState(false)
+  const [lockLeft, setLockLeft] = useState(0)
   const hasBiometricCred = !!localStorage.getItem(BIOMETRIC_CRED_KEY)
   const digitsRef = useRef('')
   const errorRef = useRef(false)
   const errorTimerRef = useRef<number | null>(null)
+  const failsRef = useRef(0)
+  const lockUntilRef = useRef(0)
+  const locked = lockLeft > 0
+
+  // Countdown for the attempt lockout
+  useEffect(() => {
+    if (!locked) return
+    const t = window.setInterval(() => {
+      const left = lockUntilRef.current - Date.now()
+      setLockLeft(left > 0 ? left : 0)
+    }, 400)
+    return () => window.clearInterval(t)
+  }, [locked])
 
   useEffect(() => {
     isBiometricAvailable().then(setBiometricAvailable)
@@ -110,7 +130,16 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
     else setError(true)
   }
 
-  const fail = () => {
+  const fail = (kind: 'pin' | 'totp' = 'pin') => {
+    // Lockout counts PIN failures only — a wrong authenticator code is not a brute-force signal
+    if (kind === 'pin') {
+      failsRef.current += 1
+      if (failsRef.current >= MAX_PIN_ATTEMPTS) {
+        failsRef.current = 0
+        lockUntilRef.current = Date.now() + PIN_LOCKOUT_MS
+        setLockLeft(PIN_LOCKOUT_MS)
+      }
+    }
     errorRef.current = true
     setError(true)
     digitsRef.current = ''
@@ -140,6 +169,7 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
   }
 
   const press = (d: string) => {
+    if (locked) return
     // First press after an error resets the entry and registers the digit
     // (instead of being swallowed like before).
     const base = errorRef.current ? '' : digitsRef.current
@@ -151,15 +181,33 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
         errorTimerRef.current = null
       }
     }
-    if (base.length >= 4) return
+    const maxLen = stage === 'totp' ? 6 : 4
+    if (base.length >= maxLen) return
     const next = base + d
     digitsRef.current = next
     setDigits(next)
-    if (next.length === 4) {
-      verifyPin(next).then(ok => {
-        if (ok) handleUnlock()
-        else fail()
-      })
+    if (next.length === maxLen) {
+      if (stage === 'totp') {
+        const secret = localStorage.getItem(TOTP_SECRET_KEY)
+        verifyTOTP(secret ?? '', next).then(ok => {
+          if (ok) handleUnlock()
+          else fail('totp')
+        })
+      } else {
+        verifyPin(next).then(ok => {
+          if (!ok) { fail('pin'); return }
+          // Two-step unlock: PIN first, then authenticator code when TOTP is enabled
+          if (localStorage.getItem(TOTP_SECRET_KEY)) {
+            setStage('totp')
+            digitsRef.current = ''
+            setDigits('')
+            errorRef.current = false
+            setError(false)
+          } else {
+            handleUnlock()
+          }
+        })
+      }
     }
   }
 
@@ -191,9 +239,12 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background px-6">
       <p className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">FinPath</p>
-      <h1 className="mb-8 text-2xl font-extrabold text-foreground">Enter your PIN</h1>
-      <div className="mb-3 flex gap-4">
-        {[0, 1, 2, 3].map(i => (
+      <h1 className="text-2xl font-extrabold text-foreground">{stage === 'totp' ? 'Enter authenticator code' : 'Enter your PIN'}</h1>
+      {stage === 'totp' && (
+        <p className="mb-5 mt-1 text-sm text-muted-foreground">Two-step verification is on — open your authenticator app</p>
+      )}
+      <div className={`mb-3 flex ${stage === 'totp' ? 'mt-4 gap-3' : 'mt-8 gap-4'}`}>
+        {Array.from({ length: stage === 'totp' ? 6 : 4 }).map((_, i) => (
           <div
             key={i}
             className={`h-4 w-4 rounded-full border-2 transition-colors duration-150 ${
@@ -207,7 +258,11 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
         ))}
       </div>
       <div className="mb-6 h-5">
-        {error && <p className="text-sm font-bold text-[#FF8388]">Incorrect PIN</p>}
+        {locked ? (
+          <p className="text-sm font-bold text-[#FFCF73]">Too many attempts — try again in {Math.ceil(lockLeft / 1000)}s</p>
+        ) : error ? (
+          <p className="text-sm font-bold text-[#FF8388]">{stage === 'totp' ? 'Incorrect code' : 'Incorrect PIN'}</p>
+        ) : null}
       </div>
       <div className="grid w-full max-w-[280px] grid-cols-3 gap-3">
         {(['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'] as const).map((key, i) =>
@@ -215,14 +270,30 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
             <button
               key={key + i}
               type="button"
+              disabled={locked}
               onClick={() => key === '⌫' ? del() : press(key)}
-              className="flex h-16 items-center justify-center rounded-2xl bg-secondary text-2xl font-extrabold text-foreground transition-all hover:bg-muted active:scale-95"
+              className="flex h-16 items-center justify-center rounded-2xl bg-secondary text-2xl font-extrabold text-foreground transition-all hover:bg-muted active:scale-95 disabled:opacity-40 disabled:active:scale-100"
             >
               {key}
             </button>
           )
         )}
       </div>
+      {stage === 'totp' && (
+        <button
+          type="button"
+          onClick={() => {
+            setStage('pin')
+            digitsRef.current = ''
+            setDigits('')
+            errorRef.current = false
+            setError(false)
+          }}
+          className="mt-4 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← Back to PIN
+        </button>
+      )}
       {biometricAvailable && hasBiometricCred && (
         <button
           type="button"
