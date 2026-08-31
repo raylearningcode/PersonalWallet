@@ -12,19 +12,21 @@ import {
   useBudgetCategories,
   useTransactions,
   useWallets,
+  useMarkReviewed,
 } from '@/lib/queries'
 import { CURRENCIES, useMoney } from '@/lib/currency'
-import { parseNumberInput } from '@/lib/numberInput'
+import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { getMerchantSuggestion } from '@/lib/financeOs'
 import { pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, isAiConfigured } from '@/lib/ai'
 import { takePhotoWithCamera, isNativeCameraAvailable } from '@/lib/camera'
 import { saveTransactionEntry, LAST_CATEGORY_KEY, LAST_WALLET_KEY, INCOME_CATEGORIES } from '@/lib/saveTransaction'
 import { todayLocal } from '@/lib/utils'
-import { ArrowLeft, ScanLine, Loader2, ChevronDown, ChevronUp, Camera as CameraIcon } from 'lucide-react'
+import { ArrowLeft, ScanLine, Loader2, ChevronDown, ChevronUp, Camera as CameraIcon, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
+import type { Transaction } from '@/types'
 
 export type EntryType = 'income' | 'expense' | 'transfer'
 
@@ -35,6 +37,8 @@ interface TransactionFormProps {
   initialCash?: boolean
   /** 'sheet' = inside QuickAddSheet (bottom sheet, sticky save bar); 'page' = mobile full page (header + fixed save bar). */
   variant?: 'sheet' | 'page'
+  /** Edit mode: prefills from this transaction and updates it on save. */
+  editTransaction?: Transaction | null
   /** Called after a successful save. */
   onDone: () => void
   /** Page variant: back arrow handler. */
@@ -43,7 +47,7 @@ interface TransactionFormProps {
   onNavigate?: () => void
 }
 
-export function TransactionForm({ initialType = 'expense', initialCash = false, variant = 'sheet', onDone, onBack, onNavigate }: TransactionFormProps) {
+export function TransactionForm({ initialType = 'expense', initialCash = false, variant = 'sheet', editTransaction = null, onDone, onBack, onNavigate }: TransactionFormProps) {
   const money = useMoney()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
@@ -52,6 +56,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
   const updateTransaction = useUpdateTransaction()
   const deleteTransaction = useDeleteTransaction()
   const addRecurringRule = useAddRecurringRule()
+  const markReviewed = useMarkReviewed()
 
   const [type, setType] = useState<EntryType>(initialType)
   const [amount, setAmount] = useState('')
@@ -77,6 +82,9 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
   // Multi-wallet payment
   const [multiWalletEnabled, setMultiWalletEnabled] = useState(false)
   const [walletSplits, setWalletSplits] = useState<{ wallet_id: string; amount: string }[]>([])
+  // Transfer fee (edit mode, transfer type)
+  const [transferFeeEnabled, setTransferFeeEnabled] = useState(false)
+  const [transferFeeAmount, setTransferFeeAmount] = useState('')
 
   // Whether the initialCash enablement has already been applied (open-once
   // semantics) — wallet changes must never force cash back on and fight the
@@ -131,6 +139,48 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     setChangeBillsWalletId(billsWallet?.id ?? '')
   }, [initialCash, wallets, walletId])
 
+  // One-shot edit prefill: runs after the restore effects so the transaction's
+  // own values win over last-used defaults.
+  const prefillAppliedRef = useRef(false)
+  useEffect(() => {
+    if (!editTransaction || prefillAppliedRef.current) return
+    prefillAppliedRef.current = true
+    const t = editTransaction
+    const origCurrency = t.original_currency ?? money.displayCurrency
+    setType(t.type === 'income' || t.type === 'transfer' ? t.type : 'expense')
+    setDescription(t.description)
+    setAmount(String(t.original_amount ?? t.amount))
+    setInputCurrency(origCurrency)
+    setDate(t.date)
+    setCategory(t.category)
+    setWalletId(t.wallet_id ?? wallets[0]?.id ?? '')
+    setTransferWalletId(t.transfer_wallet_id ?? wallets.find(w => w.id !== t.wallet_id)?.id ?? '')
+    if (t.cash_tendered && t.cash_tendered > 0) {
+      setCashEnabled(true)
+      setCashTendered(formatNumberInput(Math.round(money.fromBase(t.cash_tendered, origCurrency))))
+      const linked = transactions.filter(tx => tx.linked_transaction_id === t.id && tx.is_system_generated)
+      setChangeBillsWalletId(linked.find(tx => tx.description?.startsWith('Change bills'))?.transfer_wallet_id ?? '')
+      setChangeCoinsWalletId(
+        linked.find(tx => tx.description?.startsWith('Change coins'))?.transfer_wallet_id
+        ?? linked.find(tx => tx.description?.startsWith('Change'))?.transfer_wallet_id
+        ?? ''
+      )
+    }
+    if (t.split_portions && t.split_portions.length > 0) {
+      setSplitEnabled(true)
+      setSplitPortions(t.split_portions.map(p => ({ category: p.category, amount: formatNumberInput(money.fromBase(p.amount, origCurrency)) })))
+    }
+    if (t.wallet_splits && t.wallet_splits.length > 0) {
+      setMultiWalletEnabled(true)
+      setWalletSplits(t.wallet_splits.map(w => ({ wallet_id: w.wallet_id, amount: formatNumberInput(money.fromBase(w.amount, origCurrency)) })))
+    }
+    const fee = transactions.find(tx => tx.linked_transaction_id === t.id && tx.category === 'Transfer Fee' && tx.is_system_generated)
+    if (fee) {
+      setTransferFeeEnabled(true)
+      setTransferFeeAmount(String(fee.original_amount ?? fee.amount))
+    }
+  }, [editTransaction, money, transactions, wallets])
+
   const merchantSuggestion = useMemo(
     () => type === 'transfer' ? null : getMerchantSuggestion(description, transactions),
     [description, transactions, type]
@@ -161,6 +211,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     setSplitPortions([])
     setMultiWalletEnabled(false)
     setWalletSplits([])
+    setTransferFeeEnabled(false)
+    setTransferFeeAmount('')
   }
 
   const handleReceiptImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,8 +275,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     }
   }
 
-  const handleSave = async () => {
-    await saveTransactionEntry({
+  const handleSave = async (): Promise<boolean> => {
+    return saveTransactionEntry({
       type, amount, inputCurrency, date, description, category, walletId, transferWalletId,
       cannotSaveTransfer,
       cashEnabled, cashTendered, showCashAssistant,
@@ -235,6 +287,17 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
       addTransaction: addTransaction.mutateAsync,
       updateTransaction: updateTransaction.mutateAsync,
       deleteTransaction: deleteTransaction.mutateAsync,
+      editId: editTransaction?.id,
+      editPreserve: editTransaction ? {
+        recurring_rule_id: editTransaction.recurring_rule_id ?? null,
+        recurring_due_date: editTransaction.recurring_due_date ?? null,
+      } : undefined,
+      editCleanup: editTransaction ? {
+        prevLinkedId: editTransaction.linked_transaction_id ?? null,
+        linkedTxIds: transactions.filter(tx => tx.linked_transaction_id === editTransaction.id && tx.is_system_generated).map(tx => tx.id),
+        feeTxIds: transactions.filter(tx => tx.linked_transaction_id === editTransaction.id && tx.category === 'Transfer Fee' && tx.is_system_generated).map(tx => tx.id),
+      } : undefined,
+      transferFeeEnabled, transferFeeAmount,
       onDone,
     })
   }
@@ -256,12 +319,14 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     setMultiWalletEnabled(false)
   }
 
-  const title = showAdvanced
-    ? 'New transaction'
-    : type === 'transfer' ? 'Transfer money'
-    : type === 'income' ? 'Add income'
-    : cashEnabled ? 'Cash payment'
-    : 'Add expense'
+  const title = editTransaction
+    ? 'Edit transaction'
+    : showAdvanced
+      ? 'New transaction'
+      : type === 'transfer' ? 'Transfer money'
+      : type === 'income' ? 'Add income'
+      : cashEnabled ? 'Cash payment'
+      : 'Add expense'
 
   const typeToggle = (compact: boolean) => (
     <div className={compact ? 'inline-flex rounded-full border border-border bg-secondary p-1' : 'mx-auto mb-3 inline-flex rounded-full border border-border bg-secondary p-1'}>
@@ -432,18 +497,33 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
             Add a budget category first →
           </Link>
         ) : (
-          <Button
-            className="h-14 w-full text-base font-extrabold"
-            onClick={handleSave}
-            disabled={
-              addTransaction.isPending ||
-              addRecurringRule.isPending ||
-              parseNumberInput(amount) <= 0 ||
-              cannotSaveTransfer
-            }
-          >
-            {addTransaction.isPending ? 'Saving…' : variant === 'page' ? 'Save transaction' : `Add ${type}`}
-          </Button>
+          <>
+            {editTransaction?.needs_review && (
+              <Button
+                className="mb-2 w-full gap-2 bg-[#FFCF73] font-extrabold text-background hover:bg-[#FFCF73]/90"
+                onClick={async () => {
+                  const ok = await handleSave()
+                  if (ok) await markReviewed.mutateAsync(editTransaction.id)
+                }}
+              >
+                <CheckCircle className="h-4 w-4" />
+                Mark reviewed & save
+              </Button>
+            )}
+            <Button
+              className="h-14 w-full text-base font-extrabold"
+              onClick={handleSave}
+              disabled={
+                addTransaction.isPending ||
+                updateTransaction.isPending ||
+                addRecurringRule.isPending ||
+                parseNumberInput(amount) <= 0 ||
+                cannotSaveTransfer
+              }
+            >
+              {addTransaction.isPending || updateTransaction.isPending ? 'Saving…' : editTransaction ? `Save ${type}` : variant === 'page' ? 'Save transaction' : `Add ${type}`}
+            </Button>
+          </>
         )}
       </div>
     )
@@ -921,6 +1001,42 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
                   </div>
                 )
               })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* —— Transfer fee (transfer edits only) —— */}
+      {type === 'transfer' && editTransaction && (
+        <div className="rounded-[1.4rem] border border-border bg-card p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span>
+              <span className="block text-sm font-extrabold text-foreground">Transfer fee</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">Add the fee this transfer cost, tracked as its own expense</span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={transferFeeEnabled}
+              aria-label="Add transfer fee"
+              onClick={() => {
+                setTransferFeeEnabled(!transferFeeEnabled)
+                if (transferFeeEnabled) setTransferFeeAmount('')
+              }}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${transferFeeEnabled ? 'bg-primary' : 'bg-muted'}`}
+            >
+              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${transferFeeEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+          {transferFeeEnabled && (
+            <div className="mt-3">
+              <MoneyField
+                value={transferFeeAmount}
+                onChange={setTransferFeeAmount}
+                currency={inputCurrency}
+                ariaLabel="Transfer fee amount"
+                className="h-11 w-full rounded-lg bg-secondary text-sm font-extrabold"
+              />
             </div>
           )}
         </div>

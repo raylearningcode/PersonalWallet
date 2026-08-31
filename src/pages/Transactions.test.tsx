@@ -125,8 +125,7 @@ describe('Transactions', () => {
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Lunch' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '120000' } })
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-10' } })
-    fireEvent.click(screen.getByRole('combobox', { name: 'Category' }))
-    fireEvent.click(screen.getByRole('option', { name: 'Food' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add expense' }))
 
     expect(addTransaction).toHaveBeenCalledWith(expect.objectContaining({
@@ -171,7 +170,7 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
     expect(screen.queryByText('Merchant name')).not.toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Transfer note'), { target: { value: 'Move to card' } })
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Move to card' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '300' } })
     fireEvent.change(screen.getByLabelText('From wallet'), { target: { value: 'cash' } })
     fireEvent.change(screen.getByLabelText('To wallet'), { target: { value: 'card' } })
@@ -223,8 +222,8 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.click(screen.getByRole('button', { name: 'Income' }))
 
-    expect(screen.getByRole('option', { name: 'Wage' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'Food' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Wage' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Food' })).not.toBeInTheDocument()
   })
 
   it('filters history when an expense category is selected', () => {
