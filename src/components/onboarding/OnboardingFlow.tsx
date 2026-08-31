@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAddWallet, useAddTransaction, useWallets, useBudgetCategories, useAddBudgetCategory, useSaveAppSettings } from '@/lib/queries'
+import { useAddWallet, useAddTransaction, useWallets, useBudgetCategories, useAddBudgetCategory, useSaveAppSettings, useUpdateWallet } from '@/lib/queries'
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { todayLocal } from '@/lib/utils'
@@ -39,18 +39,22 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const addTransaction = useAddTransaction()
   const addCategory = useAddBudgetCategory()
   const saveSettings = useSaveAppSettings()
+  const updateWallet = useUpdateWallet()
   const { data: wallets = [] } = useWallets()
   const { data: categories = [] } = useBudgetCategories()
   const [welcomeCurrency, setWelcomeCurrency] = useState('')
   const [starting, setStarting] = useState(false)
 
-  // Persist the chosen base currency, then continue — seeding on the next step
-  // uses money.displayCurrency, which follows app_settings.
+  // Persist the chosen base currency, then continue — the seeded Cash wallet
+  // follows so every later amount matches the user's pick.
   const handleGetStarted = async () => {
     setStarting(true)
     try {
       if (welcomeCurrency && welcomeCurrency !== money.displayCurrency) {
         await saveSettings.mutateAsync({ base_currency: welcomeCurrency, currency: welcomeCurrency })
+        if (seededWalletIdRef.current) {
+          await updateWallet.mutateAsync({ id: seededWalletIdRef.current, currency: welcomeCurrency })
+        }
       }
       setStep(1)
     } catch {
@@ -66,6 +70,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const [seeding, setSeeding] = useState(true)
   const [seedError, setSeedError] = useState(false)
   const seededRef = useRef(false)
+  const seededWalletIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (seededRef.current) return
@@ -77,13 +82,14 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     ;(async () => {
       try {
         if (needWallet) {
-          await addWallet.mutateAsync({
+          const created = await addWallet.mutateAsync({
             name: 'Cash',
             type: 'cash',
             currency: money.displayCurrency,
             balance: 0,
             cash_role: 'mixed',
           })
+          seededWalletIdRef.current = created?.id ?? null
         }
         if (needCategories) {
           for (const c of DEFAULT_BUDGET_CATEGORIES) {

@@ -3,11 +3,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { OnboardingFlow } from './OnboardingFlow'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 
-const { addWallet, addCategory, addTransaction, saveSettings } = vi.hoisted(() => ({
+const { addWallet, addCategory, addTransaction, saveSettings, updateWallet } = vi.hoisted(() => ({
   addWallet: vi.fn(async () => ({ id: 'w1' })),
   addCategory: vi.fn(async () => ({ id: 'c1' })),
   addTransaction: vi.fn(async () => ({ id: 't1' })),
   saveSettings: vi.fn(async () => ({})),
+  updateWallet: vi.fn(async () => ({ id: 'w1' })),
 }))
 
 const state = vi.hoisted(() => ({ wallets: [] as { id: string; name: string; type: string }[] }))
@@ -19,6 +20,7 @@ vi.mock('@/lib/queries', () => ({
   useAddBudgetCategory: () => ({ mutateAsync: addCategory, isPending: false }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
   useSaveAppSettings: () => ({ mutateAsync: saveSettings, isPending: false }),
+  useUpdateWallet: () => ({ mutateAsync: updateWallet, isPending: false }),
 }))
 
 vi.mock('@/hooks/useIsDesktop', () => ({
