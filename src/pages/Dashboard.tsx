@@ -241,7 +241,7 @@ export function Dashboard() {
       </Card>
 
       {/* Recent activity (first on mobile) + Budget health */}
-      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mb-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <Card className="order-1 lg:order-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Recent activity</CardTitle>
@@ -262,7 +262,8 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="order-2 lg:order-1">
+        <div className="order-2 flex flex-col gap-6 lg:order-1">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Budget health</CardTitle>
             <Link to="/budget" className="text-xs font-bold text-primary hover:underline">View all <ChevronRight className="inline h-3 w-3" /></Link>
@@ -284,11 +285,10 @@ export function Dashboard() {
             })}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Upcoming bills */}
-      {upcomingBills.length > 0 && (
-        <Card className="mb-6">
+        {/* Upcoming bills */}
+        {upcomingBills.length > 0 && (
+          <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Upcoming bills</CardTitle>
             <Link to="/subscriptions" className="text-xs font-bold text-primary hover:underline">Manage <ChevronRight className="inline h-3 w-3" /></Link>
@@ -304,8 +304,10 @@ export function Dashboard() {
               </div>
             ))}
           </CardContent>
-        </Card>
-      )}
+          </Card>
+        )}
+        </div>
+      </div>
 
       {/* AI Insights — hidden on mobile until a key is configured (no dead-end card) */}
       {!aiCardDismissed && (isAiConfigured() || isDesktop) && (

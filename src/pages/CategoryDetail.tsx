@@ -191,6 +191,10 @@ export function CategoryDetail() {
         </button>
       </div>
 
+      {/* Desktop: summary rail + transactions */}
+      <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start lg:gap-6">
+        <div className="lg:sticky lg:top-6">
+
       {/* Category header */}
       <div className="mb-6 flex items-center gap-4">
         <div
@@ -253,6 +257,9 @@ export function CategoryDetail() {
         </div>
       )}
 
+        </div>
+
+        <div className="min-w-0">
       {/* Transaction list */}
       <div className="rounded-[1.4rem] border border-border bg-card px-4 py-5">
         <div className="mb-4 flex items-center justify-between">
@@ -303,6 +310,9 @@ export function CategoryDetail() {
             ))}
           </div>
         )}
+      </div>
+
+        </div>
       </div>
 
       {/* Transaction detail sheet */}
