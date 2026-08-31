@@ -21,6 +21,10 @@ vi.mock('@/lib/queries', () => ({
   useAppSettings: () => ({ data: { user_name: '', email: '', currency: 'IDR', base_currency: 'IDR' } }),
   useWallets: () => ({ data: [] }),
   useRecurringRules: () => ({ data: [] }),
+  useNetWorthSnapshots: () => ({ data: [] }),
+
+  useSaveNetWorthSnapshot: () => ({ mutate: vi.fn(), isPending: false }),
+
   useGoals: () => ({ data: [] }),
   useAddTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAddWallet: () => ({ mutateAsync: vi.fn(), isPending: false }),

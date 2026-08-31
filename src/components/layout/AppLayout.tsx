@@ -8,6 +8,7 @@ import { hasGuestData } from '@/lib/localStore'
 import { getQueue } from '@/lib/offlineCache'
 import { processSyncQueue } from '@/lib/syncQueue'
 import { scheduleUpcomingBillNotifications } from '@/lib/notifications'
+import { isAiConfigured } from '@/lib/ai'
 import { startRealtimeSync } from '@/lib/realtime'
 import { useKeyboardShortcuts } from '@/lib/keyboard'
 import { toast, Toaster } from 'sonner'
@@ -141,6 +142,20 @@ export function AppLayout() {
     }, 1200)
     return () => window.clearTimeout(timer)
   }, [isDesktop])
+
+  // Weekly nudge: remind to generate AI insights roughly once a week
+  const DIGEST_KEY = 'finpath_ai_digest_last'
+  useEffect(() => {
+    if (!isAiConfigured()) return
+    let last = 0
+    try { last = Number(localStorage.getItem(DIGEST_KEY) ?? 0) } catch { /* ignore */ }
+    if (Date.now() - last < 7 * 86_400_000) return
+    try { localStorage.setItem(DIGEST_KEY, String(Date.now())) } catch { /* ignore */ }
+    toast('Weekly insights ready — open the Dashboard and tap Generate', {
+      duration: 10_000,
+      action: { label: 'Open', onClick: () => navigate('/') },
+    })
+  }, [navigate])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

@@ -26,6 +26,27 @@ export function isInBudgetPeriod(date: string, period: BudgetPeriod, now = new D
   return year === currentYear
 }
 
+/** Unspent allowance from the month before periodDate that rolls into the
+ *  current month (never negative; 0 when the category overspent). */
+export function getMonthlyRollover(
+  transactions: Transaction[],
+  categoryName: string,
+  allocated: number,
+  periodDate: Date = new Date(),
+): number {
+  const prev = new Date(periodDate.getFullYear(), periodDate.getMonth() - 1, 1)
+  const prefix = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
+  const spent = transactions
+    .filter(t =>
+      t.type !== 'income' && t.type !== 'transfer' &&
+      t.date.startsWith(prefix) &&
+      t.category === categoryName &&
+      !t.is_system_generated
+    )
+    .reduce((s, t) => s + t.amount, 0)
+  return Math.max(0, allocated - spent)
+}
+
 import type { Transaction, BudgetCategory } from '@/types'
 
 /** Expense transactions in periodDate's month whose category matches no budget category (case-insensitive). */

@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod, getSplitAttribution, getBalancingSpent } from '@/lib/budget'
+import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod, getMonthlyRollover, getSplitAttribution, getBalancingSpent } from '@/lib/budget'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -575,18 +575,23 @@ export function Budget() {
                             const isBalancing = cat.name.toLowerCase() === 'balancing'
                             const pct = getCategoryUsedPct(cat.spent, cat.yearly_allocated)
                             const barColor = getBarColor(pct, cat.color)
-                            const catDailyAllowance = cat.budget_period === 'monthly' && cat.yearly_allocated > cat.spent && daysLeft > 0
-                              ? (cat.yearly_allocated - cat.spent) / daysLeft
+                            // Unspent last-month allowance rolls into this month for monthly budgets
+                            const rollover = cat.budget_period === 'monthly' && cat.yearly_allocated > 0
+                              ? getMonthlyRollover(transactions, cat.name, cat.yearly_allocated, periodDate)
+                              : 0
+                            const effectiveBudget = cat.yearly_allocated + rollover
+                            const catDailyAllowance = cat.budget_period === 'monthly' && effectiveBudget > cat.spent && daysLeft > 0
+                              ? (effectiveBudget - cat.spent) / daysLeft
                               : null
                             const overPace = pct > monthPct
                             const primaryValue = viewMode === 'daily'
                               ? (catDailyAllowance !== null ? fmt(catDailyAllowance) : '—')
                               : viewMode === 'remaining'
-                              ? fmt(Math.max(0, cat.yearly_allocated - cat.spent))
+                              ? fmt(Math.max(0, effectiveBudget - cat.spent))
                               : fmt(cat.spent)
                             const secondaryValue = viewMode === 'daily'
-                              ? fmt(Math.max(0, cat.yearly_allocated - cat.spent))
-                              : fmt(cat.yearly_allocated)
+                              ? fmt(Math.max(0, effectiveBudget - cat.spent))
+                              : fmt(effectiveBudget)
 
                             return (
                               <button
@@ -610,11 +615,14 @@ export function Budget() {
                                     {isBalancing && (
                                       <p className="mt-0.5 pl-5 text-[11px] leading-tight text-muted-foreground">Includes unknown & unallocated</p>
                                     )}
+                                    {rollover > 0 && (
+                                      <p className="mt-0.5 pl-5 text-[11px] leading-tight text-primary">+{fmt(rollover)} rolled over</p>
+                                    )}
                                   </div>
                                   <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{primaryValue}</span>
                                   <span className="hidden tabular-nums whitespace-nowrap text-xs font-semibold text-muted-foreground lg:block">{secondaryValue}</span>
                                   <div className="flex shrink-0 items-center gap-2 lg:hidden">
-                                    <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">{fmt(cat.spent)} / {fmt(cat.yearly_allocated)}</span>
+                                    <span className="tabular-nums whitespace-nowrap text-xs text-muted-foreground">{fmt(cat.spent)} / {fmt(effectiveBudget)}</span>
                                     <span className={`text-xs font-bold ${pct >= 90 ? 'text-[#FF8388]' : pct >= 70 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>{pct}%</span>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                   </div>
