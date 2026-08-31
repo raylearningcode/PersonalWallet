@@ -28,6 +28,9 @@ vi.mock('@/lib/queries', () => ({
   useGoals: () => ({ data: [] }),
 useRecurringRules: () => ({ data: [] }),
 
+  useUpdateRecurringRule: () => ({ mutateAsync: vi.fn(), isPending: false }),
+
+
   useMarkReviewed: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 

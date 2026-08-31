@@ -128,6 +128,28 @@ describe('saveTransactionEntry — edit mode', () => {
     }))
   })
 
+  it('propagates the edit to the parent recurring rule when requested', async () => {
+    const updateRule = vi.fn(async () => ({}))
+    await saveTransactionEntry({
+      ...baseOptions,
+      description: 'Netflix',
+      amount: '150',
+      editId: 'tx1',
+      editCleanup: { prevLinkedId: null, linkedTxIds: [], feeTxIds: [] },
+      editRuleId: 'rule1',
+      updateRule,
+    })
+
+    expect(updateRule).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'rule1',
+      description: 'Netflix',
+      category: 'Food',
+      amount: 150,
+      original_amount: 150,
+      original_currency: 'IDR',
+    }))
+  })
+
   it('requires a merchant name on edit', async () => {
     const update = vi.fn(async () => ({}))
     const ok = await saveTransactionEntry({

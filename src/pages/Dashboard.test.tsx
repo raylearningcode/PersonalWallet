@@ -56,7 +56,8 @@ describe('Dashboard', () => {
   it('shows greeting and stat cards', () => {
     render(<MemoryRouter><Dashboard /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: /Good (morning|afternoon|evening)/ })).toBeInTheDocument()
-    expect(screen.getByText('Net worth')).toBeInTheDocument()
+    // Stat card label + the net-worth trend card title
+    expect(screen.getAllByText('Net worth').length).toBeGreaterThan(0)
     expect(screen.getByText('This month')).toBeInTheDocument()
   })
 

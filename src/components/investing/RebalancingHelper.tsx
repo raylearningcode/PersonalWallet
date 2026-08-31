@@ -65,7 +65,7 @@ export function RebalancingHelper({ allocations, totalValue }: RebalancingHelper
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Asset type</span>
-            <div className="flex gap-8">
+            <div className="flex gap-5">
               <span>Current</span>
               <span>Target</span>
               <span>Action</span>
@@ -78,7 +78,7 @@ export function RebalancingHelper({ allocations, totalValue }: RebalancingHelper
                 <div className="h-3 w-3 rounded-full" style={{ backgroundColor: drift.color }} />
                 <span className="text-sm font-medium">{drift.name}</span>
               </div>
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-5">
                 <span className="w-12 text-right text-sm font-bold">{drift.current}%</span>
                 <span className="w-12 text-right text-sm text-muted-foreground">{drift.target}%</span>
                 <div className="w-24">

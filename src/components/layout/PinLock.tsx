@@ -243,7 +243,7 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
       {stage === 'totp' && (
         <p className="mb-5 mt-1 text-sm text-muted-foreground">Two-step verification is on — open your authenticator app</p>
       )}
-      <div className={`mb-3 flex ${stage === 'totp' ? 'mt-4 gap-3' : 'mt-8 gap-4'}`}>
+      <div className={`mb-3 flex ${stage === 'totp' ? 'mt-4 gap-3' : 'mt-6 gap-4'}`}>
         {Array.from({ length: stage === 'totp' ? 6 : 4 }).map((_, i) => (
           <div
             key={i}

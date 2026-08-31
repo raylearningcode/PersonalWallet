@@ -576,7 +576,7 @@ export function Settings() {
       )}
 
       {/* Desktop: pill tab bar */}
-      <div className="mb-8 hidden flex-wrap gap-2 overflow-x-auto lg:flex">
+      <div className="mb-6 hidden flex-wrap gap-2 overflow-x-auto lg:flex">
         {tabs.map(tab => (
           <button
             key={tab}
@@ -623,7 +623,7 @@ export function Settings() {
 
       {/* Mobile: native-style settings list (shown when no page selected) */}
       {!effectiveTab && (
-        <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
+        <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
           {tabs.map((tab) => {
             const { label, desc, Icon, color } = TAB_META[tab]
             return (
@@ -679,9 +679,9 @@ export function Settings() {
       {/* Profile tab */}
       {effectiveTab === 'profile' && (
         <>
-          <Card className="mb-8">
+          <Card className="mb-6">
             <CardContent className="flex min-h-[156px] flex-col items-start gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-              <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+              <div className="flex min-w-0 items-center gap-4 sm:gap-5">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-extrabold text-primary-foreground sm:h-[72px] sm:w-[72px] sm:text-2xl">
                   {(name || session?.user.email || 'F').slice(0, 1).toUpperCase()}
                 </div>
@@ -700,7 +700,7 @@ export function Settings() {
             </CardContent>
           </Card>
           {editMode && (
-            <Card className="mb-8">
+            <Card className="mb-6">
               <CardContent className="grid grid-cols-1 items-end gap-4 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto]">
                 <div>
                   <Label className="text-sm text-muted-foreground">Name</Label>
@@ -710,7 +710,7 @@ export function Settings() {
               </CardContent>
             </Card>
           )}
-          <Card className="mb-8">
+          <Card className="mb-6">
             <CardHeader>
               <CardTitle className="text-xl">Account access</CardTitle>
               <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. You can also use the profile icon in the sidebar.</p>
@@ -742,7 +742,7 @@ export function Settings() {
               )}
             </CardContent>
           </Card>
-          <Card className="mb-8">
+          <Card className="mb-6">
             <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
             <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
               <p className="text-sm text-muted-foreground">All amounts are stored and displayed in your <strong>main currency</strong> — numbers never change due to exchange rate drift.</p>
@@ -824,7 +824,7 @@ export function Settings() {
             </div>
           </div>
         )}
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-xl">Wallets</CardTitle>
             <p className="text-sm text-muted-foreground">Add cash wallets, bank accounts, cards, and e-wallets for transaction tracking.</p>
@@ -999,7 +999,7 @@ export function Settings() {
 
       {/* Categories tab */}
       {effectiveTab === 'categories' && (
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-xl">Category manager</CardTitle>
@@ -1091,7 +1091,7 @@ export function Settings() {
 
       {/* Security tab */}
       {effectiveTab === 'security' && (
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-xl">PIN lock</CardTitle>
             <p className="text-sm text-muted-foreground">Protect this browser session with a 4-digit PIN. PIN lock is not a replacement for account security — it only locks this device's screen.</p>
@@ -1276,7 +1276,7 @@ export function Settings() {
             )}
           </CardContent>
         </Card>
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-xl">Backup and restore</CardTitle>
             <p className="text-sm text-muted-foreground">Export your FinPath data as a JSON file, or upload a previous backup to restore it.</p>
@@ -1374,7 +1374,7 @@ export function Settings() {
 
       {/* AI Features tab */}
       {effectiveTab === 'ai' && (
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-xl">AI Features</CardTitle>
             <p className="text-sm text-muted-foreground">

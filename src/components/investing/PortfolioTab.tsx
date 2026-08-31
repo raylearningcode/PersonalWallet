@@ -304,7 +304,7 @@ export function PortfolioTab() {
       </div>
 
       {/* Holdings + Allocation */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         {/* Holdings List */}
         <Card>
           <CardHeader>

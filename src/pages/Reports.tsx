@@ -588,7 +588,7 @@ export function Reports() {
         )}
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
         <StatCard label="Income" value={money.formatDisplay(totalIncome)} sub={money.formatRef(totalIncome) ?? `${incomeTx.length} transactions`} badgeVariant="success" />
         <StatCard label="Expenses" value={money.formatDisplay(totalExpenses)} sub={money.formatRef(totalExpenses) ?? `${expenseTx.length} transactions`} badgeVariant="warning" />
         <StatCard label="Saved" value={money.formatDisplay(totalIncome - totalExpenses)} sub={money.formatRef(totalIncome - totalExpenses) ?? `${savingsRate}% savings rate`} badgeVariant={totalIncome >= totalExpenses ? 'success' : 'danger'} />
@@ -596,7 +596,7 @@ export function Reports() {
       </div>
 
       {/* Desktop-only: top transactions + daily average detail */}
-      <div className="mb-8 hidden gap-6 lg:grid lg:grid-cols-[1fr_260px]">
+      <div className="mb-6 hidden gap-5 lg:grid lg:grid-cols-[1fr_260px]">
         <div className="rounded-[1.4rem] border border-border bg-card px-6 py-5">
           <p className="text-sm font-extrabold text-foreground">Largest {mode === 'income' ? 'income' : 'expenses'}</p>
           {rangeTx.length === 0 ? (
@@ -633,7 +633,7 @@ export function Reports() {
 
       {/* Period comparison */}
       {(incomeDiff || expenseDiff) && (
-        <div className="mb-8 hidden gap-4 lg:grid lg:grid-cols-2">
+        <div className="mb-6 hidden gap-4 lg:grid lg:grid-cols-2">
           <div className="rounded-2xl border border-border bg-card px-5 py-4">
             <p className="text-xs font-bold text-muted-foreground">Income vs previous {RANGE_LABELS[range].toLowerCase()}</p>
             <div className="mt-2 flex items-end gap-3">
@@ -662,7 +662,7 @@ export function Reports() {
       )}
 
       {/* Spending trend chart */}
-      <Card className="mb-8">
+      <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
             <CardTitle className="text-xl">Income vs Expenses</CardTitle>
@@ -749,7 +749,7 @@ export function Reports() {
 
       {/* Period review metric cards */}
       {(incomeDiff || expenseDiff || savingsRate > 0 || topCategory !== '—') && (
-        <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-5 lg:px-6">
+        <div className="mb-6 rounded-2xl border border-border bg-card px-5 py-5 lg:px-6">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period review</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {incomeDiff && (
@@ -792,7 +792,7 @@ export function Reports() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-5">
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -812,7 +812,7 @@ export function Reports() {
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-8 sm:px-8">
-            <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[240px_minmax(0,1fr)]">
               <div className="relative mx-auto aspect-square w-full max-w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal, colorOf) }}>
                 <div className="absolute inset-[20%] flex flex-col items-center justify-center rounded-full bg-card text-center">
                   <span className="text-sm text-muted-foreground">Total {mode}</span>
