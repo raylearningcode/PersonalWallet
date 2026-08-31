@@ -5,6 +5,9 @@ import { Estimation } from './Estimation'
 vi.mock('@/lib/queries', () => ({
   useEstimationPlans: () => ({ data: [] }),
   useUpsertEstimationPlan: () => ({ mutateAsync: vi.fn(), isPending: false }),
+useBudgetCategories: () => ({ data: [] }),
+useRecurringRules: () => ({ data: [] }),
+useGoals: () => ({ data: [] }),
   useAppSettings: () => ({ data: { currency: 'USD', base_currency: 'TWD' } }),
   useTransactions: () => ({ data: [] }),
   useAddGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),

@@ -233,6 +233,7 @@ function MonthlyCalendar() {
   const [viewMonth, setViewMonth] = useState(now.getMonth())
   // Desktop starts with today selected so the side panel is never an empty gap.
   const [selectedDate, setSelectedDate] = useState<string | null>(() => (isDesktop ? todayLocal() : null))
+  const [showChangeTxs, setShowChangeTxs] = useState(false)
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
@@ -249,6 +250,9 @@ function MonthlyCalendar() {
     transactions.filter(t => t.date.startsWith(prefix)).forEach(t => {
       if (!map[t.date]) map[t.date] = { total: 0, income: 0, txs: [] }
       map[t.date].txs.push(t)
+      // System-generated change transfers aren't real spending — excluded from
+      // the heat totals; they only show in the day list when asked.
+      if (t.is_system_generated) return
       if (t.type !== 'income') map[t.date].total += t.amount
       else map[t.date].income += t.amount
     })
@@ -286,7 +290,9 @@ function MonthlyCalendar() {
   for (let i = 0; i < startDay; i++) cells.push(null)
   for (let d = 1; d <= days; d++) cells.push(d)
 
-  const selectedTxs = selectedDate ? (dailyData[selectedDate]?.txs ?? []) : []
+  const visibleTxsFor = (date: string) =>
+    (dailyData[date]?.txs ?? []).filter(t => showChangeTxs || !t.is_system_generated)
+  const selectedTxs = selectedDate ? visibleTxsFor(selectedDate) : []
   const panelDate = selectedDate ?? todayLocal()
 
   // Every bill due date in the viewed month, flattened for the side rail
@@ -375,7 +381,7 @@ function MonthlyCalendar() {
         </div>
 
         {/* Legend */}
-        <div className="mt-3 flex items-center justify-end gap-2 text-[10px] text-muted-foreground">
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-2 text-[10px] text-muted-foreground">
           <span>Less</span>
           {[0.1, 0.25, 0.45, 0.65, 0.85].map(r => (
             <span key={r} className="h-3 w-3 rounded-sm" style={{ backgroundColor: heatColor(r * maxDaily, maxDaily) }} />
@@ -387,6 +393,14 @@ function MonthlyCalendar() {
           <span className="ml-2 flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-[#FFCF73]" /> Bills due
           </span>
+          <button
+            type="button"
+            aria-pressed={showChangeTxs}
+            onClick={() => setShowChangeTxs(v => !v)}
+            className={`ml-2 rounded-full px-2.5 py-1 font-bold transition-colors ${showChangeTxs ? 'bg-secondary text-foreground' : 'bg-secondary/60 text-muted-foreground hover:text-foreground'}`}
+          >
+            Change transfers {showChangeTxs ? 'shown' : 'hidden'}
+          </button>
         </div>
       </div>
 
@@ -398,7 +412,7 @@ function MonthlyCalendar() {
           <DesktopDayPanel
             dateStr={panelDate}
             onClose={() => setSelectedDate(null)}
-            txs={dailyData[panelDate]?.txs ?? []}
+            txs={visibleTxsFor(panelDate)}
             money={money}
             categories={categories}
             bills={billsByDate[panelDate] ?? []}
@@ -455,6 +469,8 @@ function YearlyHeatmap() {
     transactions.filter(t => t.date.startsWith(String(viewYear))).forEach(t => {
       if (!map[t.date]) map[t.date] = { total: 0, income: 0, txs: [] }
       map[t.date].txs.push(t)
+      // System-generated change transfers aren't real spending
+      if (t.is_system_generated) return
       if (t.type !== 'income') map[t.date].total += t.amount
       else map[t.date].income += t.amount
     })
@@ -492,7 +508,9 @@ function YearlyHeatmap() {
   const cellSize = 'w-[12px] h-[12px] sm:w-[14px] sm:h-[14px]'
   const cellGap = 'gap-[2px] sm:gap-[3px]'
 
-  const selectedTxs = selectedDate ? (dailyData[selectedDate]?.txs ?? []) : []
+  const selectedTxs = selectedDate
+    ? (dailyData[selectedDate]?.txs ?? []).filter(t => !t.is_system_generated)
+    : []
 
   return (
     <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-6' : ''}>
@@ -576,7 +594,7 @@ function YearlyHeatmap() {
           <DesktopDayPanel
             dateStr={selectedDate ?? todayLocal()}
             onClose={() => setSelectedDate(null)}
-            txs={selectedDate ? selectedTxs : dailyData[todayLocal()]?.txs ?? []}
+            txs={selectedDate ? selectedTxs : (dailyData[todayLocal()]?.txs ?? []).filter(t => !t.is_system_generated)}
             money={money}
             categories={categories}
           />

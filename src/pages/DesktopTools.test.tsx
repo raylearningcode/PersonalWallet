@@ -1,18 +1,25 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import { DesktopTools } from './DesktopTools'
 
 vi.mock('@/lib/queries', () => ({
+useTransactions: () => ({ data: [] }),
+useBudgetCategories: () => ({ data: [] }),
+useRecurringRules: () => ({ data: [] }),
+useGoals: () => ({ data: [] }),
   useAppSettings: () => ({ data: undefined }),
 }))
 
 describe('DesktopTools', () => {
   it('lists desktop-owned workflows with links', () => {
     render(
-      <MemoryRouter>
-        <DesktopTools />
-      </MemoryRouter>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <DesktopTools />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     expect(screen.getByRole('heading', { name: 'Desktop tools' })).toBeInTheDocument()

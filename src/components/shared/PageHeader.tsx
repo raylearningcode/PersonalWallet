@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { User } from 'lucide-react'
 import { useAppSettings } from '@/lib/queries'
+import { NotificationsSheet } from '@/components/layout/NotificationsSheet'
 
 interface PageHeaderProps {
   title: string
@@ -43,7 +44,7 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
   const openProfile = () => window.dispatchEvent(new CustomEvent('finpath-open-profile'))
 
   return (
-    <div className="mb-6 lg:mb-8">
+    <div className="mb-5 lg:mb-6">
       {/* Full header — fades and collapses when scrolling down on mobile */}
       <div
         className={`flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8 lg:!opacity-100 lg:!max-h-[500px] lg:!mb-0 transition-all duration-300 ease-out overflow-hidden ${scrolledDown ? 'opacity-0 max-h-0 -translate-y-3 mb-0 pointer-events-none' : 'opacity-100 max-h-[500px] translate-y-0'}`}
@@ -62,6 +63,7 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
               onChange={e => onSearchChange(e.target.value)}
             />
           )}
+          <NotificationsSheet />
           <button
             type="button"
             aria-label="Open profile and account settings"

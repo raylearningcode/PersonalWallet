@@ -15,6 +15,10 @@ const state = vi.hoisted(() => ({ wallets: [] as { id: string; name: string; typ
 
 vi.mock('@/lib/queries', () => ({
   useWallets: () => ({ data: state.wallets }),
+useTransactions: () => ({ data: [] }),
+useRecurringRules: () => ({ data: [] }),
+
+  useGoals: () => ({ data: [] }),
   useBudgetCategories: () => ({ data: [] }),
   useAddWallet: () => ({ mutateAsync: addWallet, isPending: false }),
   useAddBudgetCategory: () => ({ mutateAsync: addCategory, isPending: false }),

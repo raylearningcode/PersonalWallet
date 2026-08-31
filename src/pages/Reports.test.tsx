@@ -32,6 +32,9 @@ vi.mock('@/lib/queries', () => ({
   ] }),
   useAppSettings: () => ({ data: undefined }),
   useWallets: () => ({ data: [{ id: 'w1', name: 'Cash', type: 'cash', balance: 0, currency: 'IDR' }] }),
+useRecurringRules: () => ({ data: [] }),
+
+  useGoals: () => ({ data: [] }),
   useAddTransaction: () => ({ mutateAsync: async () => {} }),
 }))
 
