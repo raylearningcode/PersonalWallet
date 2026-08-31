@@ -39,6 +39,9 @@ vi.mock('@/lib/queries', () => ({
   useRenameWallet: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateWallet: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useWallets: () => ({ data: [{ id: 'cash', name: 'Cash', type: 'cash', balance: 0, currency: 'IDR' }] }),
+useRecurringRules: () => ({ data: [] }),
+
+  useGoals: () => ({ data: [] }),
   useBudgetRules: () => ({ data: [] }),
   useInvestmentConfig: () => ({ data: null }),
   useEstimationPlans: () => ({ data: [] }),

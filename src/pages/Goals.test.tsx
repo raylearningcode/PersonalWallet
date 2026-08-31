@@ -36,7 +36,9 @@ const mockWallets = [
   { id: 'wallet-1', name: 'Main wallet', type: 'card' as const, balance: 10000000, currency: 'IDR', cash_role: null },
 ]
 
-vi.mock('@/lib/queries', () => ({
+vi.mock('@/lib/queries', () => ({useBudgetCategories: () => ({ data: [] }),
+useRecurringRules: () => ({ data: [] }),
+
   useGoals: () => ({ data: mockGoals }),
   useTransactions: () => ({ data: [] }),
   useAddGoal: () => ({ mutateAsync: addGoal, isPending: false }),

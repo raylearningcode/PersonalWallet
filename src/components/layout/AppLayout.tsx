@@ -19,7 +19,6 @@ import { MoreSheet } from './MoreSheet'
 import { QuickAddSheet } from './QuickAddSheet'
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 import { PinLockScreen, PIN_STORAGE_KEY, PIN_SESSION_KEY } from './PinLock'
-import { NotificationsSheet } from './NotificationsSheet'
 import { OnboardingFlow, isOnboardingDone } from '@/components/onboarding/OnboardingFlow'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DollarSign, ArrowLeftRight, TrendingUp, Target, RefreshCw, Banknote } from 'lucide-react'
@@ -258,11 +257,6 @@ export function AppLayout() {
             </button>
           </div>
         )}
-        <div className="mb-4 flex items-start justify-end lg:mb-2 lg:-mt-1">
-          <div>
-            <NotificationsSheet />
-          </div>
-        </div>
         <Outlet />
       </main>
       <BottomNav

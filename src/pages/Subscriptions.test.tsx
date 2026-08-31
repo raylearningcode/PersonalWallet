@@ -55,6 +55,8 @@ vi.mock('@/lib/queries', () => ({
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
   useTransactions: () => ({ data: [] }),
   useWallets: () => ({ data: [{ id: 'wallet-1', name: 'Main', type: 'card' as const, balance: 0, currency: 'IDR' }] }),
+
+  useGoals: () => ({ data: [] }),
   useBudgetCategories: () => ({ data: [] }),
   useAppSettings: () => ({ data: undefined }),
 }))

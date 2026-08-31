@@ -25,6 +25,9 @@ vi.mock('@/lib/queries', () => ({
   useUpdateTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAddRecurringRule: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useGoals: () => ({ data: [] }),
+useRecurringRules: () => ({ data: [] }),
+
   useMarkReviewed: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 

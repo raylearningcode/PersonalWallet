@@ -17,7 +17,11 @@ const { investConfigData, moneyRates, bumpRates } = vi.hoisted(() => {
 
 vi.mock('@/lib/queries', () => ({
   useInvestmentConfig: () => ({ data: investConfigData.value }),
-  useSaveInvestmentConfig: () => ({ mutateAsync: saveInvestmentConfig, isPending: false }),
+  useSaveInvestmentConfig: () => ({ mutateAsync: saveInvestmentConfig, isPending: false }),useTransactions: () => ({ data: [] }),
+useBudgetCategories: () => ({ data: [] }),
+useRecurringRules: () => ({ data: [] }),
+useGoals: () => ({ data: [] }),
+
   useAppSettings: () => ({ data: undefined }),
   useHoldings: () => ({ data: [] }),
   useAddHolding: () => ({ mutateAsync: vi.fn(), isPending: false }),

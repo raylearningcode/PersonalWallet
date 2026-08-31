@@ -67,6 +67,8 @@ let txData: typeof mockTransactions = mockTransactions
 vi.mock('@/lib/queries', () => ({
   useTransactions: () => ({ data: txData }),
   useDeleteTransaction: () => ({ mutate: deleteTransaction, mutateAsync: deleteTransaction }),
+  useGoals: () => ({ data: [] }),
+
   useMarkReviewed: () => ({ mutate: vi.fn(), mutateAsync: vi.fn() }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
   useUpdateTransaction: () => ({ mutateAsync: updateTransaction, isPending: false }),
