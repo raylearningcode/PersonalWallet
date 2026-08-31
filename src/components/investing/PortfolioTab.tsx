@@ -284,6 +284,25 @@ export function PortfolioTab() {
         </p>
       )}
 
+      {/* Exchange rates vs base currency */}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Exchange rates · 1 {money.baseCurrency}</p>
+        <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1.5">
+          {(['USD', 'TWD', 'IDR', 'EUR'] as const)
+            .filter(c => c !== money.baseCurrency.toUpperCase())
+            .map(c => {
+              const rate = money.rates?.[c.toLowerCase()] ?? null
+              return (
+                <span key={c} className="text-sm tabular-nums">
+                  <span className="font-extrabold text-foreground">{rate ? rate.toLocaleString(undefined, { maximumFractionDigits: rate < 10 ? 4 : 2 }) : '—'}</span>
+                  <span className="ml-1 text-xs text-muted-foreground">{c}</span>
+                </span>
+              )
+            })}
+        </div>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">Rates refresh with the market; historical conversions use the latest snapshot.</p>
+      </div>
+
       {/* Holdings + Allocation */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         {/* Holdings List */}

@@ -140,6 +140,7 @@ export function Reports() {
     : null, [range, customFrom, customTo])
   const rangeStart = customBounds?.start ?? boundsStart
   const rangeEnd = customBounds?.end ?? boundsEnd
+  const daysInRange = Math.max(1, Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86400000))
   const periodLabel = range === 'custom' ? `${customFrom} → ${customTo}` : formatPeriodLabel(range, periodDate)
 
   const internalMovesTx = useMemo(() => transactions.filter(tx => {
@@ -589,6 +590,42 @@ export function Reports() {
         <StatCard label="Expenses" value={money.formatDisplay(totalExpenses)} sub={money.formatRef(totalExpenses) ?? `${expenseTx.length} transactions`} badgeVariant="warning" />
         <StatCard label="Saved" value={money.formatDisplay(totalIncome - totalExpenses)} sub={money.formatRef(totalIncome - totalExpenses) ?? `${savingsRate}% savings rate`} badgeVariant={totalIncome >= totalExpenses ? 'success' : 'danger'} />
         <StatCard label="Top category" value={topCategory} sub={activeTotal > 0 && categoryTotals.length > 0 ? `${Math.round((categoryTotals[0][1] / activeTotal) * 100)}% of ${mode}` : 'No data yet'} badgeVariant="warning" />
+      </div>
+
+      {/* Desktop-only: top transactions + daily average detail */}
+      <div className="mb-8 hidden gap-6 lg:grid lg:grid-cols-[1fr_260px]">
+        <div className="rounded-[1.4rem] border border-border bg-card px-6 py-5">
+          <p className="text-sm font-extrabold text-foreground">Largest {mode === 'income' ? 'income' : 'expenses'}</p>
+          {rangeTx.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">No transactions in this period.</p>
+          ) : (
+            <div className="mt-3 space-y-1">
+              {[...rangeTx].sort((a, b) => b.amount - a.amount).slice(0, 6).map(tx => (
+                <div key={tx.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-secondary">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
+                    <p className="text-xs text-muted-foreground">{tx.category} · {tx.date}</p>
+                  </div>
+                  <span className={`shrink-0 text-sm font-extrabold tabular-nums ${txAmountColor(tx.amount, tx.type)}`}>
+                    {txAmountSign(tx.amount, tx.type)}{money.formatDisplay(tx.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="space-y-4">
+          {[
+            { label: 'Daily average', value: money.formatDisplay(rangeTx.length > 0 ? totalExpenses / Math.max(1, daysInRange) : 0), sub: `${rangeTx.length} transactions` },
+            { label: 'Per transaction', value: money.formatDisplay(rangeTx.length > 0 ? totalExpenses / rangeTx.length : 0), sub: 'average expense size' },
+          ].map(s => (
+            <div key={s.label} className="rounded-[1.4rem] border border-border bg-card px-5 py-4">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className="mt-1 text-lg font-extrabold tabular-nums text-foreground">{s.value}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{s.sub}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Period comparison */}
