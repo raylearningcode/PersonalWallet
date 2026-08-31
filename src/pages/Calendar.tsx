@@ -231,7 +231,8 @@ function MonthlyCalendar() {
   const now = new Date()
   const [viewYear, setViewYear] = useState(now.getFullYear())
   const [viewMonth, setViewMonth] = useState(now.getMonth())
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  // Desktop starts with today selected so the side panel is never an empty gap.
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => (isDesktop ? todayLocal() : null))
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
@@ -286,9 +287,20 @@ function MonthlyCalendar() {
   for (let d = 1; d <= days; d++) cells.push(d)
 
   const selectedTxs = selectedDate ? (dailyData[selectedDate]?.txs ?? []) : []
+  const panelDate = selectedDate ?? todayLocal()
+
+  // Every bill due date in the viewed month, flattened for the side rail
+  const monthBills = useMemo(() => {
+    const list: { date: string; rule: RecurringRule }[] = []
+    for (const [date, rules] of Object.entries(billsByDate).sort(([a], [b]) => a.localeCompare(b))) {
+      for (const rule of rules) list.push({ date, rule })
+    }
+    return list
+  }, [billsByDate])
 
   return (
-    <div className={isDesktop ? 'max-w-3xl' : ''}>
+    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-6' : ''}>
+      <div className={isDesktop ? 'min-w-0 flex-1' : ''}>
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3.5">
         <div className="flex items-center gap-1.5">
@@ -378,17 +390,37 @@ function MonthlyCalendar() {
         </div>
       </div>
 
-      {/* Selected day panel */}
-      {isDesktop && selectedDate && (
-        <div className="mt-6">
+      </div>
+
+      {/* Desktop side rail: selected day + bills due this month */}
+      {isDesktop && (
+        <div className="mt-6 hidden w-80 shrink-0 space-y-6 lg:block">
           <DesktopDayPanel
-            dateStr={selectedDate}
+            dateStr={panelDate}
             onClose={() => setSelectedDate(null)}
-            txs={selectedTxs}
+            txs={dailyData[panelDate]?.txs ?? []}
             money={money}
             categories={categories}
-            bills={billsByDate[selectedDate] ?? []}
+            bills={billsByDate[panelDate] ?? []}
           />
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <p className="mb-3 text-lg font-extrabold text-foreground">Bills due this month</p>
+            {monthBills.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No bills due this month.</p>
+            ) : (
+              <div className="max-h-[420px] space-y-1.5 overflow-y-auto">
+                {monthBills.map(({ date, rule }) => (
+                  <div key={`${rule.id}-${date}`} className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-foreground">{rule.description}</p>
+                      <p className="text-xs text-muted-foreground">{date}</p>
+                    </div>
+                    <span className="shrink-0 text-sm font-extrabold text-foreground">{money.format(rule.original_amount, rule.original_currency)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -416,7 +448,7 @@ function YearlyHeatmap() {
   const isDesktop = useIsDesktop()
   const now = new Date()
   const [viewYear, setViewYear] = useState(now.getFullYear())
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => (isDesktop ? todayLocal() : null))
 
   const dailyData = useMemo(() => {
     const map: Record<string, { total: number; income: number; txs: typeof transactions }> = {}
@@ -463,7 +495,8 @@ function YearlyHeatmap() {
   const selectedTxs = selectedDate ? (dailyData[selectedDate]?.txs ?? []) : []
 
   return (
-    <div className={isDesktop ? 'max-w-4xl' : ''}>
+    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-6' : ''}>
+      <div className={isDesktop ? 'min-w-0 flex-1' : ''}>
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3.5">
         <div className="flex items-center gap-2">
@@ -535,13 +568,15 @@ function YearlyHeatmap() {
         </div>
       </div>
 
-      {/* Selected day */}
-      {isDesktop && selectedDate && (
-        <div className="mt-6">
+      </div>
+
+      {/* Desktop side rail: selected day */}
+      {isDesktop && (
+        <div className="mt-6 hidden w-80 shrink-0 lg:block">
           <DesktopDayPanel
-            dateStr={selectedDate}
+            dateStr={selectedDate ?? todayLocal()}
             onClose={() => setSelectedDate(null)}
-            txs={selectedTxs}
+            txs={selectedDate ? selectedTxs : dailyData[todayLocal()]?.txs ?? []}
             money={money}
             categories={categories}
           />

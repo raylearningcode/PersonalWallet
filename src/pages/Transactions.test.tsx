@@ -229,7 +229,7 @@ describe('Transactions', () => {
   it('filters history when an expense category is selected', () => {
     renderTx()
 
-    fireEvent.click(screen.getByRole('button', { name: /Filter by Food/i }))
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'Food' } })
 
     expect(screen.getByRole('heading', { name: 'Food' })).toBeInTheDocument()
     expect(screen.getByText('Old lunch')).toBeInTheDocument()
@@ -259,13 +259,12 @@ describe('Transactions', () => {
     expect(screen.queryByRole('button', { name: 'Show all dates' })).not.toBeInTheDocument()
   })
 
-  it('keeps the expense category box compact and scrollable', () => {
+  it('offers every category in the filter rail select', () => {
     renderTx()
 
-    const categoryList = screen.getByTestId('expense-category-list')
-    expect(categoryList).toHaveClass('max-h-[220px]')
-    expect(screen.getByTestId('expense-category-list')).toHaveClass('overflow-y-auto')
-    // category buttons now show the total amount per category alongside the count
-    expect(within(categoryList).getByText('Food')).toBeInTheDocument()
+    const select = screen.getByLabelText('Category')
+    expect(select).toHaveValue('')
+    expect(within(select as HTMLElement).getByRole('option', { name: /^Food ·/ })).toBeInTheDocument()
+    expect(within(select as HTMLElement).getByRole('option', { name: 'All categories' })).toBeInTheDocument()
   })
 })
