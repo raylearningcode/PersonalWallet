@@ -243,7 +243,7 @@ export function SimulatorTab() {
       </Card>
 
       {/* Chart + Simulator Controls */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
         {/* Growth Chart */}
         <Card className="flex flex-col">
           <CardHeader>
@@ -264,7 +264,7 @@ export function SimulatorTab() {
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-center px-6 pb-8 sm:px-8">
             {draftBase.monthlyContribution <= 0 || draft.durationYears <= 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center" style={{ height: '200px' }}>
+              <div className="flex flex-col items-center justify-center py-6 text-center" style={{ height: '200px' }}>
                 <p className="font-extrabold text-foreground">No simulation yet</p>
                 <p className="mt-2 text-sm text-muted-foreground">Enter monthly contribution and expected return, then view the projection.</p>
               </div>

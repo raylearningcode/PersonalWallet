@@ -13,6 +13,7 @@ import {
   useTransactions,
   useWallets,
   useMarkReviewed,
+  useUpdateRecurringRule,
 } from '@/lib/queries'
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
@@ -57,6 +58,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
   const deleteTransaction = useDeleteTransaction()
   const addRecurringRule = useAddRecurringRule()
   const markReviewed = useMarkReviewed()
+  const updateRule = useUpdateRecurringRule()
 
   const [type, setType] = useState<EntryType>(initialType)
   const [amount, setAmount] = useState('')
@@ -85,6 +87,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
   // Transfer fee (edit mode, transfer type)
   const [transferFeeEnabled, setTransferFeeEnabled] = useState(false)
   const [transferFeeAmount, setTransferFeeAmount] = useState('')
+  // Propagate edits to the parent recurring rule
+  const [applyToRule, setApplyToRule] = useState(false)
 
   // Whether the initialCash enablement has already been applied (open-once
   // semantics) — wallet changes must never force cash back on and fight the
@@ -298,6 +302,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
         feeTxIds: transactions.filter(tx => tx.linked_transaction_id === editTransaction.id && tx.category === 'Transfer Fee' && tx.is_system_generated).map(tx => tx.id),
       } : undefined,
       transferFeeEnabled, transferFeeAmount,
+      editRuleId: applyToRule && editTransaction?.recurring_rule_id ? editTransaction.recurring_rule_id : undefined,
+      updateRule: applyToRule ? updateRule.mutateAsync : undefined,
       onDone,
     })
   }
@@ -1003,6 +1009,28 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
               })()}
             </div>
           )}
+        </div>
+      )}
+
+      {/* —— Apply to recurring rule (edits of rule-generated payments) —— */}
+      {editTransaction?.recurring_rule_id && (
+        <div className="rounded-[1.4rem] border border-border bg-card p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span>
+              <span className="block text-sm font-extrabold text-foreground">Apply to recurring rule</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">Update the rule so future due payments match this edit</span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={applyToRule}
+              aria-label="Apply to recurring rule"
+              onClick={() => setApplyToRule(v => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${applyToRule ? 'bg-primary' : 'bg-muted'}`}
+            >
+              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${applyToRule ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
         </div>
       )}
 

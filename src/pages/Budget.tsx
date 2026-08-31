@@ -400,7 +400,7 @@ export function Budget() {
               of {fmt(totalAllocated)} budgeted · {hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% used` : 'No categories yet'}
             </p>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <div className="text-right">
               <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Budget</p>
               <p className="mt-1 text-lg font-extrabold tabular-nums text-foreground">{fmt(totalAllocated)}</p>
@@ -447,7 +447,7 @@ export function Budget() {
       )}
 
       {hasData && forecasts.length === 0 && !riskNoteDismissed && (
-        <div className="mb-8 flex items-start gap-3 rounded-2xl border border-border bg-secondary px-5 py-4">
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-border bg-secondary px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-muted-foreground">Overspend risk explanation</p>
             <p className="mt-1 text-sm text-foreground">
@@ -470,7 +470,7 @@ export function Budget() {
       )}
 
       {isCurrentMonth && forecasts.length > 0 && (
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-xl">Month forecast</CardTitle>
             <p className="text-sm text-muted-foreground">

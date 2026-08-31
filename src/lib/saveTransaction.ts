@@ -13,7 +13,7 @@ import {
 } from '@/lib/cashSave'
 import { hapticSuccess } from '@/lib/haptics'
 import { toast } from 'sonner'
-import type { Transaction } from '@/types'
+import type { RecurringRule, Transaction } from '@/types'
 
 export type TransactionEntryInput = Omit<Transaction, 'id' | 'created_at'>
 export type EntryType = 'income' | 'expense' | 'transfer'
@@ -58,6 +58,10 @@ export interface SaveEntryOptions {
   /** Transfer fee to (re)create on edit when type is 'transfer'. */
   transferFeeEnabled?: boolean
   transferFeeAmount?: string
+  /** When editing a payment that belongs to a recurring rule: also update the
+   *  rule so future due payments match. Both must be set together. */
+  editRuleId?: string
+  updateRule?: (patch: { id: string } & Partial<RecurringRule>) => Promise<unknown>
 }
 
 /** Validates, persists the transaction, routes cash change, shows the undo toast. Returns success. */
@@ -149,6 +153,19 @@ export async function saveTransactionEntry(o: SaveEntryOptions): Promise<boolean
       }
       await o.updateTransaction({ id: o.editId, ...payload })
       savedTxId = o.editId
+      // Propagate the edit to the recurring rule so future payments match
+      if (o.editRuleId && o.updateRule) {
+        try {
+          await o.updateRule({
+            id: o.editRuleId,
+            description: safeDescription,
+            category: o.type === 'transfer' ? 'Transfer' : (selectedCategory || 'Other'),
+            amount: baseAmount,
+            original_amount: parsedAmount,
+            original_currency: o.inputCurrency,
+          })
+        } catch { /* rule update failure is non-fatal — the payment is saved */ }
+      }
     } else {
       const savedTx = await o.addTransaction(payload)
       savedTxId = savedTx?.id

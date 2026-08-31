@@ -435,7 +435,7 @@ export function Goals() {
         }
       />
 
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
         <StatCard
           label="Goals set"
           value={String(goals.length)}
@@ -449,7 +449,7 @@ export function Goals() {
 
       {/* "What should I save this month?" card */}
       {goals.filter(g => g.current_amount < g.target_amount && g.deadline).length > 0 && (
-        <div className="mb-8 hidden rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 lg:block">
+        <div className="mb-6 hidden rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 lg:block">
           <p className="mb-3 text-xs font-bold text-primary">Monthly savings guide</p>
           <div className="space-y-2">
             {goals
@@ -474,7 +474,7 @@ export function Goals() {
       )}
 
       {showForm && isDesktop && (
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</CardTitle>
           </CardHeader>

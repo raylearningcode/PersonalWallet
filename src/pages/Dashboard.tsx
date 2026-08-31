@@ -100,6 +100,38 @@ export function Dashboard() {
   const trendAvg = trendTotal / 7
   const trendMax = Math.max(...trendDays.map(d => d.total))
 
+  // ─── Net worth curve (last 6 months) ─────────────────────────────────
+  // Back-projects from today's net worth using each month's net cashflow,
+  // so the curve builds up automatically as history grows.
+  const netWorthSeries = useMemo(() => {
+    const now = new Date()
+    const months: { key: string; label: string; value: number }[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      months.push({
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        label: d.toLocaleDateString(undefined, { month: 'short' }),
+        value: 0,
+      })
+    }
+    const flow = new Map<string, number>()
+    for (const t of transactions) {
+      if (t.is_system_generated) continue
+      const delta = t.type === 'income' ? t.amount : t.type === 'expense' ? -t.amount : 0
+      const key = t.date.slice(0, 7)
+      flow.set(key, (flow.get(key) ?? 0) + delta)
+    }
+    let current = netWorth
+    for (let i = months.length - 1; i >= 0; i--) {
+      months[i].value = current
+      current -= flow.get(months[i].key) ?? 0
+    }
+    return months
+  }, [transactions, netWorth])
+  const nwMin = Math.min(...netWorthSeries.map(m => m.value), 0)
+  const nwMax = Math.max(...netWorthSeries.map(m => m.value), 1)
+  const nwRange = Math.max(nwMax - nwMin, 1)
+
   // ─── AI handler ───────────────────────────────────────────────────────
   const handleGetInsights = async () => {
     setLoadingInsights(true)
@@ -145,7 +177,7 @@ export function Dashboard() {
         <div className="mb-6">
           <Skeleton className="h-[120px] w-full rounded-2xl" />
         </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Skeleton className="h-[200px] w-full rounded-2xl" />
           <Skeleton className="h-[200px] w-full rounded-2xl" />
         </div>
@@ -240,8 +272,59 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Net worth curve */}
+      <Card className="mb-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">Net worth</CardTitle>
+          <span className="text-xs font-bold text-muted-foreground">last 6 months</span>
+        </CardHeader>
+        <CardContent className="px-5 pb-6">
+          {transactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Log transactions to see your net worth curve.</p>
+          ) : (
+            <>
+              <div className="mb-3 flex items-end gap-2">
+                <span className="text-2xl font-extrabold tabular-nums text-foreground">{fmt(netWorth)}</span>
+                <span className="mb-1 text-xs text-muted-foreground">today</span>
+              </div>
+              <svg viewBox="0 0 300 84" className="h-24 w-full text-primary" role="img" aria-label={`Net worth over the last 6 months. ${fmt(netWorth)} today.`} preserveAspectRatio="none">
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  points={netWorthSeries.map((m, i) => {
+                    const x = (i / (netWorthSeries.length - 1)) * 288 + 6
+                    const y = 72 - ((m.value - nwMin) / nwRange) * 60
+                    return `${x},${y}`
+                  }).join(' ')}
+                />
+                {netWorthSeries.map((m, i) => {
+                  const x = (i / (netWorthSeries.length - 1)) * 288 + 6
+                  const y = 72 - ((m.value - nwMin) / nwRange) * 60
+                  return (
+                    <circle key={m.key} cx={x} cy={y} r="3" fill="currentColor" opacity="0.85">
+                      <title>{`${m.label}: ${fmt(m.value)}`}</title>
+                    </circle>
+                  )
+                })}
+              </svg>
+              <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
+                {netWorthSeries.map(m => (
+                  <span key={m.key} className={m.key === netWorthSeries[netWorthSeries.length - 1].key ? 'text-foreground' : ''}>{m.label}</span>
+                ))}
+              </div>
+            </>
+          )}
+          <span className="sr-only">
+            {netWorthSeries.map(m => `${m.label}: ${fmt(m.value)}`).join('; ')}
+          </span>
+        </CardContent>
+      </Card>
+
       {/* Recent activity (first on mobile) + Budget health */}
-      <div className="mb-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+      <div className="mb-6 grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
         <Card className="order-1 lg:order-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Recent activity</CardTitle>
@@ -262,7 +345,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <div className="order-2 flex flex-col gap-6 lg:order-1">
+        <div className="order-2 flex flex-col gap-5 lg:order-1">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Budget health</CardTitle>

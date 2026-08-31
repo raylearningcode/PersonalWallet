@@ -192,7 +192,7 @@ export function CategoryDetail() {
       </div>
 
       {/* Desktop: summary rail + transactions */}
-      <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start lg:gap-6">
+      <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start lg:gap-5">
         <div className="lg:sticky lg:top-6">
 
       {/* Category header */}

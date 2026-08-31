@@ -28,6 +28,7 @@ import { formatDate, toLocalDateStr, todayLocal } from '@/lib/utils'
 import { pushUndo, popUndo } from '@/lib/undoStack'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
+import { getTransactionTags } from '@/lib/tags'
 import { TransactionTagsEditor } from '@/components/transactions/TransactionTagsEditor'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -151,6 +152,7 @@ export function Transactions() {
           if (displayAmt.includes(q)) return true
           const wallet = wallets.find(w => w.id === tx.wallet_id)
           if (wallet?.name.toLowerCase().includes(q)) return true
+          if (getTransactionTags(tx.id).some(tag => tag.name.toLowerCase().includes(q))) return true
           return false
         })
       }
@@ -461,7 +463,7 @@ export function Transactions() {
   }
 
   return (
-    <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+    <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-5">
       <div className="lg:col-span-2">
         <PageHeader
           title="Transactions"
@@ -476,7 +478,7 @@ export function Transactions() {
           )}
         />
       </div>
-      <div className="relative mb-8 lg:col-span-2 lg:hidden">
+      <div className="relative mb-6 lg:col-span-2 lg:hidden">
         <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
           <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
             {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => (
@@ -492,7 +494,7 @@ export function Transactions() {
         </Tabs>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-[1.4rem] bg-gradient-to-l from-card to-transparent sm:hidden" />
       </div>
-      <div className="mb-9 grid grid-cols-2 gap-4 lg:col-span-2 lg:grid-cols-3 lg:gap-6">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:col-span-2 lg:grid-cols-3 lg:gap-5">
         {(() => {
           const net = moneyIn - moneyOut
           const netCount = transactions.filter(t => t.type !== 'transfer').length

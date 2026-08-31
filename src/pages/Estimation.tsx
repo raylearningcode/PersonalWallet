@@ -407,7 +407,7 @@ export function Estimation() {
         </div>
       )}
 
-      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
         <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={money.formatRef(monthlyIncome) ?? `${incomeItems.length} income items`} badgeVariant="success" />
         <StatCard label="Monthly expenses" value={money.formatDisplay(monthlyExpenses)} sub={money.formatRef(monthlyExpenses) ?? `${expenseItems.length} expense items`} badgeVariant="warning" />
         <StatCard label="Yearly saving" value={money.formatDisplay(yearlySaving)} sub={money.formatRef(yearlySaving) ?? `${savingsRate}% monthly saving rate`} />
@@ -420,7 +420,7 @@ export function Estimation() {
         const expPct = Math.round((monthlyExpenses / total) * 100)
         const surplus = monthlyIncome - monthlyExpenses
         return (
-          <div className="mb-8 rounded-2xl border border-border bg-secondary px-5 py-4">
+          <div className="mb-6 rounded-2xl border border-border bg-secondary px-5 py-4">
             <div className="space-y-3">
               <div>
                 <div className="mb-1.5 flex items-center justify-between text-xs">
@@ -457,7 +457,7 @@ export function Estimation() {
       })()}
 
       {monthlyIncome > 0 && (
-        <div className={`mb-8 rounded-2xl border px-5 py-4 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
+        <div className={`mb-6 rounded-2xl border px-5 py-4 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
             {planningDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} forecast
           </p>
@@ -554,7 +554,7 @@ export function Estimation() {
         </Card>
       )}
 
-      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-7">
+      <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-5">
         <Card>
           <CardHeader className="pb-0">
             <div className="flex items-center gap-3 mb-1">
@@ -720,7 +720,7 @@ export function Estimation() {
           </SheetContent>
         </Sheet>
       </div>
-      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
+      <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
         <Card>
           <CardHeader className="pb-0">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

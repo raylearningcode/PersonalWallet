@@ -634,7 +634,7 @@ export function Subscriptions() {
       />
 
       {showAddForm && (
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">New subscription</CardTitle>
@@ -791,7 +791,7 @@ export function Subscriptions() {
         </Card>
       )}
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
         <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={money.formatRef(monthlyExpenses) ?? `≈ ${money.formatDisplay(monthlyExpenses * 12)}/year`} badgeVariant="warning" />
         <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={money.formatRef(monthlyIncome) ?? `${income.filter(r => r.active).length} active`} badgeVariant="success" />
         <StatCard label="Net monthly" value={money.formatDisplay(monthlyIncome - monthlyExpenses)} sub={money.formatRef(monthlyIncome - monthlyExpenses) ?? 'Income minus expenses'} />
@@ -804,7 +804,7 @@ export function Subscriptions() {
 
       {/* 3-month expense outlook */}
       {expenses.some(r => r.active) && (
-        <div className="mb-8">
+        <div className="mb-6">
           <h2 className="mb-3 text-lg font-extrabold text-foreground">3-month outlook</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {monthlyOutlook.map(({ label, total, count }) => (
@@ -820,7 +820,7 @@ export function Subscriptions() {
 
       {/* Upcoming bills timeline */}
       {expenses.filter(r => r.active && daysUntil(r.next_due_date) <= 30).length > 0 && (
-        <div className="mb-8">
+        <div className="mb-6">
           <h2 className="mb-3 text-lg font-extrabold text-foreground">Due in 30 days</h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {expenses
@@ -846,7 +846,7 @@ export function Subscriptions() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>

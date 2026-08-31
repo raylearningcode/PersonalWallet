@@ -305,7 +305,7 @@ function MonthlyCalendar() {
   }, [billsByDate])
 
   return (
-    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-6' : ''}>
+    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-5' : ''}>
       <div className={isDesktop ? 'min-w-0 flex-1' : ''}>
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3.5">
@@ -513,7 +513,7 @@ function YearlyHeatmap() {
     : []
 
   return (
-    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-6' : ''}>
+    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-5' : ''}>
       <div className={isDesktop ? 'min-w-0 flex-1' : ''}>
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3.5">
