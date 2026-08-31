@@ -8,6 +8,7 @@ import { hasGuestData } from '@/lib/localStore'
 import { getQueue } from '@/lib/offlineCache'
 import { processSyncQueue } from '@/lib/syncQueue'
 import { scheduleUpcomingBillNotifications } from '@/lib/notifications'
+import { startRealtimeSync } from '@/lib/realtime'
 import { useKeyboardShortcuts } from '@/lib/keyboard'
 import { toast, Toaster } from 'sonner'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -120,6 +121,12 @@ export function AppLayout() {
     if (!session) return
     processSyncQueue().catch(() => { /* queue keeps items; next sync retries */ })
   }, [session])
+
+  // Live cross-device sync: a change on another device refreshes this one.
+  useEffect(() => {
+    if (!session) return
+    return startRealtimeSync(qc)
+  }, [session, qc])
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
