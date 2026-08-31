@@ -26,12 +26,11 @@ import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { formatDate, toLocalDateStr, todayLocal } from '@/lib/utils'
-import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
+import { getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { pushUndo, popUndo } from '@/lib/undoStack'
 import { MoneyField } from '@/components/mobile/MoneyField'
-import { saveTransactionEntry, INCOME_CATEGORIES } from '@/lib/saveTransaction'
-import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
+import { TransactionForm } from '@/components/transactions/TransactionForm'
 import { TransactionTagsEditor } from '@/components/transactions/TransactionTagsEditor'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -74,27 +73,6 @@ export function Transactions() {
   const [ruleFrequency, setRuleFrequency] = useState<RecurringFrequency>('monthly')
   const [ruleNextDueDate, setRuleNextDueDate] = useState('')
   const [ruleEndDate, setRuleEndDate] = useState('')
-  const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
-  const [inputCurrency, setInputCurrency] = useState(money.displayCurrency)
-  const [date, setDate] = useState(todayLocal)
-  const [category, setCategory] = useState('')
-  const [walletId, setWalletId] = useState('')
-  const [transferWalletId, setTransferWalletId] = useState('')
-  const [type, setType] = useState<EntryType>(() => {
-    const action = new URLSearchParams(window.location.search).get('action')
-    return (action === 'income' ? 'income' : 'expense') as EntryType
-  })
-  const [cashEnabled, setCashEnabled] = useState(false)
-  const [cashTendered, setCashTendered] = useState('')
-  const [changeBillsWalletId, setChangeBillsWalletId] = useState('')
-  const [changeCoinsWalletId, setChangeCoinsWalletId] = useState('')
-  const [splitEnabled, setSplitEnabled] = useState(false)
-  const [splitPortions, setSplitPortions] = useState<{ category: string; amount: string }[]>([])
-  const [multiWalletEnabled, setMultiWalletEnabled] = useState(false)
-  const [walletSplits, setWalletSplits] = useState<{ wallet_id: string; amount: string }[]>([])
-  const [transferFeeEnabled, setTransferFeeEnabled] = useState(false)
-  const [transferFeeAmount, setTransferFeeAmount] = useState('')
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
@@ -134,19 +112,6 @@ export function Transactions() {
   }, [])
 
   useEffect(() => {
-    if (!category && categories.length > 0) setCategory(categories[0].name)
-  }, [categories, category])
-
-  useEffect(() => {
-    if (!walletId && wallets.length > 0) setWalletId(wallets[0].id)
-    if (!transferWalletId && wallets.length > 1) setTransferWalletId(wallets[1].id)
-  }, [walletId, transferWalletId, wallets])
-
-  useEffect(() => {
-    setInputCurrency(money.displayCurrency)
-  }, [money.displayCurrency])
-
-  useEffect(() => {
     if (!editingRule) setRuleInputCurrency(money.displayCurrency)
   }, [money.displayCurrency, editingRule])
 
@@ -179,7 +144,6 @@ export function Transactions() {
 
   const moneyIn = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const moneyOut = transactions.filter(t => t.type !== 'income' && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0)
-  const cannotSaveTransfer = type === 'transfer' && (wallets.length < 2 || !walletId || !transferWalletId || walletId === transferWalletId)
   const sortedTransactions = useMemo(
     () => {
       // Hide system-generated change transfers from the main list
@@ -235,10 +199,6 @@ export function Transactions() {
   const selectedCategoryUsedPct = selectedCategoryBudget > 0
     ? Math.round((selectedCategoryTotal / selectedCategoryBudget) * 100)
     : 0
-  const merchantSuggestion = useMemo(
-    () => type === 'transfer' ? null : getMerchantSuggestion(description, transactions),
-    [description, transactions, type]
-  )
   const upcomingRecurringRules = useMemo(
     () => [...recurringRules].sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 6),
     [recurringRules]
@@ -275,116 +235,14 @@ export function Transactions() {
     return candidates
   }, [allTransactions])
 
-  const resetForm = () => {
-    setEditingTransaction(null)
-    setDescription('')
-    setAmount('')
-    setInputCurrency(money.displayCurrency)
-    setDate(todayLocal())
-    setType('expense')
-    setCategory(categories[0]?.name ?? '')
-    setCashEnabled(false)
-    setCashTendered('')
-    setChangeBillsWalletId('')
-    setChangeCoinsWalletId('')
-    setTransferFeeEnabled(false)
-    setTransferFeeAmount('')
-    setSplitEnabled(false)
-    setSplitPortions([])
-    setMultiWalletEnabled(false)
-    setWalletSplits([])
-    if (wallets[0]) setWalletId(wallets[0].id)
-    if (wallets[1]) setTransferWalletId(wallets[1].id)
-  }
-
   const openAddForm = () => {
-    resetForm()
+    setEditingTransaction(null)
     setIsFormOpen(true)
   }
 
   const openEditForm = (transaction: Transaction) => {
     setEditingTransaction(transaction)
-    setDescription(transaction.description)
-    setAmount(String(transaction.original_amount ?? transaction.amount))
-    setInputCurrency(transaction.original_currency ?? money.displayCurrency)
-    setDate(transaction.date)
-    setCategory(transaction.category)
-    setWalletId(transaction.wallet_id ?? wallets[0]?.id ?? '')
-    setTransferWalletId(transaction.transfer_wallet_id ?? wallets.find(wallet => wallet.id !== transaction.wallet_id)?.id ?? '')
-    setType(transaction.type === 'income' || transaction.type === 'transfer' ? transaction.type : 'expense')
-    if (transaction.cash_tendered && transaction.cash_tendered > 0) {
-      const origCurrency = transaction.original_currency ?? money.displayCurrency
-      const tenderedInOrig = money.fromBase(transaction.cash_tendered, origCurrency)
-      setCashEnabled(true)
-      setCashTendered(formatNumberInput(Math.round(tenderedInOrig)))
-      const linkedChangeTxs = transactions.filter(tx => tx.linked_transaction_id === transaction.id && tx.is_system_generated)
-      setChangeBillsWalletId(linkedChangeTxs.find(tx => tx.description?.startsWith('Change bills'))?.transfer_wallet_id ?? '')
-      setChangeCoinsWalletId(
-        linkedChangeTxs.find(tx => tx.description?.startsWith('Change coins'))?.transfer_wallet_id
-        ?? linkedChangeTxs.find(tx => tx.description?.startsWith('Change'))?.transfer_wallet_id
-        ?? ''
-      )
-    } else {
-      setCashEnabled(false)
-      setCashTendered('')
-      setChangeBillsWalletId('')
-      setChangeCoinsWalletId('')
-    }
-    const existingFee = transactions.find(tx => tx.linked_transaction_id === transaction.id && tx.category === 'Transfer Fee' && tx.is_system_generated)
-    if (existingFee) {
-      setTransferFeeEnabled(true)
-      setTransferFeeAmount(String(existingFee.original_amount ?? existingFee.amount))
-    } else {
-      setTransferFeeEnabled(false)
-      setTransferFeeAmount('')
-    }
-    // Load split data from existing transaction
-    if (transaction.split_portions && transaction.split_portions.length > 0) {
-      setSplitEnabled(true)
-      const origCurrency = transaction.original_currency ?? money.displayCurrency
-      setSplitPortions(transaction.split_portions.map(p => ({
-        category: p.category,
-        amount: formatNumberInput(money.fromBase(p.amount, origCurrency)),
-      })))
-    } else { setSplitEnabled(false); setSplitPortions([]) }
-    if (transaction.wallet_splits && transaction.wallet_splits.length > 0) {
-      setMultiWalletEnabled(true)
-      const origCurrency = transaction.original_currency ?? money.displayCurrency
-      setWalletSplits(transaction.wallet_splits.map(w => ({
-        wallet_id: w.wallet_id,
-        amount: formatNumberInput(money.fromBase(w.amount, origCurrency)),
-      })))
-    } else { setMultiWalletEnabled(false); setWalletSplits([]) }
     setIsFormOpen(true)
-  }
-
-  const handleSaveTransaction = async () => {
-    const ok = await saveTransactionEntry({
-      type, amount, inputCurrency, date, description, category, walletId, transferWalletId,
-      cannotSaveTransfer,
-      cashEnabled, cashTendered,
-      showCashAssistant: type === 'expense' && wallets.find(w => w.id === walletId)?.type === 'cash',
-      changeBillsWalletId, changeCoinsWalletId,
-      splitEnabled, splitPortions,
-      multiWalletEnabled, walletSplits,
-      toBase: money.toBase,
-      addTransaction: addTransaction.mutateAsync,
-      updateTransaction: updateTransaction.mutateAsync,
-      deleteTransaction: del.mutateAsync,
-      editId: editingTransaction?.id,
-      editPreserve: editingTransaction ? {
-        recurring_rule_id: editingTransaction.recurring_rule_id ?? null,
-        recurring_due_date: editingTransaction.recurring_due_date ?? null,
-      } : undefined,
-      editCleanup: editingTransaction ? {
-        prevLinkedId: editingTransaction.linked_transaction_id ?? null,
-        linkedTxIds: transactions.filter(tx => tx.linked_transaction_id === editingTransaction.id && tx.is_system_generated).map(tx => tx.id),
-        feeTxIds: transactions.filter(tx => tx.linked_transaction_id === editingTransaction.id && tx.category === 'Transfer Fee' && tx.is_system_generated).map(tx => tx.id),
-      } : undefined,
-      transferFeeEnabled, transferFeeAmount,
-      onDone: () => { setIsFormOpen(false); resetForm() },
-    })
-    return ok
   }
 
   const handleDeleteTransaction = (tx: Transaction) => {
@@ -723,358 +581,19 @@ export function Transactions() {
         ))}
       </div>
 
-      <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
-        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 pb-safe-10 sm:max-w-md sm:p-6 sm:pb-safe-10">
-          <SheetHeader className="mb-6 text-left">
-            <SheetTitle>{editingTransaction ? 'Edit transaction' : 'New transaction'}</SheetTitle>
-            <SheetDescription>Fill the amount in the currency you actually paid or received.</SheetDescription>
-          </SheetHeader>
-          {editingTransaction?.cash_tendered && editingTransaction.cash_tendered > 0 && (() => {
-            const origCurrency = editingTransaction.original_currency ?? money.displayCurrency
-            const tenderedDisplay = money.format(money.fromBase(editingTransaction.cash_tendered, origCurrency), origCurrency)
-            const changeDisplay = money.format(money.fromBase(editingTransaction.cash_tendered - (editingTransaction.original_amount ?? editingTransaction.amount), origCurrency), origCurrency)
-            return (
-              <div className="mb-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-                <Banknote className="h-4 w-4 shrink-0 text-primary" />
-                <span className="text-muted-foreground">Cash given</span>
-                <span className="font-extrabold text-foreground">{tenderedDisplay}</span>
-                <span className="text-muted-foreground">· change</span>
-                <span className="font-extrabold text-primary">{changeDisplay}</span>
-              </div>
-            )
-          })()}
-          <div className="space-y-5">
-            {/* Type selector + big amount — always visible */}
-            <div className="rounded-[1.4rem] border border-border bg-card p-4 text-center">
-              <div className="mx-auto mb-3 inline-flex rounded-full border border-border bg-secondary p-1">
-                {(['expense', 'income', 'transfer'] as const).map(item => (
-                  <button
-                    key={item}
-                    type="button"
-                    aria-label={item[0].toUpperCase() + item.slice(1)}
-                    className={`rounded-full px-6 py-2 text-sm font-extrabold capitalize transition-colors ${type === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => {
-                      setType(item)
-                      if (item === 'income') setCategory(INCOME_CATEGORIES[0])
-                      if (item === 'expense') setCategory(categories[0]?.name ?? '')
-                    }}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-              <MoneyField
-                ariaLabel="Amount"
-                className="mx-auto h-16 w-full cursor-pointer border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
-                value={amount}
-                placeholder="0"
-                currency={inputCurrency}
-                onChange={v => setAmount(formatNumberInput(v))}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">{inputCurrency}</p>
-            </div>
-
-            {/* Description */}
-            <div>
-              <Label className="text-sm font-bold text-foreground">
-                {type === 'transfer' ? 'Transfer note' : 'Merchant name'}
-              </Label>
-              <Input
-                aria-label={type === 'transfer' ? 'Transfer note' : 'Description'}
-                className="mt-2 bg-secondary"
-                value={description}
-                onChange={event => setDescription(event.target.value)}
-                placeholder={type === 'transfer' ? 'Optional note' : 'Enter a merchant name'}
-              />
-              {merchantSuggestion && !editingTransaction && (
-                <button
-                  type="button"
-                  className="mt-2 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-primary"
-                  onClick={() => {
-                    setCategory(merchantSuggestion.category)
-                    if (merchantSuggestion.wallet_id) setWalletId(merchantSuggestion.wallet_id)
-                    setType(merchantSuggestion.type === 'income' || merchantSuggestion.type === 'transfer' ? merchantSuggestion.type : 'expense')
-                  }}
-                  aria-label="Use last merchant suggestion — fills in category, wallet, and type"
-                >
-                  Last time: {merchantSuggestion.category}
-                  {merchantSuggestion.wallet_id && wallets.find(w => w.id === merchantSuggestion.wallet_id) && (
-                    <span className="ml-1.5 opacity-70">· {wallets.find(w => w.id === merchantSuggestion.wallet_id)!.name}</span>
-                  )}
-                </button>
-              )}
-            </div>
-
-            {/* Category — always visible (except transfer) */}
-            {type !== 'transfer' && (
-              <div>
-                <Label className="text-sm font-bold text-foreground">Category</Label>
-                <select
-                  aria-label="Category"
-                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                  value={category}
-                  onChange={event => setCategory(event.target.value)}
-                >
-                  {type === 'income' ? (
-                    INCOME_CATEGORIES.map(item => <option key={item} value={item}>{item}</option>)
-                  ) : (
-                    <>
-                      {categories.length === 0 && <option value="">Add categories in Settings</option>}
-                      {categories.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                    </>
-                  )}
-                </select>
-              </div>
-            )}
-
-            {/* Wallet(s) */}
-            {type !== 'transfer' ? (
-              <div>
-                <Label className="text-sm font-bold text-foreground">Wallet</Label>
-                <select aria-label="Wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => { setWalletId(event.target.value); setCashEnabled(false); setCashTendered(''); setChangeBillsWalletId(''); setChangeCoinsWalletId('') }}>
-                  {wallets.length === 0 && <option value="">Add wallets in Settings</option>}
-                  {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                </select>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <Label className="text-sm font-bold text-foreground">From wallet</Label>
-                  <select aria-label="From wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={walletId} onChange={event => setWalletId(event.target.value)}>
-                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-sm font-bold text-foreground">To wallet</Label>
-                  <select aria-label="To wallet" className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={transferWalletId} onChange={event => setTransferWalletId(event.target.value)}>
-                    {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {/* ── Category splitting (expense only) ── */}
-            {type === 'expense' && categories.length >= 2 && (
-              <div className="rounded-[1.4rem] border border-border bg-card p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <span>
-                    <span className="block text-sm font-extrabold text-foreground">Split across categories</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">Divide this expense into multiple budget categories</span>
-                  </span>
-                  <button type="button" role="switch" aria-checked={splitEnabled} aria-label="Split across categories"
-                    onClick={() => {
-                      const next = !splitEnabled; setSplitEnabled(next)
-                      if (next) setSplitPortions([{ category: categories[0]?.name ?? '', amount: '' }, { category: categories[1]?.name ?? categories[0]?.name ?? '', amount: '' }])
-                      else setSplitPortions([])
-                    }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${splitEnabled ? 'bg-primary' : 'bg-muted'}`}>
-                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${splitEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-                {splitEnabled && (
-                  <div className="mt-3 space-y-2">
-                    {splitPortions.map((p, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <select aria-label={`Portion ${i + 1} category`} className="h-10 flex-1 rounded-lg border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
-                          value={p.category} onChange={e => { const n = [...splitPortions]; n[i] = { ...n[i], category: e.target.value }; setSplitPortions(n) }}>
-                          {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                        </select>
-                        <MoneyField ariaLabel={`Portion ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" placeholder="0"
-                          value={p.amount} currency={inputCurrency} onChange={v => { const n = [...splitPortions]; n[i] = { ...n[i], amount: v }; setSplitPortions(n) }} />
-                        <button onClick={() => setSplitPortions(sp => sp.filter((_, j) => j !== i))} disabled={splitPortions.length <= 2}
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label={`Remove portion ${i + 1}`}>×</button>
-                      </div>
-                    ))}
-                    {(() => {
-                      const total = splitPortions.reduce((s, p) => s + parseNumberInput(p.amount), 0)
-                      const main = parseNumberInput(amount); const rem = main - total
-                      return (
-                        <div className="flex items-center justify-between gap-2 pt-1">
-                          <button onClick={() => setSplitPortions(sp => [...sp, { category: categories[0]?.name ?? '', amount: '' }])} className="text-xs font-bold text-primary hover:underline">+ Add portion</button>
-                          <span className={`text-xs font-bold ${rem === 0 ? 'text-primary' : rem > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>{rem === 0 ? '✓ Fully allocated' : rem > 0 ? `${money.format(rem, inputCurrency)} remaining` : `${money.format(Math.abs(rem), inputCurrency)} over`}</span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Multi-wallet payment (expense only, 2+ wallets) ── */}
-            {type === 'expense' && wallets.length >= 2 && (
-              <div className="rounded-[1.4rem] border border-border bg-card p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <span>
-                    <span className="block text-sm font-extrabold text-foreground">Pay from multiple wallets</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">E.g. $100 from notes + $2 from coins for a $102 expense</span>
-                  </span>
-                  <button type="button" role="switch" aria-checked={multiWalletEnabled} aria-label="Pay from multiple wallets"
-                    onClick={() => {
-                      const next = !multiWalletEnabled; setMultiWalletEnabled(next)
-                      if (next) {
-                        const notesW = wallets.find(w => w.cash_role === 'notes' || w.cash_role === 'mixed' || w.type === 'cash')
-                        const coinsW = wallets.find(w => w.cash_role === 'coins' && w.id !== notesW?.id)
-                        const initial: { wallet_id: string; amount: string }[] = []
-                        if (notesW) initial.push({ wallet_id: notesW.id, amount: '' })
-                        if (coinsW) initial.push({ wallet_id: coinsW.id, amount: '' })
-                        const others = wallets.filter(w => !initial.find(i => i.wallet_id === w.id))
-                        while (initial.length < 2 && others.length > 0) initial.push({ wallet_id: others.shift()!.id, amount: '' })
-                        setWalletSplits(initial)
-                      } else setWalletSplits([])
-                    }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${multiWalletEnabled ? 'bg-primary' : 'bg-muted'}`}>
-                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${multiWalletEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-                {multiWalletEnabled && (
-                  <div className="mt-3 space-y-2">
-                    {walletSplits.map((ws, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <select aria-label={`Wallet ${i + 1}`} className="h-10 flex-1 rounded-lg border border-input bg-secondary px-2 text-sm font-bold text-foreground outline-none"
-                          value={ws.wallet_id} onChange={e => { const n = [...walletSplits]; n[i] = { ...n[i], wallet_id: e.target.value }; setWalletSplits(n) }}>
-                          {wallets.map(w => <option key={w.id} value={w.id}>{w.name}{w.cash_role === 'coins' ? ' · coins' : w.cash_role === 'notes' ? ' · notes' : ''}</option>)}
-                        </select>
-                        <MoneyField ariaLabel={`Wallet ${i + 1} amount`} className="h-10 w-28 rounded-lg bg-secondary text-sm font-extrabold" placeholder="0"
-                          value={ws.amount} currency={inputCurrency} onChange={v => { const n = [...walletSplits]; n[i] = { ...n[i], amount: v }; setWalletSplits(n) }} />
-                        <button onClick={() => setWalletSplits(ws2 => ws2.filter((_, j) => j !== i))} disabled={walletSplits.length <= 2}
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label={`Remove wallet ${i + 1}`}>×</button>
-                      </div>
-                    ))}
-                    {(() => {
-                      const total = walletSplits.reduce((s, ws) => s + parseNumberInput(ws.amount), 0)
-                      const main = parseNumberInput(amount); const rem = main - total
-                      return (
-                        <div className="flex items-center justify-between gap-2 pt-1">
-                          <button onClick={() => { const unused = wallets.find(w => !walletSplits.find(ws2 => ws2.wallet_id === w.id)); setWalletSplits(ws2 => [...ws2, { wallet_id: unused?.id ?? wallets[0].id, amount: '' }]) }} className="text-xs font-bold text-primary hover:underline">+ Add wallet</button>
-                          <span className={`text-xs font-bold ${rem === 0 ? 'text-primary' : rem > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>{rem === 0 ? '✓ Fully allocated' : rem > 0 ? `${money.format(rem, inputCurrency)} remaining` : `${money.format(Math.abs(rem), inputCurrency)} over`}</span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Transfer fee */}
-            {type === 'transfer' && (
-              <div className="rounded-[1.4rem] border border-border bg-card p-4">
-                <label className="flex cursor-pointer items-center justify-between gap-4">
-                  <span>
-                    <span className="block text-sm font-extrabold text-foreground">Transfer fee</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">Bank or service fee charged for this transfer</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    aria-label="Enable transfer fee"
-                    className="h-5 w-5 accent-primary"
-                    checked={transferFeeEnabled}
-                    onChange={e => {
-                      setTransferFeeEnabled(e.target.checked)
-                      if (!e.target.checked) setTransferFeeAmount('')
-                    }}
-                  />
-                </label>
-                {transferFeeEnabled && (
-                  <div className="mt-4 space-y-3">
-                    <div>
-                      <Label className="text-xs font-bold text-muted-foreground">Fee amount ({inputCurrency})</Label>
-                      <MoneyField
-                        ariaLabel="Transfer fee amount"
-                        className="mt-2 bg-secondary"
-                        value={transferFeeAmount}
-                        placeholder="0"
-                        currency={inputCurrency}
-                        onChange={v => setTransferFeeAmount(formatNumberInput(v))}
-                      />
-                    </div>
-                    {parseNumberInput(transferFeeAmount) > 0 && (
-                      <div className="space-y-1.5 rounded-xl border border-border bg-secondary p-3 text-sm">
-                        <div className="flex justify-between gap-3">
-                          <span className="text-muted-foreground">Transfer amount</span>
-                          <span className="font-bold text-foreground">{money.format(parseNumberInput(amount), inputCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-muted-foreground">Fee</span>
-                          <span className="font-bold text-[#FF8388]">+{money.format(parseNumberInput(transferFeeAmount), inputCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between gap-3 border-t border-border pt-1.5">
-                          <span className="font-extrabold text-foreground">Total from wallet</span>
-                          <span className="font-extrabold text-foreground">{money.format(parseNumberInput(amount) + parseNumberInput(transferFeeAmount), inputCurrency)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Date + Currency — side by side */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-bold text-foreground">Date</Label>
-                <Input aria-label="Date" className="mt-2 bg-secondary" type="date" value={date} onChange={event => setDate(event.target.value)} />
-              </div>
-              <div>
-                <Label className="text-sm font-bold text-foreground">Currency</Label>
-                <select
-                  aria-label="Input currency"
-                  className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                  value={inputCurrency}
-                  onChange={event => setInputCurrency(event.target.value)}
-                >
-                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-5">
-                {/* Cash Change Assistant — expense + cash wallet only */}
-                {type === 'expense' && wallets.find(w => w.id === walletId)?.type === 'cash' && (
-                  <CashChangeAssistant
-                    cashEnabled={cashEnabled}
-                    cashTendered={cashTendered}
-                    walletId={walletId}
-                    inputCurrency={inputCurrency}
-                    amount={amount}
-                    changeBillsWalletId={changeBillsWalletId}
-                    changeCoinsWalletId={changeCoinsWalletId}
-                    wallets={wallets}
-                    setCashEnabled={setCashEnabled}
-                    setCashTendered={setCashTendered}
-                    setChangeBillsWalletId={setChangeBillsWalletId}
-                    setChangeCoinsWalletId={setChangeCoinsWalletId}
-                  />
-                )}
-              </div>
-
-            {editingTransaction?.needs_review && (
-              <Button
-                className="mt-4 w-full gap-2 bg-[#FFCF73] text-background hover:bg-[#FFCF73]/90 font-extrabold"
-                onClick={async () => {
-                  const saved = await handleSaveTransaction()
-                  if (saved) handleMarkReviewed(editingTransaction!.id)
-                  setIsFormOpen(false)
-                }}
-              >
-                <CheckCircle className="h-4 w-4" />
-                Mark reviewed & save
-              </Button>
-            )}
-            <Button className={`w-full ${editingTransaction?.needs_review ? 'mt-2' : 'mt-4'}`} onClick={handleSaveTransaction} disabled={addTransaction.isPending || updateTransaction.isPending || wallets.length === 0 || cannotSaveTransfer || (type === 'expense' && categories.length === 0)}>
-              {addTransaction.isPending || updateTransaction.isPending
-                ? 'Saving…'
-                : editingTransaction
-                  ? `Save ${type}`
-                  : `Add ${type}`}
-            </Button>
-            <Button variant="secondary" className="mt-2 w-full" onClick={() => setIsFormOpen(false)}>
-              Cancel
-            </Button>
-          </div>
+            <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-6' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
+          <TransactionForm
+            variant="sheet"
+            initialType={(new URLSearchParams(window.location.search).get('action') === 'income' ? 'income' : 'expense') as EntryType}
+            editTransaction={editingTransaction}
+            onDone={() => setIsFormOpen(false)}
+            onNavigate={() => setIsFormOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 
-      <Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
+<Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
         <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 pb-safe-10 sm:max-w-md sm:p-6 sm:pb-safe-10">
           <SheetHeader className="mb-6 text-left">
             <SheetTitle>Edit recurring rule</SheetTitle>
