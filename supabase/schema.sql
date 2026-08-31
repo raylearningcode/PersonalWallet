@@ -92,6 +92,8 @@ create table investment_config (
   return_rate numeric not null default 0 check (return_rate >= 0),
   duration_years integer not null default 0 check (duration_years >= 0),
   current_value numeric not null default 0 check (current_value >= 0),
+  inflation_rate numeric not null default 0,
+  lump_sum numeric not null default 0,
   allocations jsonb not null default '[]'::jsonb,
   created_at timestamptz default now()
 );
@@ -128,3 +130,39 @@ create table app_settings (
 create unique index investment_config_user_key on investment_config(user_id);
 create unique index app_settings_user_key on app_settings(user_id);
 create unique index estimation_plans_user_month_year_key on estimation_plans(user_id, month, year);
+
+create table goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  name text not null,
+  target_amount numeric not null,
+  current_amount numeric not null default 0,
+  deadline date,
+  color text not null default '#6C63FF',
+  category text not null default 'General',
+  notes text,
+  created_at timestamptz default now()
+);
+
+create table holdings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  ticker text not null default '',
+  asset_type text not null check (asset_type in ('stock', 'crypto', 'etf', 'bond', 'other')),
+  quantity numeric not null check (quantity >= 0),
+  buy_price numeric not null check (buy_price >= 0),
+  buy_date date not null default current_date,
+  currency text not null default 'USD' check (currency in ('USD', 'IDR', 'TWD', 'EUR', 'JPY')),
+  current_price numeric,
+  created_at timestamptz not null default now()
+);
+
+create table dividend_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  holding_id uuid not null references holdings(id) on delete cascade,
+  amount numeric not null check (amount >= 0),
+  date date not null default current_date,
+  created_at timestamptz not null default now()
+);

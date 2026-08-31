@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAddWallet, useAddTransaction, useWallets, useBudgetCategories, useAddBudgetCategory } from '@/lib/queries'
-import { useMoney } from '@/lib/currency'
+import { useAddWallet, useAddTransaction, useWallets, useBudgetCategories, useAddBudgetCategory, useSaveAppSettings } from '@/lib/queries'
+import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { todayLocal } from '@/lib/utils'
 import { MoneyField } from '@/components/mobile/MoneyField'
@@ -38,8 +38,28 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const addWallet = useAddWallet()
   const addTransaction = useAddTransaction()
   const addCategory = useAddBudgetCategory()
+  const saveSettings = useSaveAppSettings()
   const { data: wallets = [] } = useWallets()
   const { data: categories = [] } = useBudgetCategories()
+  const [welcomeCurrency, setWelcomeCurrency] = useState('')
+  const [starting, setStarting] = useState(false)
+
+  // Persist the chosen base currency, then continue — seeding on the next step
+  // uses money.displayCurrency, which follows app_settings.
+  const handleGetStarted = async () => {
+    setStarting(true)
+    try {
+      if (welcomeCurrency && welcomeCurrency !== money.displayCurrency) {
+        await saveSettings.mutateAsync({ base_currency: welcomeCurrency, currency: welcomeCurrency })
+      }
+      setStep(1)
+    } catch {
+      toast.error('Failed to save currency — continuing with default')
+      setStep(1)
+    } finally {
+      setStarting(false)
+    }
+  }
 
   // Auto-seed a default Cash wallet + all starter categories on first run,
   // so new users can start immediately without any setup.
@@ -185,8 +205,22 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
                 </div>
               ))}
             </div>
-            <Button onClick={() => setStep(1)} className="w-full gap-2">
-              Get started <ArrowRight className="h-4 w-4" />
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3">
+              <div className="text-left">
+                <p className="text-sm font-extrabold text-foreground">Currency</p>
+                <p className="text-xs text-muted-foreground">Used for every amount in the app</p>
+              </div>
+              <select
+                aria-label="Choose currency"
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm font-bold text-foreground outline-none"
+                value={welcomeCurrency || money.displayCurrency}
+                onChange={e => setWelcomeCurrency(e.target.value)}
+              >
+                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <Button onClick={handleGetStarted} disabled={starting} className="w-full gap-2">
+              {starting ? 'Starting…' : <>Get started <ArrowRight className="h-4 w-4" /></>}
             </Button>
             <button
               type="button"

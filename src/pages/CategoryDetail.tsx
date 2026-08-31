@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ArrowLeft, MoreVertical } from 'lucide-react'
-import { useBudgetCategories, useTransactions } from '@/lib/queries'
+import { useBudgetCategories, useTransactions, useWallets } from '@/lib/queries'
 import { useMoney } from '@/lib/currency'
 import { getCategoryUsedPct, isInBudgetPeriod } from '@/lib/budget'
 import { formatDate } from '@/lib/utils'
@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { parseNumberInput } from '@/lib/numberInput'
 import type { BudgetPeriod } from '@/lib/budget'
+import type { Transaction } from '@/types'
 
 const PRESET_COLORS = [
   '#EF4444', '#F97316', '#EAB308', '#22C55E',
@@ -46,8 +47,10 @@ export function CategoryDetail() {
 
   const { data: categories = [], isPending: catPending } = useBudgetCategories()
   const { data: allTransactions = [], isPending: txPending } = useTransactions()
+  const { data: wallets = [] } = useWallets()
   const updateCategory = useUpdateBudgetCategory()
   const deleteCategory = useDeleteBudgetCategory()
+  const [detailTx, setDetailTx] = useState<Transaction | null>(null)
 
   const category = categories.find(c => c.name === categoryName)
 
@@ -280,9 +283,11 @@ export function CategoryDetail() {
                 <h3 className="mb-2 text-xs font-extrabold text-primary">{formatDate(date)}</h3>
                 <div className="space-y-2">
                   {rows.map(tx => (
-                    <div
+                    <button
                       key={tx.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3"
+                      type="button"
+                      onClick={() => setDetailTx(tx)}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-secondary px-4 py-3 text-left transition-colors active:scale-[0.99] hover:border-primary/30"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-foreground">{tx.description}</p>
@@ -291,7 +296,7 @@ export function CategoryDetail() {
                       <span className={`shrink-0 text-sm font-extrabold tabular-nums ${txAmountColor(tx.amount, tx.type)}`}>
                         {txAmountSign(tx.amount, tx.type)}{money.format(tx.original_amount ?? tx.amount, tx.original_currency ?? money.baseCurrency)}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -299,6 +304,61 @@ export function CategoryDetail() {
           </div>
         )}
       </div>
+
+      {/* Transaction detail sheet */}
+      <Sheet open={detailTx !== null} onOpenChange={v => { if (!v) setDetailTx(null) }}>
+        <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
+          {detailTx && (
+            <>
+              <SheetHeader className="mb-4">
+                <SheetTitle className="pr-8 text-lg">{detailTx.description}</SheetTitle>
+              </SheetHeader>
+              <div className="mb-5 text-center">
+                <p className={`text-3xl font-extrabold tabular-nums ${txAmountColor(detailTx.amount, detailTx.type)}`}>
+                  {txAmountSign(detailTx.amount, detailTx.type)}
+                  {money.format(detailTx.original_amount ?? detailTx.amount, detailTx.original_currency ?? money.baseCurrency)}
+                </p>
+                {detailTx.original_currency && detailTx.original_currency !== money.baseCurrency && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    = {money.formatDisplay(detailTx.amount)}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-xl bg-secondary px-4 py-3">
+                  <span className="text-xs text-muted-foreground">Type</span>
+                  <span className="text-sm font-bold capitalize text-foreground">{detailTx.type}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-secondary px-4 py-3">
+                  <span className="text-xs text-muted-foreground">Category</span>
+                  <span className="text-sm font-bold text-foreground">{detailTx.category}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-secondary px-4 py-3">
+                  <span className="text-xs text-muted-foreground">Date</span>
+                  <span className="text-sm font-bold text-foreground">{formatDate(detailTx.date)}</span>
+                </div>
+                {detailTx.wallet_id && (
+                  <div className="flex items-center justify-between rounded-xl bg-secondary px-4 py-3">
+                    <span className="text-xs text-muted-foreground">Wallet</span>
+                    <span className="text-sm font-bold text-foreground">
+                      {wallets.find(w => w.id === detailTx.wallet_id)?.name ?? '—'}
+                    </span>
+                  </div>
+                )}
+                {detailTx.needs_review && (
+                  <div className="flex items-center justify-between rounded-xl bg-[#FFCF73]/10 px-4 py-3">
+                    <span className="text-xs text-muted-foreground">Status</span>
+                    <span className="text-sm font-bold text-[#FFCF73]">Needs review</span>
+                  </div>
+                )}
+              </div>
+              <Button variant="secondary" className="mt-5 w-full" onClick={() => setDetailTx(null)}>
+                Close
+              </Button>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Menu sheet */}
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>

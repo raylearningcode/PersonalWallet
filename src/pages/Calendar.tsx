@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
-import { useTransactions, useBudgetCategories } from '@/lib/queries'
+import { useTransactions, useBudgetCategories, useRecurringRules } from '@/lib/queries'
 import { useMoney } from '@/lib/currency'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { ChevronLeft, ChevronRight, ArrowDown, ArrowUp, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowDown, ArrowUp, X, Bell } from 'lucide-react'
 import { toLocalDateStr, todayLocal } from '@/lib/utils'
+import { addRecurringInterval } from '@/lib/recurring'
+import type { RecurringRule } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -66,6 +68,25 @@ function TxRow({
   )
 }
 
+// ─── Due bill row (reused) ───────────────────────────────────────────────────
+
+function BillRow({ bill, money }: { bill: RecurringRule; money: ReturnType<typeof useMoney> }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-[#FFCF73]/25 bg-[#FFCF73]/10 px-3 py-2.5">
+      <Bell className="h-3.5 w-3.5 shrink-0 text-[#FFCF73]" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-foreground">{bill.description}</p>
+        <p className="text-xs text-muted-foreground">
+          {bill.installment_total ? `${bill.installment_paid}/${bill.installment_total} installments` : 'Recurring bill'}
+        </p>
+      </div>
+      <p className="shrink-0 text-sm font-extrabold tabular-nums text-[#FFCF73]">
+        {money.format(bill.original_amount ?? bill.amount, bill.original_currency ?? money.baseCurrency)}
+      </p>
+    </div>
+  )
+}
+
 // ─── Desktop day panel ───────────────────────────────────────────────────────
 
 function DesktopDayPanel({
@@ -74,12 +95,14 @@ function DesktopDayPanel({
   txs,
   money,
   categories,
+  bills = [],
 }: {
   dateStr: string
   onClose: () => void
   txs: ReturnType<typeof useTransactions>['data']
   money: ReturnType<typeof useMoney>
   categories: { name: string; color: string }[]
+  bills?: RecurringRule[]
 }) {
   const expenses = (txs ?? []).filter(t => t.type !== 'income')
   const income = (txs ?? []).filter(t => t.type === 'income')
@@ -116,6 +139,15 @@ function DesktopDayPanel({
         </div>
       </div>
 
+      {bills.length > 0 && (
+        <div className="mb-5">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-widest text-[#FFCF73]">Bills due</p>
+          <div className="space-y-1.5">
+            {bills.map(b => <BillRow key={b.id} bill={b} money={money} />)}
+          </div>
+        </div>
+      )}
+
       {!(txs ?? []).length ? (
         <p className="py-6 text-center text-sm text-muted-foreground">No transactions this day.</p>
       ) : (
@@ -130,12 +162,13 @@ function DesktopDayPanel({
 // ─── Mobile day sheet ────────────────────────────────────────────────────────
 
 function MobileDaySheet({
-  dateStr, open, onClose, txs, money, categories,
+  dateStr, open, onClose, txs, money, categories, bills = [],
 }: {
   dateStr: string; open: boolean; onClose: () => void
   txs: ReturnType<typeof useTransactions>['data']
   money: ReturnType<typeof useMoney>
   categories: { name: string; color: string }[]
+  bills?: RecurringRule[]
 }) {
   const expenses = (txs ?? []).filter(t => t.type !== 'income')
   const income = (txs ?? []).filter(t => t.type === 'income')
@@ -166,6 +199,15 @@ function MobileDaySheet({
           </div>
         </div>
 
+        {bills.length > 0 && (
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-extrabold uppercase tracking-widest text-[#FFCF73]">Bills due</p>
+            <div className="space-y-1.5">
+              {bills.map(b => <BillRow key={b.id} bill={b} money={money} />)}
+            </div>
+          </div>
+        )}
+
         {!(txs ?? []).length ? (
           <p className="py-6 text-center text-sm text-muted-foreground">No transactions this day.</p>
         ) : (
@@ -184,6 +226,7 @@ function MonthlyCalendar() {
   const money = useMoney()
   const { data: transactions = [] } = useTransactions()
   const { data: categories = [] } = useBudgetCategories()
+  const { data: rules = [] } = useRecurringRules()
   const isDesktop = useIsDesktop()
   const now = new Date()
   const [viewYear, setViewYear] = useState(now.getFullYear())
@@ -217,6 +260,26 @@ function MonthlyCalendar() {
   const totalSpend = Object.values(dailyData).reduce((s, d) => s + d.total, 0)
   const totalIncome = Object.values(dailyData).reduce((s, d) => s + d.income, 0)
   const activeDays = Object.keys(dailyData).length
+
+  // Due dates of active recurring bills within the viewed month
+  const billsByDate = useMemo(() => {
+    const map: Record<string, RecurringRule[]> = {}
+    const monthStart = prefix + '01'
+    const monthEnd = prefix + String(days).padStart(2, '0')
+    for (const r of rules) {
+      if (!r.active || r.type === 'income') continue
+      if (r.installment_total != null && (r.installment_paid ?? 0) >= r.installment_total) continue
+      let d = r.next_due_date || r.start_date
+      let guard = 0
+      while (d < monthStart && guard++ < 400) d = addRecurringInterval(d, r.frequency)
+      while (d <= monthEnd && guard++ < 400) {
+        if (d >= monthStart) (map[d] ??= []).push(r)
+        if (r.end_date && d >= r.end_date) break
+        d = addRecurringInterval(d, r.frequency)
+      }
+    }
+    return map
+  }, [rules, prefix, days])
 
   const cells: (number | null)[] = []
   for (let i = 0; i < startDay; i++) cells.push(null)
@@ -262,6 +325,7 @@ function MonthlyCalendar() {
             const data = dailyData[dateStr]
             const amount = data?.total ?? 0
             const hasIncome = (data?.income ?? 0) > 0
+            const dueBills = billsByDate[dateStr]
             const bg = amount > 0 ? heatColor(amount, maxDaily) : 'transparent'
             const today = dateStr === todayLocal()
 
@@ -274,7 +338,9 @@ function MonthlyCalendar() {
                 } ${selectedDate === dateStr ? 'ring-2 ring-foreground' : ''}`}
                 style={{ backgroundColor: bg }}
                 onClick={() => setSelectedDate(selectedDate === dateStr ? null : dateStr)}
-                title={`${dateStr}${amount > 0 ? ` — spent ${money.formatDisplay(amount)}` : ''}`}
+                title={`${dateStr}${amount > 0 ? ` — spent ${money.formatDisplay(amount)}` : ''}${
+                  dueBills?.length ? ` — ${dueBills.slice(0, 3).map(b => b.description).join(', ')}${dueBills.length > 3 ? '…' : ''} due` : ''
+                }`}
               >
                 <span className={`font-bold ${isDesktop ? 'text-xs' : 'text-xs sm:text-sm'} ${
                   amount > 0 && amount / maxDaily > 0.55 ? 'text-background' : 'text-foreground'
@@ -283,6 +349,13 @@ function MonthlyCalendar() {
                 </span>
                 {hasIncome && (
                   <span className="absolute top-1 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+                {dueBills && dueBills.length > 0 && (
+                  <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
+                    {dueBills.slice(0, 3).map(b => (
+                      <span key={b.id} className="h-1.5 w-1.5 rounded-full bg-[#FFCF73]" />
+                    ))}
+                  </span>
                 )}
               </button>
             )
@@ -299,6 +372,9 @@ function MonthlyCalendar() {
           <span className="ml-2 flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Income
           </span>
+          <span className="ml-2 flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#FFCF73]" /> Bills due
+          </span>
         </div>
       </div>
 
@@ -311,6 +387,7 @@ function MonthlyCalendar() {
             txs={selectedTxs}
             money={money}
             categories={categories}
+            bills={billsByDate[selectedDate] ?? []}
           />
         </div>
       )}
@@ -323,6 +400,7 @@ function MonthlyCalendar() {
           txs={selectedTxs}
           money={money}
           categories={categories}
+          bills={selectedDate ? billsByDate[selectedDate] ?? [] : []}
         />
       )}
     </div>

@@ -61,10 +61,17 @@ const emptyAddForm = (currency = '') => ({
   startDate: todayLocal(),
   endDate: '' as string,
   logFirstPayment: true,
+  installmentTotal: '' as string,
 })
 
 type ExpenseFilter = 'all' | 'active' | 'paused' | 'due-soon'
 type ExpenseSort = 'due-date' | 'amount-desc' | 'amount-asc' | 'name'
+
+const parseInstallmentTotal = (raw: string): number | null => {
+  if (!raw.trim()) return null
+  const n = Number(raw)
+  return Number.isInteger(n) && n >= 2 ? n : null
+}
 
 export function Subscriptions() {
   const money = useMoney()
@@ -246,6 +253,7 @@ export function Subscriptions() {
       startDate: rule.next_due_date ?? rule.start_date,
       endDate: rule.end_date ?? '',
       logFirstPayment: false,
+      installmentTotal: rule.installment_total ? String(rule.installment_total) : '',
     })
   }
 
@@ -262,6 +270,7 @@ export function Subscriptions() {
       startDate: rule.next_due_date ?? rule.start_date,
       endDate: rule.end_date ?? '',
       logFirstPayment: false,
+      installmentTotal: rule.installment_total ? String(rule.installment_total) : '',
     })
   }
 
@@ -274,6 +283,11 @@ export function Subscriptions() {
     }
     const category = editForm.category || (editForm.type === 'income' ? 'Income' : 'Subscriptions')
     const currency = editForm.currency || money.displayCurrency
+    const installmentTotal = parseInstallmentTotal(editForm.installmentTotal)
+    if (editForm.installmentTotal.trim() && installmentTotal === null) {
+      toast.error('Installments must be a whole number of 2 or more')
+      return
+    }
     try {
       await updateRule.mutateAsync({
         id: editTarget.id,
@@ -287,6 +301,7 @@ export function Subscriptions() {
         frequency: editForm.frequency,
         next_due_date: editForm.startDate,
         end_date: editForm.endDate || null,
+        installment_total: editForm.type === 'expense' ? installmentTotal : null,
       })
       closeDetailSheet()
       toast.success('Subscription updated')
@@ -320,6 +335,11 @@ export function Subscriptions() {
     const startDate = addForm.startDate || todayLocal()
     const category = addForm.category || (addForm.type === 'income' ? 'Income' : 'Subscriptions')
     const currency = addForm.currency || money.displayCurrency
+    const installmentTotal = parseInstallmentTotal(addForm.installmentTotal)
+    if (addForm.installmentTotal.trim() && installmentTotal === null) {
+      toast.error('Installments must be a whole number of 2 or more')
+      return
+    }
     try {
       const rule = await addRule.mutateAsync({
         user_id: null,
@@ -335,7 +355,7 @@ export function Subscriptions() {
         next_due_date: nextDueFrom(startDate, addForm.frequency),
         frequency: addForm.frequency,
         end_date: null,
-        installment_total: null,
+        installment_total: addForm.type === 'expense' ? installmentTotal : null,
         installment_paid: 0,
         active: true,
       })
@@ -514,6 +534,21 @@ export function Subscriptions() {
                   <option value="yearly">Yearly</option>
                 </select>
               </div>
+              {editForm.type === 'expense' && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Installments <span className="font-normal opacity-60">(optional)</span></Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    step={1}
+                    className="mt-1.5 bg-secondary text-sm"
+                    value={editForm.installmentTotal}
+                    onChange={e => setEditField('installmentTotal', e.target.value)}
+                    placeholder="e.g. 12"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Payment count — the rule pauses itself once paid off</p>
+                </div>
+              )}
               <div>
                 <Label className="text-xs text-muted-foreground">Category</Label>
                 <select className="mt-1.5 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none" value={editForm.category} onChange={e => setEditField('category', e.target.value)}>
@@ -672,6 +707,21 @@ export function Subscriptions() {
                   <option value="yearly">Yearly</option>
                 </select>
               </div>
+              {addForm.type === 'expense' && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Installments <span className="font-normal opacity-60">(optional)</span></Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    step={1}
+                    className="mt-2 bg-secondary"
+                    value={addForm.installmentTotal}
+                    onChange={e => setField('installmentTotal', e.target.value)}
+                    placeholder="e.g. 12"
+                  />
+                  <p className="mt-1.5 text-xs text-muted-foreground">Set a payment count (e.g. 12 for a phone plan) — the rule pauses itself once paid off</p>
+                </div>
+              )}
               <div>
                 <Label className="text-xs text-muted-foreground">Category</Label>
                 <select

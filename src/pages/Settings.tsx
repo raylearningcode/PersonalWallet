@@ -330,6 +330,9 @@ export function Settings() {
       setTotpSecret('')
       setTotpQRCode('')
       toast.success('Two-factor authentication enabled')
+      if (!localStorage.getItem(PIN_STORAGE_KEY)) {
+        toast.warning('Set a PIN lock too — 2FA applies when the app unlocks')
+      }
     } else {
       toast.error('Invalid code — try again')
     }
@@ -518,15 +521,42 @@ export function Settings() {
 
   const handleImportBackup = async () => {
     if (!backupText.trim() && !backupPreview) return
-    const data = backupPreview ? (backupPreview.parsed as Record<string, unknown[]>) : JSON.parse(backupText)
-    for (const wallet of (data.wallets as Record<string, unknown>[] ?? [])) await addWallet.mutateAsync(stripSystemFields(wallet) as Parameters<typeof addWallet.mutateAsync>[0])
-    for (const category of (data.budget_categories as Record<string, unknown>[] ?? [])) await addCategory.mutateAsync(stripSystemFields(category) as Parameters<typeof addCategory.mutateAsync>[0])
+    const data = backupPreview ? (backupPreview.parsed as Record<string, unknown>[]) : JSON.parse(backupText)
+
+    // Duplicate protection — importing the same backup twice must not double data.
+    const existingWalletNames = new Set(wallets.map(w => w.name.toLowerCase()))
+    const existingCategoryNames = new Set(categories.map(c => c.name.toLowerCase()))
+    const existingTxKeys = new Set(
+      transactions.map(t => `${String(t.description ?? '').toLowerCase()}|${t.amount}|${t.date}|${t.type}`)
+    )
+
+    let addedWallets = 0, addedCategories = 0, addedTx = 0, skipped = 0
+    const skip = () => { skipped++ }
+    for (const wallet of (data.wallets as Record<string, unknown>[] ?? [])) {
+      if (existingWalletNames.has(String(wallet.name ?? '').toLowerCase())) { skip(); continue }
+      await addWallet.mutateAsync(stripSystemFields(wallet) as Parameters<typeof addWallet.mutateAsync>[0])
+      addedWallets++
+    }
+    for (const category of (data.budget_categories as Record<string, unknown>[] ?? [])) {
+      if (existingCategoryNames.has(String(category.name ?? '').toLowerCase())) { skip(); continue }
+      await addCategory.mutateAsync(stripSystemFields(category) as Parameters<typeof addCategory.mutateAsync>[0])
+      addedCategories++
+    }
     if (data.investment_config) await saveInvestmentConfig.mutateAsync(stripSystemFields(data.investment_config as Record<string, unknown>))
     for (const plan of (data.estimation_plans as Record<string, unknown>[] ?? [])) await upsertEstimationPlan.mutateAsync(stripSystemFields(plan) as Parameters<typeof upsertEstimationPlan.mutateAsync>[0])
-    for (const tx of (data.transactions as Record<string, unknown>[] ?? [])) await addTransaction.mutateAsync(stripSystemFields(tx) as Parameters<typeof addTransaction.mutateAsync>[0])
+    for (const tx of (data.transactions as Record<string, unknown>[] ?? [])) {
+      const key = `${String(tx.description ?? '').toLowerCase()}|${tx.amount}|${tx.date}|${tx.type}`
+      if (existingTxKeys.has(key)) { skip(); continue }
+      await addTransaction.mutateAsync(stripSystemFields(tx) as Parameters<typeof addTransaction.mutateAsync>[0])
+      addedTx++
+    }
     setBackupPreview(null)
     setBackupText('')
-    toast.success('Backup imported successfully')
+    if (skipped > 0) {
+      toast.success(`Backup imported — ${addedWallets} wallets, ${addedCategories} categories, ${addedTx} transactions · ${skipped} skipped as duplicates`)
+    } else {
+      toast.success('Backup imported successfully')
+    }
   }
 
   return (
@@ -1121,7 +1151,7 @@ export function Settings() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-bold text-foreground">Two-factor authentication</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Add an extra layer of security with TOTP</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Require an authenticator code each time the app unlocks</p>
                 </div>
                 {totpEnabled ? (
                   <Button variant="secondary" size="sm" onClick={handleDisableTOTP}>Remove</Button>

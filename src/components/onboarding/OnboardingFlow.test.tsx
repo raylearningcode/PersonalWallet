@@ -3,10 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { OnboardingFlow } from './OnboardingFlow'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 
-const { addWallet, addCategory, addTransaction } = vi.hoisted(() => ({
+const { addWallet, addCategory, addTransaction, saveSettings } = vi.hoisted(() => ({
   addWallet: vi.fn(async () => ({ id: 'w1' })),
   addCategory: vi.fn(async () => ({ id: 'c1' })),
   addTransaction: vi.fn(async () => ({ id: 't1' })),
+  saveSettings: vi.fn(async () => ({})),
 }))
 
 const state = vi.hoisted(() => ({ wallets: [] as { id: string; name: string; type: string }[] }))
@@ -17,6 +18,7 @@ vi.mock('@/lib/queries', () => ({
   useAddWallet: () => ({ mutateAsync: addWallet, isPending: false }),
   useAddBudgetCategory: () => ({ mutateAsync: addCategory, isPending: false }),
   useAddTransaction: () => ({ mutateAsync: addTransaction, isPending: false }),
+  useSaveAppSettings: () => ({ mutateAsync: saveSettings, isPending: false }),
 }))
 
 vi.mock('@/hooks/useIsDesktop', () => ({
@@ -24,6 +26,7 @@ vi.mock('@/hooks/useIsDesktop', () => ({
 }))
 
 vi.mock('@/lib/currency', () => ({
+  CURRENCIES: ['USD', 'IDR', 'TWD', 'EUR', 'JPY'],
   useMoney: () => ({
     displayCurrency: 'IDR',
     baseCurrency: 'IDR',

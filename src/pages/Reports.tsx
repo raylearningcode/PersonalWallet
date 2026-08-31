@@ -196,6 +196,9 @@ export function Reports() {
     if (!selectedCategory) return []
     return activeTx.filter(tx => tx.category === selectedCategory).sort((a, b) => b.date.localeCompare(a.date))
   }, [activeTx, selectedCategory])
+  // Prefer each category's configured color; fall back to the fixed palette
+  const colorOf = (name: string, index: number) =>
+    categories.find(c => c.name === name)?.color || categoryColors[index % categoryColors.length]
   const activeTotal = categoryTotals.reduce((sum, [, amount]) => sum + amount, 0)
   const topCategory = categoryTotals[0]?.[0] ?? '—'
   const insights = getCategoryInsights(rangeTx, categories, periodDate).slice(0, 4)
@@ -810,7 +813,7 @@ export function Reports() {
           </CardHeader>
           <CardContent className="px-5 pb-8 sm:px-8">
             <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
-              <div className="relative mx-auto aspect-square w-full max-w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal) }}>
+              <div className="relative mx-auto aspect-square w-full max-w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal, colorOf) }}>
                 <div className="absolute inset-[20%] flex flex-col items-center justify-center rounded-full bg-card text-center">
                   <span className="text-sm text-muted-foreground">Total {mode}</span>
                   <strong className="mt-2 text-xl text-foreground">{money.formatDisplay(activeTotal)}</strong>
@@ -836,7 +839,7 @@ export function Reports() {
                     aria-label={`${isDesktop ? 'Filter transactions by' : 'View category'} ${name}`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />
+                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colorOf(name, index) }} />
                       <span className="truncate font-bold text-foreground">{name}</span>
                     </div>
                     <span className="text-sm font-bold text-muted-foreground">{Math.round((amount / activeTotal) * 100)}%</span>
@@ -886,7 +889,7 @@ export function Reports() {
             {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
               <div key={name} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold" style={{ backgroundColor: categoryColors[index % categoryColors.length] }}>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold" style={{ backgroundColor: colorOf(name, index) }}>
                     {name.slice(0, 1)}
                   </div>
                   <div className="min-w-0">
@@ -1096,13 +1099,13 @@ export function Reports() {
   )
 }
 
-function buildDonut(entries: [string, number][], total: number) {
+function buildDonut(entries: [string, number][], total: number, colorOf: (name: string, index: number) => string) {
   if (!entries.length || total <= 0) return 'conic-gradient(#26344e 0deg 360deg)'
   let cursor = 0
-  const stops = entries.map(([, amount], index) => {
+  const stops = entries.map(([name, amount], index) => {
     const start = cursor
     cursor += (amount / total) * 360
-    const color = categoryColors[index % categoryColors.length]
+    const color = colorOf(name, index)
     return `${color} ${start}deg ${cursor}deg`
   })
   return `conic-gradient(${stops.join(', ')})`

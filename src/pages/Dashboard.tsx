@@ -52,10 +52,20 @@ export function Dashboard() {
   const streak = useMemo(() => computeStreak(transactions.map(t => t.date)), [transactions])
   const daysLeft = new Date(year, now.getMonth() + 1, 0).getDate() - now.getDate() + 1
   const safeToSpend = daysLeft > 0 ? (() => {
-    const monthlyBudgets = categories.filter(c => c.budget_period === 'monthly' || !c.budget_period)
-    const totalBudget = monthlyBudgets.reduce((s, c) => s + c.yearly_allocated, 0)
-    const spent = monthTx.filter(t => t.type !== 'income').reduce((s, t) => s + t.amount, 0)
-    return Math.max(0, totalBudget - spent)
+    // Yearly budgets count as a monthly share (/12); spending in unbudgeted
+    // categories doesn't consume budgeted money.
+    let budgetTotal = 0
+    let spentInBudgeted = 0
+    for (const c of categories) {
+      const period = c.budget_period ?? 'monthly'
+      const monthlyShare = period === 'yearly' ? c.yearly_allocated / 12 : c.yearly_allocated
+      if (monthlyShare <= 0) continue
+      budgetTotal += monthlyShare
+      spentInBudgeted += monthTx
+        .filter(t => t.type !== 'income' && t.category === c.name && isInBudgetPeriod(t.date, period))
+        .reduce((s, t) => s + t.amount, 0)
+    }
+    return Math.max(0, budgetTotal - spentInBudgeted)
   })() : 0
 
   // Budget health
