@@ -19,3 +19,7 @@ android/.gradle/
 ios/App/build/
 ios/App/Pods/
 ios/.xcode.env.local
+
+# Playwright
+test-results/
+playwright-report/
