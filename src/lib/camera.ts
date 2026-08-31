@@ -3,6 +3,10 @@ let cameraPlugin: any = null
 // Load Camera plugin dynamically if available
 async function loadCameraPlugin() {
   if (cameraPlugin) return cameraPlugin
+  // On web (PWA/desktop browser) the plugin is a no-op proxy whose calls
+  // reject — skip it entirely so callers get null instead of promise errors.
+  const cap = (window as any).Capacitor
+  if (!cap?.isNativePlatform?.()) return null
   try {
     const { Camera } = await import('@capacitor/camera')
     cameraPlugin = Camera
