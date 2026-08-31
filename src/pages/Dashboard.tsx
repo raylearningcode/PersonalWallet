@@ -11,7 +11,7 @@ import { calculateSavingsRate } from '@/lib/stats'
 import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { isInBudgetPeriod } from '@/lib/budget'
 import { getWalletBalances } from '@/lib/financeOs'
-import { safeGet } from '@/lib/utils'
+import { safeGet, todayLocal, toLocalDateStr } from '@/lib/utils'
 import { getAiInsights, isAiConfigured, type InsightResult } from '@/lib/ai'
 import { computeStreak } from '@/lib/streak'
 import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, ChevronRight } from 'lucide-react'
@@ -80,6 +80,25 @@ export function Dashboard() {
 
   // Recent activity
   const recentTx = transactions.slice(0, 8)
+
+  // ─── Spending trend (last 7 days) ────────────────────────────────────
+  const trendDays = useMemo(() => {
+    const days: { date: string; label: string; total: number }[] = []
+    const today = new Date()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
+      days.push({ date: toLocalDateStr(d), label: d.toLocaleDateString(undefined, { weekday: 'narrow' }), total: 0 })
+    }
+    for (const t of transactions) {
+      if (t.type === 'income' || t.type === 'transfer' || t.is_system_generated) continue
+      const day = days.find(d => d.date === t.date)
+      if (day) day.total += t.amount
+    }
+    return days
+  }, [transactions])
+  const trendTotal = trendDays.reduce((s, d) => s + d.total, 0)
+  const trendAvg = trendTotal / 7
+  const trendMax = Math.max(...trendDays.map(d => d.total))
 
   // ─── AI handler ───────────────────────────────────────────────────────
   const handleGetInsights = async () => {
@@ -161,6 +180,65 @@ export function Dashboard() {
           <p className="text-sm"><span className="font-extrabold text-foreground">{streak.current}-day</span> <span className="text-muted-foreground">logging streak</span>{streak.longest > streak.current && <span className="text-muted-foreground"> · best: {streak.longest} days</span>}</p>
         </div>
       )}
+
+      {/* Spending trend */}
+      <Card className="mb-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">Spending trend</CardTitle>
+          <span className="text-xs font-bold text-muted-foreground">last 7 days</span>
+        </CardHeader>
+        <CardContent className="px-5 pb-6">
+          {trendTotal === 0 ? (
+            <p className="text-sm text-muted-foreground">No spending in the last 7 days.</p>
+          ) : (
+            <>
+              <p className="text-sm font-extrabold text-foreground">{fmt(trendTotal)} total</p>
+              <p className="mb-4 text-xs text-muted-foreground">{fmt(trendAvg)} avg / day</p>
+              <div className="relative flex h-24 items-end gap-2" role="img" aria-label={`Daily spending for the last 7 days. ${fmt(trendTotal)} total.`}>
+                {trendDays.map(d => {
+                  const pct = d.total > 0 ? Math.max(8, (d.total / trendMax) * 100) : 0
+                  const isMax = d.total === trendMax
+                  return (
+                    <div key={d.date} className="relative flex h-full flex-1 items-end justify-center">
+                      <div className="group relative w-full max-w-10" style={{ height: `${pct}%` }}>
+                        {isMax && (
+                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold text-foreground">
+                            {fmt(d.total)}
+                          </span>
+                        )}
+                        <div
+                          className="h-full w-full rounded-t-md bg-[#FF8388] transition-opacity group-hover:opacity-75"
+                          title={`${d.date} · ${fmt(d.total)}`}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+                {/* 7-day average marker */}
+                <div
+                  className="pointer-events-none absolute inset-x-0 border-t border-dashed border-muted-foreground/40"
+                  style={{ bottom: `${Math.min(100, (trendAvg / trendMax) * 100)}%` }}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="mt-1.5 flex gap-2">
+                {trendDays.map(d => (
+                  <span
+                    key={d.date}
+                    className={`flex-1 text-center text-[10px] font-bold ${d.date === todayLocal() ? 'text-foreground' : 'text-muted-foreground'}`}
+                  >
+                    {d.date === todayLocal() ? 'Today' : d.label}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-2 text-right text-[10px] text-muted-foreground">dashed line = 7-day average</p>
+            </>
+          )}
+          <span className="sr-only">
+            {trendDays.map(d => `${d.date}: ${fmt(d.total)}`).join('; ')}
+          </span>
+        </CardContent>
+      </Card>
 
       {/* Recent activity (first on mobile) + Budget health */}
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
