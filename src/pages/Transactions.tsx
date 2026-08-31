@@ -109,6 +109,7 @@ export function Transactions() {
   const [showCategories, setShowCategories] = useState(true)
   const [showRecurring, setShowRecurring] = useState(true)
   const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null)
+  const [dupDismissed, setDupDismissed] = useState(false)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const longPressRef = useRef(false)
@@ -1620,13 +1621,14 @@ export function Transactions() {
           </SheetContent>
         </Sheet>
 
-        {!txPending && !txError && potentialDuplicates.length > 0 && !searchQuery && !selectedCategory && (() => {
+        {!txPending && !txError && potentialDuplicates.length > 0 && !searchQuery && !selectedCategory && !dupDismissed && (() => {
           const groups = [...new Map(potentialDuplicates.map(p => [p.a.description.toLowerCase(), p])).values()]
           return (
             <div className="mb-4 rounded-2xl border border-[#FFCF73]/40 bg-[#FFCF73]/10 px-4 py-3">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
                 <p className="flex-1 text-sm font-bold text-foreground">{potentialDuplicates.length} potential duplicate{potentialDuplicates.length !== 1 ? 's' : ''} detected</p>
+                <button type="button" aria-label="Dismiss duplicate warning" onClick={() => setDupDismissed(true)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-[#FFCF73]/15 hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
               </div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {groups.map(p => (
@@ -1750,7 +1752,7 @@ export function Transactions() {
                     )}
                     <button
                       type="button"
-                      className={`relative z-10 w-full rounded-xl border px-4 py-3 text-left transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary hover:border-border/80 hover:bg-muted/30'}`}
+                      className={`relative z-10 w-full rounded-xl border px-3.5 py-2.5 text-left transition-colors ${isSelected ? 'border-primary bg-primary/5' : tx.needs_review ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary hover:border-border/80 hover:bg-muted/30'}`}
                       style={{
                         transform: swipeOpenId === tx.id ? `translateX(-${tx.needs_review ? 180 : 120}px)` : 'translateX(0px)',
                         transition: 'transform 0.2s ease-out',

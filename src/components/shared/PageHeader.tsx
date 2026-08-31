@@ -66,7 +66,7 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
             type="button"
             aria-label="Open profile and account settings"
             onClick={openProfile}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-primary-foreground transition-opacity hover:opacity-80 active:scale-95 sm:h-12 sm:w-12"
+            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-primary-foreground transition-opacity hover:opacity-80 active:scale-95 lg:flex sm:h-12 sm:w-12"
           >
             {avatarInitial ? avatarInitial : <User className="h-5 w-5" />}
           </button>
@@ -89,14 +89,6 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
               onChange={e => onSearchChange(e.target.value)}
             />
           )}
-          <button
-            type="button"
-            aria-label="Open profile and account settings"
-            onClick={openProfile}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground active:scale-95"
-          >
-            {avatarInitial ? avatarInitial : <User className="h-4 w-4" />}
-          </button>
         </div>
       </div>
     </div>
