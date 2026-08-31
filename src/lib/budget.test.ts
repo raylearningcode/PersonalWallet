@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getOverspendRisk, getCategoryUsedPct, isInBudgetPeriod, toMonthlyAllocation } from './budget'
+import { getOverspendRisk, getCategoryUsedPct, getMonthlyRollover, isInBudgetPeriod, toMonthlyAllocation } from './budget'
 
 describe('getOverspendRisk', () => {
   it('returns Low when remaining > 40%', () => {
@@ -126,5 +126,28 @@ describe('balancing helpers', () => {
   it('is case-insensitive on category names', () => {
     const t = [tx({ id: 'h', category: 'food', amount: 3 })]
     expect(getUnmatchedExpenses(t, cats, periodDate)).toEqual([])
+  })
+})
+
+describe('getMonthlyRollover', () => {
+  const periodDate = new Date(2026, 8, 15) // Sep 2026 -> previous month Aug 2026
+  const txs = [
+    { id: 'a', description: '', amount: 400, original_amount: 400, original_currency: 'IDR', type: 'expense' as const, category: 'Food', date: '2026-08-10', needs_review: false },
+    { id: 'b', description: '', amount: 999, original_amount: 999, original_currency: 'IDR', type: 'expense' as const, category: 'Other', date: '2026-08-11', needs_review: false },
+    { id: 'c', description: '', amount: 100, original_amount: 100, original_currency: 'IDR', type: 'expense' as const, category: 'Food', date: '2026-09-02', needs_review: false },
+    { id: 'd', description: '', amount: 50, original_amount: 50, original_currency: 'IDR', type: 'expense' as const, category: 'Food', date: '2026-08-12', needs_review: false, is_system_generated: true },
+  ]
+
+  it('returns the unspent amount from the previous month', () => {
+    expect(getMonthlyRollover(txs, 'Food', 1000, periodDate)).toBe(600)
+  })
+
+  it('is zero when the previous month overspent', () => {
+    expect(getMonthlyRollover(txs, 'Food', 400, periodDate)).toBe(0)
+  })
+
+  it('ignores other categories, other months, and system transfers', () => {
+    expect(getMonthlyRollover(txs, 'Other', 1000, periodDate)).toBe(1)
+    expect(getMonthlyRollover([txs[2]], 'Food', 1000, periodDate)).toBe(1000)
   })
 })

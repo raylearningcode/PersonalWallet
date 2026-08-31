@@ -902,6 +902,37 @@ export function useDeleteGoal() {
   })
 }
 
+export function useNetWorthSnapshots() {
+  return useQuery({
+    queryKey: ['net_worth_snapshots'],
+    queryFn: async () => {
+      const userId = await getCurrentUserId()
+      if (!userId) return []
+      const { data, error } = await supabase
+        .from('net_worth_snapshots').select('*').eq('user_id', userId).order('month', { ascending: true })
+      if (error) throw error
+      return data as { id: string; month: string; value: number }[]
+    },
+  })
+}
+
+export function useSaveNetWorthSnapshot() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ month, value }: { month: string; value: number }) => {
+      const userId = await getCurrentUserId()
+      if (!userId) return null
+      const { data, error } = await supabase
+        .from('net_worth_snapshots')
+        .upsert({ user_id: userId, month, value }, { onConflict: 'user_id,month' })
+        .select().single()
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['net_worth_snapshots'] }),
+  })
+}
+
 export function useAppSettings() {
   return useQuery({
     queryKey: ['app_settings'],

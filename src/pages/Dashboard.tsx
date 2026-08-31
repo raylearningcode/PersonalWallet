@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
-import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals } from '@/lib/queries'
+import { useTransactions, useInvestmentConfig, useBudgetCategories, useAppSettings, useWallets, useRecurringRules, useGoals, useNetWorthSnapshots, useSaveNetWorthSnapshot } from '@/lib/queries'
 import { StatCard } from '@/components/shared/StatCard'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,6 +27,8 @@ export function Dashboard() {
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
   const { data: goals = [] } = useGoals()
+  const { data: snapshots = [] } = useNetWorthSnapshots()
+  const saveSnapshot = useSaveNetWorthSnapshot()
 
   // ─── AI insights ──────────────────────────────────────────────────────
   const [aiInsights, setAiInsights] = useState<InsightResult[] | null>(null)
@@ -101,8 +103,9 @@ export function Dashboard() {
   const trendMax = Math.max(...trendDays.map(d => d.total))
 
   // ─── Net worth curve (last 6 months) ─────────────────────────────────
-  // Back-projects from today's net worth using each month's net cashflow,
-  // so the curve builds up automatically as history grows.
+  // Anchored by stored monthly snapshots where they exist, back-projected
+  // from today's net worth + monthly cashflow everywhere else — so the
+  // curve builds automatically and stays accurate as history grows.
   const netWorthSeries = useMemo(() => {
     const now = new Date()
     const months: { key: string; label: string; value: number }[] = []
@@ -114,6 +117,7 @@ export function Dashboard() {
         value: 0,
       })
     }
+    const snapMap = new Map(snapshots.map(s => [s.month, Number(s.value)]))
     const flow = new Map<string, number>()
     for (const t of transactions) {
       if (t.is_system_generated) continue
@@ -123,11 +127,23 @@ export function Dashboard() {
     }
     let current = netWorth
     for (let i = months.length - 1; i >= 0; i--) {
+      const snap = snapMap.get(months[i].key)
+      if (snap !== undefined) current = snap
       months[i].value = current
       current -= flow.get(months[i].key) ?? 0
     }
     return months
-  }, [transactions, netWorth])
+  }, [transactions, netWorth, snapshots])
+
+  // Keep this month's snapshot fresh (idempotent upsert; guests are a no-op)
+  const lastSnapshotRef = useRef('')
+  useEffect(() => {
+    if (netWorth === 0 || transactions.length === 0) return
+    const key = `${monthStr}:${netWorth}`
+    if (lastSnapshotRef.current === key) return
+    lastSnapshotRef.current = key
+    saveSnapshot.mutate({ month: monthStr, value: netWorth })
+  }, [netWorth, monthStr, transactions.length, saveSnapshot])
   const nwMin = Math.min(...netWorthSeries.map(m => m.value), 0)
   const nwMax = Math.max(...netWorthSeries.map(m => m.value), 1)
   const nwRange = Math.max(nwMax - nwMin, 1)
