@@ -30,7 +30,7 @@ import { getMerchantSuggestion, getRecurringCandidates } from '@/lib/financeOs'
 import { addRecurringInterval } from '@/lib/recurring'
 import { pushUndo, popUndo } from '@/lib/undoStack'
 import { MoneyField } from '@/components/mobile/MoneyField'
-import { planCashChange, buildChangeTransferPayloads } from '@/lib/cashSave'
+import { saveTransactionEntry, INCOME_CATEGORIES } from '@/lib/saveTransaction'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import { TransactionTagsEditor } from '@/components/transactions/TransactionTagsEditor'
 import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
@@ -39,7 +39,6 @@ import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 type Filter = 'all' | 'income' | 'expense' | 'transfer' | 'needs_review'
 type EntryType = 'income' | 'expense' | 'transfer'
-const INCOME_CATEGORIES = ['Wage', 'Gift', 'Refund', 'Allowance', 'Other income']
 
 function getMonthStart() {
   const d = new Date()
@@ -360,145 +359,32 @@ export function Transactions() {
   }
 
   const handleSaveTransaction = async () => {
-    const parsedAmount = parseNumberInput(amount)
-    if (!description.trim() && type !== 'transfer') { toast.error('Please enter a merchant name'); return false }
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error('Please enter a valid amount'); return false }
-    if (type === 'transfer' && (!walletId || !transferWalletId || walletId === transferWalletId)) { toast.error('Select two different wallets for a transfer'); return false }
-    const txCategory = type === 'income' ? (category || INCOME_CATEGORIES[0]) : category
-    if (type !== 'transfer' && (!txCategory || !walletId)) return false
-
-    // Cash change validation
-    const parsedTendered = cashEnabled ? parseNumberInput(cashTendered) : 0
-    if (cashEnabled && type === 'expense' && (!Number.isFinite(parsedTendered) || parsedTendered < parsedAmount)) {
-      toast.error('Cash given must be at least the expense amount')
-      return false
-    }
-
-    const baseAmount = money.toBase(parsedAmount, inputCurrency)
-    const baseTendered = cashEnabled ? money.toBase(parsedTendered, inputCurrency) : 0
-    const baseChange = Math.max(0, baseTendered - baseAmount)
-
-    // Compute split data
-    const computedSplitPortions = splitEnabled && splitPortions.length >= 2
-      ? splitPortions.map(p => ({ category: p.category, amount: money.toBase(parseNumberInput(p.amount), inputCurrency) })).filter(p => p.amount > 0)
-      : null
-    const computedWalletSplits = multiWalletEnabled && walletSplits.length >= 2
-      ? walletSplits.map(w => ({ wallet_id: w.wallet_id, amount: money.toBase(parseNumberInput(w.amount), inputCurrency) })).filter(w => w.amount > 0)
-      : null
-
-    const payload = {
-      description: description.trim() || (type === 'transfer' ? 'Transfer' : ''),
-      amount: baseAmount,
-      original_amount: parsedAmount,
-      original_currency: inputCurrency,
-      type,
-      category: type === 'transfer' ? 'Transfer' : (computedSplitPortions ? 'Split' : txCategory),
-      wallet_id: computedWalletSplits ? null : (walletId || null),
-      transfer_wallet_id: type === 'transfer' ? transferWalletId : null,
-      recurring_rule_id: editingTransaction?.recurring_rule_id ?? null,
-      recurring_due_date: editingTransaction?.recurring_due_date ?? null,
-      date,
-      needs_review: false,
-      cash_tendered: cashEnabled && baseTendered > 0 ? baseTendered : null,
-      split_portions: computedSplitPortions,
-      wallet_splits: computedWalletSplits,
-    }
-
-    const editingTx = editingTransaction
-    setIsFormOpen(false)
-    resetForm()
-    try {
-      if (editingTx) {
-        await updateTransaction.mutateAsync({ id: editingTx.id, ...payload })
-        // For edit: delete any previous linked change transfers and recreate with split logic
-        const prevLinkedId = editingTx.linked_transaction_id
-        const allPrevLinked = transactions.filter(tx => tx.linked_transaction_id === editingTx.id && tx.is_system_generated)
-        if (prevLinkedId && !allPrevLinked.find(tx => tx.id === prevLinkedId)) await del.mutateAsync(prevLinkedId)
-        for (const tx of allPrevLinked) await del.mutateAsync(tx.id)
-        if (cashEnabled && baseChange > 0) {
-          // Shared change-routing builder (same as QuickAddSheet / AddTransaction)
-          const plan = planCashChange(parsedAmount, parsedTendered, inputCurrency)
-          const safeDescription = description.trim() || (type === 'transfer' ? 'Transfer' : '')
-          const changePayloads = buildChangeTransferPayloads({
-            savedTxId: editingTx.id, safeDescription, walletId,
-            changeBillsWalletId, changeCoinsWalletId,
-            plan, date, inputCurrency,
-            toBase: money.toBase,
-          })
-          let firstEditChangeTxId: string | undefined
-          for (const p of changePayloads) {
-            const created = await addTransaction.mutateAsync(p as Parameters<typeof addTransaction.mutateAsync>[0])
-            if (created?.id && !firstEditChangeTxId) firstEditChangeTxId = created.id
-          }
-          if (firstEditChangeTxId) {
-            await updateTransaction.mutateAsync({ id: editingTx.id, linked_transaction_id: firstEditChangeTxId })
-          }
-        }
-        if (type === 'transfer') {
-          const oldFees = transactions.filter(tx => tx.linked_transaction_id === editingTx.id && tx.category === 'Transfer Fee' && tx.is_system_generated)
-          for (const fee of oldFees) await del.mutateAsync(fee.id)
-          if (transferFeeEnabled && parseNumberInput(transferFeeAmount) > 0) {
-            const parsedFee = parseNumberInput(transferFeeAmount)
-            await addTransaction.mutateAsync({
-              description: `Transfer fee${description.trim() ? ` — ${description.trim()}` : ''}`,
-              amount: money.toBase(parsedFee, inputCurrency),
-              original_amount: parsedFee,
-              original_currency: inputCurrency,
-              type: 'expense', category: 'Transfer Fee',
-              wallet_id: walletId || null,
-              transfer_wallet_id: null,
-              recurring_rule_id: null, recurring_due_date: null, date,
-              needs_review: false, is_system_generated: true,
-              linked_transaction_id: editingTx.id, cash_tendered: null,
-            })
-          }
-        }
-        toast.success('Transaction updated')
-        return true
-      } else {
-        const savedTx = await addTransaction.mutateAsync(payload)
-        // Create system-generated change transfer(s) when cash given > expense
-        if (cashEnabled && baseChange > 0 && savedTx?.id) {
-          // Shared change-routing builder (same as QuickAddSheet / AddTransaction)
-          const plan = planCashChange(parsedAmount, parsedTendered, inputCurrency)
-          const safeDescription = description.trim() || (type === 'transfer' ? 'Transfer' : '')
-          const changePayloads = buildChangeTransferPayloads({
-            savedTxId: savedTx.id, safeDescription, walletId,
-            changeBillsWalletId, changeCoinsWalletId,
-            plan, date, inputCurrency,
-            toBase: money.toBase,
-          })
-          let firstChangeTxId: string | undefined
-          for (const p of changePayloads) {
-            const created = await addTransaction.mutateAsync(p as Parameters<typeof addTransaction.mutateAsync>[0])
-            if (created?.id && !firstChangeTxId) firstChangeTxId = created.id
-          }
-          if (firstChangeTxId) {
-            await updateTransaction.mutateAsync({ id: savedTx.id, linked_transaction_id: firstChangeTxId })
-          }
-        }
-        if (type === 'transfer' && transferFeeEnabled && parseNumberInput(transferFeeAmount) > 0 && savedTx?.id) {
-          const parsedFee = parseNumberInput(transferFeeAmount)
-          await addTransaction.mutateAsync({
-            description: `Transfer fee${description.trim() ? ` — ${description.trim()}` : ''}`,
-            amount: money.toBase(parsedFee, inputCurrency),
-            original_amount: parsedFee,
-            original_currency: inputCurrency,
-            type: 'expense', category: 'Transfer Fee',
-            wallet_id: walletId || null,
-            transfer_wallet_id: null,
-            recurring_rule_id: null, recurring_due_date: null, date,
-            needs_review: false, is_system_generated: true,
-            linked_transaction_id: savedTx.id, cash_tendered: null,
-          })
-        }
-        toast.success(cashEnabled && baseChange > 0 ? `Cash payment added · change routed to wallet` : 'Transaction added')
-        return true
-      }
-    } catch {
-      toast.error('Failed to save transaction')
-      return false
-    }
+    const ok = await saveTransactionEntry({
+      type, amount, inputCurrency, date, description, category, walletId, transferWalletId,
+      cannotSaveTransfer,
+      cashEnabled, cashTendered,
+      showCashAssistant: type === 'expense' && wallets.find(w => w.id === walletId)?.type === 'cash',
+      changeBillsWalletId, changeCoinsWalletId,
+      splitEnabled, splitPortions,
+      multiWalletEnabled, walletSplits,
+      toBase: money.toBase,
+      addTransaction: addTransaction.mutateAsync,
+      updateTransaction: updateTransaction.mutateAsync,
+      deleteTransaction: del.mutateAsync,
+      editId: editingTransaction?.id,
+      editPreserve: editingTransaction ? {
+        recurring_rule_id: editingTransaction.recurring_rule_id ?? null,
+        recurring_due_date: editingTransaction.recurring_due_date ?? null,
+      } : undefined,
+      editCleanup: editingTransaction ? {
+        prevLinkedId: editingTransaction.linked_transaction_id ?? null,
+        linkedTxIds: transactions.filter(tx => tx.linked_transaction_id === editingTransaction.id && tx.is_system_generated).map(tx => tx.id),
+        feeTxIds: transactions.filter(tx => tx.linked_transaction_id === editingTransaction.id && tx.category === 'Transfer Fee' && tx.is_system_generated).map(tx => tx.id),
+      } : undefined,
+      transferFeeEnabled, transferFeeAmount,
+      onDone: () => { setIsFormOpen(false); resetForm() },
+    })
+    return ok
   }
 
   const handleDeleteTransaction = (tx: Transaction) => {
