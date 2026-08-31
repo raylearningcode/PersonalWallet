@@ -8,7 +8,6 @@ import {
   useBudgetCategories,
   useWallets,
   useRecurringRules,
-  useAddRecurringRule,
   useUpdateRecurringRule,
   useRunDueRecurringRules,
   useMarkReviewed,
@@ -21,13 +20,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown, SlidersHorizontal, AlertTriangle, CalendarDays } from 'lucide-react'
+import { Trash2, Pencil, Plus, Copy, CheckCircle, X, ReceiptText, CheckSquare, Square, ChevronLeft, ChevronRight, Wallet as WalletIcon, ArrowRightLeft, Banknote, Tag, FileDown, SlidersHorizontal, CalendarDays } from 'lucide-react'
 import { toast } from 'sonner'
 import { CURRENCIES, useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
 import { formatDate, toLocalDateStr, todayLocal } from '@/lib/utils'
-import { getRecurringCandidates } from '@/lib/financeOs'
-import { addRecurringInterval } from '@/lib/recurring'
 import { pushUndo, popUndo } from '@/lib/undoStack'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
@@ -83,24 +80,19 @@ export function Transactions() {
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const [filterWalletId, setFilterWalletId] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [showCategories, setShowCategories] = useState(true)
-  const [showRecurring, setShowRecurring] = useState(true)
   const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null)
-  const [dupDismissed, setDupDismissed] = useState(false)
   const isDesktop = useIsDesktop()
   const generatedDueRef = useRef(false)
   const longPressRef = useRef(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const swipeRef = useRef<{ activeId: string | null; startX: number; startY: number; dx: number; isSwipe: boolean; wasSwipe: boolean }>({ activeId: null, startX: 0, startY: 0, dx: 0, isSwipe: false, wasSwipe: false })
   const { data: transactions = [], isPending: txPending, isError: txError, refetch: txRefetch } = useTransactions(filter)
-  const { data: allTransactions = [] } = useTransactions()
   const { data: categories = [] } = useBudgetCategories()
   const { data: wallets = [] } = useWallets()
   const { data: recurringRules = [] } = useRecurringRules()
   const addTransaction = useAddTransaction()
   const updateTransaction = useUpdateTransaction()
   const del = useDeleteTransaction()
-  const addRecurringRule = useAddRecurringRule()
   const updateRecurringRule = useUpdateRecurringRule()
   const runDueRecurringRules = useRunDueRecurringRules()
   const markReviewed = useMarkReviewed()
@@ -199,42 +191,6 @@ export function Transactions() {
   const selectedCategoryUsedPct = selectedCategoryBudget > 0
     ? Math.round((selectedCategoryTotal / selectedCategoryBudget) * 100)
     : 0
-  const upcomingRecurringRules = useMemo(
-    () => [...recurringRules].sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)).slice(0, 6),
-    [recurringRules]
-  )
-
-  const recurringCandidates = useMemo(() => {
-    const ruleDescriptions = new Set(recurringRules.map(r => r.description.toLowerCase()))
-    return getRecurringCandidates(transactions).filter(
-      c => !ruleDescriptions.has(c.description.toLowerCase())
-    ).slice(0, 4)
-  }, [transactions, recurringRules])
-
-  const potentialDuplicates = useMemo(() => {
-    const candidates: { a: Transaction; b: Transaction }[] = []
-    // Use allTransactions (unfiltered) so duplicates are caught regardless of which tab is active
-    const sorted = allTransactions
-      .filter(t => !t.is_system_generated)
-      .sort((a, b) => a.date.localeCompare(b.date))
-    for (let i = 0; i < sorted.length; i++) {
-      for (let j = i + 1; j < sorted.length; j++) {
-        const a = sorted[i]; const b = sorted[j]
-        const dayDiff = Math.abs(new Date(a.date).getTime() - new Date(b.date).getTime()) / 86400000
-        if (dayDiff > 2) break // sorted by date — once gap > 2 days, no need to scan further
-        if (a.type !== b.type) continue
-        const descMatch = a.description.toLowerCase() === b.description.toLowerCase()
-        const maxAmt = Math.max(a.amount, b.amount)
-        const amtMatch = maxAmt === 0 ? true : Math.abs(a.amount - b.amount) / maxAmt < 0.01
-        if (descMatch && amtMatch) {
-          candidates.push({ a, b })
-          if (candidates.length >= 10) return candidates
-        }
-      }
-    }
-    return candidates
-  }, [allTransactions])
-
   const openAddForm = () => {
     setEditingTransaction(null)
     setIsFormOpen(true)
@@ -282,13 +238,6 @@ export function Transactions() {
     }
   }
 
-  const handleGenerateDue = () => {
-    runDueRecurringRules.mutate(undefined, {
-      onSuccess: count => toast.success(count > 0 ? `${count} recurring payment${count === 1 ? '' : 's'} added` : 'No recurring payment is due yet'),
-      onError: () => toast.error('Failed to generate recurring payments'),
-    })
-  }
-
   const handleDuplicateTransaction = async (tx: Transaction) => {
     try {
       await addTransaction.mutateAsync({
@@ -318,29 +267,6 @@ export function Transactions() {
     } catch {
       toast.error('Failed to mark as reviewed')
     }
-  }
-
-  const handleAddCandidateAsRule = async (candidate: ReturnType<typeof getRecurringCandidates>[0]) => {
-    if (!wallets[0]?.id) { toast.error('Add a wallet first'); return }
-    const today = todayLocal()
-    await addRecurringRule.mutateAsync({
-      description: candidate.description,
-      amount: candidate.amount,
-      original_amount: candidate.amount,
-      original_currency: money.baseCurrency,
-      type: 'expense',
-      category: candidate.category,
-      wallet_id: wallets[0].id,
-      transfer_wallet_id: null,
-      start_date: today,
-      next_due_date: addRecurringInterval(today, 'monthly'),
-      frequency: 'monthly',
-      end_date: null,
-      installment_total: null,
-      installment_paid: 0,
-      active: true,
-    })
-    toast.success(`${candidate.description} added as recurring rule`)
   }
 
   const toggleSelectMode = () => {
@@ -488,7 +414,7 @@ export function Transactions() {
   const isOnCurrentMonth = navYear === _today.getFullYear() && navMonth === _today.getMonth() + 1
   const monthLabel = new Date(navYear, navMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-  const activeFilterCount = (filterWalletId ? 1 : 0) + (isAllTime ? 1 : 0)
+  const activeFilterCount = (filterWalletId ? 1 : 0) + (isAllTime ? 1 : 0) + (selectedCategory ? 1 : 0) + (filter !== 'all' ? 1 : 0)
 
   const applyDatePreset = (preset: string) => {
     const d = new Date()
@@ -516,6 +442,8 @@ export function Transactions() {
     const d = new Date()
     setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1))
     setFilterWalletId('')
+    setSelectedCategory(null)
+    setFilter('all')
   }
 
   const goToPrevMonth = () => {
@@ -533,20 +461,22 @@ export function Transactions() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Transactions"
-        subtitle={<><span className="hidden sm:inline">Track every cashflow with clean filters, wallet routing, and category breakdowns.</span><span className="sm:hidden">Track spending and income.</span></>}
-        searchValue={searchQuery}
-        onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
-        action={(
-          <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
-            <Plus className="h-4 w-4" />
-            New transaction
-          </Button>
-        )}
-      />
-      <div className="relative mb-8">
+    <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+      <div className="lg:col-span-2">
+        <PageHeader
+          title="Transactions"
+          subtitle={<><span className="hidden sm:inline">Track every cashflow with clean filters, wallet routing, and category breakdowns.</span><span className="sm:hidden">Track spending and income.</span></>}
+          searchValue={searchQuery}
+          onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
+          action={(
+            <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
+              <Plus className="h-4 w-4" />
+              New transaction
+            </Button>
+          )}
+        />
+      </div>
+      <div className="relative mb-8 lg:col-span-2 lg:hidden">
         <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
           <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
             {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => (
@@ -562,7 +492,7 @@ export function Transactions() {
         </Tabs>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-[1.4rem] bg-gradient-to-l from-card to-transparent sm:hidden" />
       </div>
-      <div className="mb-9 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
+      <div className="mb-9 grid grid-cols-2 gap-4 lg:col-span-2 lg:grid-cols-3 lg:gap-6">
         {(() => {
           const net = moneyIn - moneyOut
           const netCount = transactions.filter(t => t.type !== 'transfer').length
@@ -580,6 +510,77 @@ export function Transactions() {
           </div>
         ))}
       </div>
+
+      {/* ── Desktop filter rail ── */}
+      <aside className="sticky top-6 hidden self-start rounded-[1.4rem] border border-border bg-card p-4 lg:block">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-extrabold text-foreground">Filters</h2>
+          {activeFilterCount > 0 && (
+            <button type="button" onClick={resetFilters} className="text-xs font-bold text-primary hover:underline">Clear all</button>
+          )}
+        </div>
+
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</p>
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => { setFilter(f); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold capitalize transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+            >
+              {f.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Category</p>
+        <select
+          aria-label="Category"
+          className="mb-4 h-10 w-full rounded-lg border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+          value={selectedCategory ?? ''}
+          onChange={e => setSelectedCategory(e.target.value)}
+        >
+          <option value="">All categories</option>
+          {expenseCategoryTotals.map(([name, v]) => (
+            <option key={name} value={name}>{name} · {money.formatDisplay(v.total)}</option>
+          ))}
+        </select>
+
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Wallet</p>
+        <select
+          aria-label="Wallet"
+          className="mb-4 h-10 w-full rounded-lg border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+          value={filterWalletId}
+          onChange={e => setFilterWalletId(e.target.value)}
+        >
+          <option value="">All wallets</option>
+          {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+        </select>
+
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Date range</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Input aria-label="From date" type="date" className="h-10 bg-secondary text-xs" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          <Input aria-label="To date" type="date" className="h-10 bg-secondary text-xs" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {([
+            ['this-month', 'This month'],
+            ['last-month', 'Last month'],
+            ['this-year', 'This year'],
+            ['all-time', 'All time'],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => applyDatePreset(key)}
+              className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-muted-foreground hover:text-foreground"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </aside>
 
             <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
         <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-6' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
@@ -653,118 +654,6 @@ export function Transactions() {
         </SheetContent>
       </Sheet>
 
-
-      {expenseCategoryTotals.length > 0 && (
-        <div className="mb-6 hidden rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6 lg:block">
-          <button
-            type="button"
-            className="mb-4 flex w-full items-center justify-between gap-3"
-            onClick={() => setShowCategories(!showCategories)}
-          >
-            <h2 className="text-lg font-extrabold text-foreground">Expense by category</h2>
-            <span className="text-xs font-bold text-muted-foreground">{showCategories ? 'Hide' : 'Show'} · {expenseCategoryTotals.length} categories</span>
-          </button>
-          {showCategories && (
-            <div data-testid="expense-category-list" className="grid max-h-[220px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
-              {expenseCategoryTotals.map(([name, value]) => (
-                <button
-                  key={name}
-                  type="button"
-                  aria-label={`Filter by ${name} — ${value.count} transaction${value.count === 1 ? '' : 's'}`}
-                  className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selectedCategory === name ? 'border-primary bg-primary/10' : 'border-border bg-secondary hover:bg-muted/50'}`}
-                  onClick={() => setSelectedCategory(name)}
-                >
-                  <span className="min-w-0 truncate font-extrabold text-foreground">{name}</span>
-                  <div className="shrink-0 flex flex-col items-end gap-0.5">
-                    <span className="text-xs font-extrabold text-foreground">{money.formatDisplay(value.total)}</span>
-                    <span className="text-[10px] text-muted-foreground">{value.count} item{value.count === 1 ? '' : 's'}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {upcomingRecurringRules.length > 0 && (
-        <div className="mb-6 hidden rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6 lg:block">
-          <button
-            type="button"
-            className="mb-4 flex w-full items-center justify-between gap-3 text-left"
-            onClick={() => setShowRecurring(!showRecurring)}
-          >
-            <div>
-              <h2 className="text-lg font-extrabold text-foreground">Recurring / cicilan</h2>
-              <p className="mt-1 text-xs font-bold text-muted-foreground">Auto-generates due payments without duplicates.</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {showRecurring && (
-                <>
-                  <Button
-                    size="sm" variant="secondary"
-                    onClick={e => { e.stopPropagation(); handleGenerateDue() }}
-                    disabled={runDueRecurringRules.isPending}
-                  >
-                    Generate due
-                  </Button>
-                  <Button asChild size="sm" variant="secondary" onClick={e => e.stopPropagation()}>
-                    <Link to="/subscriptions">Manage →</Link>
-                  </Button>
-                </>
-              )}
-              <span className="text-xs font-bold text-muted-foreground">{showRecurring ? 'Hide' : 'Show'}</span>
-            </div>
-          </button>
-          {showRecurring && (<>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {upcomingRecurringRules.map(rule => (
-              <Link
-                key={rule.id}
-                to="/subscriptions"
-                className={`flex items-center justify-between gap-3 rounded-2xl border p-4 transition-colors hover:border-primary/30 hover:bg-primary/5 ${rule.active ? 'border-border bg-secondary' : 'border-border/60 bg-secondary/50 opacity-70'}`}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="min-w-0 truncate font-extrabold text-foreground">{rule.description}</p>
-                    {!rule.active && <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">Paused</span>}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{rule.category} · next {rule.next_due_date}</p>
-                  <p className="mt-0.5 text-sm font-bold text-foreground">
-                    {money.format(rule.original_amount, rule.original_currency)}
-                    {rule.original_currency !== money.baseCurrency && <span className="ml-2 text-xs text-muted-foreground">~ {money.formatBase(rule.amount)}</span>}
-                  </p>
-                  {rule.installment_total && (
-                    <p className="mt-0.5 text-xs font-bold text-muted-foreground">{rule.installment_paid}/{rule.installment_total} paid</p>
-                  )}
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </Link>
-            ))}
-          </div>
-          {recurringCandidates.length > 0 && (
-            <div className="mt-6 border-t border-border pt-5">
-              <p className="mb-1 text-sm font-extrabold text-foreground">Detected patterns</p>
-              <p className="mb-4 text-xs text-muted-foreground">These transactions repeat regularly. Set them up as recurring rules.</p>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {recurringCandidates.map(candidate => (
-                  <div key={candidate.description} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
-                    <div className="min-w-0">
-                      <p className="truncate font-bold text-foreground">{candidate.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {candidate.category} · {candidate.count}× · avg {money.formatBase(candidate.amount)}
-                      </p>
-                    </div>
-                    <Button size="sm" variant="secondary" onClick={() => handleAddCandidateAsRule(candidate)} disabled={addRecurringRule.isPending}>
-                      Set up
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          </>)}
-        </div>
-      )}
 
       <div className="rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6 sm:py-6">
         {selectedCategory ? (
@@ -860,7 +749,7 @@ export function Transactions() {
           <button
             onClick={() => setIsFilterOpen(true)}
             aria-label="Open filters"
-            className={`relative ml-1 flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${activeFilterCount > 0 ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
+            className={`relative ml-1 flex h-11 w-11 items-center justify-center rounded-full border transition-colors lg:hidden ${activeFilterCount > 0 ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground hover:text-foreground'}`}
           >
             <SlidersHorizontal className="h-4 w-4" />
             {activeFilterCount > 0 && (
@@ -944,34 +833,6 @@ export function Transactions() {
             </div>
           </SheetContent>
         </Sheet>
-
-        {!txPending && !txError && potentialDuplicates.length > 0 && !searchQuery && !selectedCategory && !dupDismissed && (() => {
-          const groups = [...new Map(potentialDuplicates.map(p => [p.a.description.toLowerCase(), p])).values()]
-          return (
-            <div className="mb-4 rounded-2xl border border-[#FFCF73]/40 bg-[#FFCF73]/10 px-4 py-3">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
-                <p className="flex-1 text-sm font-bold text-foreground">{potentialDuplicates.length} potential duplicate{potentialDuplicates.length !== 1 ? 's' : ''} detected</p>
-                <button type="button" aria-label="Dismiss duplicate warning" onClick={() => setDupDismissed(true)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-[#FFCF73]/15 hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
-              </div>
-              <div className="mt-2 flex flex-col gap-1.5">
-                {groups.map(p => (
-                  <div key={p.a.id} className="flex items-center gap-2">
-                    <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                      {p.a.description} · {p.a.date}
-                    </p>
-                    <button
-                      className="shrink-0 rounded-full bg-[#FFCF73]/20 px-2.5 py-1 text-xs font-bold text-[#FFCF73] hover:bg-[#FFCF73]/30"
-                      onClick={() => setSearchQuery(p.a.description)}
-                    >
-                      Review
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })()}
 
         {/* Mobile category chips — one-tap per-category history */}
         {!isDesktop && !txPending && !txError && expenseCategoryTotals.length > 0 && (
