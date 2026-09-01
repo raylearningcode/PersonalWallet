@@ -297,8 +297,9 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Spending trend */}
-      <Card className="mb-2">
+      {/* Spending trend + net worth curve — side by side on desktop */}
+      <div className="mb-2 lg:grid lg:grid-cols-2 lg:gap-2">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Spending trend</CardTitle>
           <span className="text-xs font-bold text-muted-foreground">last 7 days</span>
@@ -357,7 +358,7 @@ export function Dashboard() {
       </Card>
 
       {/* Net worth curve */}
-      <Card className="mb-2">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Net worth</CardTitle>
           <span className="text-xs font-bold text-muted-foreground">last 6 months</span>
@@ -406,6 +407,7 @@ export function Dashboard() {
           </span>
         </CardContent>
       </Card>
+      </div>
 
       {/* Recent activity (first on mobile) + Budget health */}
       <div className="mb-2 grid grid-cols-1 items-start gap-2 lg:grid-cols-2">

@@ -513,30 +513,41 @@ export function Transactions() {
         ))}
       </div>
 
-      {/* ── Desktop filter rail ── */}
+            {/* ── Desktop filter rail ── */}
       <aside className="sticky top-6 hidden self-start rounded-[1.4rem] border border-border bg-card p-4 lg:block">
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-sm font-extrabold text-foreground">Filters</h2>
           {activeFilterCount > 0 && (
             <button type="button" onClick={resetFilters} className="text-xs font-bold text-primary hover:underline">Clear all</button>
           )}
         </div>
 
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</p>
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => { setFilter(f); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }}
-              className={`rounded-full px-3 py-1.5 text-xs font-bold capitalize transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
-            >
-              {f.replace('_', ' ')}
-            </button>
-          ))}
+        {/* Type list with live counts */}
+        <div className="space-y-0.5">
+          {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => {
+            const count = f === 'all'
+              ? transactions.filter(t => !t.is_system_generated).length
+              : f === 'needs_review'
+                ? transactions.filter(t => t.needs_review).length
+                : transactions.filter(t => t.type === f && !t.is_system_generated).length
+            return (
+              <button
+                key={f}
+                type="button"
+                aria-label={"Filter " + f.replace('_', ' ')}
+                onClick={() => { setFilter(f); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }}
+                className={"flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-bold transition-colors " + (filter === f ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}
+              >
+                <span className="capitalize">{f.replace('_', ' ')}</span>
+                <span className="text-[11px] tabular-nums opacity-60">{count}</span>
+              </button>
+            )
+          })}
         </div>
 
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Category</p>
+        <div className="my-2 border-t border-border/60" />
+
+        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Category</p>
         <select
           aria-label="Category"
           className="mb-2 h-10 w-full rounded-lg border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
@@ -549,7 +560,7 @@ export function Transactions() {
           ))}
         </select>
 
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Wallet</p>
+        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Wallet</p>
         <select
           aria-label="Wallet"
           className="mb-2 h-10 w-full rounded-lg border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
@@ -560,12 +571,12 @@ export function Transactions() {
           {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select>
 
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Date range</p>
-        <div className="grid grid-cols-2 gap-2">
+        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Date range</p>
+        <div className="grid grid-cols-2 gap-1.5">
           <Input aria-label="From date" type="date" className="h-10 bg-secondary text-xs" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
           <Input aria-label="To date" type="date" className="h-10 bg-secondary text-xs" value={dateTo} onChange={e => setDateTo(e.target.value)} />
         </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
           {([
             ['this-month', 'This month'],
             ['last-month', 'Last month'],
@@ -576,13 +587,15 @@ export function Transactions() {
               key={key}
               type="button"
               onClick={() => applyDatePreset(key)}
-              className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-muted-foreground hover:text-foreground"
+              className="rounded-lg bg-secondary px-2.5 py-1.5 text-[11px] font-bold text-muted-foreground hover:text-foreground"
             >
               {label}
             </button>
           ))}
         </div>
       </aside>
+
+
 
             <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
         <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-3' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
