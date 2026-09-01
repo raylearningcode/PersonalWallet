@@ -212,10 +212,10 @@ export function SimulatorTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Hero Card */}
       <Card className="overflow-hidden">
-        <CardContent className="relative flex min-h-[150px] flex-col gap-4 px-5 py-4 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
+        <CardContent className="relative flex min-h-[150px] flex-col gap-2 px-5 py-3 sm:px-6 sm:py-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(169,245,199,0.14),transparent_62%)]" />
           <div className="relative">
             <p className="text-sm font-extrabold text-primary">Portfolio simulator</p>
@@ -243,7 +243,7 @@ export function SimulatorTab() {
       </Card>
 
       {/* Chart + Simulator Controls */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
         {/* Growth Chart */}
         <Card className="flex flex-col">
           <CardHeader>
@@ -264,7 +264,7 @@ export function SimulatorTab() {
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-center px-6 pb-8 sm:px-6">
             {draftBase.monthlyContribution <= 0 || draft.durationYears <= 0 ? (
-              <div className="flex flex-col items-center justify-center py-4 text-center" style={{ height: '200px' }}>
+              <div className="flex flex-col items-center justify-center py-3 text-center" style={{ height: '200px' }}>
                 <p className="font-extrabold text-foreground">No simulation yet</p>
                 <p className="mt-2 text-sm text-muted-foreground">Enter monthly contribution and expected return, then view the projection.</p>
               </div>
@@ -298,7 +298,7 @@ export function SimulatorTab() {
                 ))}
               </div>
             )}
-            <div className="mt-4 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-xs text-muted-foreground">
+            <div className="mt-2 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-xs text-muted-foreground">
               <p className="font-bold text-foreground/70">Assumptions</p>
               <ul className="mt-1.5 space-y-1 list-disc list-inside">
                 <li>Fixed annual return — market volatility not modeled</li>
@@ -316,7 +316,7 @@ export function SimulatorTab() {
             <CardTitle className="text-xl">ROI Simulator</CardTitle>
             <p className="text-xs leading-4 text-muted-foreground">Model contribution, return rate, horizon, and inflation.</p>
           </CardHeader>
-          <CardContent className="space-y-2.5 px-6 pb-5">
+          <CardContent className="space-y-2.5 px-6 pb-3">
             <div className="rounded-2xl bg-[#164629] p-3">
               <p className="text-xs font-bold text-primary">Projected portfolio</p>
               <p className="mt-1 text-2xl font-extrabold text-primary">
@@ -411,7 +411,7 @@ export function SimulatorTab() {
             </div>
           </div>
           {glossaryOpen && (
-            <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 px-5 pb-3 sm:grid-cols-2 lg:grid-cols-4">
               {GLOSSARY_ITEMS.map(item => (
                 <div key={item.term} className="rounded-xl border border-border bg-card p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -432,8 +432,8 @@ export function SimulatorTab() {
           <CardTitle className="text-xl">Portfolio allocation</CardTitle>
           <p className="text-sm text-muted-foreground">Apply a risk profile, then customise the percentages below.</p>
         </CardHeader>
-        <CardContent className="px-4 pb-5 sm:px-6">
-          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <CardContent className="px-4 pb-3 sm:px-6">
+          <div className="mb-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {RISK_PROFILES.map(profile => (
               <button key={profile.label} className="rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                 onClick={() => { setAllocation(profile.allocation); toast.success(`${profile.label} profile applied`) }}>
@@ -460,7 +460,7 @@ export function SimulatorTab() {
               Same contribution ({money.format(draft.monthlyContribution, contributionCurrency)}/month) · {draft.durationYears > 0 ? `${draft.durationYears} years` : '10 years'} · different risk profiles
             </p>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 px-4 pb-5 sm:grid-cols-3 sm:px-6">
+          <CardContent className="grid grid-cols-1 gap-3 px-4 pb-3 sm:grid-cols-3 sm:px-6">
             {RISK_PROFILES.map((profile, i) => {
               const scenarioPlan = calculateInvestmentPlan({
                 ...draftBase, annualReturnRate: SCENARIO_RETURNS[i], durationYears: Math.max(1, draft.durationYears || 10),

@@ -271,7 +271,7 @@ export function Goals() {
   }
 
   const renderGoalForm = !showForm ? null : (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {!editingId && (
         <div>
           <p className="mb-2 text-xs font-bold text-muted-foreground">Start from a template</p>
@@ -289,7 +289,7 @@ export function Goals() {
           </div>
         </div>
       )}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div>
           <Label className="text-xs text-muted-foreground">Goal name *</Label>
           <Input
@@ -435,7 +435,7 @@ export function Goals() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
+      <div className="mb-2 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-2">
         <StatCard
           label="Goals set"
           value={String(goals.length)}
@@ -449,7 +449,7 @@ export function Goals() {
 
       {/* "What should I save this month?" card */}
       {goals.filter(g => g.current_amount < g.target_amount && g.deadline).length > 0 && (
-        <div className="mb-6 hidden rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3.5 lg:block">
+        <div className="mb-2 hidden rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3.5 lg:block">
           <p className="mb-3 text-xs font-bold text-primary">Monthly savings guide</p>
           <div className="space-y-2">
             {goals
@@ -461,7 +461,7 @@ export function Goals() {
                 const monthsLeft = Math.max(1, daysLeft / 30)
                 const monthlyNeeded = Math.ceil(remaining / monthsLeft)
                 return (
-                  <div key={g.id} className="flex items-center justify-between gap-4">
+                  <div key={g.id} className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm text-muted-foreground">{g.name}</p>
                     <span className="shrink-0 text-sm font-bold text-foreground">{money.formatDisplay(monthlyNeeded)}/mo</span>
                   </div>
@@ -474,18 +474,18 @@ export function Goals() {
       )}
 
       {showForm && isDesktop && (
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-5 sm:px-6">
+          <CardContent className="px-4 pb-3 sm:px-6">
             {renderGoalForm}
           </CardContent>
         </Card>
       )}
       <Sheet open={!!(showForm && !isDesktop)} onOpenChange={open => { if (!open) { cancelForm(); setFormKeypad(null) } }}>
         <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl pb-safe-10">
-          <SheetHeader className="mb-4 text-left">
+          <SheetHeader className="mb-2 text-left">
             <SheetTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</SheetTitle>
             <SheetDescription className="sr-only">Goal form</SheetDescription>
           </SheetHeader>
@@ -496,20 +496,20 @@ export function Goals() {
       {goals.length === 0 && !showForm ? (
         <Card>
           <CardContent className="flex flex-col items-center px-8 py-16 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+            <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
               <Target className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-lg font-extrabold text-foreground">No goals yet</h3>
             <p className="mt-2 max-w-sm text-sm text-muted-foreground">
               Create your first savings goal — whether it's an emergency fund, vacation, or a big purchase.
             </p>
-            <Button className="mt-6 gap-2" onClick={() => setShowForm(true)}>
+            <Button className="mt-2 gap-2" onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4" /> Add your first goal
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {goals.map(goal => {
             const pct = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0
             const done = goal.current_amount >= goal.target_amount
@@ -559,7 +559,7 @@ export function Goals() {
                       </div>
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-2">
                       <div className="flex items-end justify-between gap-2">
                         <div>
                           <p className="text-2xl font-extrabold text-foreground">{money.formatDisplay(goal.current_amount)}</p>
@@ -642,7 +642,7 @@ export function Goals() {
             return (
               <div>
                 <div className="px-6 pb-4 pt-2">
-                  <SheetHeader className="mb-4 text-left">
+                  <SheetHeader className="mb-2 text-left">
                     <div className="flex flex-wrap items-center gap-1.5 mb-1">
                       <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: g.color + '33', color: g.color }}>{g.category}</span>
                       {urgency && (
@@ -657,7 +657,7 @@ export function Goals() {
                   </SheetHeader>
 
                   {/* Progress */}
-                  <div className="mb-5 text-center">
+                  <div className="mb-2 text-center">
                     <p className={`text-5xl font-extrabold tracking-tight ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
                     <p className="mt-1 text-sm text-muted-foreground">{money.formatDisplay(g.current_amount)} of {money.formatDisplay(g.target_amount)}</p>
                     <div className="mx-auto mt-3 h-3 w-full max-w-xs overflow-hidden rounded-full bg-muted">
@@ -672,7 +672,7 @@ export function Goals() {
                   </div>
 
                   {/* Stats grid */}
-                  <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {[
                       { label: 'Saved', value: money.formatDisplay(g.current_amount) },
                       { label: 'Target', value: money.formatDisplay(g.target_amount) },
@@ -688,7 +688,7 @@ export function Goals() {
 
                   {/* Pace info */}
                   {!done && (
-                    <div className="mb-5 space-y-1.5 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm">
+                    <div className="mb-2 space-y-1.5 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm">
                       {monthsToComplete !== null && (
                         <p className="text-muted-foreground">At this pace: completes in ~{monthsToComplete} month{monthsToComplete !== 1 ? 's' : ''}</p>
                       )}
@@ -702,12 +702,12 @@ export function Goals() {
                   )}
 
                   {g.notes && (
-                    <p className="mb-5 text-sm text-muted-foreground">{g.notes}</p>
+                    <p className="mb-2 text-sm text-muted-foreground">{g.notes}</p>
                   )}
 
                   {/* Contribute section */}
                   {!done && (
-                    <div className="mb-5 space-y-3">
+                    <div className="mb-2 space-y-3">
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Log contribution</p>
                       <select
                         aria-label="Wallet source"
@@ -774,7 +774,7 @@ export function Goals() {
                     .slice(0, 5)
                   if (linked.length === 0) return null
                   return (
-                    <div className="border-t border-border px-6 py-4">
+                    <div className="border-t border-border px-6 py-3">
                       <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Related transactions</p>
                       <div className="space-y-2">
                         {linked.map(tx => (
@@ -842,7 +842,7 @@ export function Goals() {
             <p className="mt-2 text-sm leading-5 text-muted-foreground">
               Copy <span className="font-bold text-foreground">{duplicateTarget.name}</span>. Keep saved progress or start fresh?
             </p>
-            <div className="mt-6 flex flex-col gap-2">
+            <div className="mt-2 flex flex-col gap-2">
               <button
                 type="button"
                 onClick={() => confirmDuplicate(false)}

@@ -228,11 +228,11 @@ export function AppLayout() {
       )}
       <Sidebar profileOpen={profileOpen} onProfileOpenChange={setProfileOpen} />
       <main
-        className="min-h-screen w-full overflow-x-hidden px-4 py-4 pb-28 sm:px-6 lg:ml-[240px] lg:w-[calc(100%-240px)] lg:max-w-[1150px] lg:pl-0 lg:pr-8 lg:py-4 lg:pb-8 xl:max-w-[1300px] 2xl:max-w-[1450px]"
+        className="min-h-screen w-full overflow-x-hidden px-4 py-3 pb-28 sm:px-6 lg:ml-[240px] lg:w-[calc(100%-240px)] lg:max-w-[1150px] lg:pl-0 lg:pr-8 lg:py-3 lg:pb-8 xl:max-w-[1300px] 2xl:max-w-[1450px]"
         style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
       >
         {offline && (
-          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-3">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-3">
             <span className="h-2 w-2 shrink-0 rounded-full bg-[#FFCF73]" />
             <p className="text-sm text-muted-foreground">
               <span className="font-bold text-[#FFCF73]">Offline</span> — changes saved locally and will sync when reconnected.
@@ -240,13 +240,13 @@ export function AppLayout() {
           </div>
         )}
         {syncing && (
-          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3">
             <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-primary" />
             <p className="text-sm font-bold text-primary">Syncing changes…</p>
           </div>
         )}
         {!offline && !syncing && isGuest && (
-          <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3">
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3">
             <p className="text-sm text-muted-foreground">
               <span className="font-bold text-primary">Guest mode</span> — your data is saved on this device only.
             </p>
@@ -287,13 +287,13 @@ export function AppLayout() {
         <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
           <SheetTitle className="sr-only">Quick actions</SheetTitle>
           <h2 className="mb-1 text-lg font-extrabold text-foreground">Quick add</h2>
-          <p className="mb-5 text-sm text-muted-foreground">What do you want to record?</p>
+          <p className="mb-2 text-sm text-muted-foreground">What do you want to record?</p>
           <div className="space-y-2">
             {QUICK_ACTIONS.map(({ type, label, description, color, Icon, to, cash }) => (
               <button
                 key={type}
                 type="button"
-                className="flex w-full items-center gap-4 rounded-2xl border border-border bg-secondary p-4 text-left transition-colors active:scale-[0.99] hover:bg-muted/30"
+                className="flex w-full items-center gap-2 rounded-2xl border border-border bg-secondary p-4 text-left transition-colors active:scale-[0.99] hover:bg-muted/30"
                 onClick={() => {
                   setQuickActionsOpen(false)
                   localStorage.setItem(LAST_QUICK_ACTION_KEY, type)

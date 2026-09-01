@@ -31,7 +31,7 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      className={cn('fixed z-50 gap-4 bg-background p-4 shadow-lg', sideClasses[side], className)}
+      className={cn('fixed z-50 gap-2 bg-background p-4 shadow-lg', sideClasses[side], className)}
       {...props}
     >
       {side === 'bottom' && (

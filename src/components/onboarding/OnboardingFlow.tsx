@@ -177,7 +177,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="mx-auto w-full max-w-sm rounded-2xl border border-border bg-card p-4 shadow-xl">
         {/* Progress dots */}
-        <div className="mb-5 flex items-center justify-center gap-1.5">
+        <div className="mb-2 flex items-center justify-center gap-1.5">
           {[0, 1, 2, 3].map(i => (
             <span
               key={i}
@@ -188,7 +188,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
         {/* Step 0: Welcome */}
         {step === 0 && (
-          <div className="space-y-4 text-center">
+          <div className="space-y-2 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
               <div className="h-6 w-6 rounded-lg bg-background" />
             </div>
@@ -240,14 +240,14 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
         {/* Step 1: Auto-setup (seeds Cash wallet + starter categories) */}
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-sm font-extrabold text-primary">1</span>
             </div>
             <h2 className="text-xl font-extrabold text-foreground">{seeding ? 'Setting things up…' : 'Everything is ready'}</h2>
             <p className="text-sm text-muted-foreground">We've prepared your starting wallet and budget categories — no setup needed.</p>
             {seeding ? (
-              <div className="flex items-center justify-center py-4">
+              <div className="flex items-center justify-center py-3">
                 <Loader2 className="h-7 w-7 animate-spin text-primary" />
               </div>
             ) : (
@@ -315,7 +315,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
         {/* Step 2: First transaction */}
         {step === 2 && (
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-sm font-extrabold text-primary">2</span>
             </div>
@@ -365,7 +365,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
         {/* Step 3: Done + feature tour */}
         {step === 3 && (
-          <div className="space-y-4 text-center">
+          <div className="space-y-2 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
               <Check className="h-8 w-8 text-primary" />
             </div>

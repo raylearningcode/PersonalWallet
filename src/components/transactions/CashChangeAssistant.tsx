@@ -67,7 +67,7 @@ export function CashChangeAssistant({
 
   return (
     <div className="rounded-[1.4rem] border border-primary/20 bg-primary/5 p-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-2">
         <span>
           <span className="block text-sm font-extrabold text-foreground">Cash payment</span>
           <span className="mt-0.5 block text-xs text-muted-foreground">Track the bill given and change received</span>
@@ -99,7 +99,7 @@ export function CashChangeAssistant({
       </div>
 
       {cashEnabled && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-2 space-y-2">
           <div>
             <Label className="text-xs font-bold text-muted-foreground">Cash given ({inputCurrency})</Label>
             <MoneyField

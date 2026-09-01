@@ -44,16 +44,16 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
   const openProfile = () => window.dispatchEvent(new CustomEvent('finpath-open-profile'))
 
   return (
-    <div className="mb-5 lg:mb-6">
+    <div className="mb-2 lg:mb-2">
       {/* Full header — fades and collapses when scrolling down on mobile */}
       <div
-        className={`flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-5 lg:!opacity-100 lg:!max-h-[500px] lg:!mb-0 transition-all duration-300 ease-out overflow-hidden ${scrolledDown ? 'opacity-0 max-h-0 -translate-y-3 mb-0 pointer-events-none' : 'opacity-100 max-h-[500px] translate-y-0'}`}
+        className={`flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between lg:gap-2 lg:!opacity-100 lg:!max-h-[500px] lg:!mb-0 transition-all duration-300 ease-out overflow-hidden ${scrolledDown ? 'opacity-0 max-h-0 -translate-y-3 mb-0 pointer-events-none' : 'opacity-100 max-h-[500px] translate-y-0'}`}
       >
         <div className="min-w-0">
           <h1 className="text-xl font-extrabold leading-tight text-foreground sm:text-2xl">{title}</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground lg:text-[15px]">{subtitle}</p>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-3 lg:w-auto lg:flex-nowrap lg:gap-4">
+        <div className="flex w-full flex-wrap items-center gap-3 lg:w-auto lg:flex-nowrap lg:gap-2">
           {onSearchChange !== undefined && (
             <input
               aria-label="Search"
@@ -78,7 +78,7 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
 
       {/* Compact mini-bar shown on mobile when scrolled — keeps title visible */}
       <div
-        className={`lg:hidden flex items-center justify-between gap-3 overflow-hidden transition-all duration-300 ease-out ${scrolledDown ? 'max-h-12 opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0 pointer-events-none'}`}
+        className={`lg:hidden flex items-center justify-between gap-3 overflow-hidden transition-all duration-300 ease-out ${scrolledDown ? 'max-h-12 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0 pointer-events-none'}`}
       >
         <p className="truncate text-base font-extrabold text-foreground">{title}</p>
         <div className="flex shrink-0 items-center gap-2">

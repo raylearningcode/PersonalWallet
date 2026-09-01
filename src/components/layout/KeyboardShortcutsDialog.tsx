@@ -23,7 +23,7 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: { open: boolean;
           </SheetTitle>
         </SheetHeader>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2">
           {shortcuts.map(({ action, key, ctrl, description }) => (
             <div key={action} className="flex items-center justify-between rounded-lg border border-border bg-secondary/50 p-3">
               <span className="text-sm text-foreground">{description}</span>
@@ -42,7 +42,7 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: { open: boolean;
           ))}
         </div>
 
-        <div className="mt-4 rounded-lg border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground">
+        <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground">
           <p>Keyboard shortcuts are disabled when typing in text fields.</p>
         </div>
       </SheetContent>

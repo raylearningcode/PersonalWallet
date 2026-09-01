@@ -138,7 +138,7 @@ export function NotificationsSheet() {
             </div>
           </SheetHeader>
 
-          <div className="mt-4 flex flex-col gap-2.5">
+          <div className="mt-2 flex flex-col gap-2.5">
             {visibleNotifications.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-12 text-center">
                 <BellOff className="h-10 w-10 text-muted-foreground/40" />

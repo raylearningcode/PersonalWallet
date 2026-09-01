@@ -541,7 +541,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
       {variant === 'sheet' && <div className="flex justify-center">{typeToggle(true)}</div>}
 
       {/* Big amount card */}
-      <div className="rounded-[1.4rem] border border-border bg-card px-4 pb-4 pt-5 text-center">
+      <div className="rounded-[1.4rem] border border-border bg-card px-4 pb-4 pt-3 text-center">
         <div className="flex items-center justify-center gap-2">
           {variant === 'page' ? (
             <select
@@ -708,7 +708,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
         </div>
         <Input
           aria-label="Date"
-          className="mx-auto mt-4 max-w-[190px] rounded-full bg-secondary text-center"
+          className="mx-auto mt-2 max-w-[190px] rounded-full bg-secondary text-center"
           type="date"
           value={date}
           onChange={e => setDate(e.target.value)}
@@ -798,7 +798,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
           </div>
         </>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-sm font-bold text-foreground">From wallet</Label>
             <select
@@ -827,7 +827,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
       {/* —— Category splitting (expense only, advanced mode) —— */}
       {type === 'expense' && categories.length >= 2 && (
         <div className="rounded-[1.4rem] border border-border bg-card p-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-2">
             <span>
               <span className="block text-sm font-extrabold text-foreground">Split across categories</span>
               <span className="mt-0.5 block text-xs text-muted-foreground">Divide this expense into multiple budget categories</span>
@@ -916,7 +916,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
       {/* —— Multi-wallet payment (expense only, advanced mode, 2+ wallets) —— */}
       {type === 'expense' && wallets.length >= 2 && (
         <div className="rounded-[1.4rem] border border-border bg-card p-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-2">
             <span>
               <span className="block text-sm font-extrabold text-foreground">Pay from multiple wallets</span>
               <span className="mt-0.5 block text-xs text-muted-foreground">E.g. $100 from notes + $2 from coins for a $102 expense</span>
@@ -1015,7 +1015,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
       {/* —— Apply to recurring rule (edits of rule-generated payments) —— */}
       {editTransaction?.recurring_rule_id && (
         <div className="rounded-[1.4rem] border border-border bg-card p-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-2">
             <span>
               <span className="block text-sm font-extrabold text-foreground">Apply to recurring rule</span>
               <span className="mt-0.5 block text-xs text-muted-foreground">Update the rule so future due payments match this edit</span>
@@ -1037,7 +1037,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
       {/* —— Transfer fee (transfer edits only) —— */}
       {type === 'transfer' && editTransaction && (
         <div className="rounded-[1.4rem] border border-border bg-card p-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-2">
             <span>
               <span className="block text-sm font-extrabold text-foreground">Transfer fee</span>
               <span className="mt-0.5 block text-xs text-muted-foreground">Add the fee this transfer cost, tracked as its own expense</span>
@@ -1086,7 +1086,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     return (
       <div>
         {/* ── Page header — bleed full width past AppLayout padding ── */}
-        <div className="-mx-4 -mt-6 mb-5 flex items-center gap-2 border-b border-border bg-background px-4 py-3 sm:-mx-6 sm:px-6">
+        <div className="-mx-4 -mt-2 mb-2 flex items-center gap-2 border-b border-border bg-background px-4 py-3 sm:-mx-6 sm:px-6">
           <button
             type="button"
             aria-label="Go back"
@@ -1111,7 +1111,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
         </div>
 
         {/* ── Form fields ── */}
-        <div className="space-y-4 pb-28">
+        <div className="space-y-2 pb-28">
           {showAdvanced ? advancedSections : quickSections}
         </div>
 
@@ -1141,11 +1141,11 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
 
   return (
     <>
-      <SheetHeader className="mb-4 text-left">
+      <SheetHeader className="mb-2 text-left">
         <SheetTitle>{title}</SheetTitle>
       </SheetHeader>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {showAdvanced ? advancedSections : quickSections}
 
         {/* -- Cash-change assistant -- expense + cash wallet -- */}

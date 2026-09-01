@@ -67,10 +67,10 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
-        <SheetTitle className="mb-5 text-lg font-extrabold text-foreground">More</SheetTitle>
+        <SheetTitle className="mb-2 text-lg font-extrabold text-foreground">More</SheetTitle>
 
         {/* Grouped navigation */}
-        <div className="mb-6 space-y-5">
+        <div className="mb-2 space-y-2">
           {MORE_NAV_GROUPS.map(group => (
             <div key={group.label}>
               <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">{group.label}</p>
