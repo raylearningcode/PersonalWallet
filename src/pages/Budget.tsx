@@ -371,7 +371,7 @@ export function Budget() {
         }
       />
       {/* Month navigator */}
-      <div className="mb-5 flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
+      <div className="mb-2 flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
         <button
           type="button"
           aria-label="Previous month"
@@ -406,8 +406,8 @@ export function Budget() {
       </div>
 
       {/* Hero: remaining this month with compact sub-stats */}
-      <div className="mb-6 rounded-[1.4rem] border border-border bg-card p-4 sm:p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-2 rounded-[1.4rem] border border-border bg-card p-4 sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Remaining this month</p>
             <p className={`mt-1 text-3xl font-extrabold tabular-nums ${hasData && remaining < 0 ? 'text-[#FF8388]' : 'text-primary'}`}>
@@ -417,7 +417,7 @@ export function Budget() {
               of {fmt(totalAllocated)} budgeted · {hasData && totalAllocated > 0 ? `${Math.round((totalSpent / totalAllocated) * 100)}% used` : 'No categories yet'}
             </p>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2">
             <div className="text-right">
               <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Budget</p>
               <p className="mt-1 text-lg font-extrabold tabular-nums text-foreground">{fmt(totalAllocated)}</p>
@@ -431,7 +431,7 @@ export function Budget() {
           </div>
         </div>
         {hasData && totalAllocated > 0 && (
-          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
             <div
               className={`h-full rounded-full transition-all duration-300 ${remaining < 0 ? 'bg-[#FF8388]' : 'bg-primary'}`}
               style={{ width: `${Math.min(100, Math.round((totalSpent / totalAllocated) * 100))}%` }}
@@ -441,7 +441,7 @@ export function Budget() {
       </div>
 
       {isCurrentMonth && hasData && forecasts.length > 0 && !paceAlertDismissed && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
+        <div className="mb-2 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold text-foreground">Spending pace alert</p>
@@ -464,7 +464,7 @@ export function Budget() {
       )}
 
       {hasData && forecasts.length === 0 && !riskNoteDismissed && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-border bg-secondary px-4 py-3.5">
+        <div className="mb-2 flex items-start gap-3 rounded-2xl border border-border bg-secondary px-4 py-3.5">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-muted-foreground">Overspend risk explanation</p>
             <p className="mt-1 text-sm text-foreground">
@@ -487,16 +487,16 @@ export function Budget() {
       )}
 
       {isCurrentMonth && forecasts.length > 0 && (
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <CardTitle className="text-xl">Month forecast</CardTitle>
             <p className="text-sm text-muted-foreground">
               Based on your current daily spend rate ({monthPct}% of month elapsed).
             </p>
           </CardHeader>
-          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
+          <CardContent className="space-y-3 px-4 pb-3 sm:px-6">
             {forecasts.map(f => (
-              <div key={f.id} className="flex items-start justify-between gap-4 rounded-2xl border border-[#FF8388]/20 bg-[#FF8388]/5 p-4">
+              <div key={f.id} className="flex items-start justify-between gap-2 rounded-2xl border border-[#FF8388]/20 bg-[#FF8388]/5 p-4">
                 <div>
                   <p className="font-extrabold text-foreground">{f.name}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -514,12 +514,12 @@ export function Budget() {
 
       {/* Wallet limits — wallets with a monthly cap set in Settings */}
       {walletLimits.length > 0 && (
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <CardTitle className="text-xl">Wallet limits</CardTitle>
             <p className="text-sm text-muted-foreground">Monthly caps per wallet, set in Settings → Wallets.</p>
           </CardHeader>
-          <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
             {walletLimits.map(w => {
               const pct = Math.min(100, Math.round((w.spent / w.limit) * 100))
               return (
@@ -573,7 +573,7 @@ export function Budget() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
+        <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
             {catPending ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="space-y-3">
@@ -591,7 +591,7 @@ export function Budget() {
                 <button
                   type="button"
                   onClick={() => catRefetch()}
-                  className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+                  className="mt-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
                 >
                   Retry
                 </button>
@@ -599,10 +599,10 @@ export function Budget() {
             ) : categoriesWithSpent.length > 0 ? (
               <>
                 {activeBudgets.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex items-end justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-end justify-between gap-2">
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Active budgets</p>
-                      <div className="hidden flex-1 grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] items-center gap-4 px-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/70 lg:grid">
+                      <div className="hidden flex-1 grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] items-center gap-2 px-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/70 lg:grid">
                         <span>Category</span>
                         <span>{allocationHeaders[0]}</span>
                         <span>{allocationHeaders[1]}</span>
@@ -615,7 +615,7 @@ export function Budget() {
                       const grouped = groupCategories(activeBudgets)
                       const showGroups = grouped.length > 1
                       return grouped.map(({ group, items }) => (
-                        <div key={group} className="space-y-4">
+                        <div key={group} className="space-y-2">
                           {showGroups && (
                             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground/60">{group}</p>
                           )}
@@ -649,7 +649,7 @@ export function Budget() {
                                   if (isDesktop) openSheet(cat)
                                   else navigate(`/category/${encodeURIComponent(cat.name)}`)
                                 }}
-                                className="w-full rounded-xl border border-border/50 bg-secondary/30 p-3 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] lg:items-center lg:gap-4 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
+                                className="w-full rounded-xl border border-border/50 bg-secondary/30 p-3 text-left transition-colors hover:border-border hover:bg-secondary/50 active:scale-[0.995] lg:grid lg:grid-cols-[minmax(160px,1.2fr)_130px_130px_150px_140px_32px] lg:items-center lg:gap-2 lg:rounded-lg lg:border-border/60 lg:bg-secondary/20 lg:px-3 lg:py-2"
                                 aria-label={`Open ${cat.name} budget details`}
                               >
                                 <div className="mb-2 flex items-center justify-between gap-2 text-sm lg:contents">
@@ -713,7 +713,7 @@ export function Budget() {
                   </div>
                 )}
                 {balancingSpent > 0 && !balancingCat && (
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
                     <div>
                       <p className="text-sm font-extrabold text-foreground">Unassigned spending — {fmt(balancingSpent)}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">Unknown categories and split leftovers. Add a Balancing category to track them.</p>
@@ -730,7 +730,7 @@ export function Budget() {
                   const grouped = groupCategories(noBudget)
                   const showGroups = grouped.length > 1
                   return (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">No budget set</p>
                       {grouped.map(({ group, items }) => (
                         <div key={group} className="space-y-2">
@@ -775,7 +775,7 @@ export function Budget() {
                 })()}
               </>
             ) : (
-              <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-12 text-center">
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-12 text-center">
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                   <Lightbulb className="h-7 w-7 text-primary" />
                 </span>
@@ -927,8 +927,8 @@ export function Budget() {
             const barColor = getBarColor(pct, cat.color)
             const leftAmt = Math.max(0, cat.yearly_allocated - cat.spent)
             return (
-              <div className="px-6 pb-safe-10 pt-5">
-                <SheetHeader className="mb-6 pb-0">
+              <div className="px-6 pb-safe-10 pt-3">
+                <SheetHeader className="mb-2 pb-0">
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-extrabold text-background" style={{ backgroundColor: cat.color }}>
                       {cat.name.slice(0, 1)}
@@ -942,7 +942,7 @@ export function Budget() {
 
                 {/* Stats row */}
                 {cat.yearly_allocated > 0 && (
-                  <div className="mb-5 grid grid-cols-3 gap-3">
+                  <div className="mb-2 grid grid-cols-3 gap-3">
                     <div className="rounded-2xl bg-secondary p-3 text-center">
                       <p className="text-xs text-muted-foreground">Spent</p>
                       <p className="mt-0.5 truncate text-sm font-extrabold text-foreground">{fmt(cat.spent)}</p>
@@ -960,14 +960,14 @@ export function Budget() {
 
                 {/* Progress bar */}
                 {cat.yearly_allocated > 0 && (
-                  <div className="mb-6">
+                  <div className="mb-2">
                     <ColorBar value={pct} color={barColor} />
                     <p className="mt-1.5 text-right text-xs font-bold text-muted-foreground">{pct}% used</p>
                   </div>
                 )}
 
                 {/* Edit form */}
-                <div className="mb-6 space-y-4">
+                <div className="mb-2 space-y-2">
                   <p className="text-sm font-extrabold text-foreground">Edit budget</p>
                   <div>
                     <p className="mb-1 text-xs text-muted-foreground">Amount ({money.baseCurrency})</p>
@@ -1045,7 +1045,7 @@ export function Budget() {
                     .slice(0, 4)
                   if (catTx.length === 0) return null
                   return (
-                    <div className="mt-6 border-t border-border pt-5">
+                    <div className="mt-2 border-t border-border pt-3">
                       <div className="mb-3 flex items-center justify-between">
                         <p className="text-sm font-extrabold text-foreground">Recent transactions</p>
                         <Link

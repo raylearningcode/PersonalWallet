@@ -241,9 +241,9 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
       <p className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">FinPath</p>
       <h1 className="text-2xl font-extrabold text-foreground">{stage === 'totp' ? 'Enter authenticator code' : 'Enter your PIN'}</h1>
       {stage === 'totp' && (
-        <p className="mb-5 mt-1 text-sm text-muted-foreground">Two-step verification is on — open your authenticator app</p>
+        <p className="mb-2 mt-1 text-sm text-muted-foreground">Two-step verification is on — open your authenticator app</p>
       )}
-      <div className={`mb-3 flex ${stage === 'totp' ? 'mt-4 gap-3' : 'mt-6 gap-4'}`}>
+      <div className={`mb-3 flex ${stage === 'totp' ? 'mt-2 gap-3' : 'mt-2 gap-2'}`}>
         {Array.from({ length: stage === 'totp' ? 6 : 4 }).map((_, i) => (
           <div
             key={i}
@@ -257,7 +257,7 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
           />
         ))}
       </div>
-      <div className="mb-6 h-5">
+      <div className="mb-2 h-5">
         {locked ? (
           <p className="text-sm font-bold text-[#FFCF73]">Too many attempts — try again in {Math.ceil(lockLeft / 1000)}s</p>
         ) : error ? (
@@ -289,7 +289,7 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
             errorRef.current = false
             setError(false)
           }}
-          className="mt-4 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground"
+          className="mt-2 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground"
         >
           ← Back to PIN
         </button>
@@ -299,7 +299,7 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
           type="button"
           onClick={handleBiometric}
           disabled={biometricLoading}
-          className="mt-6 flex items-center gap-2 rounded-xl border border-border bg-secondary px-5 py-3 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+          className="mt-2 flex items-center gap-2 rounded-xl border border-border bg-secondary px-5 py-3 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
         >
           {biometricLoading ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />

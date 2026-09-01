@@ -96,9 +96,9 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
 
   return (
     <>
-      <aside className="relative z-10 mx-4 mt-4 hidden w-[calc(100%-2rem)] flex-col rounded-[1.7rem] border border-border bg-background/78 px-5 py-4 lg:fixed lg:left-5 lg:top-5 lg:m-0 lg:flex lg:w-[210px] lg:overflow-y-auto lg:px-4 lg:py-4" style={{ maxHeight: 'calc(100vh - 2.5rem)' }}>
+      <aside className="relative z-10 mx-4 mt-2 hidden w-[calc(100%-2rem)] flex-col rounded-[1.7rem] border border-border bg-background/78 px-5 py-3 lg:fixed lg:left-5 lg:top-5 lg:m-0 lg:flex lg:w-[210px] lg:overflow-y-auto lg:px-4 lg:py-3" style={{ maxHeight: 'calc(100vh - 2.5rem)' }}>
         {/* Logo */}
-        <div className="mb-5 flex items-center gap-3 px-1">
+        <div className="mb-2 flex items-center gap-3 px-1">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary">
             <div className="h-3.5 w-3.5 rounded-md bg-background" />
           </div>
@@ -137,7 +137,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
         </nav>
 
         {/* Profile button */}
-        <div className="mt-4 border-t border-border pt-3">
+        <div className="mt-2 border-t border-border pt-3">
           <button
             onClick={() => handleProfileOpenChange(true)}
             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors hover:bg-secondary"
@@ -157,7 +157,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
         </div>
 
         {/* Goal card */}
-        <div className="mt-3 rounded-2xl border border-border bg-card px-4 py-4">
+        <div className="mt-3 rounded-2xl border border-border bg-card px-4 py-3">
           <p className="text-[10px] text-muted-foreground">{new Date().getFullYear()} goal</p>
           <p className="mt-1.5 break-words text-base font-extrabold leading-tight text-foreground">{displayGoal?.name ?? 'No goal set'}</p>
           <p className="mt-0.5 text-xs text-primary">{pct}% completed</p>
@@ -170,12 +170,12 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
       {/* Auth/Profile sheet */}
       <Sheet open={profileOpen} onOpenChange={handleProfileOpenChange}>
         <SheetContent side="left" className="w-80 border-border bg-background p-4">
-          <SheetHeader className="mb-6">
+          <SheetHeader className="mb-2">
             <SheetTitle>Account</SheetTitle>
           </SheetHeader>
 
           {/* Account info card */}
-          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border bg-secondary p-4">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl border border-border bg-secondary p-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">
               {userInitial ?? <User className="h-4 w-4" />}
             </div>
@@ -188,7 +188,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
           </div>
 
           {/* Quick links */}
-          <div className="mb-4 space-y-1">
+          <div className="mb-2 space-y-1">
             {[
               { icon: Coins, label: 'Currency & wallets', href: '/settings?section=wallets' },
               { icon: Shield, label: 'Security & PIN', href: '/settings?section=security' },
@@ -209,7 +209,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
 
           {/* Display currency badge */}
           {settings?.currency && (
-            <div className="mb-4 flex items-center gap-2 rounded-xl bg-secondary/50 px-3 py-2">
+            <div className="mb-2 flex items-center gap-2 rounded-xl bg-secondary/50 px-3 py-2">
               <span className="text-xs text-muted-foreground">Display currency:</span>
               <span className="text-xs font-extrabold text-foreground">{settings.currency}</span>
             </div>
@@ -234,7 +234,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Sign in to sync your data across devices.</p>
                 <div>
                   <Label className="text-xs text-muted-foreground">Email</Label>

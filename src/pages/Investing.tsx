@@ -23,7 +23,7 @@ export function Investing() {
       />
 
       {!isDesktop && !bannerDismissed && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3.5">
+        <div className="mb-2 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3.5">
           <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="flex-1">
             <p className="font-bold text-primary">Best on desktop</p>
@@ -40,7 +40,7 @@ export function Investing() {
         </div>
       )}
 
-      <Tabs value={tab} onValueChange={v => setTab(v as InvestingTab)} className="mb-6">
+      <Tabs value={tab} onValueChange={v => setTab(v as InvestingTab)} className="mb-2">
         <TabsList className="w-full max-w-sm">
           <TabsTrigger value="simulator" className="flex-1">
             Simulator

@@ -86,7 +86,7 @@ export function GoalDetail() {
       <div className="flex flex-col items-center justify-center py-16 text-center px-6">
         <p className="text-base font-bold text-foreground">Goal not found</p>
         <p className="mt-1 text-sm text-muted-foreground">This goal may have been deleted.</p>
-        <Button className="mt-6" onClick={() => navigate('/goals')}>Back to Goals</Button>
+        <Button className="mt-2" onClick={() => navigate('/goals')}>Back to Goals</Button>
       </div>
     )
   }
@@ -227,7 +227,7 @@ export function GoalDetail() {
   return (
     <div className="pb-32">
       {/* Header */}
-      <div className="-mx-4 -mt-6 mb-6 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3">
+      <div className="-mx-4 -mt-2 mb-2 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3">
         <button
           type="button"
           aria-label="Go back"
@@ -260,10 +260,10 @@ export function GoalDetail() {
         </div>
 
         {/* Goal name */}
-        <h2 className="mb-5 text-2xl font-extrabold text-foreground">{goal.name}</h2>
+        <h2 className="mb-2 text-2xl font-extrabold text-foreground">{goal.name}</h2>
 
         {/* Progress */}
-        <div className="mb-5 text-center">
+        <div className="mb-2 text-center">
           <p className={`text-5xl font-extrabold tracking-tight ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
           <p className="mt-1 text-sm text-muted-foreground">{money.formatDisplay(goal.current_amount)} of {money.formatDisplay(goal.target_amount)}</p>
           <div className="mx-auto mt-3 h-3 w-full max-w-xs overflow-hidden rounded-full bg-muted">
@@ -278,7 +278,7 @@ export function GoalDetail() {
         </div>
 
         {/* Stats grid */}
-        <div className="mb-5 grid grid-cols-2 gap-3">
+        <div className="mb-2 grid grid-cols-2 gap-3">
           {[
             { label: 'Saved', value: money.formatDisplay(goal.current_amount) },
             { label: 'Target', value: money.formatDisplay(goal.target_amount) },
@@ -294,7 +294,7 @@ export function GoalDetail() {
 
         {/* Pace info */}
         {!done && (
-          <div className="mb-5 space-y-1.5 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm">
+          <div className="mb-2 space-y-1.5 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm">
             {monthsToComplete !== null && (
               <p className="text-muted-foreground">At this pace: completes in ~{monthsToComplete} month{monthsToComplete !== 1 ? 's' : ''}</p>
             )}
@@ -308,12 +308,12 @@ export function GoalDetail() {
         )}
 
         {goal.notes && (
-          <p className="mb-5 text-sm text-muted-foreground">{goal.notes}</p>
+          <p className="mb-2 text-sm text-muted-foreground">{goal.notes}</p>
         )}
 
         {/* Contribute section */}
         {!done && (
-          <div className="mb-5 space-y-3">
+          <div className="mb-2 space-y-3">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Log contribution</p>
             <select
               aria-label="Wallet source"
@@ -392,12 +392,12 @@ export function GoalDetail() {
       {/* Edit Sheet */}
       <Sheet open={editOpen} onOpenChange={open => { if (!open) { setEditOpen(false); setFormKeypad(null) } }}>
         <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl pb-safe-10">
-          <SheetHeader className="mb-4 text-left">
+          <SheetHeader className="mb-2 text-left">
             <SheetTitle className="text-xl">Edit goal</SheetTitle>
             <SheetDescription className="sr-only">Edit goal form</SheetDescription>
           </SheetHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div>
                 <Label className="text-xs text-muted-foreground">Goal name *</Label>
                 <Input

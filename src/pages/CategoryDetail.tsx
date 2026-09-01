@@ -124,7 +124,7 @@ export function CategoryDetail() {
 
   if (catPending) {
     return (
-      <div className="space-y-4 py-4">
+      <div className="space-y-2 py-3">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-32 w-full" />
@@ -137,7 +137,7 @@ export function CategoryDetail() {
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <p className="text-base font-bold text-foreground">Category not found</p>
         <p className="mt-1 text-sm text-muted-foreground">"{categoryName}" doesn't exist in your budget.</p>
-        <Button className="mt-6" onClick={() => navigate(-1)}>Go back</Button>
+        <Button className="mt-2" onClick={() => navigate(-1)}>Go back</Button>
       </div>
     )
   }
@@ -149,7 +149,7 @@ export function CategoryDetail() {
   return (
     <div>
       {/* Header */}
-      <div className="-mx-4 -mt-6 mb-6 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3">
+      <div className="-mx-4 -mt-2 mb-2 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3">
         <button
           type="button"
           aria-label="Go back"
@@ -192,11 +192,11 @@ export function CategoryDetail() {
       </div>
 
       {/* Desktop: summary rail + transactions */}
-      <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start lg:gap-5">
+      <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start lg:gap-2">
         <div className="lg:sticky lg:top-6">
 
       {/* Category header */}
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-2 flex items-center gap-2">
         <div
           className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-extrabold text-background"
           style={{ backgroundColor: category.color }}
@@ -214,7 +214,7 @@ export function CategoryDetail() {
 
       {/* Stats */}
       {category.yearly_allocated > 0 ? (
-        <div className="mb-5 grid grid-cols-3 gap-3">
+        <div className="mb-2 grid grid-cols-3 gap-3">
           <div className="rounded-2xl bg-secondary p-4 text-center">
             <p className="text-xs text-muted-foreground">Spent</p>
             <p className="mt-1 break-words text-base font-extrabold text-foreground">{fmt(spent)}</p>
@@ -229,7 +229,7 @@ export function CategoryDetail() {
           </div>
         </div>
       ) : (
-        <div className="mb-5 rounded-2xl border border-dashed border-border bg-secondary/40 px-4 py-3.5 text-center">
+        <div className="mb-2 rounded-2xl border border-dashed border-border bg-secondary/40 px-4 py-3.5 text-center">
           <p className="text-sm font-bold text-foreground">No budget set for this category</p>
           <button
             type="button"
@@ -243,7 +243,7 @@ export function CategoryDetail() {
 
       {/* Progress bar */}
       {category.yearly_allocated > 0 && (
-        <div className="mb-6">
+        <div className="mb-2">
           <div className="h-3 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full transition-all duration-300"
@@ -261,8 +261,8 @@ export function CategoryDetail() {
 
         <div className="min-w-0">
       {/* Transaction list */}
-      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-4">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-3">
+        <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-foreground">Transactions</h2>
           <span className="text-xs text-muted-foreground">{categoryTransactions.length} total</span>
         </div>
@@ -284,7 +284,7 @@ export function CategoryDetail() {
             </p>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-2">
             {groupedByDate.map(([date, rows]) => (
               <div key={date}>
                 <h3 className="mb-2 text-xs font-extrabold text-primary">{formatDate(date)}</h3>
@@ -320,10 +320,10 @@ export function CategoryDetail() {
         <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
           {detailTx && (
             <>
-              <SheetHeader className="mb-4">
+              <SheetHeader className="mb-2">
                 <SheetTitle className="pr-8 text-lg">{detailTx.description}</SheetTitle>
               </SheetHeader>
-              <div className="mb-5 text-center">
+              <div className="mb-2 text-center">
                 <p className={`text-3xl font-extrabold tabular-nums ${txAmountColor(detailTx.amount, detailTx.type)}`}>
                   {txAmountSign(detailTx.amount, detailTx.type)}
                   {money.format(detailTx.original_amount ?? detailTx.amount, detailTx.original_currency ?? money.baseCurrency)}
@@ -373,19 +373,19 @@ export function CategoryDetail() {
       {/* Menu sheet */}
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="bottom" className="rounded-t-3xl border-border bg-background pb-safe-10">
-          <h2 className="mb-4 text-lg font-extrabold text-foreground">{category.name}</h2>
+          <h2 className="mb-2 text-lg font-extrabold text-foreground">{category.name}</h2>
           <div className="space-y-2">
             <button
               type="button"
               onClick={openEdit}
-              className="flex w-full items-center gap-4 rounded-2xl border border-border bg-secondary p-4 text-left transition-colors active:scale-[0.99]"
+              className="flex w-full items-center gap-2 rounded-2xl border border-border bg-secondary p-4 text-left transition-colors active:scale-[0.99]"
             >
               <span className="font-bold text-foreground">Edit budget</span>
             </button>
             <button
               type="button"
               onClick={() => { setMenuOpen(false); setDeleteOpen(true) }}
-              className="flex w-full items-center gap-4 rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/10 p-4 text-left transition-colors active:scale-[0.99]"
+              className="flex w-full items-center gap-2 rounded-2xl border border-[#FF8388]/30 bg-[#FF8388]/10 p-4 text-left transition-colors active:scale-[0.99]"
             >
               <span className="font-bold text-[#FF8388]">Delete category</span>
             </button>
@@ -396,10 +396,10 @@ export function CategoryDetail() {
       {/* Edit sheet */}
       <Sheet open={editOpen} onOpenChange={v => setEditOpen(v)}>
         <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-3xl border-border bg-background pb-safe-10">
-          <SheetHeader className="mb-5">
+          <SheetHeader className="mb-2">
             <SheetTitle>Edit budget — {category.name}</SheetTitle>
           </SheetHeader>
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div>
               <p className="mb-1 text-xs text-muted-foreground">Amount ({money.baseCurrency})</p>
               <MoneyField

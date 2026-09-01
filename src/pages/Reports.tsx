@@ -564,7 +564,7 @@ export function Reports() {
         )}
       />
       {/* Mobile sticky period bar */}
-      <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden">
+      <div className="sticky top-0 z-10 -mx-4 mb-2 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm lg:hidden">
         <div className="flex items-center justify-between gap-2">
           {range !== 'all' && range !== 'custom' && <button aria-label="Previous period" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground" onClick={() => setPeriodDate(current => addPeriod(current, range, -1))}><ChevronLeft className="h-4 w-4" /></button>}
           <span className="flex-1 text-center text-sm font-extrabold text-foreground">{periodLabel}</span>
@@ -588,7 +588,7 @@ export function Reports() {
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
+      <div className="mb-2 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-2">
         <StatCard label="Income" value={money.formatDisplay(totalIncome)} sub={money.formatRef(totalIncome) ?? `${incomeTx.length} transactions`} badgeVariant="success" />
         <StatCard label="Expenses" value={money.formatDisplay(totalExpenses)} sub={money.formatRef(totalExpenses) ?? `${expenseTx.length} transactions`} badgeVariant="warning" />
         <StatCard label="Saved" value={money.formatDisplay(totalIncome - totalExpenses)} sub={money.formatRef(totalIncome - totalExpenses) ?? `${savingsRate}% savings rate`} badgeVariant={totalIncome >= totalExpenses ? 'success' : 'danger'} />
@@ -596,8 +596,8 @@ export function Reports() {
       </div>
 
       {/* Desktop-only: top transactions + daily average detail */}
-      <div className="mb-6 hidden gap-5 lg:grid lg:grid-cols-[1fr_260px]">
-        <div className="rounded-[1.4rem] border border-border bg-card px-5 py-4">
+      <div className="mb-2 hidden gap-2 lg:grid lg:grid-cols-[1fr_260px]">
+        <div className="rounded-[1.4rem] border border-border bg-card px-5 py-3">
           <p className="text-sm font-extrabold text-foreground">Largest {mode === 'income' ? 'income' : 'expenses'}</p>
           {rangeTx.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">No transactions in this period.</p>
@@ -617,7 +617,7 @@ export function Reports() {
             </div>
           )}
         </div>
-        <div className="space-y-4">
+        <div className="space-y-2">
           {[
             { label: 'Daily average', value: money.formatDisplay(rangeTx.length > 0 ? totalExpenses / Math.max(1, daysInRange) : 0), sub: `${rangeTx.length} transactions` },
             { label: 'Per transaction', value: money.formatDisplay(rangeTx.length > 0 ? totalExpenses / rangeTx.length : 0), sub: 'average expense size' },
@@ -633,7 +633,7 @@ export function Reports() {
 
       {/* Period comparison */}
       {(incomeDiff || expenseDiff) && (
-        <div className="mb-6 hidden gap-4 lg:grid lg:grid-cols-2">
+        <div className="mb-2 hidden gap-2 lg:grid lg:grid-cols-2">
           <div className="rounded-2xl border border-border bg-card px-4 py-3.5">
             <p className="text-xs font-bold text-muted-foreground">Income vs previous {RANGE_LABELS[range].toLowerCase()}</p>
             <div className="mt-2 flex items-end gap-3">
@@ -662,11 +662,11 @@ export function Reports() {
       )}
 
       {/* Spending trend chart */}
-      <Card className="mb-6">
+      <Card className="mb-2">
         <CardHeader>
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-xl">Income vs Expenses</CardTitle>
-            <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#A9F5C7]" />Income</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#FF8388]" />Expenses</span>
             </div>
@@ -685,7 +685,7 @@ export function Reports() {
                 <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => { handleRangeChange('year'); setPeriodDate(new Date()) }}>This year</button>
                 <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => handleRangeChange('all')}>All time</button>
               </div>
-              <Link to="/transactions" className="mt-4 inline-block rounded-full bg-primary px-5 py-2 text-xs font-extrabold text-primary-foreground hover:bg-primary/90">
+              <Link to="/transactions" className="mt-2 inline-block rounded-full bg-primary px-5 py-2 text-xs font-extrabold text-primary-foreground hover:bg-primary/90">
                 Add transaction
               </Link>
             </div>
@@ -724,7 +724,7 @@ export function Reports() {
             </>
           )}
           {clickedBucket && bucketTx.length > 0 && (
-            <div className="mt-4 rounded-2xl border border-border bg-secondary/60 p-4">
+            <div className="mt-2 rounded-2xl border border-border bg-secondary/60 p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-extrabold text-foreground">{clickedBucket} — {bucketTx.length} transaction{bucketTx.length !== 1 ? 's' : ''}</p>
                 <button onClick={() => setClickedBucket(null)} aria-label="Close transaction list" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"><X className="h-4 w-4" /></button>
@@ -749,9 +749,9 @@ export function Reports() {
 
       {/* Period review metric cards */}
       {(incomeDiff || expenseDiff || savingsRate > 0 || topCategory !== '—') && (
-        <div className="mb-6 rounded-2xl border border-border bg-card px-5 py-4 lg:px-6">
+        <div className="mb-2 rounded-2xl border border-border bg-card px-5 py-3 lg:px-6">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period review</p>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {incomeDiff && (
               <div className="rounded-xl bg-secondary/60 px-3 py-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Income</p>
@@ -792,10 +792,10 @@ export function Reports() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5">
+      <div className="grid grid-cols-1 gap-2">
         <Card>
           <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-xl">Spending by category</CardTitle>
               <div className="flex rounded-full border border-border bg-secondary p-1">
                 {(['income', 'expense'] as ReportMode[]).map(item => (
@@ -812,7 +812,7 @@ export function Reports() {
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-8 sm:px-6">
-            <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[240px_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[240px_minmax(0,1fr)]">
               <div className="relative mx-auto aspect-square w-full max-w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal, colorOf) }}>
                 <div className="absolute inset-[20%] flex flex-col items-center justify-center rounded-full bg-card text-center">
                   <span className="text-sm text-muted-foreground">Total {mode}</span>
@@ -831,7 +831,7 @@ export function Reports() {
                 {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
                   <button
                     key={name}
-                    className={`flex w-full items-center justify-between gap-4 rounded-xl px-2 py-1.5 transition-colors ${selectedCategory === name ? 'bg-secondary' : 'hover:bg-secondary/60'}`}
+                    className={`flex w-full items-center justify-between gap-2 rounded-xl px-2 py-1.5 transition-colors ${selectedCategory === name ? 'bg-secondary' : 'hover:bg-secondary/60'}`}
                     onClick={() => {
                       if (!isDesktop) { navigate(`/category/${encodeURIComponent(name)}`); return }
                       setSelectedCategory(selectedCategory === name ? null : name)
@@ -885,9 +885,9 @@ export function Reports() {
 
         <Card>
           <CardHeader><CardTitle className="text-xl">Category breakdown</CardTitle></CardHeader>
-          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
+          <CardContent className="space-y-3 px-4 pb-3 sm:px-6">
             {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
-              <div key={name} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
+              <div key={name} className="flex items-center justify-between gap-2 rounded-2xl bg-secondary p-4">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold" style={{ backgroundColor: colorOf(name, index) }}>
                     {name.slice(0, 1)}
@@ -942,14 +942,14 @@ export function Reports() {
       </div>
 
       {selectedCategory && filteredTx.length > 0 && (
-        <Card className="mt-6">
+        <Card className="mt-2">
           <CardHeader>
             <CardTitle className="text-xl">{selectedCategory} — {filteredTx.length} transaction{filteredTx.length === 1 ? '' : 's'}</CardTitle>
             <p className="text-sm text-muted-foreground">Total: {money.formatDisplay(filteredTx.reduce((s, t) => s + t.amount, 0))}</p>
           </CardHeader>
-          <CardContent className="space-y-2 px-4 pb-5 sm:px-6">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6">
             {filteredTx.map(tx => (
-              <div key={tx.id} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-3">
+              <div key={tx.id} className="flex items-center justify-between gap-2 rounded-2xl bg-secondary px-4 py-3">
                 <div className="min-w-0">
                   <p className="truncate font-bold text-foreground">{tx.description}</p>
                   <p className="text-xs text-muted-foreground">{tx.date}</p>
@@ -964,17 +964,17 @@ export function Reports() {
       )}
 
       {showInternalMoves && internalMovesTx.length > 0 && (
-        <Card className="mt-6">
+        <Card className="mt-2">
           <CardHeader>
             <CardTitle className="text-xl">Cash movements</CardTitle>
             <p className="text-sm text-muted-foreground">System-generated change transfers from Cash Change Assistant.</p>
           </CardHeader>
-          <CardContent className="space-y-2 px-4 pb-5 sm:px-6">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6">
             {internalMovesTx.sort((a, b) => b.date.localeCompare(a.date)).map(tx => {
               const fromWallet = wallets.find(w => w.id === tx.wallet_id)
               const toWallet = wallets.find(w => w.id === tx.transfer_wallet_id)
               return (
-                <div key={tx.id} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-3">
+                <div key={tx.id} className="flex items-center justify-between gap-2 rounded-2xl bg-secondary px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate font-bold text-foreground">{tx.description}</p>
                     <p className="text-xs text-muted-foreground">
@@ -990,12 +990,12 @@ export function Reports() {
       )}
 
       {walletActivity.length > 0 && (
-        <Card className="mt-6">
+        <Card className="mt-2">
           <CardHeader>
             <CardTitle className="text-xl">Wallet activity</CardTitle>
             <p className="text-sm text-muted-foreground">Money flow per wallet during this period.</p>
           </CardHeader>
-          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
+          <CardContent className="space-y-3 px-4 pb-3 sm:px-6">
             {walletActivity.map(({ wallet, income, expenses, net }) => (
               <div key={wallet.id} className="rounded-2xl border border-border bg-secondary px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
@@ -1004,7 +1004,7 @@ export function Reports() {
                     {net >= 0 ? '+' : ''}{money.formatDisplay(net)}
                   </span>
                 </div>
-                <div className="mt-1.5 flex gap-4 text-xs text-muted-foreground">
+                <div className="mt-1.5 flex gap-2 text-xs text-muted-foreground">
                   {income > 0 && <span>In: <span className="font-bold text-primary">{money.formatDisplay(income)}</span></span>}
                   {expenses > 0 && <span>Out: <span className="font-bold text-[#FF8388]">{money.formatDisplay(expenses)}</span></span>}
                 </div>
@@ -1015,7 +1015,7 @@ export function Reports() {
       )}
 
       {savingsRateTrend.some(d => d.income > 0) && (
-        <Card className="mt-6">
+        <Card className="mt-2">
           <CardHeader>
             <CardTitle className="text-xl">Savings rate — 12 months</CardTitle>
             <p className="text-sm text-muted-foreground">Monthly savings rate trend. Target is 20%+.</p>
@@ -1046,9 +1046,9 @@ export function Reports() {
         </Card>
       )}
 
-      <Card className="mt-6">
+      <Card className="mt-2">
         <CardHeader><CardTitle className="text-xl">Reporter notes</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 px-4 pb-5 sm:px-6 md:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-3 px-4 pb-3 sm:px-6 md:grid-cols-2">
           {insights.length > 0 ? insights.map(insight => (
             <div key={insight.category} className="rounded-2xl border border-border bg-secondary p-4">
               <p className="font-extrabold text-foreground">{insight.category}</p>
@@ -1068,7 +1068,7 @@ export function Reports() {
               Import transactions
             </SheetTitle>
           </SheetHeader>
-          <div className="mt-4 flex flex-col gap-4">
+          <div className="mt-2 flex flex-col gap-2">
             <div className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
               <p className="font-bold text-foreground">Accepted CSV columns:</p>
               <p className="mt-1">Date, Description, Category, Type (income/expense/transfer), Amount</p>

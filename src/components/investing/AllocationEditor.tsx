@@ -62,7 +62,7 @@ export function AllocationEditor({ value, onChange, onSave, isSaving, readOnly }
   }
 
   return (
-    <div className="flex flex-col gap-5 sm:flex-row">
+    <div className="flex flex-col gap-2 sm:flex-row">
       <AllocationDonut items={value} />
       <div className="flex flex-1 flex-col gap-3">
         {/* Total indicator */}

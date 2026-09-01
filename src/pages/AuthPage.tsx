@@ -73,7 +73,7 @@ export function AuthPage() {
         </div>
 
         {/* Form */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div>
             <label className="mb-1.5 block text-sm font-bold text-muted-foreground">Email</label>
             <Input
@@ -119,7 +119,7 @@ export function AuthPage() {
       </div>
 
       {/* Guest mode */}
-      <div className="pb-5 pt-4 text-center">
+      <div className="pb-3 pt-4 text-center">
         <button
           type="button"
           onClick={() => navigate('/', { replace: true })}

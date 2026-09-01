@@ -333,7 +333,7 @@ export function Estimation() {
         subtitle="Plan future months one item at a time: income sources, expected expenses, notes, and wishlist."
         action={(
           <div className="flex items-center gap-3">
-            <div className="flex h-11 items-center gap-5 rounded-full border border-border bg-secondary px-6 text-sm">
+            <div className="flex h-11 items-center gap-2 rounded-full border border-border bg-secondary px-6 text-sm">
               <span className="text-muted-foreground">Main currency</span>
               <span className="min-w-10 text-right font-extrabold text-primary" aria-label="Main currency">
                 {money.baseCurrency}
@@ -352,7 +352,7 @@ export function Estimation() {
         const today = new Date()
         const isCurrentMonth = planningDate.getFullYear() === today.getFullYear() && planningDate.getMonth() === today.getMonth()
         return (
-          <div className="mb-5 flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
+          <div className="mb-2 flex items-center justify-between rounded-2xl border border-border bg-secondary px-4 py-3">
             <button
               type="button"
               aria-label="Previous month"
@@ -388,7 +388,7 @@ export function Estimation() {
       })()}
 
       {!planningTipDismissed && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3.5">
+        <div className="mb-2 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3.5">
           <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
             <p className="font-bold text-foreground">Planning vs Budget</p>
@@ -407,7 +407,7 @@ export function Estimation() {
         </div>
       )}
 
-      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+      <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:gap-2">
         <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={money.formatRef(monthlyIncome) ?? `${incomeItems.length} income items`} badgeVariant="success" />
         <StatCard label="Monthly expenses" value={money.formatDisplay(monthlyExpenses)} sub={money.formatRef(monthlyExpenses) ?? `${expenseItems.length} expense items`} badgeVariant="warning" />
         <StatCard label="Yearly saving" value={money.formatDisplay(yearlySaving)} sub={money.formatRef(yearlySaving) ?? `${savingsRate}% monthly saving rate`} />
@@ -420,7 +420,7 @@ export function Estimation() {
         const expPct = Math.round((monthlyExpenses / total) * 100)
         const surplus = monthlyIncome - monthlyExpenses
         return (
-          <div className="mb-6 rounded-2xl border border-border bg-secondary px-4 py-3.5">
+          <div className="mb-2 rounded-2xl border border-border bg-secondary px-4 py-3.5">
             <div className="space-y-3">
               <div>
                 <div className="mb-1.5 flex items-center justify-between text-xs">
@@ -457,21 +457,21 @@ export function Estimation() {
       })()}
 
       {monthlyIncome > 0 && (
-        <div className={`mb-6 rounded-2xl border px-4 py-3.5 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
+        <div className={`mb-2 rounded-2xl border px-4 py-3.5 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
             {planningDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} forecast
           </p>
           <div className="space-y-1.5 text-sm">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-muted-foreground">Income</span>
               <span className="font-extrabold text-primary">{money.formatDisplay(monthlyIncome)}/mo</span>
             </div>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-muted-foreground">Fixed expenses</span>
               <span className="font-extrabold text-[#FF8388]">−{money.formatDisplay(monthlyExpenses)}/mo</span>
             </div>
             {wishlistTotal > 0 && (
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">Wishlist total</span>
                 <span className="font-bold text-muted-foreground">{money.formatDisplay(wishlistTotal)}</span>
               </div>
@@ -493,13 +493,13 @@ export function Estimation() {
       )}
 
       {(monthlyIncome > 0 || monthlyExpenses > 0 || actualThisMonth.income > 0 || actualThisMonth.expenses > 0) && (
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <CardTitle className="text-xl">Planned vs Actual this month</CardTitle>
             <p className="text-sm text-muted-foreground">How your forecast compares to real transactions recorded this month.</p>
           </CardHeader>
-          <CardContent className="space-y-4 px-4 pb-5 sm:px-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[
                 { label: 'Income', planned: monthlyIncome, actual: actualThisMonth.income, good: (actual: number, planned: number) => actual >= planned },
                 { label: 'Expenses', planned: monthlyExpenses, actual: actualThisMonth.expenses, good: (actual: number, planned: number) => actual <= planned },
@@ -544,7 +544,7 @@ export function Estimation() {
                     <Bar dataKey="Actual" fill="#A9F5C7" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
                   <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#2d3953]" />Planned</span>
                   <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#A9F5C7]" />Actual</span>
                 </div>
@@ -554,7 +554,7 @@ export function Estimation() {
         </Card>
       )}
 
-      <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-5">
+      <div className="mb-2 grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2">
         <Card>
           <CardHeader className="pb-0">
             <div className="flex items-center gap-3 mb-1">
@@ -563,7 +563,7 @@ export function Estimation() {
             </div>
             <p className="text-sm text-muted-foreground">How much money will come in?</p>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 sm:p-4">
+          <CardContent className="space-y-2 p-4 sm:p-4">
             {isDesktop ? (
               <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
                 <div>
@@ -614,10 +614,10 @@ export function Estimation() {
         </Card>
         <Sheet open={incomeSheetOpen} onOpenChange={setIncomeSheetOpen}>
           <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto rounded-t-3xl px-5 pb-safe-6">
-            <SheetHeader className="mb-4 text-left">
+            <SheetHeader className="mb-2 text-left">
               <SheetTitle>Add income source</SheetTitle>
             </SheetHeader>
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div>
                 <Label className="text-xs text-muted-foreground">Income source</Label>
                 <Input aria-label="Income source" className={`mt-2 bg-secondary transition-colors ${incomeError && !incomeSource.trim() ? 'border-[#FF8388]' : ''}`} value={incomeSource} onChange={event => setIncomeSource(event.target.value)} placeholder="Part-time work" />
@@ -645,7 +645,7 @@ export function Estimation() {
             </div>
             <p className="text-sm text-muted-foreground">What fixed expenses are expected this month?</p>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 sm:p-4">
+          <CardContent className="space-y-2 p-4 sm:p-4">
             {isDesktop ? (
               <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
                 <div>
@@ -696,10 +696,10 @@ export function Estimation() {
         </Card>
         <Sheet open={expenseSheetOpen} onOpenChange={setExpenseSheetOpen}>
           <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto rounded-t-3xl px-5 pb-safe-6">
-            <SheetHeader className="mb-4 text-left">
+            <SheetHeader className="mb-2 text-left">
               <SheetTitle>Add expected expense</SheetTitle>
             </SheetHeader>
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div>
                 <Label className="text-xs text-muted-foreground">Expense detail</Label>
                 <Input aria-label="Expense detail" className={`mt-2 bg-secondary transition-colors ${expenseError && !expenseDetail.trim() ? 'border-[#FF8388]' : ''}`} value={expenseDetail} onChange={event => setExpenseDetail(event.target.value)} placeholder="Apartment rent" />
@@ -720,7 +720,7 @@ export function Estimation() {
           </SheetContent>
         </Sheet>
       </div>
-      <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
+      <div className="mb-2 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
         <Card>
           <CardHeader className="pb-0">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -734,7 +734,7 @@ export function Estimation() {
               <p className="text-sm font-extrabold text-primary">{money.formatDisplay(wishlistTotal)}</p>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 sm:p-4">
+          <CardContent className="space-y-2 p-4 sm:p-4">
             {isDesktop ? (
               <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(110px,0.45fr)_minmax(120px,0.45fr)]">
                 <div>
@@ -824,10 +824,10 @@ export function Estimation() {
         </Card>
         <Sheet open={wishlistSheetOpen} onOpenChange={setWishlistSheetOpen}>
           <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto rounded-t-3xl px-5 pb-safe-6">
-            <SheetHeader className="mb-4 text-left">
+            <SheetHeader className="mb-2 text-left">
               <SheetTitle>Add wishlist item</SheetTitle>
             </SheetHeader>
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div>
                 <Label className="text-xs text-muted-foreground">Wishlist item</Label>
                 <Input aria-label="Wishlist item" className="mt-2 bg-secondary" value={wishlistName} onChange={event => setWishlistName(event.target.value)} placeholder="e.g. new laptop, vacation, gadget" />
@@ -860,7 +860,7 @@ export function Estimation() {
             <CardTitle className="text-xl">Plan notes</CardTitle>
             <p className="text-sm text-muted-foreground">Add anything that could change the estimate.</p>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 sm:p-4">
+          <CardContent className="space-y-2 p-4 sm:p-4">
             <div>
               <Label className="text-xs text-muted-foreground">Notes</Label>
               <textarea

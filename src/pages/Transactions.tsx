@@ -463,7 +463,7 @@ export function Transactions() {
   }
 
   return (
-    <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-5">
+    <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-2">
       <div className="lg:col-span-2">
         <PageHeader
           title="Transactions"
@@ -478,9 +478,9 @@ export function Transactions() {
           )}
         />
       </div>
-      <div className="relative mb-6 lg:col-span-2 lg:hidden">
+      <div className="relative mb-2 lg:col-span-2 lg:hidden">
         <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
-          <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-5">
+          <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-2">
             {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => (
               <TabsTrigger
                 key={f}
@@ -494,7 +494,7 @@ export function Transactions() {
         </Tabs>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-[1.4rem] bg-gradient-to-l from-card to-transparent sm:hidden" />
       </div>
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:col-span-2 lg:grid-cols-3 lg:gap-5">
+      <div className="mb-2 grid grid-cols-2 gap-2 lg:col-span-2 lg:grid-cols-3 lg:gap-2">
         {(() => {
           const net = moneyIn - moneyOut
           const netCount = transactions.filter(t => t.type !== 'transfer').length
@@ -504,7 +504,7 @@ export function Transactions() {
             { label: 'Net flow', value: `${net >= 0 ? '+' : ''}${money.formatDisplay(net)}`, dot: net >= 0 ? 'bg-primary' : 'bg-[#FF8388]', sub: `${netCount} transactions` },
           ]
         })().map(({ label, value, dot, sub }, i) => (
-          <div key={label} className={`relative rounded-[1.4rem] border border-border bg-card px-4 py-3.5 lg:px-5 lg:py-4 ${i === 2 ? 'col-span-2 lg:col-span-1' : ''}`}>
+          <div key={label} className={`relative rounded-[1.4rem] border border-border bg-card px-4 py-3.5 lg:px-5 lg:py-3 ${i === 2 ? 'col-span-2 lg:col-span-1' : ''}`}>
             <span className={`absolute right-4 top-4 h-3.5 w-3.5 rounded-full lg:right-7 lg:top-7 lg:h-4 lg:w-4 ${dot}`} />
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className="mt-1.5 break-all text-base font-extrabold leading-tight tabular-nums text-foreground sm:text-xl lg:mt-2 lg:text-2xl">{value}</p>
@@ -523,7 +523,7 @@ export function Transactions() {
         </div>
 
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</p>
-        <div className="mb-4 flex flex-wrap gap-1.5">
+        <div className="mb-2 flex flex-wrap gap-1.5">
           {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => (
             <button
               key={f}
@@ -539,7 +539,7 @@ export function Transactions() {
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Category</p>
         <select
           aria-label="Category"
-          className="mb-4 h-10 w-full rounded-lg border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+          className="mb-2 h-10 w-full rounded-lg border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
           value={selectedCategory ?? ''}
           onChange={e => setSelectedCategory(e.target.value)}
         >
@@ -552,7 +552,7 @@ export function Transactions() {
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Wallet</p>
         <select
           aria-label="Wallet"
-          className="mb-4 h-10 w-full rounded-lg border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
+          className="mb-2 h-10 w-full rounded-lg border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
           value={filterWalletId}
           onChange={e => setFilterWalletId(e.target.value)}
         >
@@ -585,7 +585,7 @@ export function Transactions() {
       </aside>
 
             <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-5' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-3' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
           <TransactionForm
             variant="sheet"
             initialType={(new URLSearchParams(window.location.search).get('action') === 'income' ? 'income' : 'expense') as EntryType}
@@ -598,11 +598,11 @@ export function Transactions() {
 
 <Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
         <SheetContent className="w-full overflow-y-auto border-border bg-background p-4 pb-safe-10 sm:max-w-md sm:p-4 sm:pb-safe-10">
-          <SheetHeader className="mb-6 text-left">
+          <SheetHeader className="mb-2 text-left">
             <SheetTitle>Edit recurring rule</SheetTitle>
             <SheetDescription>Update the schedule or amount for this recurring payment.</SheetDescription>
           </SheetHeader>
-          <div className="space-y-5">
+          <div className="space-y-2">
             <div>
               <Label className="text-sm font-bold text-foreground">Description</Label>
               <Input aria-label="Rule description" className="mt-2 bg-secondary" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} />
@@ -646,7 +646,7 @@ export function Transactions() {
               <Label className="text-sm font-bold text-foreground">End date (optional)</Label>
               <Input aria-label="Rule end date" className="mt-2 bg-secondary" type="date" value={ruleEndDate} onChange={e => setRuleEndDate(e.target.value)} />
             </div>
-            <Button className="mt-4 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
+            <Button className="mt-2 w-full" onClick={handleSaveRule} disabled={updateRecurringRule.isPending}>
               Save rule
             </Button>
             <Button variant="secondary" className="mt-2 w-full" onClick={() => setEditingRule(null)}>
@@ -657,9 +657,9 @@ export function Transactions() {
       </Sheet>
 
 
-      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-4 sm:px-5 sm:py-4">
+      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-3 sm:px-5 sm:py-3">
         {selectedCategory ? (
-          <div className="mb-6 rounded-2xl border border-border bg-secondary p-4">
+          <div className="mb-2 rounded-2xl border border-border bg-secondary p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-2xl font-extrabold text-foreground">{selectedCategory}</h2>
@@ -673,7 +673,7 @@ export function Transactions() {
             </div>
           </div>
         ) : (
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
             <h2 className="text-xl font-extrabold text-foreground">Transaction history</h2>
             <div className="flex items-center gap-2">
               {selectMode && sortedTransactions.length > 0 && (
@@ -708,7 +708,7 @@ export function Transactions() {
         )}
 
         {/* Month navigator */}
-        <div className="mb-5 flex items-center gap-1">
+        <div className="mb-2 flex items-center gap-1">
           <button
             onClick={goToPrevMonth}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:text-foreground"
@@ -764,11 +764,11 @@ export function Transactions() {
 
         <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background' : 'overflow-y-auto border-border bg-background pb-safe-8'}>
-            <SheetHeader className="mb-5 text-left">
+            <SheetHeader className="mb-2 text-left">
               <SheetTitle>Filters</SheetTitle>
               <SheetDescription>Narrow down by date range or wallet.</SheetDescription>
             </SheetHeader>
-            <div className="space-y-6">
+            <div className="space-y-2">
               <div>
                 <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Quick range</p>
                 <div className="flex flex-wrap gap-2">
@@ -838,7 +838,7 @@ export function Transactions() {
 
         {/* Mobile category chips — one-tap per-category history */}
         {!isDesktop && !txPending && !txError && expenseCategoryTotals.length > 0 && (
-          <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+          <div className="mb-2 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             <button
               type="button"
               onClick={() => setSelectedCategory('')}
@@ -887,13 +887,13 @@ export function Transactions() {
             <button
               type="button"
               onClick={() => txRefetch()}
-              className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+              className="mt-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
             >
               Retry
             </button>
           </div>
         ) : groupedTransactions.length > 0 ? groupedTransactions.map(([date, rows]) => (
-          <div key={date} className="mb-6 last:mb-0">
+          <div key={date} className="mb-2 last:mb-0">
             <h3 className="mb-3 text-sm font-extrabold text-primary">{formatDate(date)}</h3>
 
             {/* Mobile card list */}
@@ -1123,7 +1123,7 @@ export function Transactions() {
             </div>}
           </div>
         )) : (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <div className="flex flex-col items-center gap-2 py-16 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
               <ReceiptText size={28} className="text-muted-foreground/50" />
             </div>
@@ -1225,12 +1225,12 @@ export function Transactions() {
 
       {/* Bulk recategorize sheet */}
       <Sheet open={bulkCategorySheet} onOpenChange={open => { if (!open) setBulkCategorySheet(false) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-5' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-5'}>
-          <SheetHeader className="mb-5">
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-3' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-3'}>
+          <SheetHeader className="mb-2">
             <SheetTitle>Recategorize {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
             <SheetDescription>Choose a new category for all selected transactions.</SheetDescription>
           </SheetHeader>
-          <div className="mb-5 flex flex-wrap gap-2">
+          <div className="mb-2 flex flex-wrap gap-2">
             {categories.map(c => (
               <button
                 key={c.id}
@@ -1253,12 +1253,12 @@ export function Transactions() {
       </Sheet>
       {/* Bulk retime sheet */}
       <Sheet open={bulkDateSheet} onOpenChange={open => { if (!open) setBulkDateSheet(false) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-5' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-5'}>
-          <SheetHeader className="mb-5">
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-3' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-3'}>
+          <SheetHeader className="mb-2">
             <SheetTitle>Change date for {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
             <SheetDescription>All selected transactions will be moved to this date.</SheetDescription>
           </SheetHeader>
-          <div className="mb-5">
+          <div className="mb-2">
             <Label className="mb-2 block text-xs text-muted-foreground">New date</Label>
             <Input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} className="bg-secondary" />
           </div>
@@ -1312,13 +1312,13 @@ export function Transactions() {
                   </div>
                 )}
                 <div className="px-6 pb-4 pt-2">
-                  <SheetHeader className="mb-4 text-left">
+                  <SheetHeader className="mb-2 text-left">
                     <SheetTitle className="text-base font-extrabold">{tx.description}</SheetTitle>
                     <SheetDescription className="sr-only">Transaction details</SheetDescription>
                   </SheetHeader>
 
                   {/* Amount hero */}
-                  <div className="mb-5 text-center">
+                  <div className="mb-2 text-center">
                     <p className={`text-4xl font-extrabold tracking-tight ${txAmountColor(tx.amount, tx.type)}`}>
                       {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                     </p>
@@ -1440,7 +1440,7 @@ export function Transactions() {
                   </div>
 
                   {/* Tags */}
-                  <div className="mt-4">
+                  <div className="mt-2">
                     <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
                       <Tag size={13} />Tags
                     </p>

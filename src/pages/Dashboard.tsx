@@ -245,23 +245,23 @@ export function Dashboard() {
   if (txPending || catPending) {
     return (
       <div>
-        <div className="mb-6 space-y-2">
+        <div className="mb-2 space-y-2">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
         </div>
-        <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mb-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-[1.4rem] border border-border bg-card px-5 py-4">
+            <div key={i} className="rounded-[1.4rem] border border-border bg-card px-5 py-3">
               <Skeleton className="h-3 w-20" />
-              <Skeleton className="mt-4 h-8 w-28" />
-              <Skeleton className="mt-6 h-3 w-32" />
+              <Skeleton className="mt-2 h-8 w-28" />
+              <Skeleton className="mt-2 h-3 w-32" />
             </div>
           ))}
         </div>
-        <div className="mb-6">
+        <div className="mb-2">
           <Skeleton className="h-[120px] w-full rounded-2xl" />
         </div>
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           <Skeleton className="h-[200px] w-full rounded-2xl" />
           <Skeleton className="h-[200px] w-full rounded-2xl" />
         </div>
@@ -274,7 +274,7 @@ export function Dashboard() {
       <PageHeader title={`${greeting}${name ? `, ${name}` : ''}`} subtitle={`${fmt(netWorth)} net worth · ${savingsRate}% savings rate · ${reviewCount > 0 ? `${reviewCount} to review` : 'all reviewed'}`} />
 
       {/* Hero stat cards */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
         <StatCard label="Net worth" value={fmt(netWorth)} sub={investConfig?.current_value ? `${money.formatDisplay(investConfig.current_value)} invested` : 'No investments yet'} badgeVariant="success" />
         <StatCard label="This month" value={fmt(monthlySpent)} sub={monthlyIncome > 0 ? `of ${fmt(monthlyIncome)} income` : `${monthTx.length} transactions`} badgeVariant="warning" />
         <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={`${daysLeft} days left`} />
@@ -283,7 +283,7 @@ export function Dashboard() {
 
       {/* Review queue */}
       {reviewCount > 0 && (
-        <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-3">
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-3">
           <p className="text-sm"><span className="font-extrabold text-[#FFCF73]">{reviewCount} transaction{reviewCount !== 1 ? 's' : ''} need{reviewCount === 1 ? 's' : ''} review</span></p>
           <Button asChild size="sm" variant="secondary"><Link to="/transactions?filter=needs_review">Review</Link></Button>
         </div>
@@ -291,25 +291,25 @@ export function Dashboard() {
 
       {/* Streak */}
       {streak.current >= 3 && (
-        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3">
+        <div className="mb-2 flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3">
           <Flame className="h-5 w-5 text-[#FFCF73]" />
           <p className="text-sm"><span className="font-extrabold text-foreground">{streak.current}-day</span> <span className="text-muted-foreground">logging streak</span>{streak.longest > streak.current && <span className="text-muted-foreground"> · best: {streak.longest} days</span>}</p>
         </div>
       )}
 
       {/* Spending trend */}
-      <Card className="mb-6">
+      <Card className="mb-2">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Spending trend</CardTitle>
           <span className="text-xs font-bold text-muted-foreground">last 7 days</span>
         </CardHeader>
-        <CardContent className="px-4 pb-5">
+        <CardContent className="px-4 pb-3">
           {trendTotal === 0 ? (
             <p className="text-sm text-muted-foreground">No spending in the last 7 days.</p>
           ) : (
             <>
               <p className="text-sm font-extrabold text-foreground">{fmt(trendTotal)} total</p>
-              <p className="mb-4 text-xs text-muted-foreground">{fmt(trendAvg)} avg / day</p>
+              <p className="mb-2 text-xs text-muted-foreground">{fmt(trendAvg)} avg / day</p>
               <div className="relative flex h-24 items-end gap-2" role="img" aria-label={`Daily spending for the last 7 days. ${fmt(trendTotal)} total.`}>
                 {trendDays.map(d => {
                   const pct = d.total > 0 ? Math.max(8, (d.total / trendMax) * 100) : 0
@@ -357,12 +357,12 @@ export function Dashboard() {
       </Card>
 
       {/* Net worth curve */}
-      <Card className="mb-6">
+      <Card className="mb-2">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Net worth</CardTitle>
           <span className="text-xs font-bold text-muted-foreground">last 6 months</span>
         </CardHeader>
-        <CardContent className="px-4 pb-5">
+        <CardContent className="px-4 pb-3">
           {transactions.length === 0 ? (
             <p className="text-sm text-muted-foreground">Log transactions to see your net worth curve.</p>
           ) : (
@@ -408,13 +408,13 @@ export function Dashboard() {
       </Card>
 
       {/* Recent activity (first on mobile) + Budget health */}
-      <div className="mb-6 grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+      <div className="mb-2 grid grid-cols-1 items-start gap-2 lg:grid-cols-2">
         <Card className="order-1 lg:order-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Recent activity</CardTitle>
             <Link to="/transactions" className="text-xs font-bold text-primary hover:underline">View all <ChevronRight className="inline h-3 w-3" /></Link>
           </CardHeader>
-          <CardContent className="space-y-1 px-5 pb-5">
+          <CardContent className="space-y-1 px-5 pb-3">
             {recentTx.length === 0 ? (
               <p className="text-sm text-muted-foreground">No transactions yet.</p>
             ) : recentTx.slice(0, 5).map(tx => (
@@ -429,13 +429,13 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <div className="order-2 flex flex-col gap-5 lg:order-1">
+        <div className="order-2 flex flex-col gap-2 lg:order-1">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Budget health</CardTitle>
             <Link to="/budget" className="text-xs font-bold text-primary hover:underline">View all <ChevronRight className="inline h-3 w-3" /></Link>
           </CardHeader>
-          <CardContent className="space-y-3 px-5 pb-5">
+          <CardContent className="space-y-3 px-5 pb-3">
             {categoryHealth.length === 0 ? (
               <p className="text-sm text-muted-foreground">No budget categories yet.</p>
             ) : categoryHealth.map(c => {
@@ -460,7 +460,7 @@ export function Dashboard() {
             <CardTitle className="text-lg">Upcoming bills</CardTitle>
             <Link to="/subscriptions" className="text-xs font-bold text-primary hover:underline">Manage <ChevronRight className="inline h-3 w-3" /></Link>
           </CardHeader>
-          <CardContent className="space-y-2 px-5 pb-5">
+          <CardContent className="space-y-2 px-5 pb-3">
             {upcomingBills.map(rule => (
               <div key={rule.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-2.5">
                 <div>
@@ -480,7 +480,7 @@ export function Dashboard() {
       {!aiCardDismissed && (isAiConfigured() || isDesktop) && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><CardTitle className="text-lg">AI Insights</CardTitle>
                 {digestAuto && <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-extrabold text-primary">Weekly digest · auto</span>}
               </div>
@@ -499,7 +499,7 @@ export function Dashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="px-4 pb-5 sm:px-6">
+          <CardContent className="px-4 pb-3 sm:px-6">
             {!isAiConfigured() ? <p className="text-sm text-muted-foreground">AI insights are unavailable — API endpoint not configured.</p>
             : loadingInsights ? <div className="flex items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin text-primary" />Analysing your finances…</div>
             : insightsError ? <p className="rounded-xl border border-[#FF8388]/20 bg-[#FF8388]/5 p-4 text-sm text-[#FF8388]">{insightsError}</p>

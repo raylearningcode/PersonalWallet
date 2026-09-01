@@ -240,9 +240,9 @@ export function PortfolioTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Portfolio Summary Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Portfolio value</p>
           <p className="mt-1 text-xl font-extrabold text-foreground">
@@ -304,7 +304,7 @@ export function PortfolioTab() {
       </div>
 
       {/* Holdings + Allocation */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_320px]">
         {/* Holdings List */}
         <Card>
           <CardHeader>
@@ -325,12 +325,12 @@ export function PortfolioTab() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
+          <CardContent className="space-y-3 px-4 pb-3 sm:px-6">
             {holdings.length === 0 && !showAdd ? (
               <div className="py-10 text-center">
                 <p className="font-extrabold text-foreground">No holdings yet</p>
                 <p className="mt-1 text-sm text-muted-foreground">Add stocks, crypto, ETFs, or bonds to track your real portfolio.</p>
-                <Button className="mt-4" size="sm" onClick={() => setShowAdd(true)}>
+                <Button className="mt-2" size="sm" onClick={() => setShowAdd(true)}>
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Add your first holding
                 </Button>
               </div>
@@ -560,7 +560,7 @@ export function PortfolioTab() {
             <CardTitle className="text-xl">Allocation</CardTitle>
             <p className="text-xs text-muted-foreground">Auto-generated from your actual holdings by asset type.</p>
           </CardHeader>
-          <CardContent className="px-4 pb-5">
+          <CardContent className="px-4 pb-3">
             {portfolioStats.totalCurrentValueBase > 0 ? (
               <AllocationEditor
                 value={portfolioStats.allocations}
@@ -570,7 +570,7 @@ export function PortfolioTab() {
                 readOnly
               />
             ) : (
-              <p className="py-4 text-center text-sm text-muted-foreground">Add holdings to see your allocation breakdown.</p>
+              <p className="py-3 text-center text-sm text-muted-foreground">Add holdings to see your allocation breakdown.</p>
             )}
           </CardContent>
         </Card>
@@ -582,7 +582,7 @@ export function PortfolioTab() {
           <CardHeader>
             <CardTitle className="text-xl">Dividend history</CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-5 sm:px-6">
+          <CardContent className="px-4 pb-3 sm:px-6">
             <div className="space-y-2">
               {dividends.slice(0, 20).map(d => {
                 const holding = holdings.find(h => h.id === d.holding_id)

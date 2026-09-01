@@ -496,7 +496,7 @@ export function Subscriptions() {
         <p className="mt-2 text-[10px] text-muted-foreground lg:hidden">Tap card to manage</p>
 
         {editTarget?.id === rule.id && !detailRule && (
-          <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
+          <div className="mt-2 space-y-3 rounded-2xl border border-border bg-background p-4">
             <p className="text-xs font-bold text-muted-foreground">Edit subscription</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
@@ -634,7 +634,7 @@ export function Subscriptions() {
       />
 
       {showAddForm && (
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">New subscription</CardTitle>
@@ -647,8 +647,8 @@ export function Subscriptions() {
               </button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 px-4 pb-5 sm:px-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div>
                 <Label className="text-xs text-muted-foreground">Name *</Label>
                 <Input
@@ -791,7 +791,7 @@ export function Subscriptions() {
         </Card>
       )}
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+      <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:gap-2">
         <StatCard label="Monthly cost" value={money.formatDisplay(monthlyExpenses)} sub={money.formatRef(monthlyExpenses) ?? `≈ ${money.formatDisplay(monthlyExpenses * 12)}/year`} badgeVariant="warning" />
         <StatCard label="Monthly income" value={money.formatDisplay(monthlyIncome)} sub={money.formatRef(monthlyIncome) ?? `${income.filter(r => r.active).length} active`} badgeVariant="success" />
         <StatCard label="Net monthly" value={money.formatDisplay(monthlyIncome - monthlyExpenses)} sub={money.formatRef(monthlyIncome - monthlyExpenses) ?? 'Income minus expenses'} />
@@ -804,7 +804,7 @@ export function Subscriptions() {
 
       {/* 3-month expense outlook */}
       {expenses.some(r => r.active) && (
-        <div className="mb-6">
+        <div className="mb-2">
           <h2 className="mb-3 text-lg font-extrabold text-foreground">3-month outlook</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {monthlyOutlook.map(({ label, total, count }) => (
@@ -820,7 +820,7 @@ export function Subscriptions() {
 
       {/* Upcoming bills timeline */}
       {expenses.filter(r => r.active && daysUntil(r.next_due_date) <= 30).length > 0 && (
-        <div className="mb-6">
+        <div className="mb-2">
           <h2 className="mb-3 text-lg font-extrabold text-foreground">Due in 30 days</h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {expenses
@@ -846,7 +846,7 @@ export function Subscriptions() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-5">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -855,7 +855,7 @@ export function Subscriptions() {
             </div>
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
+          <CardContent className="space-y-3 px-4 pb-3 sm:px-6">
             {expenses.length > 0 && (
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -913,7 +913,7 @@ export function Subscriptions() {
               </div>
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
+            <CardContent className="space-y-3 px-4 pb-3 sm:px-6">
               {installments.map(rule => {
                 const paidPct = rule.installment_total ? Math.round((rule.installment_paid / rule.installment_total) * 100) : 0
                 const remaining = rule.installment_total ? rule.installment_total - rule.installment_paid : 0
@@ -956,7 +956,7 @@ export function Subscriptions() {
             </div>
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
+          <CardContent className="space-y-3 px-4 pb-3 sm:px-6">
             {income.length > 0 ? (
               income.map(rule => <RuleCard key={rule.id} rule={rule} />)
             ) : (
@@ -990,8 +990,8 @@ export function Subscriptions() {
             const monthlyImpact = getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)
             const yearlyImpact = getYearlyImpact(rule.original_amount ?? rule.amount, rule.frequency)
             return (
-              <div className="px-6 pb-safe-10 pt-5">
-                <SheetHeader className="mb-5 pb-0">
+              <div className="px-6 pb-safe-10 pt-3">
+                <SheetHeader className="mb-2 pb-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <SheetTitle className="text-xl">{rule.description}</SheetTitle>
@@ -1004,7 +1004,7 @@ export function Subscriptions() {
                 </SheetHeader>
 
                 {/* Stats grid */}
-                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-2xl bg-secondary p-3 text-center">
                     <p className="text-xs text-muted-foreground">Next due</p>
                     <p className={`mt-0.5 text-sm font-extrabold ${days <= 0 ? 'text-[#FF8388]' : days <= 3 ? 'text-[#FFCF73]' : 'text-foreground'}`}>
@@ -1026,13 +1026,13 @@ export function Subscriptions() {
                 </div>
 
                 {walletName && (
-                  <p className="mb-4 text-xs text-muted-foreground">Wallet: <span className="font-bold text-foreground">{walletName}</span></p>
+                  <p className="mb-2 text-xs text-muted-foreground">Wallet: <span className="font-bold text-foreground">{walletName}</span></p>
                 )}
 
                 {/* Edit form */}
-                <div className="mb-5 space-y-4">
+                <div className="mb-2 space-y-2">
                   <p className="text-sm font-extrabold text-foreground">Edit</p>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div>
                       <Label className="text-xs text-muted-foreground">Name</Label>
                       <Input className="mt-1.5 bg-secondary" value={editForm.description} onChange={e => setEditField('description', e.target.value)} />

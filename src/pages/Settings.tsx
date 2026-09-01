@@ -616,7 +616,7 @@ export function Settings() {
         subtitle={<><span className="hidden sm:inline">Manage your profile, login, currency, and spending categories.</span><span className="sm:hidden">Profile, security, and preferences.</span></>}
       />
       {!session && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
+        <div className="mb-2 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
           <div>
             <p className="font-bold text-[#FFCF73]">Guest mode — data is not saved to the cloud</p>
@@ -626,7 +626,7 @@ export function Settings() {
       )}
 
       {/* Desktop: pill tab bar */}
-      <div className="mb-6 hidden flex-wrap gap-2 overflow-x-auto lg:flex">
+      <div className="mb-2 hidden flex-wrap gap-2 overflow-x-auto lg:flex">
         {tabs.map(tab => (
           <button
             key={tab}
@@ -640,7 +640,7 @@ export function Settings() {
 
       {/* iOS install guidance */}
       {!effectiveTab && isIos && !isStandalone && !appInstalled && (
-        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 lg:hidden">
+        <div className="mb-2 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 lg:hidden">
           <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Smartphone className="h-4 w-4 text-primary" /></span>
           <div className="min-w-0">
             <p className="font-bold text-foreground">Add to Home Screen</p>
@@ -653,7 +653,7 @@ export function Settings() {
 
       {/* PWA install banner */}
       {!effectiveTab && installPrompt && !appInstalled && (
-        <div className="mb-4 flex items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 lg:hidden">
+        <div className="mb-2 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 lg:hidden">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15">
             <Download className="h-5 w-5 text-primary" />
           </div>
@@ -673,7 +673,7 @@ export function Settings() {
 
       {/* Mobile: native-style settings list (shown when no page selected) */}
       {!effectiveTab && (
-        <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
+        <div className="mb-2 overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
           {tabs.map((tab) => {
             const { label, desc, Icon, color } = TAB_META[tab]
             return (
@@ -683,7 +683,7 @@ export function Settings() {
                   setMobilePage(tab)
                   setSearchParams({ section: tab })
                 }}
-                className="flex w-full items-center gap-4 border-b border-border px-4 py-3.5 text-left transition-colors active:bg-muted/40"
+                className="flex w-full items-center gap-2 border-b border-border px-4 py-3.5 text-left transition-colors active:bg-muted/40"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: color + '33' }}>
                   <Icon className="h-5 w-5" style={{ color }} />
@@ -698,7 +698,7 @@ export function Settings() {
           })}
           <Link
             to="/desktop-tools"
-            className="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-muted/40"
+            className="flex w-full items-center gap-2 px-4 py-3.5 text-left transition-colors active:bg-muted/40"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C4AEFF]/20">
               <Sparkles className="h-5 w-5 text-[#C4AEFF]" />
@@ -719,7 +719,7 @@ export function Settings() {
             setMobilePage(null)
             setSearchParams({})
           }}
-          className="mb-6 flex items-center gap-2 text-sm font-bold text-primary lg:hidden"
+          className="mb-2 flex items-center gap-2 text-sm font-bold text-primary lg:hidden"
         >
           <ChevronLeft className="h-4 w-4" />
           Settings
@@ -729,9 +729,9 @@ export function Settings() {
       {/* Profile tab */}
       {effectiveTab === 'profile' && (
         <>
-          <Card className="mb-6">
-            <CardContent className="flex min-h-[156px] flex-col items-start gap-5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-              <div className="flex min-w-0 items-center gap-4 sm:gap-5">
+          <Card className="mb-2">
+            <CardContent className="flex min-h-[156px] flex-col items-start gap-2 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-2">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-extrabold text-primary-foreground sm:h-[72px] sm:w-[72px] sm:text-2xl">
                   {(name || session?.user.email || 'F').slice(0, 1).toUpperCase()}
                 </div>
@@ -750,8 +750,8 @@ export function Settings() {
             </CardContent>
           </Card>
           {editMode && (
-            <Card className="mb-6">
-              <CardContent className="grid grid-cols-1 items-end gap-4 p-4 sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <Card className="mb-2">
+              <CardContent className="grid grid-cols-1 items-end gap-2 p-4 sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
                 <div>
                   <Label className="text-sm text-muted-foreground">Name</Label>
                   <Input aria-label="Profile name" value={name} onChange={event => setName(event.target.value)} className="mt-2 bg-secondary" />
@@ -760,14 +760,14 @@ export function Settings() {
               </CardContent>
             </Card>
           )}
-          <Card className="mb-6">
+          <Card className="mb-2">
             <CardHeader>
               <CardTitle className="text-xl">Account access</CardTitle>
               <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. You can also use the profile icon in the sidebar.</p>
             </CardHeader>
-            <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
+            <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
               {session ? (
-                <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-bold text-foreground">Logged in</p>
                     <p className="text-sm text-muted-foreground">{session.user.email}</p>
@@ -775,7 +775,7 @@ export function Settings() {
                   <Button variant="secondary" disabled={signOut.isPending} onClick={handleSignOut}>Log out</Button>
                 </div>
               ) : (
-                <div className="grid max-w-md grid-cols-1 items-end gap-4">
+                <div className="grid max-w-md grid-cols-1 items-end gap-2">
                   <div>
                     <Label className="text-sm text-muted-foreground">Email</Label>
                     <Input aria-label="Auth email" className="mt-2 bg-secondary" value={authEmail} onChange={event => setAuthEmail(event.target.value)} placeholder="you@example.com" />
@@ -792,9 +792,9 @@ export function Settings() {
               )}
             </CardContent>
           </Card>
-          <Card className="mb-6">
+          <Card className="mb-2">
             <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
-            <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
+            <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
               <p className="text-sm text-muted-foreground">All amounts are stored and displayed in your <strong>main currency</strong> — numbers never change due to exchange rate drift.</p>
 
               {/* Currency status banner */}
@@ -827,7 +827,7 @@ export function Settings() {
         <>
         {/* Cash setup guide — shown when no cash wallets have a role yet */}
         {wallets.length > 0 && !wallets.some(w => w.type === 'cash' && w.cash_role) && (
-          <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div className="mb-2 rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-xs font-extrabold uppercase tracking-widest text-primary">Cash setup guide</p>
             <p className="mt-2 text-sm font-bold text-foreground">Set up your cash wallets for automatic change routing</p>
             <p className="mt-1 text-xs text-muted-foreground">When you pay cash, FinPath can automatically split change into bills and coins. To enable this, create two cash wallets and assign roles:</p>
@@ -851,7 +851,7 @@ export function Settings() {
           </div>
         )}
         {wallets.some(w => w.type === 'cash') && (
-          <div className="mb-6 rounded-2xl border border-border bg-card p-4">
+          <div className="mb-2 rounded-2xl border border-border bg-card p-4">
             <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">Cash preferences</p>
             <p className="mt-2 text-sm font-bold text-foreground">Change routing</p>
             <p className="mt-1 text-xs text-muted-foreground">Choose how FinPath splits NT$ change after a cash payment.</p>
@@ -874,16 +874,16 @@ export function Settings() {
             </div>
           </div>
         )}
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <CardTitle className="text-xl">Wallets</CardTitle>
             <p className="text-sm text-muted-foreground">Add cash wallets, bank accounts, cards, and e-wallets for transaction tracking.</p>
           </CardHeader>
-          <CardContent className="space-y-5 px-4 pb-5 sm:px-6 sm:pb-5">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
             {!showAddWallet ? (
               <Button variant="secondary" className="w-full" onClick={() => setShowAddWallet(true)}>+ Add wallet</Button>
             ) : (
-            <div className="space-y-4 rounded-2xl border border-border bg-secondary/40 p-4">
+            <div className="space-y-2 rounded-2xl border border-border bg-secondary/40 p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-extrabold text-foreground">New wallet</p>
                 <button onClick={() => setShowAddWallet(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
@@ -961,7 +961,7 @@ export function Settings() {
               </div>
             </div>
             )}
-            <div className="space-y-5 pr-1">
+            <div className="space-y-2 pr-1">
               {walletGroups.map(group => (
                 <div key={group.type}>
                   <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -1070,7 +1070,7 @@ export function Settings() {
 
       {/* Categories tab */}
       {effectiveTab === 'categories' && (
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-xl">Category manager</CardTitle>
@@ -1079,7 +1079,7 @@ export function Settings() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-5 px-4 pb-5 sm:px-6 sm:pb-5">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {categories.map(category => (
                 <div
@@ -1178,14 +1178,14 @@ export function Settings() {
 
       {/* Security tab */}
       {effectiveTab === 'security' && (
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <CardTitle className="text-xl">PIN lock</CardTitle>
             <p className="text-sm text-muted-foreground">Protect this browser session with a 4-digit PIN. PIN lock is not a replacement for account security — it only locks this device's screen.</p>
           </CardHeader>
-          <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
             {pinEnabled ? (
-              <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="font-bold text-foreground">PIN lock is active</p>
                 <Button variant="secondary" onClick={handleDisablePin}>Remove PIN</Button>
               </div>
@@ -1312,12 +1312,12 @@ export function Settings() {
       {/* Backup & Export tab */}
       {effectiveTab === 'backup' && (
         <>
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <CardTitle className="text-xl">Data Safety</CardTitle>
             <p className="text-sm text-muted-foreground">Your data privacy and backup status at a glance.</p>
           </CardHeader>
-          <CardContent className="px-4 pb-5 sm:px-6 sm:pb-5">
+          <CardContent className="px-4 pb-3 sm:px-6 sm:pb-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {(
                 [
@@ -1363,12 +1363,12 @@ export function Settings() {
             )}
           </CardContent>
         </Card>
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <CardTitle className="text-xl">Backup and restore</CardTitle>
             <p className="text-sm text-muted-foreground">Export your FinPath data as a JSON file, or upload a previous backup to restore it.</p>
           </CardHeader>
-          <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button className="gap-2" onClick={handleExportBackup}>
                 <Download className="h-4 w-4" />
@@ -1461,7 +1461,7 @@ export function Settings() {
 
       {/* AI Features tab */}
       {effectiveTab === 'ai' && (
-        <Card className="mb-6">
+        <Card className="mb-2">
           <CardHeader>
             <CardTitle className="text-xl">AI Features</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -1469,7 +1469,7 @@ export function Settings() {
               sent only to Google's Gemini API. Uninstalling the app clears the saved key.
             </p>
           </CardHeader>
-          <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
+          <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
               <p className="text-xs font-bold text-muted-foreground">
                 AI status: <span className={aiConfigured ? 'text-primary' : 'text-foreground'}>{aiConfigured ? 'Configured' : 'Not configured'}</span>

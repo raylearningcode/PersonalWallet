@@ -111,7 +111,7 @@ function DesktopDayPanel({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-3 mb-5">
+      <div className="flex items-center justify-between gap-3 mb-2">
         <div>
           <h3 className="text-lg font-extrabold text-foreground">{dateStr}</h3>
           <p className="text-xs text-muted-foreground">{(txs ?? []).length} transaction{(txs ?? []).length !== 1 ? 's' : ''}</p>
@@ -122,7 +122,7 @@ function DesktopDayPanel({
       </div>
 
       {/* Summary */}
-      <div className="mb-5 grid grid-cols-3 gap-2">
+      <div className="mb-2 grid grid-cols-3 gap-2">
         <div className="rounded-xl bg-secondary px-3 py-2.5 text-center">
           <p className="text-[10px] text-muted-foreground">Spent</p>
           <p className="mt-0.5 text-sm font-extrabold text-destructive">{money.formatDisplay(totalExpense)}</p>
@@ -140,7 +140,7 @@ function DesktopDayPanel({
       </div>
 
       {bills.length > 0 && (
-        <div className="mb-5">
+        <div className="mb-2">
           <p className="mb-2 text-xs font-extrabold uppercase tracking-widest text-[#FFCF73]">Bills due</p>
           <div className="space-y-1.5">
             {bills.map(b => <BillRow key={b.id} bill={b} money={money} />)}
@@ -149,7 +149,7 @@ function DesktopDayPanel({
       )}
 
       {!(txs ?? []).length ? (
-        <p className="py-4 text-center text-sm text-muted-foreground">No transactions this day.</p>
+        <p className="py-3 text-center text-sm text-muted-foreground">No transactions this day.</p>
       ) : (
         <div className="max-h-[420px] overflow-y-auto space-y-1">
           {txs!.map(tx => <TxRow key={tx.id} tx={tx} money={money} categories={categories} />)}
@@ -182,7 +182,7 @@ function MobileDaySheet({
           <SheetTitle className="text-lg">{dateStr}</SheetTitle>
         </SheetHeader>
 
-        <div className="mb-4 grid grid-cols-3 gap-3">
+        <div className="mb-2 grid grid-cols-3 gap-3">
           <div className="rounded-xl bg-secondary px-3 py-2.5 text-center">
             <p className="text-[10px] text-muted-foreground">Spent</p>
             <p className="mt-0.5 text-sm font-extrabold text-destructive">{money.formatDisplay(totalExpense)}</p>
@@ -200,7 +200,7 @@ function MobileDaySheet({
         </div>
 
         {bills.length > 0 && (
-          <div className="mb-4">
+          <div className="mb-2">
             <p className="mb-2 text-xs font-extrabold uppercase tracking-widest text-[#FFCF73]">Bills due</p>
             <div className="space-y-1.5">
               {bills.map(b => <BillRow key={b.id} bill={b} money={money} />)}
@@ -209,7 +209,7 @@ function MobileDaySheet({
         )}
 
         {!(txs ?? []).length ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">No transactions this day.</p>
+          <p className="py-3 text-center text-sm text-muted-foreground">No transactions this day.</p>
         ) : (
           <div className="space-y-1.5">
             {txs!.map(tx => <TxRow key={tx.id} tx={tx} money={money} categories={categories} />)}
@@ -305,10 +305,10 @@ function MonthlyCalendar() {
   }, [billsByDate])
 
   return (
-    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-5' : ''}>
+    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-2' : ''}>
       <div className={isDesktop ? 'min-w-0 flex-1' : ''}>
       {/* Header */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3.5">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3.5">
         <div className="flex items-center gap-1.5">
           <button onClick={prevMonth} className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-foreground hover:bg-muted" aria-label="Previous month">
             <ChevronLeft className="h-3.5 w-3.5" />
@@ -408,7 +408,7 @@ function MonthlyCalendar() {
 
       {/* Desktop side rail: selected day + bills due this month */}
       {isDesktop && (
-        <div className="mt-6 hidden w-80 shrink-0 space-y-6 lg:block">
+        <div className="mt-2 hidden w-80 shrink-0 space-y-2 lg:block">
           <DesktopDayPanel
             dateStr={panelDate}
             onClose={() => setSelectedDate(null)}
@@ -513,10 +513,10 @@ function YearlyHeatmap() {
     : []
 
   return (
-    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-5' : ''}>
+    <div className={isDesktop ? 'lg:flex lg:items-start lg:gap-2' : ''}>
       <div className={isDesktop ? 'min-w-0 flex-1' : ''}>
       {/* Header */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3.5">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3.5">
         <div className="flex items-center gap-2">
           <button onClick={() => setViewYear(y => y - 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-foreground hover:bg-muted" aria-label="Previous year">
             <ChevronLeft className="h-3.5 w-3.5" />
@@ -590,7 +590,7 @@ function YearlyHeatmap() {
 
       {/* Desktop side rail: selected day */}
       {isDesktop && (
-        <div className="mt-6 hidden w-80 shrink-0 lg:block">
+        <div className="mt-2 hidden w-80 shrink-0 lg:block">
           <DesktopDayPanel
             dateStr={selectedDate ?? todayLocal()}
             onClose={() => setSelectedDate(null)}
@@ -629,7 +629,7 @@ export function Calendar() {
         subtitle="See your spending patterns across days, weeks, and months at a glance."
       />
 
-      <Tabs value={tab} onValueChange={v => setTab(v as CalendarTab)} className="mb-6">
+      <Tabs value={tab} onValueChange={v => setTab(v as CalendarTab)} className="mb-2">
         <TabsList className="w-full max-w-sm">
           <TabsTrigger value="monthly" className="flex-1">Monthly</TabsTrigger>
           <TabsTrigger value="yearly" className="flex-1">Yearly</TabsTrigger>
