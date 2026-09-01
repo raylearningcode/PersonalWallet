@@ -514,10 +514,10 @@ export function useDeleteWallet() {
 export function useRenameWallet() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+    mutationFn: async ({ id, name, monthly_limit }: { id: string; name: string; monthly_limit?: number }) => {
       const userId = await getCurrentUserId()
-      if (!userId) { localUpdateWallet(id, { name }); return }
-      const patch = { name }
+      if (!userId) { localUpdateWallet(id, { name, monthly_limit }); return }
+      const patch = { name, ...(monthly_limit !== undefined ? { monthly_limit } : {}) }
       if (isOffline()) {
         cacheUpdateItem('wallets', id, patch)
         enqueue({ table: 'wallets', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })

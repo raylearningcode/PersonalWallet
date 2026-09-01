@@ -65,6 +65,8 @@ export interface Wallet {
   currency: string
   cash_role?: CashRole | null
   default_change_wallet_id?: string | null
+  /** Optional monthly spending cap shown on the Budget page (0 = no limit). */
+  monthly_limit?: number | null
   created_at?: string
 }
 

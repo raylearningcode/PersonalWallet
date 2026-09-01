@@ -170,6 +170,8 @@ export function Settings() {
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
   const [editingWalletName, setEditingWalletName] = useState('')
   const [editingWalletCashRole, setEditingWalletCashRole] = useState<CashRole | ''>('')
+  const [editingWalletLimit, setEditingWalletLimit] = useState('')
+  const [walletMonthlyLimit, setWalletMonthlyLimit] = useState('')
   const [backupText, setBackupText] = useState('')
   const backupFileRef = useRef<HTMLInputElement>(null)
   const [backupPreview, setBackupPreview] = useState<null | { wallets: number; categories: number; transactions: number; rules: number; parsed: unknown }>(null)
@@ -435,6 +437,7 @@ export function Settings() {
         name,
         type: walletType,
         balance: initBalance,
+        monthly_limit: parseNumberInput(walletMonthlyLimit) || 0,
         currency: baseCurrency,
         cash_role: walletType === 'cash' && walletCashRole ? walletCashRole : null,
       })
@@ -442,6 +445,7 @@ export function Settings() {
       setWalletType('cash')
       setWalletCashRole('')
       setWalletInitBalance('')
+      setWalletMonthlyLimit('')
       toast.success('Wallet added')
     } catch {
       toast.error('Failed to add wallet — please try again')
@@ -457,11 +461,12 @@ export function Settings() {
     const trimmed = editingWalletName.trim()
     if (!trimmed) return
     const wallet = wallets.find(w => w.id === editingWalletId)
+    const limit = parseNumberInput(editingWalletLimit) || 0
     try {
       if (wallet?.type === 'cash') {
-        await updateWallet.mutateAsync({ id: editingWalletId, name: trimmed, cash_role: editingWalletCashRole || null })
+        await updateWallet.mutateAsync({ id: editingWalletId, name: trimmed, cash_role: editingWalletCashRole || null, monthly_limit: limit })
       } else {
-        await renameWallet.mutateAsync({ id: editingWalletId, name: trimmed })
+        await renameWallet.mutateAsync({ id: editingWalletId, name: trimmed, monthly_limit: limit })
       }
       setEditingWalletId(null)
       toast.success('Wallet updated')
@@ -473,11 +478,35 @@ export function Settings() {
   const confirmDeleteSelected = () => {
     if (!confirmDelete) return
     if (confirmDelete.kind === 'category') {
+      const cat = categories.find(c => c.id === confirmDelete.id)
       deleteCategory.mutate(confirmDelete.id)
-      toast.success('Category removed')
+      toast.success('Category removed', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            if (!cat) return
+            try {
+              await addCategory.mutateAsync({ name: cat.name, yearly_allocated: cat.yearly_allocated, budget_period: cat.budget_period, color: cat.color, icon: cat.icon ?? null })
+              toast.success('Category restored')
+            } catch { toast.error('Failed to restore category') }
+          },
+        },
+      })
     } else {
+      const w = wallets.find(x => x.id === confirmDelete.id)
       deleteWallet.mutate(confirmDelete.id)
-      toast.success('Wallet removed')
+      toast.success('Wallet removed', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            if (!w) return
+            try {
+              await addWallet.mutateAsync({ name: w.name, type: w.type, currency: w.currency, balance: w.balance, cash_role: w.cash_role ?? null, monthly_limit: w.monthly_limit ?? 0 })
+              toast.success('Wallet restored')
+            } catch { toast.error('Failed to restore wallet') }
+          },
+        },
+      })
     }
     setConfirmDelete(null)
   }
@@ -901,7 +930,7 @@ export function Settings() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
                 <Input
                   aria-label="Wallet name"
                   className="bg-background"
@@ -909,6 +938,14 @@ export function Settings() {
                   onChange={event => setWalletName(event.target.value)}
                   onKeyDown={event => event.key === 'Enter' && handleAddWallet()}
                   placeholder={`Name — e.g. ${WALLET_NAME_HINTS[walletType] ?? 'My wallet'}`}
+                />
+                <Input
+                  aria-label="Monthly limit (optional)"
+                  className="bg-background sm:w-28"
+                  value={walletMonthlyLimit}
+                  onChange={event => setWalletMonthlyLimit(formatNumberInput(event.target.value))}
+                  inputMode="numeric"
+                  placeholder="Limit/mo"
                 />
                 <div onKeyDown={event => event.key === 'Enter' && handleAddWallet()}>
                   <MoneyField
@@ -946,6 +983,14 @@ export function Settings() {
                                   if (e.key === 'Enter') handleSaveWalletRename()
                                   if (e.key === 'Escape') setEditingWalletId(null)
                                 }}
+                              />
+                              <input
+                                aria-label="Edit monthly limit"
+                                className="w-24 shrink-0 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
+                                value={editingWalletLimit}
+                                onChange={e => setEditingWalletLimit(formatNumberInput(e.target.value))}
+                                inputMode="numeric"
+                                placeholder="Limit/mo"
                               />
                               <button
                                 aria-label="Save wallet rename"
@@ -988,12 +1033,17 @@ export function Settings() {
                                   {wallet.cash_role === 'notes' ? 'Notes' : wallet.cash_role === 'coins' ? 'Coins' : wallet.cash_role === 'mixed' ? 'Mixed' : 'Digital'}
                                 </span>
                               )}
+                              {(wallet.monthly_limit ?? 0) > 0 && (
+                                <span className="ml-2 rounded-full bg-[#FFCF73]/15 px-2 py-0.5 text-[10px] font-bold text-[#FFCF73]">
+                                  ≤ {money.formatDisplay(wallet.monthly_limit!)}/mo
+                                </span>
+                              )}
                             </span>
                             <span className="shrink-0 font-extrabold text-foreground">{money.formatDisplay(walletBalances.get(wallet.id) ?? 0)}</span>
                             <button
                               aria-label={`Rename ${wallet.name} wallet`}
                               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
-                              onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name); setEditingWalletCashRole(wallet.cash_role ?? '') }}
+                              onClick={() => { setEditingWalletId(wallet.id); setEditingWalletName(wallet.name); setEditingWalletCashRole(wallet.cash_role ?? ''); setEditingWalletLimit(String(wallet.monthly_limit ?? '')) }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
