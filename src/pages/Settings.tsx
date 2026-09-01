@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -33,6 +33,8 @@ import { getQueue } from '@/lib/offlineCache'
 import { getWalletBalances } from '@/lib/financeOs'
 import { safeGet, todayLocal } from '@/lib/utils'
 import { saveGeminiKey, isAiConfigured } from '@/lib/ai'
+import { deleteAccountAndData, clearLocalFinPathKeys } from '@/lib/account'
+import { clearGuestData } from '@/lib/localStore'
 
 const tabs = ['profile', 'wallets', 'categories', 'security', 'backup', 'ai'] as const
 type SettingsTab = typeof tabs[number]
@@ -155,6 +157,9 @@ export function Settings() {
   const [editMode, setEditMode] = useState(false)
   const [name, setName] = useState('')
   const [baseCurrency, setBaseCurrency] = useState('IDR')
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const navigate = useNavigate()
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [newCategory, setNewCategory] = useState('')
@@ -271,6 +276,28 @@ export function Settings() {
     } catch {
       toast.error('Something went wrong — please try again')
     }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE' || deletingAccount) return
+    setDeletingAccount(true)
+    try {
+      await deleteAccountAndData()
+      clearLocalFinPathKeys()
+      clearGuestData()
+      toast.success('Account and all data deleted')
+      navigate('/auth', { replace: true })
+    } catch {
+      toast.error('Failed to delete account — please try again')
+      setDeletingAccount(false)
+    }
+  }
+
+  const handleClearGuestData = () => {
+    clearGuestData()
+    clearLocalFinPathKeys()
+    toast.success('Local data cleared')
+    navigate('/auth', { replace: true })
   }
 
   const handleSaveAiKey = (keyOverride?: string) => {
@@ -789,6 +816,45 @@ export function Settings() {
                     <Button variant="secondary" onClick={handleSignUp} disabled={signUp.isPending}>Sign up</Button>
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="mb-2 border-[#FF8388]/30">
+            <CardHeader>
+              <CardTitle className="text-xl text-[#FF8388]">Danger zone</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
+              {session ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Deletes your account and <strong>every</strong> wallet, transaction, budget, goal, subscription and snapshot stored on the server. This cannot be undone.
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      aria-label="Type DELETE to confirm"
+                      className="sm:w-52"
+                      value={deleteConfirmText}
+                      onChange={event => setDeleteConfirmText(event.target.value)}
+                      placeholder="Type DELETE"
+                    />
+                    <Button
+                      variant="destructive"
+                      disabled={deleteConfirmText !== 'DELETE' || deletingAccount}
+                      onClick={handleDeleteAccount}
+                    >
+                      {deletingAccount ? 'Deleting…' : 'Delete account & all data'}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Guest mode keeps everything on this device. Clear it to start completely fresh.
+                  </p>
+                  <div>
+                    <Button variant="destructive" onClick={handleClearGuestData}>Clear all local data</Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { Settings } from './Settings'
 
+const authSessionState = vi.hoisted(() => ({ value: null as { user: { email: string } } | null }))
+
 const renderSettings = (initialPath = '/settings') =>
   render(<MemoryRouter initialEntries={[initialPath]}><Settings /></MemoryRouter>)
 
@@ -55,7 +57,7 @@ useRecurringRules: () => ({ data: [] }),
   useAddBudgetRule: () => ({ mutateAsync: addBudgetRule, isPending: false }),
   useSaveInvestmentConfig: () => ({ mutateAsync: saveInvestmentConfig, isPending: false }),
   useUpsertEstimationPlan: () => ({ mutateAsync: upsertEstimationPlan, isPending: false }),
-  useAuthSession: () => ({ data: null }),
+  useAuthSession: () => ({ data: authSessionState.value }),
   useSignIn: () => ({ mutateAsync: signIn, isPending: false }),
   useSignUp: () => ({ mutateAsync: signUp, isPending: false }),
   useSignOut: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -160,5 +162,37 @@ describe('Settings', () => {
     expect(saveAiKey).toHaveBeenCalledWith('AIza-test-key')
     // The key stays visible (masked) after saving — it is NOT cleared.
     expect(screen.getByLabelText('Gemini API key')).toHaveValue('AIza-test-key')
+  })
+})
+
+describe('Settings danger zone', () => {
+  it('offers clearing local data in guest mode', () => {
+    authSessionState.value = null
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <Settings />
+      </MemoryRouter>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }))
+    expect(screen.getByText('Danger zone')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Clear all local data' })).toBeInTheDocument()
+  })
+
+  it('requires typing DELETE before account deletion is enabled', () => {
+    authSessionState.value = { user: { email: 'me@example.com' } }
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <Settings />
+      </MemoryRouter>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }))
+    const btn = screen.getByRole('button', { name: 'Delete account & all data' })
+    expect(btn).toBeDisabled()
+
+    fireEvent.change(screen.getByLabelText('Type DELETE to confirm'), { target: { value: 'DELET' } })
+    expect(btn).toBeDisabled()
+
+    fireEvent.change(screen.getByLabelText('Type DELETE to confirm'), { target: { value: 'DELETE' } })
+    expect(btn).toBeEnabled()
   })
 })
