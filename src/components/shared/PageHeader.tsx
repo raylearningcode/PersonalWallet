@@ -63,7 +63,6 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
               onChange={e => onSearchChange(e.target.value)}
             />
           )}
-          <NotificationsSheet />
           <button
             type="button"
             aria-label="Open profile and account settings"
@@ -72,6 +71,7 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
           >
             {avatarInitial ? avatarInitial : <User className="h-5 w-5" />}
           </button>
+          <NotificationsSheet />
           {action}
         </div>
       </div>

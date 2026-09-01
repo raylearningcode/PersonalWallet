@@ -15,11 +15,25 @@ import type { RecurringRule } from '@/types'
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
+type WeekStart = 'sunday' | 'monday'
+const WEEK_START_KEY = 'finpath_week_start'
+
+function getWeekStart(): WeekStart {
+  try { return localStorage.getItem(WEEK_START_KEY) === 'monday' ? 'monday' : 'sunday' } catch { return 'sunday' }
+}
+
+function weekDayNames(start: WeekStart): string[] {
+  return start === 'monday'
+    ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    : DAY_NAMES
+}
+
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
 }
-function firstDayOfMonth(year: number, month: number): number {
-  return new Date(year, month, 1).getDay()
+function firstDayOfMonth(year: number, month: number, start: WeekStart): number {
+  const sundayBased = new Date(year, month, 1).getDay()
+  return start === 'monday' ? (sundayBased + 6) % 7 : sundayBased
 }
 
 // ─── Color scales ────────────────────────────────────────────────────────────
@@ -261,7 +275,9 @@ function MonthlyCalendar() {
 
   const maxDaily = Math.max(...Object.values(dailyData).map(d => d.total), 1)
   const days = daysInMonth(viewYear, viewMonth)
-  const startDay = firstDayOfMonth(viewYear, viewMonth)
+  const weekStart = getWeekStart()
+  const dayNames = weekDayNames(weekStart)
+  const startDay = firstDayOfMonth(viewYear, viewMonth, weekStart)
   const totalSpend = Object.values(dailyData).reduce((s, d) => s + d.total, 0)
   const totalIncome = Object.values(dailyData).reduce((s, d) => s + d.income, 0)
   const activeDays = Object.keys(dailyData).length
@@ -330,7 +346,7 @@ function MonthlyCalendar() {
       {/* Grid */}
       <div className="rounded-2xl border border-border bg-card p-3 sm:p-4">
         <div className="mb-1.5 grid grid-cols-7 text-center">
-          {DAY_NAMES.map(d => (
+          {dayNames.map(d => (
             <span key={d} className="text-[11px] font-bold text-muted-foreground py-1">{isDesktop ? d.slice(0, 3) : d.slice(0, 2)}</span>
           ))}
         </div>
@@ -481,7 +497,7 @@ function YearlyHeatmap() {
   const totalSpend = Object.values(dailyData).reduce((s, d) => s + d.total, 0)
   const activeDays = Object.keys(dailyData).length
 
-  const startDayOfWeek = new Date(viewYear, 0, 1).getDay()
+  const startDayOfWeek = firstDayOfMonth(viewYear, 0, getWeekStart())
   const gridStart = new Date(viewYear, 0, 1 - startDayOfWeek)
   const current = new Date(gridStart)
   const weeks: { date: string; month: number }[][] = []
@@ -505,8 +521,21 @@ function YearlyHeatmap() {
     }
   })
 
-  const cellSize = 'w-[12px] h-[12px] sm:w-[14px] sm:h-[14px]'
+  const cellSize = 'w-[13px] h-[13px] sm:w-[16px] sm:h-[16px]'
   const cellGap = 'gap-[2px] sm:gap-[3px]'
+
+  // Top spending months for the header + summary strip
+  const monthTotals = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const [date, d] of Object.entries(dailyData)) {
+      const key = date.slice(0, 7)
+      map.set(key, (map.get(key) ?? 0) + d.total)
+    }
+    return [...map.entries()]
+      .map(([key, total]) => ({ label: MONTH_NAMES[Number(key.slice(5)) - 1].slice(0, 3), total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 3)
+  }, [dailyData])
 
   const selectedTxs = selectedDate
     ? (dailyData[selectedDate]?.txs ?? []).filter(t => !t.is_system_generated)
@@ -529,6 +558,9 @@ function YearlyHeatmap() {
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
           <span>Spent <span className="font-bold text-destructive">{money.formatDisplay(totalSpend)}</span></span>
           <span>{activeDays} active days</span>
+          {monthTotals[0] && monthTotals[0].total > 0 && (
+            <span>Top month <span className="font-bold text-foreground">{monthTotals[0].label} · {money.formatDisplay(monthTotals[0].total)}</span></span>
+          )}
         </div>
       </div>
 
@@ -584,6 +616,16 @@ function YearlyHeatmap() {
           ))}
           <span>More</span>
         </div>
+        {monthTotals.length > 0 && monthTotals[0].total > 0 && (
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Top months</span>
+            {monthTotals.map(m => (
+              <span key={m.label} className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground">
+                {m.label} <span className="font-semibold text-muted-foreground">{money.formatDisplay(m.total)}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       </div>
@@ -621,6 +663,13 @@ type CalendarTab = 'monthly' | 'yearly'
 
 export function Calendar() {
   const [tab, setTab] = useState<CalendarTab>('monthly')
+  const [weekStart, setWeekStart] = useState<WeekStart>(getWeekStart)
+
+  const toggleWeekStart = () => {
+    const next: WeekStart = weekStart === 'monday' ? 'sunday' : 'monday'
+    setWeekStart(next)
+    try { localStorage.setItem(WEEK_START_KEY, next) } catch { /* ignore */ }
+  }
 
   return (
     <div>
@@ -629,15 +678,25 @@ export function Calendar() {
         subtitle="See your spending patterns across days, weeks, and months at a glance."
       />
 
-      <Tabs value={tab} onValueChange={v => setTab(v as CalendarTab)} className="mb-2">
-        <TabsList className="w-full max-w-sm">
-          <TabsTrigger value="monthly" className="flex-1">Monthly</TabsTrigger>
-          <TabsTrigger value="yearly" className="flex-1">Yearly</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <Tabs value={tab} onValueChange={v => setTab(v as CalendarTab)} className="min-w-0 flex-1">
+          <TabsList className="w-full max-w-sm">
+            <TabsTrigger value="monthly" className="flex-1">Monthly</TabsTrigger>
+            <TabsTrigger value="yearly" className="flex-1">Yearly</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <button
+          type="button"
+          aria-label="Toggle first day of week"
+          onClick={toggleWeekStart}
+          className="shrink-0 rounded-full border border-border bg-secondary px-3 py-2 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Week starts: {weekStart === 'monday' ? 'Monday' : 'Sunday'}
+        </button>
+      </div>
 
-      {tab === 'monthly' && <MonthlyCalendar />}
-      {tab === 'yearly' && <YearlyHeatmap />}
+      {tab === 'monthly' && <MonthlyCalendar key={weekStart} />}
+      {tab === 'yearly' && <YearlyHeatmap key={weekStart} />}
     </div>
   )
 }
