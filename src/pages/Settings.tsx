@@ -67,6 +67,25 @@ const WALLET_NAME_HINTS: Record<string, string> = {
   card: 'Visa / Mastercard', investment: 'Stocks', other: 'Misc',
 }
 
+const EMOJI_PALETTE = ['💰', '🍔', '🛒', '🚗', '⛽', '🏠', '⚡', '📱', '💻', '🎮', '📚', '💊', '✈️', '🏖️', '🎁', '💼', '🧾', '🎬', '☕', '👕', '💄', '🐾', '🎓', '🏦', '🛡️', '🎵', '🧹', '🍼', '💪', '🎉']
+
+function EmojiPicker({ value, onChange, ariaLabel }: { value: string; onChange: (emoji: string) => void; ariaLabel: string }) {
+  return (
+    <div role="group" aria-label={ariaLabel} className="flex flex-wrap gap-1">
+      {EMOJI_PALETTE.map(emoji => (
+        <button
+          key={emoji}
+          type="button"
+          onClick={() => onChange(value === emoji ? '' : emoji)}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors ${value === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'bg-secondary hover:bg-muted'}`}
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function Settings() {
   const money = useMoney()
   const { data: settings } = useAppSettings()
@@ -147,6 +166,7 @@ export function Settings() {
   const [showAddWallet, setShowAddWallet] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState('')
+  const [editingCategoryIcon, setEditingCategoryIcon] = useState('')
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null)
   const [editingWalletName, setEditingWalletName] = useState('')
   const [editingWalletCashRole, setEditingWalletCashRole] = useState<CashRole | ''>('')
@@ -378,9 +398,10 @@ export function Settings() {
     toast.success(missingCategories.length > 0 ? 'Starter categories restored' : 'Starter categories already complete')
   }
 
-  const handleStartRename = (id: string, name: string) => {
+  const handleStartRename = (id: string, name: string, icon: string | null) => {
     setEditingCategoryId(id)
     setEditingCategoryName(name)
+    setEditingCategoryIcon(icon ?? '')
   }
 
   const handleSaveRename = async () => {
@@ -393,9 +414,9 @@ export function Settings() {
       return
     }
     try {
-      await renameCategory.mutateAsync({ id: editingCategoryId, name: trimmed })
+      await renameCategory.mutateAsync({ id: editingCategoryId, name: trimmed, icon: editingCategoryIcon.trim() || null })
       setEditingCategoryId(null)
-      toast.success('Category renamed')
+      toast.success('Category updated')
     } catch {
       toast.error('Failed to rename')
     }
@@ -566,7 +587,7 @@ export function Settings() {
         subtitle={<><span className="hidden sm:inline">Manage your profile, login, currency, and spending categories.</span><span className="sm:hidden">Profile, security, and preferences.</span></>}
       />
       {!session && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
           <div>
             <p className="font-bold text-[#FFCF73]">Guest mode — data is not saved to the cloud</p>
@@ -680,7 +701,7 @@ export function Settings() {
       {effectiveTab === 'profile' && (
         <>
           <Card className="mb-6">
-            <CardContent className="flex min-h-[156px] flex-col items-start gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+            <CardContent className="flex min-h-[156px] flex-col items-start gap-5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
               <div className="flex min-w-0 items-center gap-4 sm:gap-5">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-extrabold text-primary-foreground sm:h-[72px] sm:w-[72px] sm:text-2xl">
                   {(name || session?.user.email || 'F').slice(0, 1).toUpperCase()}
@@ -701,7 +722,7 @@ export function Settings() {
           </Card>
           {editMode && (
             <Card className="mb-6">
-              <CardContent className="grid grid-cols-1 items-end gap-4 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <CardContent className="grid grid-cols-1 items-end gap-4 p-4 sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
                 <div>
                   <Label className="text-sm text-muted-foreground">Name</Label>
                   <Input aria-label="Profile name" value={name} onChange={event => setName(event.target.value)} className="mt-2 bg-secondary" />
@@ -715,7 +736,7 @@ export function Settings() {
               <CardTitle className="text-xl">Account access</CardTitle>
               <p className="text-sm text-muted-foreground">Log in or create an account to keep your data safe. You can also use the profile icon in the sidebar.</p>
             </CardHeader>
-            <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+            <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
               {session ? (
                 <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -744,7 +765,7 @@ export function Settings() {
           </Card>
           <Card className="mb-6">
             <CardHeader><CardTitle className="text-xl">Currency</CardTitle></CardHeader>
-            <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+            <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
               <p className="text-sm text-muted-foreground">All amounts are stored and displayed in your <strong>main currency</strong> — numbers never change due to exchange rate drift.</p>
 
               {/* Currency status banner */}
@@ -777,7 +798,7 @@ export function Settings() {
         <>
         {/* Cash setup guide — shown when no cash wallets have a role yet */}
         {wallets.length > 0 && !wallets.some(w => w.type === 'cash' && w.cash_role) && (
-          <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+          <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-xs font-extrabold uppercase tracking-widest text-primary">Cash setup guide</p>
             <p className="mt-2 text-sm font-bold text-foreground">Set up your cash wallets for automatic change routing</p>
             <p className="mt-1 text-xs text-muted-foreground">When you pay cash, FinPath can automatically split change into bills and coins. To enable this, create two cash wallets and assign roles:</p>
@@ -801,7 +822,7 @@ export function Settings() {
           </div>
         )}
         {wallets.some(w => w.type === 'cash') && (
-          <div className="mb-6 rounded-2xl border border-border bg-card p-5">
+          <div className="mb-6 rounded-2xl border border-border bg-card p-4">
             <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">Cash preferences</p>
             <p className="mt-2 text-sm font-bold text-foreground">Change routing</p>
             <p className="mt-1 text-xs text-muted-foreground">Choose how FinPath splits NT$ change after a cash payment.</p>
@@ -829,7 +850,7 @@ export function Settings() {
             <CardTitle className="text-xl">Wallets</CardTitle>
             <p className="text-sm text-muted-foreground">Add cash wallets, bank accounts, cards, and e-wallets for transaction tracking.</p>
           </CardHeader>
-          <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
+          <CardContent className="space-y-5 px-4 pb-5 sm:px-6 sm:pb-5">
             {!showAddWallet ? (
               <Button variant="secondary" className="w-full" onClick={() => setShowAddWallet(true)}>+ Add wallet</Button>
             ) : (
@@ -1008,7 +1029,7 @@ export function Settings() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-5 px-5 pb-6 sm:px-8 sm:pb-8">
+          <CardContent className="space-y-5 px-4 pb-5 sm:px-6 sm:pb-5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {categories.map(category => (
                 <div
@@ -1017,6 +1038,13 @@ export function Settings() {
                 >
                   {editingCategoryId === category.id ? (
                     <>
+                      <input
+                        aria-label="Edit category icon"
+                        className="w-12 shrink-0 rounded-lg border border-border bg-background px-1 py-1 text-center text-base outline-none focus:border-primary"
+                        value={editingCategoryIcon}
+                        onChange={e => setEditingCategoryIcon(e.target.value.slice(0, 4))}
+                        placeholder="🍔"
+                      />
                       <input
                         aria-label={`New name for ${category.name} category`}
                         className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
@@ -1050,7 +1078,7 @@ export function Settings() {
                       <button
                         aria-label={`Rename ${category.name} category`}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
-                        onClick={() => handleStartRename(category.id, category.name)}
+                        onClick={() => handleStartRename(category.id, category.name, category.icon ?? null)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -1067,22 +1095,31 @@ export function Settings() {
               ))}
             </div>
             {categories.length === 0 && <p className="text-sm text-muted-foreground">No categories yet.</p>}
-            <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
-              <Input
-                aria-label="Category icon"
-                className="w-16 shrink-0 bg-secondary text-center text-lg"
-                value={newCategoryIcon}
-                onChange={event => setNewCategoryIcon(event.target.value.slice(0, 4))}
-                placeholder="🍔"
-              />
-              <Input
-                className="bg-secondary"
-                value={newCategory}
-                onChange={event => setNewCategory(event.target.value)}
-                onKeyDown={event => event.key === 'Enter' && handleAddCategory()}
-                placeholder="New category"
-              />
-              <Button onClick={handleAddCategory} disabled={addCategory.isPending}>Add</Button>
+            {editingCategoryId && (
+              <div className="max-w-xl space-y-1.5">
+                <p className="text-xs font-bold text-muted-foreground">Choose an icon</p>
+                <EmojiPicker value={editingCategoryIcon} onChange={setEditingCategoryIcon} ariaLabel="Category icon choices" />
+              </div>
+            )}
+            <div className="max-w-xl space-y-2">
+              <EmojiPicker value={newCategoryIcon} onChange={setNewCategoryIcon} ariaLabel="New category icon choices" />
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Input
+                  aria-label="Category icon"
+                  className="w-16 shrink-0 bg-secondary text-center text-lg"
+                  value={newCategoryIcon}
+                  onChange={event => setNewCategoryIcon(event.target.value.slice(0, 4))}
+                  placeholder="🍔"
+                />
+                <Input
+                  className="bg-secondary"
+                  value={newCategory}
+                  onChange={event => setNewCategory(event.target.value)}
+                  onKeyDown={event => event.key === 'Enter' && handleAddCategory()}
+                  placeholder="New category"
+                />
+                <Button onClick={handleAddCategory} disabled={addCategory.isPending}>Add</Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1096,7 +1133,7 @@ export function Settings() {
             <CardTitle className="text-xl">PIN lock</CardTitle>
             <p className="text-sm text-muted-foreground">Protect this browser session with a 4-digit PIN. PIN lock is not a replacement for account security — it only locks this device's screen.</p>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+          <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
             {pinEnabled ? (
               <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary p-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="font-bold text-foreground">PIN lock is active</p>
@@ -1230,7 +1267,7 @@ export function Settings() {
             <CardTitle className="text-xl">Data Safety</CardTitle>
             <p className="text-sm text-muted-foreground">Your data privacy and backup status at a glance.</p>
           </CardHeader>
-          <CardContent className="px-5 pb-6 sm:px-8 sm:pb-8">
+          <CardContent className="px-4 pb-5 sm:px-6 sm:pb-5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {(
                 [
@@ -1281,7 +1318,7 @@ export function Settings() {
             <CardTitle className="text-xl">Backup and restore</CardTitle>
             <p className="text-sm text-muted-foreground">Export your FinPath data as a JSON file, or upload a previous backup to restore it.</p>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+          <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button className="gap-2" onClick={handleExportBackup}>
                 <Download className="h-4 w-4" />
@@ -1382,7 +1419,7 @@ export function Settings() {
               sent only to Google's Gemini API. Uninstalling the app clears the saved key.
             </p>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+          <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
               <p className="text-xs font-bold text-muted-foreground">
                 AI status: <span className={aiConfigured ? 'text-primary' : 'text-foreground'}>{aiConfigured ? 'Configured' : 'Not configured'}</span>

@@ -642,10 +642,10 @@ export function useDeleteBudgetCategory() {
 export function useRenameBudgetCategory() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, name }: Pick<BudgetCategory, 'id' | 'name'>) => {
+    mutationFn: async ({ id, name, icon }: Pick<BudgetCategory, 'id' | 'name'> & { icon?: string | null }) => {
       const userId = await getCurrentUserId()
-      if (!userId) { localUpdateCategory(id, { name }); return }
-      const patch = { name }
+      if (!userId) { localUpdateCategory(id, { name, icon }); return }
+      const patch = { name, ...(icon !== undefined ? { icon } : {}) }
       if (isOffline()) {
         cacheUpdateItem('budget_categories', id, patch)
         enqueue({ table: 'budget_categories', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })

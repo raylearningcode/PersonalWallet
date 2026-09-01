@@ -449,7 +449,7 @@ export function Goals() {
 
       {/* "What should I save this month?" card */}
       {goals.filter(g => g.current_amount < g.target_amount && g.deadline).length > 0 && (
-        <div className="mb-6 hidden rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 lg:block">
+        <div className="mb-6 hidden rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3.5 lg:block">
           <p className="mb-3 text-xs font-bold text-primary">Monthly savings guide</p>
           <div className="space-y-2">
             {goals
@@ -478,7 +478,7 @@ export function Goals() {
           <CardHeader className="pb-3">
             <CardTitle className="text-xl">{editingId ? 'Edit goal' : 'New goal'}</CardTitle>
           </CardHeader>
-          <CardContent className="px-5 pb-6 sm:px-8">
+          <CardContent className="px-4 pb-5 sm:px-6">
             {renderGoalForm}
           </CardContent>
         </Card>
@@ -530,7 +530,7 @@ export function Goals() {
                       setContributeAmount('')
                       setContributeWalletId(wallets[0]?.id ?? '')
                     }}
-                    className="w-full rounded-[inherit] p-5 text-left transition-colors hover:bg-secondary/30 active:scale-[0.995] sm:p-6"
+                    className="w-full rounded-[inherit] p-4 text-left transition-colors hover:bg-secondary/30 active:scale-[0.995] sm:p-4"
                     aria-label={`Open ${goal.name} details`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -837,7 +837,7 @@ export function Goals() {
 
       {duplicateTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/75 px-4 backdrop-blur-sm" role="dialog" aria-modal="true">
-          <div className="w-full max-w-sm rounded-[1.3rem] border border-border bg-card p-5 shadow-2xl">
+          <div className="w-full max-w-sm rounded-[1.3rem] border border-border bg-card p-4 shadow-2xl">
             <h2 className="text-lg font-extrabold text-foreground">Duplicate goal?</h2>
             <p className="mt-2 text-sm leading-5 text-muted-foreground">
               Copy <span className="font-bold text-foreground">{duplicateTarget.name}</span>. Keep saved progress or start fresh?

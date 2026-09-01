@@ -110,7 +110,7 @@ function DesktopDayPanel({
   const totalIncome = income.reduce((s, t) => s + t.amount, 0)
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6">
+    <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-3 mb-5">
         <div>
           <h3 className="text-lg font-extrabold text-foreground">{dateStr}</h3>
@@ -149,7 +149,7 @@ function DesktopDayPanel({
       )}
 
       {!(txs ?? []).length ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">No transactions this day.</p>
+        <p className="py-4 text-center text-sm text-muted-foreground">No transactions this day.</p>
       ) : (
         <div className="max-h-[420px] overflow-y-auto space-y-1">
           {txs!.map(tx => <TxRow key={tx.id} tx={tx} money={money} categories={categories} />)}
@@ -209,7 +209,7 @@ function MobileDaySheet({
         )}
 
         {!(txs ?? []).length ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">No transactions this day.</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">No transactions this day.</p>
         ) : (
           <div className="space-y-1.5">
             {txs!.map(tx => <TxRow key={tx.id} tx={tx} money={money} categories={categories} />)}
@@ -328,7 +328,7 @@ function MonthlyCalendar() {
       </div>
 
       {/* Grid */}
-      <div className="rounded-2xl border border-border bg-card p-3 sm:p-5">
+      <div className="rounded-2xl border border-border bg-card p-3 sm:p-4">
         <div className="mb-1.5 grid grid-cols-7 text-center">
           {DAY_NAMES.map(d => (
             <span key={d} className="text-[11px] font-bold text-muted-foreground py-1">{isDesktop ? d.slice(0, 3) : d.slice(0, 2)}</span>
@@ -417,7 +417,7 @@ function MonthlyCalendar() {
             categories={categories}
             bills={billsByDate[panelDate] ?? []}
           />
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-4">
             <p className="mb-3 text-lg font-extrabold text-foreground">Bills due this month</p>
             {monthBills.length === 0 ? (
               <p className="text-sm text-muted-foreground">No bills due this month.</p>
@@ -533,7 +533,7 @@ function YearlyHeatmap() {
       </div>
 
       {/* Heatmap */}
-      <div className="rounded-2xl border border-border bg-card p-3 sm:p-5 overflow-x-auto">
+      <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 overflow-x-auto">
         <div className="flex gap-0.5 w-max mx-auto">
           <div className={`flex flex-col ${cellGap} mr-1.5 pt-[18px]`}>
             {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((label, i) => (

@@ -647,7 +647,7 @@ export function Subscriptions() {
               </button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-4 px-4 pb-5 sm:px-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <Label className="text-xs text-muted-foreground">Name *</Label>
@@ -855,7 +855,7 @@ export function Subscriptions() {
             </div>
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
             {expenses.length > 0 && (
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -894,7 +894,7 @@ export function Subscriptions() {
             ) : expenses.length > 0 ? (
               <p className="rounded-2xl border border-border bg-secondary p-4 text-sm text-muted-foreground">No subscriptions match this filter.</p>
             ) : (
-              <div className="rounded-2xl border border-border bg-secondary p-6 text-center">
+              <div className="rounded-2xl border border-border bg-secondary p-4 text-center">
                 <p className="text-sm text-muted-foreground">No recurring expenses yet.</p>
                 <Button size="sm" variant="secondary" className="mt-3 gap-2" onClick={() => setShowAddForm(true)}>
                   <Plus className="h-3.5 w-3.5" /> Add one
@@ -913,7 +913,7 @@ export function Subscriptions() {
               </div>
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+            <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
               {installments.map(rule => {
                 const paidPct = rule.installment_total ? Math.round((rule.installment_paid / rule.installment_total) * 100) : 0
                 const remaining = rule.installment_total ? rule.installment_total - rule.installment_paid : 0
@@ -956,11 +956,11 @@ export function Subscriptions() {
             </div>
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
             {income.length > 0 ? (
               income.map(rule => <RuleCard key={rule.id} rule={rule} />)
             ) : (
-              <div className="rounded-2xl border border-border bg-secondary p-6 text-center">
+              <div className="rounded-2xl border border-border bg-secondary p-4 text-center">
                 <p className="text-sm text-muted-foreground">No recurring income yet.</p>
                 <Button size="sm" variant="secondary" className="mt-3 gap-2" onClick={() => setShowAddForm(true)}>
                   <Plus className="h-3.5 w-3.5" /> Add one
@@ -990,7 +990,7 @@ export function Subscriptions() {
             const monthlyImpact = getMonthlyImpact(rule.original_amount ?? rule.amount, rule.frequency)
             const yearlyImpact = getYearlyImpact(rule.original_amount ?? rule.amount, rule.frequency)
             return (
-              <div className="px-6 pb-safe-10 pt-6">
+              <div className="px-6 pb-safe-10 pt-5">
                 <SheetHeader className="mb-5 pb-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

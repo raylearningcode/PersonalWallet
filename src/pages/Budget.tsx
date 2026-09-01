@@ -389,7 +389,7 @@ export function Budget() {
       </div>
 
       {/* Hero: remaining this month with compact sub-stats */}
-      <div className="mb-6 rounded-[1.4rem] border border-border bg-card p-5 sm:p-6">
+      <div className="mb-6 rounded-[1.4rem] border border-border bg-card p-4 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Remaining this month</p>
@@ -424,7 +424,7 @@ export function Budget() {
       </div>
 
       {isCurrentMonth && hasData && forecasts.length > 0 && !paceAlertDismissed && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FFCF73]" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold text-foreground">Spending pace alert</p>
@@ -447,7 +447,7 @@ export function Budget() {
       )}
 
       {hasData && forecasts.length === 0 && !riskNoteDismissed && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-border bg-secondary px-5 py-4">
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-border bg-secondary px-4 py-3.5">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-muted-foreground">Overspend risk explanation</p>
             <p className="mt-1 text-sm text-foreground">
@@ -477,7 +477,7 @@ export function Budget() {
               Based on your current daily spend rate ({monthPct}% of month elapsed).
             </p>
           </CardHeader>
-          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
             {forecasts.map(f => (
               <div key={f.id} className="flex items-start justify-between gap-4 rounded-2xl border border-[#FF8388]/20 bg-[#FF8388]/5 p-4">
                 <div>
@@ -525,7 +525,7 @@ export function Budget() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
+        <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
             {catPending ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="space-y-3">
@@ -665,7 +665,7 @@ export function Budget() {
                   </div>
                 )}
                 {balancingSpent > 0 && !balancingCat && (
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-4">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-4 py-3.5">
                     <div>
                       <p className="text-sm font-extrabold text-foreground">Unassigned spending — {fmt(balancingSpent)}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">Unknown categories and split leftovers. Add a Balancing category to track them.</p>
@@ -879,7 +879,7 @@ export function Budget() {
             const barColor = getBarColor(pct, cat.color)
             const leftAmt = Math.max(0, cat.yearly_allocated - cat.spent)
             return (
-              <div className="px-6 pb-safe-10 pt-6">
+              <div className="px-6 pb-safe-10 pt-5">
                 <SheetHeader className="mb-6 pb-0">
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-extrabold text-background" style={{ backgroundColor: cat.color }}>
@@ -997,7 +997,7 @@ export function Budget() {
                     .slice(0, 4)
                   if (catTx.length === 0) return null
                   return (
-                    <div className="mt-6 border-t border-border pt-6">
+                    <div className="mt-6 border-t border-border pt-5">
                       <div className="mb-3 flex items-center justify-between">
                         <p className="text-sm font-extrabold text-foreground">Recent transactions</p>
                         <Link

@@ -175,7 +175,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
+      <div className="mx-auto w-full max-w-sm rounded-2xl border border-border bg-card p-4 shadow-xl">
         {/* Progress dots */}
         <div className="mb-5 flex items-center justify-center gap-1.5">
           {[0, 1, 2, 3].map(i => (
@@ -247,7 +247,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
             <h2 className="text-xl font-extrabold text-foreground">{seeding ? 'Setting things up…' : 'Everything is ready'}</h2>
             <p className="text-sm text-muted-foreground">We've prepared your starting wallet and budget categories — no setup needed.</p>
             {seeding ? (
-              <div className="flex items-center justify-center py-6">
+              <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-7 w-7 animate-spin text-primary" />
               </div>
             ) : (

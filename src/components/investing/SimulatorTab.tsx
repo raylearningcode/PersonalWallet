@@ -215,7 +215,7 @@ export function SimulatorTab() {
     <div className="space-y-6">
       {/* Hero Card */}
       <Card className="overflow-hidden">
-        <CardContent className="relative flex min-h-[150px] flex-col gap-4 px-5 py-5 sm:px-8 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
+        <CardContent className="relative flex min-h-[150px] flex-col gap-4 px-5 py-4 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(169,245,199,0.14),transparent_62%)]" />
           <div className="relative">
             <p className="text-sm font-extrabold text-primary">Portfolio simulator</p>
@@ -262,9 +262,9 @@ export function SimulatorTab() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col justify-center px-6 pb-8 sm:px-8">
+          <CardContent className="flex flex-1 flex-col justify-center px-6 pb-8 sm:px-6">
             {draftBase.monthlyContribution <= 0 || draft.durationYears <= 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 text-center" style={{ height: '200px' }}>
+              <div className="flex flex-col items-center justify-center py-4 text-center" style={{ height: '200px' }}>
                 <p className="font-extrabold text-foreground">No simulation yet</p>
                 <p className="mt-2 text-sm text-muted-foreground">Enter monthly contribution and expected return, then view the projection.</p>
               </div>
@@ -312,7 +312,7 @@ export function SimulatorTab() {
 
         {/* Simulator Controls */}
         <Card className="relative z-10">
-          <CardHeader className="p-6 pb-2">
+          <CardHeader className="p-4 pb-2">
             <CardTitle className="text-xl">ROI Simulator</CardTitle>
             <p className="text-xs leading-4 text-muted-foreground">Model contribution, return rate, horizon, and inflation.</p>
           </CardHeader>
@@ -395,7 +395,7 @@ export function SimulatorTab() {
       {/* Glossary */}
       {!glossaryDismissed && (
         <div className="rounded-2xl border border-border bg-secondary">
-          <div role="button" tabIndex={0} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left cursor-pointer"
+          <div role="button" tabIndex={0} className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left cursor-pointer"
             onClick={() => setGlossaryOpen(o => !o)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setGlossaryOpen(o => !o) }} aria-expanded={glossaryOpen}>
             <div className="flex items-center gap-3">
               <BookOpen className="h-4 w-4 shrink-0 text-primary" />
@@ -432,7 +432,7 @@ export function SimulatorTab() {
           <CardTitle className="text-xl">Portfolio allocation</CardTitle>
           <p className="text-sm text-muted-foreground">Apply a risk profile, then customise the percentages below.</p>
         </CardHeader>
-        <CardContent className="px-5 pb-6 sm:px-8">
+        <CardContent className="px-4 pb-5 sm:px-6">
           <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {RISK_PROFILES.map(profile => (
               <button key={profile.label} className="rounded-2xl border border-border bg-secondary p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
@@ -460,7 +460,7 @@ export function SimulatorTab() {
               Same contribution ({money.format(draft.monthlyContribution, contributionCurrency)}/month) · {draft.durationYears > 0 ? `${draft.durationYears} years` : '10 years'} · different risk profiles
             </p>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 px-5 pb-6 sm:grid-cols-3 sm:px-8">
+          <CardContent className="grid grid-cols-1 gap-3 px-4 pb-5 sm:grid-cols-3 sm:px-6">
             {RISK_PROFILES.map((profile, i) => {
               const scenarioPlan = calculateInvestmentPlan({
                 ...draftBase, annualReturnRate: SCENARIO_RETURNS[i], durationYears: Math.max(1, draft.durationYears || 10),

@@ -96,7 +96,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
 
   return (
     <>
-      <aside className="relative z-10 mx-4 mt-4 hidden w-[calc(100%-2rem)] flex-col rounded-[1.7rem] border border-border bg-background/78 px-5 py-5 lg:fixed lg:left-5 lg:top-5 lg:m-0 lg:flex lg:w-[210px] lg:overflow-y-auto lg:px-4 lg:py-5" style={{ maxHeight: 'calc(100vh - 2.5rem)' }}>
+      <aside className="relative z-10 mx-4 mt-4 hidden w-[calc(100%-2rem)] flex-col rounded-[1.7rem] border border-border bg-background/78 px-5 py-4 lg:fixed lg:left-5 lg:top-5 lg:m-0 lg:flex lg:w-[210px] lg:overflow-y-auto lg:px-4 lg:py-4" style={{ maxHeight: 'calc(100vh - 2.5rem)' }}>
         {/* Logo */}
         <div className="mb-5 flex items-center gap-3 px-1">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary">
@@ -169,7 +169,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
 
       {/* Auth/Profile sheet */}
       <Sheet open={profileOpen} onOpenChange={handleProfileOpenChange}>
-        <SheetContent side="left" className="w-80 border-border bg-background p-6">
+        <SheetContent side="left" className="w-80 border-border bg-background p-4">
           <SheetHeader className="mb-6">
             <SheetTitle>Account</SheetTitle>
           </SheetHeader>
