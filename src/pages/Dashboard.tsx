@@ -183,7 +183,7 @@ export function Dashboard() {
         </div>
         <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-[1.4rem] border border-border bg-card px-6 py-5">
+            <div key={i} className="rounded-[1.4rem] border border-border bg-card px-5 py-4">
               <Skeleton className="h-3 w-20" />
               <Skeleton className="mt-4 h-8 w-28" />
               <Skeleton className="mt-6 h-3 w-32" />
@@ -235,7 +235,7 @@ export function Dashboard() {
           <CardTitle className="text-lg">Spending trend</CardTitle>
           <span className="text-xs font-bold text-muted-foreground">last 7 days</span>
         </CardHeader>
-        <CardContent className="px-5 pb-6">
+        <CardContent className="px-4 pb-5">
           {trendTotal === 0 ? (
             <p className="text-sm text-muted-foreground">No spending in the last 7 days.</p>
           ) : (
@@ -294,7 +294,7 @@ export function Dashboard() {
           <CardTitle className="text-lg">Net worth</CardTitle>
           <span className="text-xs font-bold text-muted-foreground">last 6 months</span>
         </CardHeader>
-        <CardContent className="px-5 pb-6">
+        <CardContent className="px-4 pb-5">
           {transactions.length === 0 ? (
             <p className="text-sm text-muted-foreground">Log transactions to see your net worth curve.</p>
           ) : (
@@ -429,7 +429,7 @@ export function Dashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="px-5 pb-6 sm:px-8">
+          <CardContent className="px-4 pb-5 sm:px-6">
             {!isAiConfigured() ? <p className="text-sm text-muted-foreground">AI insights are unavailable — API endpoint not configured.</p>
             : loadingInsights ? <div className="flex items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin text-primary" />Analysing your finances…</div>
             : insightsError ? <p className="rounded-xl border border-[#FF8388]/20 bg-[#FF8388]/5 p-4 text-sm text-[#FF8388]">{insightsError}</p>

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit tests
+        run: npm test -- --reporter=dot
+        env:
+          # Public by design (client-side Vite vars; the anon key ships in the bundle)
+          VITE_SUPABASE_URL: https://ctrigcpfccvokoxfzcil.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0cmlnY3BmY2N2b2tveGZ6Y2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3ODM1NjUsImV4cCI6MjA5NTM1OTU2NX0.8cYhVepf6o5FOKW03Hfck_8y0ivUzXQvIc91-55TDaI
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Production build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://ctrigcpfccvokoxfzcil.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0cmlnY3BmY2N2b2tveGZ6Y2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3ODM1NjUsImV4cCI6MjA5NTM1OTU2NX0.8cYhVepf6o5FOKW03Hfck_8y0ivUzXQvIc91-55TDaI

@@ -96,7 +96,7 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
         </div>
 
         {/* Goal progress card */}
-        <div className="rounded-2xl border border-border bg-card px-5 py-4">
+        <div className="rounded-2xl border border-border bg-card px-4 py-3.5">
           <button
             type="button"
             onClick={() => handleNav('/goals')}

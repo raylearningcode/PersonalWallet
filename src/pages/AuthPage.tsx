@@ -119,7 +119,7 @@ export function AuthPage() {
       </div>
 
       {/* Guest mode */}
-      <div className="pb-6 pt-4 text-center">
+      <div className="pb-5 pt-4 text-center">
         <button
           type="button"
           onClick={() => navigate('/', { replace: true })}

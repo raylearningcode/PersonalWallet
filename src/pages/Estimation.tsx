@@ -388,7 +388,7 @@ export function Estimation() {
       })()}
 
       {!planningTipDismissed && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3.5">
           <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
             <p className="font-bold text-foreground">Planning vs Budget</p>
@@ -420,7 +420,7 @@ export function Estimation() {
         const expPct = Math.round((monthlyExpenses / total) * 100)
         const surplus = monthlyIncome - monthlyExpenses
         return (
-          <div className="mb-6 rounded-2xl border border-border bg-secondary px-5 py-4">
+          <div className="mb-6 rounded-2xl border border-border bg-secondary px-4 py-3.5">
             <div className="space-y-3">
               <div>
                 <div className="mb-1.5 flex items-center justify-between text-xs">
@@ -457,7 +457,7 @@ export function Estimation() {
       })()}
 
       {monthlyIncome > 0 && (
-        <div className={`mb-6 rounded-2xl border px-5 py-4 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
+        <div className={`mb-6 rounded-2xl border px-4 py-3.5 ${monthlyIncome >= monthlyExpenses + wishlistTotal ? 'border-primary/20 bg-primary/5' : monthlyIncome >= monthlyExpenses ? 'border-[#FFCF73]/20 bg-[#FFCF73]/5' : 'border-[#FF8388]/20 bg-[#FF8388]/5'}`}>
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
             {planningDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} forecast
           </p>
@@ -498,7 +498,7 @@ export function Estimation() {
             <CardTitle className="text-xl">Planned vs Actual this month</CardTitle>
             <p className="text-sm text-muted-foreground">How your forecast compares to real transactions recorded this month.</p>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-4 px-4 pb-5 sm:px-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {[
                 { label: 'Income', planned: monthlyIncome, actual: actualThisMonth.income, good: (actual: number, planned: number) => actual >= planned },
@@ -563,7 +563,7 @@ export function Estimation() {
             </div>
             <p className="text-sm text-muted-foreground">How much money will come in?</p>
           </CardHeader>
-          <CardContent className="space-y-4 p-5 sm:p-6">
+          <CardContent className="space-y-4 p-4 sm:p-4">
             {isDesktop ? (
               <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
                 <div>
@@ -645,7 +645,7 @@ export function Estimation() {
             </div>
             <p className="text-sm text-muted-foreground">What fixed expenses are expected this month?</p>
           </CardHeader>
-          <CardContent className="space-y-4 p-5 sm:p-6">
+          <CardContent className="space-y-4 p-4 sm:p-4">
             {isDesktop ? (
               <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(120px,0.55fr)_minmax(120px,0.5fr)_auto]">
                 <div>
@@ -734,7 +734,7 @@ export function Estimation() {
               <p className="text-sm font-extrabold text-primary">{money.formatDisplay(wishlistTotal)}</p>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 p-5 sm:p-6">
+          <CardContent className="space-y-4 p-4 sm:p-4">
             {isDesktop ? (
               <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(110px,0.45fr)_minmax(120px,0.45fr)]">
                 <div>
@@ -860,7 +860,7 @@ export function Estimation() {
             <CardTitle className="text-xl">Plan notes</CardTitle>
             <p className="text-sm text-muted-foreground">Add anything that could change the estimate.</p>
           </CardHeader>
-          <CardContent className="space-y-4 p-5 sm:p-6">
+          <CardContent className="space-y-4 p-4 sm:p-4">
             <div>
               <Label className="text-xs text-muted-foreground">Notes</Label>
               <textarea

@@ -20,7 +20,7 @@ export function DesktopTools() {
       />
 
       <Card className="mb-6 border-primary/20 bg-primary/5">
-        <CardContent className="flex items-start gap-4 p-5">
+        <CardContent className="flex items-start gap-4 p-4">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15">
             <Laptop className="h-5 w-5 text-primary" />
           </span>
@@ -37,7 +37,7 @@ export function DesktopTools() {
         <CardHeader>
           <CardTitle className="text-xl">Available on desktop</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 px-5 pb-6 sm:px-8">
+        <CardContent className="space-y-2 px-4 pb-5 sm:px-6">
           {DESKTOP_TOOLS.map(({ label, desc, to, Icon }) => (
             <Link
               key={label}

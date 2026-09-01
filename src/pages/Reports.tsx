@@ -597,7 +597,7 @@ export function Reports() {
 
       {/* Desktop-only: top transactions + daily average detail */}
       <div className="mb-6 hidden gap-5 lg:grid lg:grid-cols-[1fr_260px]">
-        <div className="rounded-[1.4rem] border border-border bg-card px-6 py-5">
+        <div className="rounded-[1.4rem] border border-border bg-card px-5 py-4">
           <p className="text-sm font-extrabold text-foreground">Largest {mode === 'income' ? 'income' : 'expenses'}</p>
           {rangeTx.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">No transactions in this period.</p>
@@ -622,7 +622,7 @@ export function Reports() {
             { label: 'Daily average', value: money.formatDisplay(rangeTx.length > 0 ? totalExpenses / Math.max(1, daysInRange) : 0), sub: `${rangeTx.length} transactions` },
             { label: 'Per transaction', value: money.formatDisplay(rangeTx.length > 0 ? totalExpenses / rangeTx.length : 0), sub: 'average expense size' },
           ].map(s => (
-            <div key={s.label} className="rounded-[1.4rem] border border-border bg-card px-5 py-4">
+            <div key={s.label} className="rounded-[1.4rem] border border-border bg-card px-4 py-3.5">
               <p className="text-xs text-muted-foreground">{s.label}</p>
               <p className="mt-1 text-lg font-extrabold tabular-nums text-foreground">{s.value}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{s.sub}</p>
@@ -634,7 +634,7 @@ export function Reports() {
       {/* Period comparison */}
       {(incomeDiff || expenseDiff) && (
         <div className="mb-6 hidden gap-4 lg:grid lg:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-card px-5 py-4">
+          <div className="rounded-2xl border border-border bg-card px-4 py-3.5">
             <p className="text-xs font-bold text-muted-foreground">Income vs previous {RANGE_LABELS[range].toLowerCase()}</p>
             <div className="mt-2 flex items-end gap-3">
               <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalIncome)}</span>
@@ -646,7 +646,7 @@ export function Reports() {
             </div>
             <p className="mt-1 text-xs text-muted-foreground">prev: {money.formatDisplay(prevTotalIncome)}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-card px-5 py-4">
+          <div className="rounded-2xl border border-border bg-card px-4 py-3.5">
             <p className="text-xs font-bold text-muted-foreground">Expenses vs previous {RANGE_LABELS[range].toLowerCase()}</p>
             <div className="mt-2 flex items-end gap-3">
               <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalExpenses)}</span>
@@ -749,7 +749,7 @@ export function Reports() {
 
       {/* Period review metric cards */}
       {(incomeDiff || expenseDiff || savingsRate > 0 || topCategory !== '—') && (
-        <div className="mb-6 rounded-2xl border border-border bg-card px-5 py-5 lg:px-6">
+        <div className="mb-6 rounded-2xl border border-border bg-card px-5 py-4 lg:px-6">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Period review</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {incomeDiff && (
@@ -811,7 +811,7 @@ export function Reports() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="px-5 pb-8 sm:px-8">
+          <CardContent className="px-5 pb-8 sm:px-6">
             <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[240px_minmax(0,1fr)]">
               <div className="relative mx-auto aspect-square w-full max-w-[240px] rounded-full" style={{ background: buildDonut(categoryTotals, activeTotal, colorOf) }}>
                 <div className="absolute inset-[20%] flex flex-col items-center justify-center rounded-full bg-card text-center">
@@ -885,7 +885,7 @@ export function Reports() {
 
         <Card>
           <CardHeader><CardTitle className="text-xl">Category breakdown</CardTitle></CardHeader>
-          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
             {categoryTotals.length > 0 ? categoryTotals.map(([name, amount], index) => (
               <div key={name} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
                 <div className="flex min-w-0 items-center gap-3">
@@ -905,7 +905,7 @@ export function Reports() {
                 </div>
               </div>
             )) : (
-              <div className="space-y-3 rounded-2xl bg-secondary p-5">
+              <div className="space-y-3 rounded-2xl bg-secondary p-4">
                 <p className="text-sm text-muted-foreground">
                   No {mode} data for {periodLabel}. Try switching the date range or adding a transaction.
                 </p>
@@ -947,7 +947,7 @@ export function Reports() {
             <CardTitle className="text-xl">{selectedCategory} — {filteredTx.length} transaction{filteredTx.length === 1 ? '' : 's'}</CardTitle>
             <p className="text-sm text-muted-foreground">Total: {money.formatDisplay(filteredTx.reduce((s, t) => s + t.amount, 0))}</p>
           </CardHeader>
-          <CardContent className="space-y-2 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-2 px-4 pb-5 sm:px-6">
             {filteredTx.map(tx => (
               <div key={tx.id} className="flex items-center justify-between gap-4 rounded-2xl bg-secondary px-4 py-3">
                 <div className="min-w-0">
@@ -969,7 +969,7 @@ export function Reports() {
             <CardTitle className="text-xl">Cash movements</CardTitle>
             <p className="text-sm text-muted-foreground">System-generated change transfers from Cash Change Assistant.</p>
           </CardHeader>
-          <CardContent className="space-y-2 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-2 px-4 pb-5 sm:px-6">
             {internalMovesTx.sort((a, b) => b.date.localeCompare(a.date)).map(tx => {
               const fromWallet = wallets.find(w => w.id === tx.wallet_id)
               const toWallet = wallets.find(w => w.id === tx.transfer_wallet_id)
@@ -995,7 +995,7 @@ export function Reports() {
             <CardTitle className="text-xl">Wallet activity</CardTitle>
             <p className="text-sm text-muted-foreground">Money flow per wallet during this period.</p>
           </CardHeader>
-          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
             {walletActivity.map(({ wallet, income, expenses, net }) => (
               <div key={wallet.id} className="rounded-2xl border border-border bg-secondary px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
@@ -1048,7 +1048,7 @@ export function Reports() {
 
       <Card className="mt-6">
         <CardHeader><CardTitle className="text-xl">Reporter notes</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 px-5 pb-6 sm:px-8 md:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-3 px-4 pb-5 sm:px-6 md:grid-cols-2">
           {insights.length > 0 ? insights.map(insight => (
             <div key={insight.category} className="rounded-2xl border border-border bg-secondary p-4">
               <p className="font-extrabold text-foreground">{insight.category}</p>

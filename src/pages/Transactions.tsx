@@ -585,7 +585,7 @@ export function Transactions() {
       </aside>
 
             <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-6' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-5' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
           <TransactionForm
             variant="sheet"
             initialType={(new URLSearchParams(window.location.search).get('action') === 'income' ? 'income' : 'expense') as EntryType}
@@ -597,7 +597,7 @@ export function Transactions() {
       </Sheet>
 
 <Sheet open={Boolean(editingRule)} onOpenChange={v => { if (!v) setEditingRule(null) }}>
-        <SheetContent className="w-full overflow-y-auto border-border bg-background p-5 pb-safe-10 sm:max-w-md sm:p-6 sm:pb-safe-10">
+        <SheetContent className="w-full overflow-y-auto border-border bg-background p-4 pb-safe-10 sm:max-w-md sm:p-4 sm:pb-safe-10">
           <SheetHeader className="mb-6 text-left">
             <SheetTitle>Edit recurring rule</SheetTitle>
             <SheetDescription>Update the schedule or amount for this recurring payment.</SheetDescription>
@@ -657,9 +657,9 @@ export function Transactions() {
       </Sheet>
 
 
-      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-5 sm:px-6 sm:py-6">
+      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-4 sm:px-5 sm:py-4">
         {selectedCategory ? (
-          <div className="mb-6 rounded-2xl border border-border bg-secondary p-5">
+          <div className="mb-6 rounded-2xl border border-border bg-secondary p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-2xl font-extrabold text-foreground">{selectedCategory}</h2>
@@ -1225,7 +1225,7 @@ export function Transactions() {
 
       {/* Bulk recategorize sheet */}
       <Sheet open={bulkCategorySheet} onOpenChange={open => { if (!open) setBulkCategorySheet(false) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-6' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-6'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-5' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-5'}>
           <SheetHeader className="mb-5">
             <SheetTitle>Recategorize {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
             <SheetDescription>Choose a new category for all selected transactions.</SheetDescription>
@@ -1253,7 +1253,7 @@ export function Transactions() {
       </Sheet>
       {/* Bulk retime sheet */}
       <Sheet open={bulkDateSheet} onOpenChange={open => { if (!open) setBulkDateSheet(false) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-6' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-6'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-sm overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-5' : 'rounded-t-3xl border-border bg-background px-6 pb-safe-10 pt-5'}>
           <SheetHeader className="mb-5">
             <SheetTitle>Change date for {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}</SheetTitle>
             <SheetDescription>All selected transactions will be moved to this date.</SheetDescription>

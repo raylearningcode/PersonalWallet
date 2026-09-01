@@ -229,7 +229,7 @@ export function CategoryDetail() {
           </div>
         </div>
       ) : (
-        <div className="mb-5 rounded-2xl border border-dashed border-border bg-secondary/40 px-5 py-4 text-center">
+        <div className="mb-5 rounded-2xl border border-dashed border-border bg-secondary/40 px-4 py-3.5 text-center">
           <p className="text-sm font-bold text-foreground">No budget set for this category</p>
           <button
             type="button"
@@ -261,7 +261,7 @@ export function CategoryDetail() {
 
         <div className="min-w-0">
       {/* Transaction list */}
-      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-5">
+      <div className="rounded-[1.4rem] border border-border bg-card px-4 py-4">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-foreground">Transactions</h2>
           <span className="text-xs text-muted-foreground">{categoryTransactions.length} total</span>

@@ -325,7 +325,7 @@ export function PortfolioTab() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3 px-5 pb-6 sm:px-8">
+          <CardContent className="space-y-3 px-4 pb-5 sm:px-6">
             {holdings.length === 0 && !showAdd ? (
               <div className="py-10 text-center">
                 <p className="font-extrabold text-foreground">No holdings yet</p>
@@ -560,7 +560,7 @@ export function PortfolioTab() {
             <CardTitle className="text-xl">Allocation</CardTitle>
             <p className="text-xs text-muted-foreground">Auto-generated from your actual holdings by asset type.</p>
           </CardHeader>
-          <CardContent className="px-5 pb-6">
+          <CardContent className="px-4 pb-5">
             {portfolioStats.totalCurrentValueBase > 0 ? (
               <AllocationEditor
                 value={portfolioStats.allocations}
@@ -582,7 +582,7 @@ export function PortfolioTab() {
           <CardHeader>
             <CardTitle className="text-xl">Dividend history</CardTitle>
           </CardHeader>
-          <CardContent className="px-5 pb-6 sm:px-8">
+          <CardContent className="px-4 pb-5 sm:px-6">
             <div className="space-y-2">
               {dividends.slice(0, 20).map(d => {
                 const holding = holdings.find(h => h.id === d.holding_id)
