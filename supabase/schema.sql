@@ -7,6 +7,7 @@ create table wallets (
   currency text not null default 'IDR' check (currency in ('USD', 'IDR', 'TWD', 'EUR', 'JPY')),
   cash_role text check (cash_role in ('notes', 'coins', 'mixed', 'digital_cash')),
   default_change_wallet_id uuid references wallets(id) on delete set null,
+  monthly_limit numeric not null default 0,
   created_at timestamptz default now()
 );
 

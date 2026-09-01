@@ -37,6 +37,8 @@ vi.mock('@/lib/queries', () => ({
   useAddBudgetCategory: () => ({ mutateAsync: addCategory, isPending: false }),
   useUpdateBudgetCategory: () => ({ mutateAsync: updateCategory, isPending: false }),
   useDeleteBudgetCategory: () => ({ mutateAsync: deleteCategory, isPending: false }),
+  useWallets: () => ({ data: [] }),
+
   useTransactions: () => ({ data: mockTransactions }),useRecurringRules: () => ({ data: [] }),
 useGoals: () => ({ data: [] }),
 

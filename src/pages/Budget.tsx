@@ -6,6 +6,7 @@ import {
   useUpdateBudgetCategory,
   useAddBudgetCategory,
   useDeleteBudgetCategory,
+  useWallets,
 } from '@/lib/queries'
 import { Lightbulb, ChevronLeft, ChevronRight, Plus, AlertTriangle, X } from 'lucide-react'
 // (StatCard no longer used here — the hero card replaced the top stat row.)
@@ -100,6 +101,7 @@ export function Budget() {
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
   const { data: categories = [], isPending: catPending, isError: catError, refetch: catRefetch } = useBudgetCategories()
+  const { data: wallets = [] } = useWallets()
   const { data: transactions = [] } = useTransactions()
   const updateCategory = useUpdateBudgetCategory()
   const addCategory = useAddBudgetCategory()
@@ -148,6 +150,21 @@ export function Budget() {
   }, [showAdd])
 
   const today = new Date()
+  // Wallets with a monthly cap — spending within the viewed month vs the cap
+  const walletLimits = useMemo(() => {
+    const prefix = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`
+    return wallets
+      .filter(w => (w.monthly_limit ?? 0) > 0)
+      .map(w => ({
+        id: w.id,
+        name: w.name,
+        limit: w.monthly_limit!,
+        spent: transactions
+          .filter(t => t.type === 'expense' && !t.is_system_generated && t.wallet_id === w.id && t.date.startsWith(prefix))
+          .reduce((s, t) => s + t.amount, 0),
+      }))
+  }, [wallets, transactions, periodDate])
+
   const isCurrentMonth = periodDate.getFullYear() === today.getFullYear() && periodDate.getMonth() === today.getMonth()
   const isPastMonth = periodDate < new Date(today.getFullYear(), today.getMonth(), 1)
   const currentYear = String(periodDate.getFullYear())
@@ -491,6 +508,37 @@ export function Budget() {
                 </span>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Wallet limits — wallets with a monthly cap set in Settings */}
+      {walletLimits.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Wallet limits</CardTitle>
+            <p className="text-sm text-muted-foreground">Monthly caps per wallet, set in Settings → Wallets.</p>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-5">
+            {walletLimits.map(w => {
+              const pct = Math.min(100, Math.round((w.spent / w.limit) * 100))
+              return (
+                <div key={w.id}>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="font-bold text-foreground">{w.name}</span>
+                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-[#FF8388]' : pct >= 70 ? 'text-[#FFCF73]' : 'text-muted-foreground'}`}>
+                      {fmt(w.spent)} / {fmt(w.limit)}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-[#FF8388]' : pct >= 70 ? 'bg-[#FFCF73]' : 'bg-primary'}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </CardContent>
         </Card>
       )}

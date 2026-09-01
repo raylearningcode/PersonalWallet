@@ -12,9 +12,50 @@ import { useMoney, txAmountColor, txAmountSign } from '@/lib/currency'
 import { isInBudgetPeriod } from '@/lib/budget'
 import { getWalletBalances } from '@/lib/financeOs'
 import { safeGet, todayLocal, toLocalDateStr } from '@/lib/utils'
-import { getAiInsights, isAiConfigured, type InsightResult } from '@/lib/ai'
+import { getAiInsights, isAiConfigured, type InsightInput, type InsightResult } from '@/lib/ai'
 import { computeStreak } from '@/lib/streak'
 import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, ChevronRight } from 'lucide-react'
+
+const DIGEST_KEY = 'finpath_ai_digest'
+const DIGEST_MAX_AGE_MS = 7 * 86_400_000
+
+/** Shared context builder for both manual insights and the weekly digest. */
+function buildInsightInput(deps: {
+  currency: string
+  categories: ReturnType<typeof useBudgetCategories>['data']
+  monthTx: ReturnType<typeof useTransactions>['data']
+  daysLeft: number
+  annualIncome: number
+  annualSpent: number
+  savingsRate: number
+  netWorth: number
+  cashBalance: number
+  invested: number
+  goals: ReturnType<typeof useGoals>['data']
+}): InsightInput {
+  const cats = deps.categories ?? []
+  const tx = deps.monthTx ?? []
+  const monthCategories = cats.map(c => {
+    const spent = tx.filter(t => t.type !== 'income' && t.category === c.name).reduce((s, t) => s + t.amount, 0)
+    return { name: c.name, spent, budget: c.budget_period === 'monthly' ? c.yearly_allocated : c.yearly_allocated / 12 }
+  })
+  const overBudget = monthCategories.filter(c => c.budget > 0 && c.spent > c.budget).map(c => ({ name: c.name, overage: c.spent - c.budget, pct: Math.round((c.spent / c.budget) * 100) }))
+  return {
+    currency: deps.currency,
+    monthlyIncome: tx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+    monthlySpent: tx.filter(t => t.type !== 'income').reduce((s, t) => s + t.amount, 0),
+    daysLeftInMonth: deps.daysLeft,
+    annualIncome: deps.annualIncome,
+    annualSpent: deps.annualSpent,
+    savingsRate: deps.savingsRate,
+    netWorth: deps.netWorth,
+    cashBalance: deps.cashBalance,
+    invested: deps.invested,
+    categories: monthCategories,
+    goals: (deps.goals ?? []).map(g => ({ name: g.name, current: g.current_amount, target: g.target_amount, pct: g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0 })),
+    overBudget,
+  }
+}
 
 export function Dashboard() {
   const money = useMoney()
@@ -35,6 +76,36 @@ export function Dashboard() {
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [insightsError, setInsightsError] = useState<string | null>(null)
   const [aiCardDismissed, setAiCardDismissed] = useState(() => safeGet('finpath_ai_dismissed') === '1')
+  const [digestAuto, setDigestAuto] = useState(false)
+
+  // ─── Weekly digest ─────────────────────────────────────────────────────
+  // Once a week, when a Gemini key is configured and data exists: reuse the
+  // cached digest if fresh, otherwise generate silently in the background.
+  const digestAttemptedRef = useRef(false)
+  useEffect(() => {
+    if (digestAttemptedRef.current) return
+    if (!isAiConfigured() || categories.length === 0 || transactions.length === 0) return
+    digestAttemptedRef.current = true
+    let cached: { at: number; insights: InsightResult[] } | null = null
+    try { cached = JSON.parse(localStorage.getItem(DIGEST_KEY) ?? 'null') } catch { cached = null }
+    if (cached && Date.now() - cached.at < DIGEST_MAX_AGE_MS) {
+      if (cached.insights.length > 0) { setAiInsights(cached.insights); setDigestAuto(true) }
+      return
+    }
+    ;(async () => {
+      try {
+        const insights = await getAiInsights(buildInsightInput({
+          currency: money.displayCurrency, categories, monthTx, daysLeft,
+          annualIncome, annualSpent, savingsRate, netWorth,
+          cashBalance: [...walletBalances.values()].reduce((a, b) => a + b, 0),
+          invested: investConfig?.current_value ?? 0,
+          goals,
+        }))
+        try { localStorage.setItem(DIGEST_KEY, JSON.stringify({ at: Date.now(), insights })) } catch { /* ignore */ }
+        if (insights.length > 0) { setAiInsights(insights); setDigestAuto(true) }
+      } catch { /* silent — the manual Generate button still works */ }
+    })()
+  }, [categories.length, transactions.length])
 
   // ─── Computed ─────────────────────────────────────────────────────────
   const walletBalances = useMemo(() => getWalletBalances(wallets, transactions), [wallets, transactions])
@@ -153,17 +224,14 @@ export function Dashboard() {
     setLoadingInsights(true)
     setInsightsError(null)
     try {
-      const monthCategories = categories.map(c => {
-        const spent = monthTx.filter(t => t.type !== 'income' && t.category === c.name).reduce((s, t) => s + t.amount, 0)
-        return { name: c.name, spent, budget: c.budget_period === 'monthly' ? c.yearly_allocated : c.yearly_allocated / 12 }
-      })
-      const overBudget = monthCategories.filter(c => c.budget > 0 && c.spent > c.budget).map(c => ({ name: c.name, overage: c.spent - c.budget, pct: Math.round((c.spent / c.budget) * 100) }))
-      const result = await getAiInsights({
-        currency: money.displayCurrency, monthlyIncome, monthlySpent: monthlySpent, daysLeftInMonth: daysLeft,
-        annualIncome, annualSpent: annualSpent, savingsRate, netWorth,
-        cashBalance: [...walletBalances.values()].reduce((a, b) => a + b, 0), invested: investConfig?.current_value ?? 0,
-        categories: monthCategories, goals: goals.map(g => ({ name: g.name, current: g.current_amount, target: g.target_amount, pct: g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0 })), overBudget,
-      })
+      setDigestAuto(false)
+      const result = await getAiInsights(buildInsightInput({
+        currency: money.displayCurrency, categories, monthTx, daysLeft,
+        annualIncome, annualSpent, savingsRate, netWorth,
+        cashBalance: [...walletBalances.values()].reduce((a, b) => a + b, 0),
+        invested: investConfig?.current_value ?? 0,
+        goals,
+      }))
       setAiInsights(result)
     } catch (e) { setInsightsError(e instanceof Error ? e.message : 'Failed to generate insights') }
     finally { setLoadingInsights(false) }
@@ -413,7 +481,9 @@ export function Dashboard() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><CardTitle className="text-lg">AI Insights</CardTitle></div>
+              <div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><CardTitle className="text-lg">AI Insights</CardTitle>
+                {digestAuto && <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-extrabold text-primary">Weekly digest · auto</span>}
+              </div>
               <div className="flex items-center gap-2">
                 {isAiConfigured() ? (
                   <Button size="sm" variant="secondary" onClick={handleGetInsights} disabled={loadingInsights} className="gap-2">{loadingInsights ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{aiInsights ? 'Refresh' : 'Generate'}</Button>
