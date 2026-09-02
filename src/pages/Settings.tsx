@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEFAULT_BUDGET_CATEGORIES } from '@/lib/categories'
 import { useMoney } from '@/lib/currency'
@@ -1147,70 +1148,73 @@ export function Settings() {
           </CardHeader>
           <CardContent className="space-y-2 px-4 pb-3 sm:px-6 sm:pb-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {categories.map(category => (
+                            {categories.map(category => (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-secondary px-4 py-3"
+                  className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-border bg-secondary px-3 py-2"
                 >
-                  {editingCategoryId === category.id ? (
-                    <>
-                      <input
-                        aria-label="Edit category icon"
-                        className="w-12 shrink-0 rounded-lg border border-border bg-background px-1 py-1 text-center text-base outline-none focus:border-primary"
-                        value={editingCategoryIcon}
-                        onChange={e => setEditingCategoryIcon(e.target.value.slice(0, 4))}
-                        placeholder="🍔"
-                      />
-                      <input
-                        aria-label={`New name for ${category.name} category`}
-                        className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-bold text-foreground outline-none focus:border-primary"
-                        value={editingCategoryName}
-                        autoFocus
-                        onChange={e => setEditingCategoryName(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') handleSaveRename()
-                          if (e.key === 'Escape') setEditingCategoryId(null)
-                        }}
-                      />
-                      <button
-                        aria-label="Save rename"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={handleSaveRename}
-                        disabled={renameCategory.isPending}
-                      >
-                        <Check className="h-4 w-4" />
-                      </button>
-                      <button
-                        aria-label="Cancel rename"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
-                        onClick={() => setEditingCategoryId(null)}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="min-w-0 truncate font-bold text-foreground">{category.name}</span>
-                      <button
-                        aria-label={`Rename ${category.name} category`}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
-                        onClick={() => handleStartRename(category.id, category.name, category.icon ?? null)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        aria-label={`Delete ${category.name} category`}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-destructive"
-                        onClick={() => handleDeleteCategory(category.id, category.name)}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </>
-                  )}
+                  <span className="min-w-0 truncate font-bold text-foreground">
+                    {category.icon && <span className="mr-1.5">{category.icon}</span>}
+                    {category.name}
+                  </span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      aria-label={"Edit " + category.name + " category"}
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/60 hover:text-primary"
+                      onClick={() => handleStartRename(category.id, category.name, category.icon ?? null)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      aria-label={"Delete " + category.name + " category"}
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/60 hover:text-destructive"
+                      onClick={() => handleDeleteCategory(category.id, category.name)}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-            {categories.length === 0 && <p className="text-sm text-muted-foreground">No categories yet.</p>}
+
+            {/* Edit category sheet */}
+            <Sheet open={editingCategoryId !== null} onOpenChange={v => { if (!v) setEditingCategoryId(null) }}>
+              <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-3xl border-border bg-background px-5 pb-safe-10">
+                <SheetHeader className="mb-3 text-left">
+                  <SheetTitle>Edit category</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-3">
+                  <div>
+                    <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Icon</p>
+                    <EmojiPicker value={editingCategoryIcon} onChange={setEditingCategoryIcon} ariaLabel="Category icon choices" />
+                    <Input
+                      aria-label="Edit category icon"
+                      className="mt-2 w-16 bg-secondary text-center text-lg"
+                      value={editingCategoryIcon}
+                      onChange={e => setEditingCategoryIcon(e.target.value.slice(0, 4))}
+                      placeholder="🍔"
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Name</p>
+                    <Input
+                      aria-label="Edit category name"
+                      className="bg-secondary"
+                      value={editingCategoryName}
+                      onChange={e => setEditingCategoryName(e.target.value)}
+                      placeholder="Category name"
+                      autoFocus
+                      onKeyDown={e => { if (e.key === "Enter") handleSaveRename() }}
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button className="flex-1" onClick={handleSaveRename} disabled={renameCategory.isPending}>Save</Button>
+                    <Button variant="secondary" onClick={() => setEditingCategoryId(null)}>Cancel</Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
             {editingCategoryId && (
               <div className="max-w-xl space-y-1.5">
                 <p className="text-xs font-bold text-muted-foreground">Choose an icon</p>
