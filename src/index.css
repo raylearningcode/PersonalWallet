@@ -8,24 +8,24 @@
     font-size: 15px;
   }
   :root {
-    --background: 225 44% 4%;
+    --background: 224 42% 3.5%;
     --foreground: 220 40% 97%;
-    --card: 221 31% 11%;
+    --card: 222 27% 10%;
     --card-foreground: 210 40% 96%;
-    --border: 219 32% 20%;
-    --primary: 148 83% 82%;
-    --primary-foreground: 223 44% 6%;
-    --muted: 220 25% 21%;
-    --muted-foreground: 222 18% 65%;
+    --border: 220 24% 16%;
+    --primary: 150 62% 80%;
+    --primary-foreground: 222 46% 5%;
+    --muted: 221 23% 18%;
+    --muted-foreground: 221 14% 62%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --accent: 214 91% 77%;
+    --accent: 214 60% 72%;
     --accent-foreground: 223 44% 6%;
-    --secondary: 220 28% 15%;
+    --secondary: 221 25% 13%;
     --secondary-foreground: 210 40% 96%;
-    --ring: 249 83% 70%;
-    --input: 220 25% 18%;
-    --popover: 220 28% 12%;
+    --ring: 150 55% 65%;
+    --input: 221 22% 15%;
+    --popover: 222 26% 10%;
     --popover-foreground: 210 40% 96%;
     --radius: 1.5rem;
   }
