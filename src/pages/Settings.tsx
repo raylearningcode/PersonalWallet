@@ -769,11 +769,11 @@ export function Settings() {
           <Card className="mb-2">
             <CardContent className="flex min-h-[156px] flex-col items-start gap-2 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
               <div className="flex min-w-0 items-center gap-2 sm:gap-2">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-extrabold text-primary-foreground sm:h-[72px] sm:w-[72px] sm:text-2xl">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-extrabold text-primary-foreground sm:h-[72px] sm:w-[72px] sm:text-xl">
                   {(name || session?.user.email || 'F').slice(0, 1).toUpperCase()}
                 </div>
                 <div>
-                  <p className="break-words text-2xl font-extrabold leading-none text-foreground sm:text-[1.7rem]">{name || 'Empty profile'}</p>
+                  <p className="break-words text-xl font-extrabold leading-none text-foreground sm:text-[1.7rem]">{name || 'Empty profile'}</p>
                   <p className="mt-2 text-sm text-muted-foreground">{session?.user.email || 'No account connected'}</p>
                   <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className={`inline-block h-1.5 w-1.5 rounded-full ${session ? 'bg-primary' : 'bg-[#FFCF73]'}`} />

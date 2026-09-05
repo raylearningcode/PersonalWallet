@@ -219,7 +219,7 @@ export function SimulatorTab() {
           <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(169,245,199,0.14),transparent_62%)]" />
           <div className="relative">
             <p className="text-sm font-extrabold text-primary">Portfolio simulator</p>
-            <p className="mt-2 text-4xl font-extrabold leading-none text-foreground sm:text-[2.45rem]">
+            <p className="mt-2 text-3xl font-extrabold leading-none text-foreground sm:text-[2.45rem]">
               {inflationEnabled
                 ? money.formatDisplay(realPlan.projectedPortfolio)
                 : money.formatDisplay(plan.projectedPortfolio)
@@ -319,7 +319,7 @@ export function SimulatorTab() {
           <CardContent className="space-y-2.5 px-6 pb-3">
             <div className="rounded-2xl bg-[#164629] p-3">
               <p className="text-xs font-bold text-primary">Projected portfolio</p>
-              <p className="mt-1 text-2xl font-extrabold text-primary">
+              <p className="mt-1 text-xl font-extrabold text-primary">
                 {inflationEnabled
                   ? money.formatDisplay(realPlan.projectedPortfolio)
                   : money.formatDisplay(plan.projectedPortfolio)

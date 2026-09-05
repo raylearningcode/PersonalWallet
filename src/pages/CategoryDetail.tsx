@@ -204,7 +204,7 @@ export function CategoryDetail() {
           {category.name.slice(0, 1)}
         </div>
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground">{category.name}</h1>
+          <h1 className="text-xl font-extrabold text-foreground">{category.name}</h1>
           <p className="text-sm text-muted-foreground capitalize">
             {category.budget_period ?? 'monthly'} budget
             {category.yearly_allocated > 0 && ` · ${pct}% used`}
@@ -277,7 +277,7 @@ export function CategoryDetail() {
             ))}
           </div>
         ) : categoryTransactions.length === 0 ? (
-          <div className="py-10 text-center">
+          <div className="py-6 text-center">
             <p className="text-sm font-bold text-foreground">No transactions this period</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {isCurrentMonth ? 'Nothing recorded in this category yet.' : 'No transactions for this month.'}

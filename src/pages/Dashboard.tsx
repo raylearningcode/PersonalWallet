@@ -369,7 +369,7 @@ export function Dashboard() {
           ) : (
             <>
               <div className="mb-3 flex items-end gap-2">
-                <span className="text-2xl font-extrabold tabular-nums text-foreground">{fmt(netWorth)}</span>
+                <span className="text-xl font-extrabold tabular-nums text-foreground">{fmt(netWorth)}</span>
                 <span className="mb-1 text-xs text-muted-foreground">today</span>
               </div>
               <svg viewBox="0 0 300 84" className="h-24 w-full text-primary" role="img" aria-label={`Net worth over the last 6 months. ${fmt(netWorth)} today.`} preserveAspectRatio="none">

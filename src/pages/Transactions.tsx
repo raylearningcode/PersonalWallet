@@ -507,7 +507,7 @@ export function Transactions() {
           <div key={label} className={`relative rounded-[1.4rem] border border-border bg-card px-4 py-3.5 lg:px-5 lg:py-3 ${i === 2 ? 'col-span-2 lg:col-span-1' : ''}`}>
             <span className={`absolute right-4 top-4 h-3.5 w-3.5 rounded-full lg:right-7 lg:top-7 lg:h-4 lg:w-4 ${dot}`} />
             <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="mt-1.5 break-all text-base font-extrabold leading-tight tabular-nums text-foreground sm:text-xl lg:mt-2 lg:text-2xl">{value}</p>
+            <p className="mt-1.5 break-all text-base font-extrabold leading-tight tabular-nums text-foreground sm:text-xl lg:mt-2 lg:text-xl">{value}</p>
             <p className="mt-1.5 text-xs text-muted-foreground lg:mt-2 lg:text-sm">{sub}</p>
           </div>
         ))}
@@ -675,7 +675,7 @@ export function Transactions() {
           <div className="mb-2 rounded-2xl border border-border bg-secondary p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-2xl font-extrabold text-foreground">{selectedCategory}</h2>
+                <h2 className="text-xl font-extrabold text-foreground">{selectedCategory}</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Spent {money.formatDisplay(selectedCategoryTotal)}
                   {selectedCategoryBudget > 0 && ` / ${money.formatDisplay(selectedCategoryBudget)} (${selectedCategoryUsedPct}%)`}
@@ -894,7 +894,7 @@ export function Transactions() {
             ))}
           </div>
         ) : txError ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary px-6 py-12 text-center">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary px-6 py-8 text-center">
             <p className="text-base font-bold text-foreground">Could not load transactions</p>
             <p className="mt-1 text-sm text-muted-foreground">Your local data is safe. Try refreshing.</p>
             <button
@@ -1332,7 +1332,7 @@ export function Transactions() {
 
                   {/* Amount hero */}
                   <div className="mb-2 text-center">
-                    <p className={`text-4xl font-extrabold tracking-tight ${txAmountColor(tx.amount, tx.type)}`}>
+                    <p className={`text-3xl font-extrabold tracking-tight ${txAmountColor(tx.amount, tx.type)}`}>
                       {txAmountSign(tx.amount, tx.type)}{money.formatTx(tx)}
                     </p>
                     {money.baseCurrency !== (tx.original_currency ?? money.baseCurrency) && (

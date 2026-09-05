@@ -585,7 +585,7 @@ export function Budget() {
                 </div>
               ))
             ) : catError ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary px-6 py-10 text-center">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary px-6 py-6 text-center">
                 <p className="text-base font-bold text-foreground">Could not load budget</p>
                 <p className="mt-1 text-sm text-muted-foreground">Your local data is safe. Try refreshing.</p>
                 <button
@@ -775,7 +775,7 @@ export function Budget() {
                 })()}
               </>
             ) : (
-              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-12 text-center">
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-8 text-center">
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                   <Lightbulb className="h-7 w-7 text-primary" />
                 </span>

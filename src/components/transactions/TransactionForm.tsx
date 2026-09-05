@@ -561,7 +561,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
             onChange={setAmount}
             currency={inputCurrency}
             ariaLabel="Amount"
-            className={`h-16 cursor-pointer border-0 bg-transparent text-center text-5xl font-extrabold shadow-none focus-visible:ring-0 ${variant === 'page' ? 'w-48' : 'w-44'}`}
+            className={`h-16 cursor-pointer border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0 ${variant === 'page' ? 'w-48' : 'w-44'}`}
             keypadDoneLabel="Confirm amount"
           />
         </div>
@@ -673,7 +673,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
             onChange={setAmount}
             currency={inputCurrency}
             ariaLabel="Amount"
-            className="h-14 w-44 cursor-pointer border-0 bg-transparent text-center text-4xl font-extrabold shadow-none focus-visible:ring-0"
+            className="h-14 w-44 cursor-pointer border-0 bg-transparent text-center text-3xl font-extrabold shadow-none focus-visible:ring-0"
             keypadDoneLabel="Confirm amount"
           />
           {nativeCameraAvailable ? (

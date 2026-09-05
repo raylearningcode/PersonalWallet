@@ -140,7 +140,7 @@ export function NotificationsSheet() {
 
           <div className="mt-2 flex flex-col gap-2.5">
             {visibleNotifications.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <BellOff className="h-10 w-10 text-muted-foreground/40" />
                 <p className="text-sm font-bold text-foreground">All caught up</p>
                 <p className="text-xs text-muted-foreground">No new alerts right now.</p>

@@ -193,7 +193,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
               <div className="h-6 w-6 rounded-lg bg-background" />
             </div>
             <div>
-              <h2 className="text-2xl font-extrabold text-foreground">Welcome to FinPath</h2>
+              <h2 className="text-xl font-extrabold text-foreground">Welcome to FinPath</h2>
               <p className="mt-1.5 text-sm text-muted-foreground">Your personal finance OS — track spending, balance budgets, and grow your money, all in one place.</p>
             </div>
             <div className="space-y-2 text-left">
@@ -338,7 +338,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
                   Income
                 </button>
               </div>
-              <MoneyField ariaLabel="Transaction amount" className="bg-secondary text-center text-2xl font-extrabold" value={txAmount} currency={money.displayCurrency} onChange={v => setTxAmount(formatNumberInput(v))} placeholder="0" />
+              <MoneyField ariaLabel="Transaction amount" className="bg-secondary text-center text-xl font-extrabold" value={txAmount} currency={money.displayCurrency} onChange={v => setTxAmount(formatNumberInput(v))} placeholder="0" />
               {categories.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {categories.slice(0, 6).map(c => (

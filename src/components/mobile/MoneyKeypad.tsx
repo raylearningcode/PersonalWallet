@@ -87,7 +87,7 @@ export function MoneyKeypad({
             <button
               key={key}
               type="button"
-              className="flex min-h-[52px] items-center justify-center rounded-2xl bg-[#3B3B3B] text-2xl font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform active:scale-95"
+              className="flex min-h-[52px] items-center justify-center rounded-2xl bg-[#3B3B3B] text-xl font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-transform active:scale-95"
               onClick={() => { hapticLight(); onChange(appendKey(value, key, allowDecimal)) }}
             >
               {key}

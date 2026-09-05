@@ -495,7 +495,7 @@ export function Goals() {
 
       {goals.length === 0 && !showForm ? (
         <Card>
-          <CardContent className="flex flex-col items-center px-8 py-16 text-center">
+          <CardContent className="flex flex-col items-center px-6 py-16 text-center">
             <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
               <Target className="h-8 w-8 text-primary" />
             </div>
@@ -562,7 +562,7 @@ export function Goals() {
                     <div className="mt-2">
                       <div className="flex items-end justify-between gap-2">
                         <div>
-                          <p className="text-2xl font-extrabold text-foreground">{money.formatDisplay(goal.current_amount)}</p>
+                          <p className="text-xl font-extrabold text-foreground">{money.formatDisplay(goal.current_amount)}</p>
                           <p className="text-xs text-muted-foreground">of {money.formatDisplay(goal.target_amount)}</p>
                         </div>
                         <p className={`text-xl font-extrabold ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
@@ -658,7 +658,7 @@ export function Goals() {
 
                   {/* Progress */}
                   <div className="mb-2 text-center">
-                    <p className={`text-5xl font-extrabold tracking-tight ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
+                    <p className={`text-4xl font-extrabold tracking-tight ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
                     <p className="mt-1 text-sm text-muted-foreground">{money.formatDisplay(g.current_amount)} of {money.formatDisplay(g.target_amount)}</p>
                     <div className="mx-auto mt-3 h-3 w-full max-w-xs overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: g.color }} />

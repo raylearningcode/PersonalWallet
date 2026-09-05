@@ -239,7 +239,7 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background px-6">
       <p className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">FinPath</p>
-      <h1 className="text-2xl font-extrabold text-foreground">{stage === 'totp' ? 'Enter authenticator code' : 'Enter your PIN'}</h1>
+      <h1 className="text-xl font-extrabold text-foreground">{stage === 'totp' ? 'Enter authenticator code' : 'Enter your PIN'}</h1>
       {stage === 'totp' && (
         <p className="mb-2 mt-1 text-sm text-muted-foreground">Two-step verification is on — open your authenticator app</p>
       )}
@@ -272,7 +272,7 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
               type="button"
               disabled={locked}
               onClick={() => key === '⌫' ? del() : press(key)}
-              className="flex h-16 items-center justify-center rounded-2xl bg-secondary text-2xl font-extrabold text-foreground transition-all hover:bg-muted active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+              className="flex h-16 items-center justify-center rounded-2xl bg-secondary text-xl font-extrabold text-foreground transition-all hover:bg-muted active:scale-95 disabled:opacity-40 disabled:active:scale-100"
             >
               {key}
             </button>
