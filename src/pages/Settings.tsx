@@ -74,13 +74,21 @@ const EMOJI_PALETTE = ['💰', '🍔', '🛒', '🚗', '⛽', '🏠', '⚡', '�
 
 function EmojiPicker({ value, onChange, ariaLabel }: { value: string; onChange: (emoji: string) => void; ariaLabel: string }) {
   return (
-    <div role="group" aria-label={ariaLabel} className="flex flex-wrap gap-1">
+    <div role="group" aria-label={ariaLabel} className="flex gap-1 overflow-x-auto pb-1">
+      <button
+        type="button"
+        aria-label="Remove icon"
+        onClick={() => onChange('')}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors ${value === '' ? 'bg-primary/20 ring-1 ring-primary text-primary' : 'bg-secondary text-muted-foreground hover:bg-muted'}`}
+      >
+        ✕
+      </button>
       {EMOJI_PALETTE.map(emoji => (
         <button
           key={emoji}
           type="button"
-          onClick={() => onChange(value === emoji ? '' : emoji)}
-          className={`flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors ${value === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'bg-secondary hover:bg-muted'}`}
+          onClick={() => onChange(emoji)}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base transition-colors ${value === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'bg-secondary hover:bg-muted'}`}
         >
           {emoji}
         </button>
@@ -160,6 +168,7 @@ export function Settings() {
   const [baseCurrency, setBaseCurrency] = useState('IDR')
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deletingAccount, setDeletingAccount] = useState(false)
+  const [showIconStrip, setShowIconStrip] = useState(false)
   const navigate = useNavigate()
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
@@ -1185,17 +1194,6 @@ export function Settings() {
                 </SheetHeader>
                 <div className="space-y-3">
                   <div>
-                    <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Icon</p>
-                    <EmojiPicker value={editingCategoryIcon} onChange={setEditingCategoryIcon} ariaLabel="Category icon choices" />
-                    <Input
-                      aria-label="Edit category icon"
-                      className="mt-2 w-16 bg-secondary text-center text-lg"
-                      value={editingCategoryIcon}
-                      onChange={e => setEditingCategoryIcon(e.target.value.slice(0, 4))}
-                      placeholder="🍔"
-                    />
-                  </div>
-                  <div>
                     <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Name</p>
                     <Input
                       aria-label="Edit category name"
@@ -1205,6 +1203,17 @@ export function Settings() {
                       placeholder="Category name"
                       autoFocus
                       onKeyDown={e => { if (e.key === "Enter") handleSaveRename() }}
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Icon</p>
+                    <EmojiPicker value={editingCategoryIcon} onChange={setEditingCategoryIcon} ariaLabel="Category icon choices" />
+                    <Input
+                      aria-label="Edit category icon"
+                      className="mt-2 w-16 bg-secondary text-center text-lg"
+                      value={editingCategoryIcon}
+                      onChange={e => setEditingCategoryIcon(e.target.value.slice(0, 4))}
+                      placeholder="🍔"
                     />
                   </div>
                   <div className="flex gap-2 pt-1">
@@ -1222,7 +1231,6 @@ export function Settings() {
               </div>
             )}
             <div className="max-w-xl space-y-2">
-              <EmojiPicker value={newCategoryIcon} onChange={setNewCategoryIcon} ariaLabel="New category icon choices" />
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Input
                   aria-label="Category icon"
@@ -1240,6 +1248,17 @@ export function Settings() {
                 />
                 <Button onClick={handleAddCategory} disabled={addCategory.isPending}>Add</Button>
               </div>
+              <button
+                type="button"
+                aria-expanded={showIconStrip}
+                onClick={() => setShowIconStrip(v => !v)}
+                className="text-xs font-bold text-muted-foreground hover:text-foreground"
+              >
+                {showIconStrip ? 'Hide icon choices ▲' : 'Choose an icon ▼'}
+              </button>
+              {showIconStrip && (
+                <EmojiPicker value={newCategoryIcon} onChange={setNewCategoryIcon} ariaLabel="New category icon choices" />
+              )}
             </div>
           </CardContent>
         </Card>
