@@ -260,11 +260,11 @@ export function GoalDetail() {
         </div>
 
         {/* Goal name */}
-        <h2 className="mb-2 text-2xl font-extrabold text-foreground">{goal.name}</h2>
+        <h2 className="mb-2 text-xl font-extrabold text-foreground">{goal.name}</h2>
 
         {/* Progress */}
         <div className="mb-2 text-center">
-          <p className={`text-5xl font-extrabold tracking-tight ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
+          <p className={`text-4xl font-extrabold tracking-tight ${done ? 'text-primary' : 'text-foreground'}`}>{pct}%</p>
           <p className="mt-1 text-sm text-muted-foreground">{money.formatDisplay(goal.current_amount)} of {money.formatDisplay(goal.target_amount)}</p>
           <div className="mx-auto mt-3 h-3 w-full max-w-xs overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: goal.color }} />

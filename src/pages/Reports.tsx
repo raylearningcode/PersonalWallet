@@ -637,7 +637,7 @@ export function Reports() {
           <div className="rounded-2xl border border-border bg-card px-4 py-3.5">
             <p className="text-xs font-bold text-muted-foreground">Income vs previous {RANGE_LABELS[range].toLowerCase()}</p>
             <div className="mt-2 flex items-end gap-3">
-              <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalIncome)}</span>
+              <span className="text-xl font-extrabold text-foreground">{money.formatDisplay(totalIncome)}</span>
               {incomeDiff && (
                 <span className={`mb-0.5 flex items-center gap-0.5 text-sm font-bold ${incomeDiff.up ? 'text-primary' : 'text-[#FF8388]'}`}>
                   {incomeDiff.up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />} {Math.abs(incomeDiff.pct)}%
@@ -649,7 +649,7 @@ export function Reports() {
           <div className="rounded-2xl border border-border bg-card px-4 py-3.5">
             <p className="text-xs font-bold text-muted-foreground">Expenses vs previous {RANGE_LABELS[range].toLowerCase()}</p>
             <div className="mt-2 flex items-end gap-3">
-              <span className="text-2xl font-extrabold text-foreground">{money.formatDisplay(totalExpenses)}</span>
+              <span className="text-xl font-extrabold text-foreground">{money.formatDisplay(totalExpenses)}</span>
               {expenseDiff && (
                 <span className={`mb-0.5 flex items-center gap-0.5 text-sm font-bold ${expenseDiff.up ? 'text-[#FF8388]' : 'text-primary'}`}>
                   {expenseDiff.up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />} {Math.abs(expenseDiff.pct)}%
@@ -677,7 +677,7 @@ export function Reports() {
         </CardHeader>
         <CardContent className="px-2 pb-4 sm:px-6">
           {rangeTx.length === 0 ? (
-            <div className="py-10 text-center">
+            <div className="py-6 text-center">
               <p className="text-sm text-muted-foreground">No transactions in this period.</p>
               <p className="mt-1 text-xs text-muted-foreground">Try a different period or add a transaction.</p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">

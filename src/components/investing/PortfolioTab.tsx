@@ -327,7 +327,7 @@ export function PortfolioTab() {
           </CardHeader>
           <CardContent className="space-y-3 px-4 pb-3 sm:px-6">
             {holdings.length === 0 && !showAdd ? (
-              <div className="py-10 text-center">
+              <div className="py-6 text-center">
                 <p className="font-extrabold text-foreground">No holdings yet</p>
                 <p className="mt-1 text-sm text-muted-foreground">Add stocks, crypto, ETFs, or bonds to track your real portfolio.</p>
                 <Button className="mt-2" size="sm" onClick={() => setShowAdd(true)}>

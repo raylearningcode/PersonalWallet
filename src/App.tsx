@@ -32,7 +32,7 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Err
   render() {
     if (this.state.error) {
       return (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-8 text-center">
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-6 text-center">
           <p className="text-sm font-bold text-foreground">This page took too long to load.</p>
           <p className="text-xs text-muted-foreground">Check your connection and try again.</p>
           <div className="flex gap-3">

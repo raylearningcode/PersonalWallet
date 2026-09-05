@@ -997,7 +997,7 @@ export function Subscriptions() {
                       <SheetTitle className="text-xl">{rule.description}</SheetTitle>
                       <p className="text-xs text-muted-foreground">{rule.category} · {FREQ_LABELS[rule.frequency]}</p>
                     </div>
-                    <p className={`shrink-0 text-2xl font-extrabold ${txAmountColor(rule.original_amount ?? rule.amount, rule.type)}`}>
+                    <p className={`shrink-0 text-xl font-extrabold ${txAmountColor(rule.original_amount ?? rule.amount, rule.type)}`}>
                       {txAmountSign(rule.original_amount ?? rule.amount, rule.type)}{money.format(rule.original_amount ?? rule.amount, rule.original_currency ?? money.baseCurrency)}
                     </p>
                   </div>

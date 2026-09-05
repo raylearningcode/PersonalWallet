@@ -62,8 +62,8 @@ export function AuthPage() {
 
       <div className="flex flex-1 flex-col justify-center">
         {/* Logo / header */}
-        <div className="mb-10">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-extrabold text-primary-foreground">
+        <div className="mb-3">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-xl font-extrabold text-primary-foreground">
             F
           </div>
           <h1 className="text-3xl font-extrabold text-foreground">FinPath</h1>
