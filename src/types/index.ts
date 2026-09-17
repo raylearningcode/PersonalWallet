@@ -70,12 +70,20 @@ export interface Wallet {
   created_at?: string
 }
 
+export type BudgetResetFrequency = 'monthly' | 'yearly'
+export type BudgetRolloverMode = 'all_unused' | 'custom_cap'
+
 export interface BudgetCategory {
   id: string
   user_id?: string | null
   name: string
   yearly_allocated: number
   budget_period: 'monthly' | 'yearly'
+  reset_frequency?: BudgetResetFrequency | null
+  reset_start_day?: number | null
+  rollover_enabled?: boolean | null
+  rollover_mode?: BudgetRolloverMode | null
+  rollover_cap?: number | null
   color: string
   icon?: string | null
   created_at?: string

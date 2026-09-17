@@ -84,7 +84,19 @@ export function localGetCategories(): BudgetCategory[] {
 }
 
 export function localAddCategory(data: Omit<BudgetCategory, 'id' | 'user_id' | 'created_at' | 'budget_period'> & Partial<Pick<BudgetCategory, 'budget_period'>>): BudgetCategory {
-  const cat: BudgetCategory = { ...data, budget_period: data.budget_period ?? 'monthly', id: newId(), user_id: null, created_at: nowIso() }
+  const budgetPeriod = data.budget_period ?? 'monthly'
+  const cat: BudgetCategory = {
+    ...data,
+    budget_period: budgetPeriod,
+    reset_frequency: data.reset_frequency ?? data.budget_period ?? 'monthly',
+    reset_start_day: data.reset_start_day ?? 1,
+    rollover_enabled: data.rollover_enabled ?? false,
+    rollover_mode: data.rollover_mode ?? 'all_unused',
+    rollover_cap: data.rollover_cap ?? null,
+    id: newId(),
+    user_id: null,
+    created_at: nowIso(),
+  }
   save('categories', [...localGetCategories(), cat])
   return cat
 }

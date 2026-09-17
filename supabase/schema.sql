@@ -63,6 +63,11 @@ create table budget_categories (
   name text not null,
   yearly_allocated numeric not null default 0 check (yearly_allocated >= 0),
   budget_period text not null default 'yearly' check (budget_period in ('monthly', 'yearly')),
+  reset_frequency text not null default 'monthly' check (reset_frequency in ('monthly', 'yearly')),
+  reset_start_day integer not null default 1 check (reset_start_day between 1 and 31),
+  rollover_enabled boolean not null default false,
+  rollover_mode text not null default 'all_unused' check (rollover_mode in ('all_unused', 'custom_cap')),
+  rollover_cap numeric check (rollover_cap is null or rollover_cap >= 0),
   color text not null default '#6C63FF',
   icon text,
   created_at timestamptz default now()

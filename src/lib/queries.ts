@@ -587,7 +587,16 @@ export function useAddBudgetCategory() {
     mutationFn: async (cat: Omit<BudgetCategory, 'id' | 'created_at' | 'budget_period'> & Partial<Pick<BudgetCategory, 'budget_period'>>) => {
       const userId = await getCurrentUserId()
       if (!userId) return localAddCategory(cat)
-      const payload = { budget_period: 'monthly' as const, ...cat }
+      const budgetPeriod = cat.budget_period ?? 'monthly'
+      const payload: Omit<BudgetCategory, 'id' | 'created_at'> = {
+        ...cat,
+        budget_period: budgetPeriod,
+        reset_frequency: cat.reset_frequency ?? cat.budget_period ?? 'monthly',
+        reset_start_day: cat.reset_start_day ?? 1,
+        rollover_enabled: cat.rollover_enabled ?? false,
+        rollover_mode: cat.rollover_mode ?? 'all_unused',
+        rollover_cap: cat.rollover_cap ?? null,
+      }
       const tempId = crypto.randomUUID()
       const tempItem: BudgetCategory = { ...payload, id: tempId, user_id: userId, created_at: new Date().toISOString() }
       if (isOffline()) {
@@ -670,10 +679,20 @@ export function useRenameBudgetCategory() {
 export function useUpdateBudgetCategory() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, yearly_allocated, budget_period, color }: Pick<BudgetCategory, 'id' | 'yearly_allocated' | 'budget_period' | 'color'>) => {
+    mutationFn: async ({ id, ...patch }: Partial<Pick<BudgetCategory,
+      'yearly_allocated' |
+      'budget_period' |
+      'reset_frequency' |
+      'reset_start_day' |
+      'rollover_enabled' |
+      'rollover_mode' |
+      'rollover_cap' |
+      'color' |
+      'icon' |
+      'name'
+    >> & { id: string }) => {
       const userId = await getCurrentUserId()
-      if (!userId) { localUpdateCategory(id, { yearly_allocated, budget_period, color }); return }
-      const patch = { yearly_allocated, budget_period, color }
+      if (!userId) { localUpdateCategory(id, patch); return }
       if (isOffline()) {
         cacheUpdateItem('budget_categories', id, patch)
         enqueue({ table: 'budget_categories', op: 'update', data: patch as Record<string, unknown>, matchId: id, userId })

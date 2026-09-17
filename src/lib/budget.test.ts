@@ -1,5 +1,42 @@
 import { describe, it, expect } from 'vitest'
-import { getOverspendRisk, getCategoryUsedPct, getMonthlyRollover, isInBudgetPeriod, toMonthlyAllocation } from './budget'
+import {
+  getBudgetResetStartLabel,
+  getOverspendRisk,
+  getCategoryUsedPct,
+  getMonthlyRollover,
+  isInBudgetPeriod,
+  normalizeBudgetSettings,
+  toMonthlyAllocation,
+  type BudgetResetFrequency,
+  type BudgetRolloverMode,
+} from './budget'
+
+describe('budget setting defaults', () => {
+  it('normalizes missing budget settings for older cached categories', () => {
+    const normalized = normalizeBudgetSettings({
+      id: 'food',
+      name: 'Food',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      color: '#A9F5C7',
+    })
+
+    expect(normalized.reset_frequency).toBe<BudgetResetFrequency>('monthly')
+    expect(normalized.reset_start_day).toBe(1)
+    expect(normalized.rollover_enabled).toBe(false)
+    expect(normalized.rollover_mode).toBe<BudgetRolloverMode>('all_unused')
+    expect(normalized.rollover_cap).toBeNull()
+  })
+
+  it('labels reset start days from 1st to 31st day of the month', () => {
+    expect(getBudgetResetStartLabel(1)).toBe('1st day of the month')
+    expect(getBudgetResetStartLabel(2)).toBe('2nd day of the month')
+    expect(getBudgetResetStartLabel(3)).toBe('3rd day of the month')
+    expect(getBudgetResetStartLabel(4)).toBe('4th day of the month')
+    expect(getBudgetResetStartLabel(21)).toBe('21st day of the month')
+    expect(getBudgetResetStartLabel(31)).toBe('31st day of the month')
+  })
+})
 
 describe('getOverspendRisk', () => {
   it('returns Low when remaining > 40%', () => {

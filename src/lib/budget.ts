@@ -1,5 +1,7 @@
 export type RiskLevel = 'Low' | 'Medium' | 'High'
 export type BudgetPeriod = 'monthly' | 'yearly'
+export type { BudgetResetFrequency, BudgetRolloverMode } from '@/types'
+import type { BudgetCategory, BudgetResetFrequency, BudgetRolloverMode, Transaction } from '@/types'
 
 export function getOverspendRisk(remaining: number, total: number): RiskLevel {
   const pct = remaining / total
@@ -26,6 +28,39 @@ export function isInBudgetPeriod(date: string, period: BudgetPeriod, now = new D
   return year === currentYear
 }
 
+export function normalizeBudgetSettings(
+  category: BudgetCategory,
+): BudgetCategory & {
+  reset_frequency: BudgetResetFrequency
+  reset_start_day: number
+  rollover_enabled: boolean
+  rollover_mode: BudgetRolloverMode
+  rollover_cap: number | null
+} {
+  return {
+    ...category,
+    reset_frequency: category.reset_frequency ?? category.budget_period ?? 'monthly',
+    reset_start_day: category.reset_start_day ?? 1,
+    rollover_enabled: category.rollover_enabled ?? false,
+    rollover_mode: category.rollover_mode ?? 'all_unused',
+    rollover_cap: category.rollover_cap ?? null,
+  }
+}
+
+export function getBudgetResetStartLabel(day: number): string {
+  const mod100 = day % 100
+  const suffix = mod100 >= 11 && mod100 <= 13
+    ? 'th'
+    : day % 10 === 1
+      ? 'st'
+      : day % 10 === 2
+        ? 'nd'
+        : day % 10 === 3
+          ? 'rd'
+          : 'th'
+  return `${day}${suffix} day of the month`
+}
+
 /** Unspent allowance from the month before periodDate that rolls into the
  *  current month (never negative; 0 when the category overspent). */
 export function getMonthlyRollover(
@@ -46,8 +81,6 @@ export function getMonthlyRollover(
     .reduce((s, t) => s + t.amount, 0)
   return Math.max(0, allocated - spent)
 }
-
-import type { Transaction, BudgetCategory } from '@/types'
 
 /** Expense transactions in periodDate's month whose category matches no budget category (case-insensitive). */
 export function getUnmatchedExpenses(
