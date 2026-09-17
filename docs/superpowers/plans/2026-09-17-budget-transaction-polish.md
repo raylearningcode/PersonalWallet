@@ -29,6 +29,7 @@
 - Modify `src/pages/Budget.test.tsx`: funded-only/add-budget/rollover UI coverage.
 - Modify `src/pages/Dashboard.tsx`: fix spending trend spacing/overlap.
 - Modify `src/pages/Dashboard.test.tsx`: regression for trend labels.
+- Modify `src/lib/localStore.ts` and `src/lib/queries.ts`: verify new budget/category fields work in guest/offline mode and queued remote sync payloads include them.
 
 ---
 
@@ -1136,7 +1137,130 @@ git commit -m "Clean up dashboard spending trend"
 
 ---
 
-### Task 10: Final Verification
+### Task 10: Basic Offline Compatibility
+
+**Files:**
+- Modify: `src/lib/localStore.ts`
+- Modify: `src/lib/queries.ts`
+- Test: `src/lib/queries.test.tsx`
+
+- [ ] **Step 1: Write failing offline persistence tests**
+
+Add to `src/lib/queries.test.tsx` or extend the existing offline/local tests in that file:
+
+```tsx
+it('keeps budget rollover settings when adding a category offline', async () => {
+  setCurrentUserForTest(null)
+
+  const { result } = renderHook(() => useAddBudgetCategory(), { wrapper: queryWrapper })
+  await act(async () => {
+    await result.current.mutateAsync({
+      name: 'Dining out',
+      yearly_allocated: 500000,
+      budget_period: 'monthly',
+      reset_frequency: 'monthly',
+      reset_start_day: 5,
+      rollover_enabled: true,
+      rollover_mode: 'custom_cap',
+      rollover_cap: 100000,
+      color: '#64748B',
+      icon: '🍔',
+    })
+  })
+
+  expect(localGetCategories()).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      name: 'Dining out',
+      reset_frequency: 'monthly',
+      reset_start_day: 5,
+      rollover_enabled: true,
+      rollover_mode: 'custom_cap',
+      rollover_cap: 100000,
+      icon: '🍔',
+    }),
+  ]))
+})
+
+it('queues budget setting updates when offline with an authenticated user', async () => {
+  setCurrentUserForTest('user-1')
+  setOfflineForTest(true)
+  localAddCategory({
+    name: 'Food',
+    yearly_allocated: 500000,
+    budget_period: 'monthly',
+    color: '#64748B',
+  })
+  const food = localGetCategories().find(c => c.name === 'Food')!
+
+  const { result } = renderHook(() => useUpdateBudgetCategory(), { wrapper: queryWrapper })
+  await act(async () => {
+    await result.current.mutateAsync({
+      id: food.id,
+      yearly_allocated: 600000,
+      reset_frequency: 'monthly',
+      reset_start_day: 10,
+      rollover_enabled: true,
+      rollover_mode: 'all_unused',
+      rollover_cap: null,
+    })
+  })
+
+  expect(readQueuedOperationsForTest()).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      table: 'budget_categories',
+      op: 'update',
+      data: expect.objectContaining({
+        reset_start_day: 10,
+        rollover_enabled: true,
+        rollover_mode: 'all_unused',
+      }),
+    }),
+  ]))
+})
+```
+
+If the existing `src/lib/queries.test.tsx` uses different test helper names, add small exported test helpers in the relevant modules instead of changing behavior-only assertions.
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npm run test -- src/lib/queries.test.tsx --run`
+
+Expected: FAIL until the local/offline helpers and mutation payloads preserve the new fields.
+
+- [ ] **Step 3: Implement guest/local persistence**
+
+Ensure `localAddCategory` and `localUpdateCategory` preserve every new budget setting:
+
+```ts
+reset_frequency: patch.reset_frequency ?? existing.reset_frequency ?? existing.budget_period ?? 'monthly',
+reset_start_day: patch.reset_start_day ?? existing.reset_start_day ?? 1,
+rollover_enabled: patch.rollover_enabled ?? existing.rollover_enabled ?? false,
+rollover_mode: patch.rollover_mode ?? existing.rollover_mode ?? 'all_unused',
+rollover_cap: patch.rollover_cap ?? existing.rollover_cap ?? null,
+```
+
+- [ ] **Step 4: Implement queued sync payload preservation**
+
+In `useAddBudgetCategory` and `useUpdateBudgetCategory`, ensure offline `enqueue(...)` payloads include `reset_frequency`, `reset_start_day`, `rollover_enabled`, `rollover_mode`, `rollover_cap`, `icon`, and `name` whenever provided.
+
+- [ ] **Step 5: Run offline test**
+
+Run: `npm run test -- src/lib/queries.test.tsx --run`
+
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+Run:
+
+```bash
+git add src/lib/localStore.ts src/lib/queries.ts src/lib/queries.test.tsx
+git commit -m "Cover budget settings offline persistence"
+```
+
+---
+
+### Task 11: Final Verification
 
 **Files:**
 - Review all modified files.
@@ -1146,7 +1270,7 @@ git commit -m "Clean up dashboard spending trend"
 Run:
 
 ```bash
-npm run test -- src/lib/budget.test.ts src/pages/Budget.test.tsx src/pages/AddTransaction.test.tsx src/components/transactions/SelectorSheet.test.tsx src/components/layout/QuickAddSheet.test.tsx src/pages/Dashboard.test.tsx --run
+npm run test -- src/lib/budget.test.ts src/lib/queries.test.tsx src/pages/Budget.test.tsx src/pages/AddTransaction.test.tsx src/components/transactions/SelectorSheet.test.tsx src/components/layout/QuickAddSheet.test.tsx src/pages/Dashboard.test.tsx --run
 ```
 
 Expected: all listed suites PASS.
@@ -1189,6 +1313,8 @@ Manually check:
 - Desktop quick add no longer looks like a mobile bottom sheet.
 - Bank transfer shows transfer fee controls.
 - Dashboard spending trend labels do not overlap.
+- Guest/offline category creation keeps icon and rollover settings.
+- Offline authenticated budget edits queue all new budget setting fields.
 
 - [ ] **Step 6: Commit verification fixes if any**
 
