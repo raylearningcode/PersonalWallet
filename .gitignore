@@ -5,6 +5,7 @@ dist/
 !.env.example
 .claude/
 .superpowers/
+.worktrees/
 Wallet_Tracker/
 
 *.log
