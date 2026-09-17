@@ -23,4 +23,4 @@ alter table budget_categories
 
 update budget_categories
 set reset_frequency = coalesce(budget_period, 'monthly')
-where reset_frequency is null;
+where budget_period is not null;
