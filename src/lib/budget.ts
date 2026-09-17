@@ -90,11 +90,62 @@ export function getCategoryRollover(
   const settings = normalizeBudgetSettings(category)
   if (!settings.rollover_enabled || settings.reset_frequency !== 'monthly' || settings.yearly_allocated <= 0) return 0
 
-  const raw = getMonthlyRollover(transactions, settings.name, settings.yearly_allocated, periodDate)
+  const currentPeriodStart = getMonthlyResetPeriodStart(periodDate, settings.reset_start_day)
+  const previousPeriodStart = getClampedMonthDate(
+    currentPeriodStart.getFullYear(),
+    currentPeriodStart.getMonth() - 1,
+    settings.reset_start_day,
+  )
+  const previousPeriodSpend = getCategorySpendBetween(
+    transactions,
+    settings.name,
+    dateKey(previousPeriodStart),
+    dateKey(currentPeriodStart),
+  )
+  const raw = Math.max(0, settings.yearly_allocated - previousPeriodSpend)
   if (settings.rollover_mode === 'custom_cap') {
     return Math.min(raw, Math.max(0, settings.rollover_cap ?? 0))
   }
   return raw
+}
+
+function getMonthlyResetPeriodStart(periodDate: Date, resetStartDay: number): Date {
+  const year = periodDate.getFullYear()
+  const month = periodDate.getMonth()
+  const currentMonthDay = clampDayToMonth(year, month, resetStartDay)
+  const startMonth = periodDate.getDate() >= currentMonthDay ? month : month - 1
+  return getClampedMonthDate(year, startMonth, resetStartDay)
+}
+
+function getClampedMonthDate(year: number, month: number, day: number): Date {
+  const start = new Date(year, month, 1)
+  return new Date(start.getFullYear(), start.getMonth(), clampDayToMonth(start.getFullYear(), start.getMonth(), day))
+}
+
+function clampDayToMonth(year: number, month: number, day: number): number {
+  return Math.min(day, new Date(year, month + 1, 0).getDate())
+}
+
+function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function getCategorySpendBetween(
+  transactions: Transaction[],
+  categoryName: string,
+  startDate: string,
+  endDate: string,
+): number {
+  return transactions.reduce((sum, t) => {
+    if (t.type === 'income' || t.type === 'transfer' || t.is_system_generated) return sum
+    if (t.date < startDate || t.date >= endDate) return sum
+    if (t.split_portions && t.split_portions.length > 0) {
+      return sum + t.split_portions
+        .filter(portion => portion.category === categoryName)
+        .reduce((portionSum, portion) => portionSum + portion.amount, 0)
+    }
+    return t.category === categoryName ? sum + t.amount : sum
+  }, 0)
 }
 
 /** Expense transactions in periodDate's month whose category matches no budget category (case-insensitive). */

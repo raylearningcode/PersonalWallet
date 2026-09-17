@@ -236,4 +236,44 @@ describe('getCategoryRollover', () => {
     })
     expect(getCategoryRollover(txs, cat, periodDate)).toBe(250)
   })
+
+  it('uses the previous custom reset period when reset_start_day is not the first', () => {
+    const cat = normalizeBudgetSettings({
+      id: 'food',
+      name: 'Food',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      rollover_enabled: true,
+      reset_start_day: 15,
+      color: '#A9F5C7',
+    })
+    const customResetTxs = [
+      tx({ id: 'before-prev-period', category: 'Food', amount: 400, date: '2026-08-10' }),
+      tx({ id: 'in-prev-period-aug', category: 'Food', amount: 100, date: '2026-08-20' }),
+      tx({ id: 'in-prev-period-sep', category: 'Food', amount: 300, date: '2026-09-10' }),
+      tx({ id: 'current-period', category: 'Food', amount: 200, date: '2026-09-15' }),
+    ]
+
+    expect(getCategoryRollover(customResetTxs, cat, new Date(2026, 8, 20))).toBe(600)
+  })
+
+  it('reduces rollover by prior-period split portions attributed to the category', () => {
+    const cat = normalizeBudgetSettings({
+      id: 'food',
+      name: 'Food',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      rollover_enabled: true,
+      color: '#A9F5C7',
+    })
+    const splitTxs = [
+      tx({ id: 'direct-food', category: 'Food', amount: 200, date: '2026-08-10' }),
+      tx({ id: 'split-food', category: 'Split', amount: 700, date: '2026-08-11', split_portions: [
+        { category: 'Food', amount: 300 },
+        { category: 'Fun', amount: 400 },
+      ] }),
+    ]
+
+    expect(getCategoryRollover(splitTxs, cat, periodDate)).toBe(500)
+  })
 })
