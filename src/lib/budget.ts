@@ -82,6 +82,21 @@ export function getMonthlyRollover(
   return Math.max(0, allocated - spent)
 }
 
+export function getCategoryRollover(
+  transactions: Transaction[],
+  category: BudgetCategory,
+  periodDate: Date = new Date(),
+): number {
+  const settings = normalizeBudgetSettings(category)
+  if (!settings.rollover_enabled || settings.reset_frequency !== 'monthly' || settings.yearly_allocated <= 0) return 0
+
+  const raw = getMonthlyRollover(transactions, settings.name, settings.yearly_allocated, periodDate)
+  if (settings.rollover_mode === 'custom_cap') {
+    return Math.min(raw, Math.max(0, settings.rollover_cap ?? 0))
+  }
+  return raw
+}
+
 /** Expense transactions in periodDate's month whose category matches no budget category (case-insensitive). */
 export function getUnmatchedExpenses(
   transactions: Transaction[],

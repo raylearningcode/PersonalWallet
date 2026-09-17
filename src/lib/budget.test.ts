@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   getBudgetResetStartLabel,
+  getCategoryRollover,
   getOverspendRisk,
   getCategoryUsedPct,
   getMonthlyRollover,
@@ -186,5 +187,53 @@ describe('getMonthlyRollover', () => {
   it('ignores other categories, other months, and system transfers', () => {
     expect(getMonthlyRollover(txs, 'Other', 1000, periodDate)).toBe(1)
     expect(getMonthlyRollover([txs[2]], 'Food', 1000, periodDate)).toBe(1000)
+  })
+})
+
+describe('getCategoryRollover', () => {
+  const periodDate = new Date(2026, 8, 15)
+  const txs = [
+    tx({ id: 'aug-food', category: 'Food', amount: 600, date: '2026-08-10' }),
+    tx({ id: 'aug-fun', category: 'Fun', amount: 200, date: '2026-08-11' }),
+    tx({ id: 'sep-food', category: 'Food', amount: 100, date: '2026-09-02' }),
+  ]
+
+  it('returns zero when rollover is disabled', () => {
+    const cat = normalizeBudgetSettings({
+      id: 'food',
+      name: 'Food',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      rollover_enabled: false,
+      color: '#A9F5C7',
+    })
+    expect(getCategoryRollover(txs, cat, periodDate)).toBe(0)
+  })
+
+  it('rolls over all unused previous-period money when enabled', () => {
+    const cat = normalizeBudgetSettings({
+      id: 'food',
+      name: 'Food',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      rollover_enabled: true,
+      rollover_mode: 'all_unused',
+      color: '#A9F5C7',
+    })
+    expect(getCategoryRollover(txs, cat, periodDate)).toBe(400)
+  })
+
+  it('caps rollover when custom cap is set', () => {
+    const cat = normalizeBudgetSettings({
+      id: 'food',
+      name: 'Food',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      rollover_enabled: true,
+      rollover_mode: 'custom_cap',
+      rollover_cap: 250,
+      color: '#A9F5C7',
+    })
+    expect(getCategoryRollover(txs, cat, periodDate)).toBe(250)
   })
 })
