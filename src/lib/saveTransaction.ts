@@ -80,6 +80,10 @@ export async function saveTransactionEntry(o: SaveEntryOptions): Promise<boolean
     return false
   }
   const selectedCategory = o.type === 'income' ? (o.category || INCOME_CATEGORIES[0]) : o.category
+  if (o.type !== 'transfer' && !o.category) {
+    toast.error('Please select a category')
+    return false
+  }
   if (o.type !== 'transfer' && !o.walletId) {
     toast.error('Please select a wallet')
     return false

@@ -21,15 +21,16 @@ import { getMerchantSuggestion } from '@/lib/financeOs'
 import { pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, isAiConfigured } from '@/lib/ai'
 import { takePhotoWithCamera, isNativeCameraAvailable } from '@/lib/camera'
-import { saveTransactionEntry, LAST_CATEGORY_KEY, LAST_WALLET_KEY, INCOME_CATEGORIES } from '@/lib/saveTransaction'
+import { saveTransactionEntry, INCOME_CATEGORIES } from '@/lib/saveTransaction'
 import { todayLocal } from '@/lib/utils'
-import { ArrowLeft, ScanLine, Loader2, ChevronDown, ChevronUp, Camera as CameraIcon, CheckCircle } from 'lucide-react'
+import { ArrowLeft, ScanLine, Loader2, ChevronDown, Camera as CameraIcon, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { MoneyField } from '@/components/mobile/MoneyField'
 import { CashChangeAssistant } from '@/components/transactions/CashChangeAssistant'
 import type { Transaction } from '@/types'
 
 export type EntryType = 'income' | 'expense' | 'transfer'
+type PickerKind = 'category' | 'wallet' | 'fromWallet' | 'toWallet'
 
 interface TransactionFormProps {
   /** Type the form opens with. */
@@ -69,7 +70,9 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
   const [walletId, setWalletId] = useState('')
   const [transferWalletId, setTransferWalletId] = useState('')
   const [scanning, setScanning] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(true)
+  const [picker, setPicker] = useState<PickerKind | null>(null)
+  const [pickerSearch, setPickerSearch] = useState('')
   const [nativeCameraAvailable, setNativeCameraAvailable] = useState(false)
 
   // Cash-change assistant state
@@ -97,23 +100,6 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
 
   const receiptInputRef = useRef<HTMLInputElement>(null)
 
-  // Restore last-used wallet and category
-  useEffect(() => {
-    if (!walletId && wallets.length > 0) {
-      const last = localStorage.getItem(LAST_WALLET_KEY)
-      setWalletId(pickQuickAddWallet(wallets, last, false)?.id ?? '')
-    }
-    if (!transferWalletId && wallets.length > 1) setTransferWalletId(wallets[1].id)
-  }, [wallets, walletId, transferWalletId])
-
-  useEffect(() => {
-    if (!category && categories.length > 0) {
-      const last = localStorage.getItem(LAST_CATEGORY_KEY)
-      const found = last ? categories.find(c => c.name === last) : null
-      setCategory(found ? found.name : categories[0].name)
-    }
-  }, [categories, category])
-
   useEffect(() => {
     setInputCurrency(money.displayCurrency)
   }, [money.displayCurrency])
@@ -128,8 +114,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
   // would trap every save behind "Enter the cash amount given".
   useEffect(() => {
     if (!initialCash || wallets.length === 0) return
-    const last = localStorage.getItem(LAST_WALLET_KEY)
-    const picked = pickQuickAddWallet(wallets, last, true)
+    const picked = pickQuickAddWallet(wallets, null, true)
     if (!walletId) setWalletId(picked?.id ?? '')
     const selected = wallets.find(w => w.id === walletId)
     if (!initialCashAppliedRef.current && selected?.type === 'cash') {
@@ -203,10 +188,12 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     setInputCurrency(money.displayCurrency)
     setDate(todayLocal())
     setDescription('')
-    setCategory(categories[0]?.name ?? '')
-    setWalletId(wallets[0]?.id ?? '')
-    setTransferWalletId(wallets[1]?.id ?? '')
-    setShowAdvanced(false)
+    setCategory('')
+    setWalletId('')
+    setTransferWalletId('')
+    setShowAdvanced(true)
+    setPicker(null)
+    setPickerSearch('')
     setCashEnabled(false)
     setCashTendered('')
     setChangeCoinsWalletId('')
@@ -310,7 +297,9 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
 
   const changeType = (t: EntryType) => {
     setType(t)
-    setCategory(t === 'income' ? INCOME_CATEGORIES[0] : categories[0]?.name ?? '')
+    setCategory('')
+    setWalletId('')
+    setTransferWalletId('')
     setCashEnabled(false)
     setCashTendered('')
     setSplitEnabled(false)
@@ -352,11 +341,102 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     </div>
   )
 
+  const openPicker = (kind: PickerKind) => {
+    setPicker(kind)
+    setPickerSearch('')
+  }
+
+  const pickerButton = (label: string, value: string) => (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={() => openPicker(label.includes('category') ? 'category' : 'wallet')}
+      className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-secondary px-3 text-left text-sm font-bold text-foreground transition-colors hover:border-primary/40"
+    >
+      <span className={value ? 'text-foreground' : 'text-muted-foreground'}>
+        {value || (label.includes('category') ? 'Select category' : 'Select wallet')}
+      </span>
+      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+    </button>
+  )
+
+  const walletPickerButton = (label: string, value: string, kind: PickerKind) => (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={() => openPicker(kind)}
+      className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-secondary px-3 text-left text-sm font-bold text-foreground transition-colors hover:border-primary/40"
+    >
+      <span className={value ? 'text-foreground' : 'text-muted-foreground'}>{value || 'Select wallet'}</span>
+      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+    </button>
+  )
+
+  const pickerPanel = () => {
+    if (!picker) return null
+    const isCategory = picker === 'category'
+    const title = isCategory
+      ? 'Choose category'
+      : picker === 'fromWallet'
+      ? 'Choose from wallet'
+      : picker === 'toWallet'
+      ? 'Choose to wallet'
+      : 'Choose wallet'
+    const categoryOptions = type === 'income'
+      ? INCOME_CATEGORIES.map(c => ({ key: c, label: c, value: c, meta: '' }))
+      : categories.map(c => ({ key: c.id, label: `${c.icon ? `${c.icon} ` : ''}${c.name}`, value: c.name, meta: c.yearly_allocated > 0 ? 'Budgeted' : '' }))
+    const walletOptions = wallets.map(w => ({ key: w.id, label: w.name, value: w.id, meta: w.type.replace('_', ' ') }))
+    const options = (isCategory ? categoryOptions : walletOptions).filter(option =>
+      option.label.toLowerCase().includes(pickerSearch.trim().toLowerCase())
+    )
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-end bg-background/60" onClick={() => setPicker(null)}>
+        <div
+          role="dialog"
+          aria-label={title}
+          className="max-h-[calc(100dvh-7.5rem)] w-full rounded-t-3xl border border-border bg-background px-4 pb-safe-6 pt-4 shadow-2xl"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-muted" />
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-base font-extrabold text-foreground">{title}</p>
+            <button type="button" className="text-sm font-bold text-muted-foreground" onClick={() => setPicker(null)}>Close</button>
+          </div>
+          <Input
+            aria-label={`Search ${isCategory ? 'categories' : 'wallets'}`}
+            className="mb-3 bg-secondary"
+            value={pickerSearch}
+            onChange={e => setPickerSearch(e.target.value)}
+            placeholder="Search"
+          />
+          <div className="max-h-[52dvh] overflow-y-auto pb-2">
+            {options.map(option => (
+              <button
+                key={option.key}
+                type="button"
+                aria-label={option.label}
+                onClick={() => {
+                  if (picker === 'category') setCategory(option.value)
+                  if (picker === 'wallet') changeWallet(option.value)
+                  if (picker === 'fromWallet') setWalletId(option.value)
+                  if (picker === 'toWallet') setTransferWalletId(option.value)
+                  setPicker(null)
+                }}
+                className="flex w-full items-center justify-between gap-3 border-b border-border/60 px-1 py-3 text-left"
+              >
+                <span className="font-bold text-foreground">{option.label}</span>
+                {option.meta && <span className="text-xs capitalize text-muted-foreground">{option.meta}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const categoryChips = () => {
     if (type === 'transfer') return null
-    const chips = type === 'income'
-      ? INCOME_CATEGORIES.map(c => ({ key: c, name: c, icon: null, color: '' }))
-      : categories.map(c => ({ key: c.id, name: c.name, icon: c.icon, color: c.color }))
     return (
       <div>
         <p className="mb-2 text-sm font-bold text-foreground">Category</p>
@@ -370,30 +450,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
             <span>Set up now →</span>
           </Link>
         ) : (
-          <div className={`flex flex-wrap gap-2 ${chips.length > 10 ? 'max-h-28 overflow-y-auto' : ''}`}>
-            {chips.map(c => (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => setCategory(c.name)}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold transition-colors ${
-                  category === c.name
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {c.icon ? (
-                  <span className="leading-none">{c.icon}</span>
-                ) : c.color ? (
-                  <span
-                    className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: category === c.name ? 'currentColor' : c.color }}
-                  />
-                ) : null}
-                {c.name}
-              </button>
-            ))}
-          </div>
+          pickerButton('Choose category', category)
         )}
       </div>
     )
@@ -410,25 +467,11 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="mb-2 text-sm font-bold text-foreground">From</p>
-            <select
-              aria-label="From wallet"
-              className="h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-              value={walletId}
-              onChange={e => setWalletId(e.target.value)}
-            >
-              {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
+            {walletPickerButton('Choose from wallet', wallets.find(w => w.id === walletId)?.name ?? '', 'fromWallet')}
           </div>
           <div>
             <p className="mb-2 text-sm font-bold text-foreground">To</p>
-            <select
-              aria-label="To wallet"
-              className="h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-              value={transferWalletId}
-              onChange={e => setTransferWalletId(e.target.value)}
-            >
-              {wallets.map(w => <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}</option>)}
-            </select>
+            {walletPickerButton('Choose to wallet', wallets.find(w => w.id === transferWalletId)?.name ?? '', 'toWallet')}
           </div>
         </div>
       )
@@ -445,31 +488,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
             <span>No wallets yet</span>
             <span>Add one →</span>
           </Link>
-        ) : wallets.length <= 5 ? (
-          <div className="flex flex-wrap gap-2">
-            {wallets.map(w => (
-              <button
-                key={w.id}
-                type="button"
-                onClick={() => changeWallet(w.id)}
-                className={`rounded-full px-3 py-1.5 text-sm font-bold transition-colors ${
-                  walletId === w.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {w.name}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <select
-            aria-label="Wallet"
-            className="h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-            value={walletId || wallets[0]?.id || ''}
-            onChange={e => changeWallet(e.target.value)}
-          >
-            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-          </select>
-        )}
+        ) : pickerButton('Choose wallet', wallets.find(w => w.id === walletId)?.name ?? '')}
       </div>
     )
   }
@@ -761,17 +780,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
                 <span>Set up now →</span>
               </Link>
             ) : (
-              <select
-                aria-label="Category"
-                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-              >
-                {type === 'income'
-                  ? INCOME_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)
-                  : categories.map(c => <option key={c.id} value={c.name}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>)
-                }
-              </select>
+              <div className="mt-2">{pickerButton('Choose category', category)}</div>
             )}
           </div>
           <div>
@@ -786,14 +795,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
                 <span>Add one →</span>
               </Link>
             ) : (
-              <select
-                aria-label="Wallet"
-                className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-                value={walletId}
-                onChange={e => changeWallet(e.target.value)}
-              >
-                {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </select>
+              <div className="mt-2">{pickerButton('Choose wallet', wallets.find(w => w.id === walletId)?.name ?? '')}</div>
             )}
           </div>
         </>
@@ -801,25 +803,11 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
         <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-sm font-bold text-foreground">From wallet</Label>
-            <select
-              aria-label="From wallet"
-              className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-              value={walletId}
-              onChange={e => setWalletId(e.target.value)}
-            >
-              {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
+            <div className="mt-2">{walletPickerButton('Choose from wallet', wallets.find(w => w.id === walletId)?.name ?? '', 'fromWallet')}</div>
           </div>
           <div>
             <Label className="text-sm font-bold text-foreground">To wallet</Label>
-            <select
-              aria-label="To wallet"
-              className="mt-2 h-11 w-full rounded-md border border-input bg-secondary px-3 text-sm font-bold text-foreground outline-none"
-              value={transferWalletId}
-              onChange={e => setTransferWalletId(e.target.value)}
-            >
-              {wallets.map(w => <option key={w.id} value={w.id} disabled={w.id === walletId}>{w.name}</option>)}
-            </select>
+            <div className="mt-2">{walletPickerButton('Choose to wallet', wallets.find(w => w.id === transferWalletId)?.name ?? '', 'toWallet')}</div>
           </div>
         </div>
       )}
@@ -1070,15 +1058,6 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
         </div>
       )}
 
-      {/* Back to simple mode */}
-      <button
-        type="button"
-        onClick={() => setShowAdvanced(false)}
-        className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-muted-foreground hover:text-foreground"
-      >
-        <ChevronUp className="h-3.5 w-3.5" />
-        Fewer options
-      </button>
     </>
   )
 
@@ -1135,6 +1114,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
 
         {/* ── Fixed save button ── */}
         {saveBar()}
+        {pickerPanel()}
       </div>
     )
   }
@@ -1169,6 +1149,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
 
         {/* —— Sticky save button —— */}
         {saveBar()}
+        {pickerPanel()}
       </div>
     </>
   )

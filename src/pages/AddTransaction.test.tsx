@@ -73,8 +73,44 @@ function renderPage() {
 }
 
 describe('AddTransaction validation', () => {
+  it('starts with empty category and wallet instead of reusing last choices', () => {
+    localStorage.setItem('finpath_last_category', 'Food')
+    localStorage.setItem('finpath_last_wallet', 'cash')
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: 'Choose category' })).toHaveTextContent('Select category')
+    expect(screen.getByRole('button', { name: 'Choose wallet' })).toHaveTextContent('Select wallet')
+  })
+
+  it('opens picker panels for category and wallet choices', () => {
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
+    expect(screen.getByRole('dialog', { name: 'Choose category' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
+    expect(screen.getByRole('button', { name: 'Choose category' })).toHaveTextContent('Food')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
+    expect(screen.getByRole('dialog', { name: 'Choose wallet' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    expect(screen.getByRole('button', { name: 'Choose wallet' })).toHaveTextContent('Cash')
+  })
+
+  it('shows split and multi-wallet controls without an advanced-details toggle', () => {
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: /Advanced details/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Pay from multiple wallets' })).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Split across categories' })).not.toBeInTheDocument()
+  })
+
   it('blocks cash-mode saving when no tendered amount is given', () => {
     renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Enable cash change tracking' }))
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
 
@@ -86,6 +122,10 @@ describe('AddTransaction validation', () => {
 
   it('blocks saving when cash given is less than the expense amount', () => {
     renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Enable cash change tracking' }))
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
     fireEvent.change(screen.getByLabelText('Cash given'), { target: { value: '50' } })
@@ -106,7 +146,10 @@ describe('AddTransaction validation', () => {
     // ?cash=true auto-picks the cash wallet and enables cash mode; switching
     // to a card wallet must keep cash disabled (no re-enable, no switch UI),
     // so the save is not blocked by the "Enter the cash amount given" check.
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Debit card' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save transaction' }))
@@ -118,6 +161,10 @@ describe('AddTransaction validation', () => {
   it('routes cash change through a second transfer and links it to the main transaction', async () => {
     renderPage()
     fireEvent.change(screen.getByLabelText('Input currency'), { target: { value: 'IDR' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Enable cash change tracking' }))
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
     fireEvent.change(screen.getByLabelText('Cash given'), { target: { value: '200' } })
