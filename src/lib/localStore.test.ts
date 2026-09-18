@@ -4,7 +4,7 @@ import { localAddCategory, localGetCategories, localUpdateCategory } from './loc
 describe('localStore budget categories', () => {
   beforeEach(() => {
     localStorage.clear()
-    vi.spyOn(crypto, 'randomUUID').mockReturnValue('cat-offline')
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000001')
   })
 
   it('keeps icon and rollover settings for guest/offline categories', () => {
@@ -31,7 +31,7 @@ describe('localStore budget categories', () => {
     })
     expect(localGetCategories()[0]).toMatchObject(category)
 
-    localUpdateCategory('cat-offline', { rollover_enabled: false, rollover_cap: null })
+    localUpdateCategory('00000000-0000-4000-8000-000000000001', { rollover_enabled: false, rollover_cap: null })
     expect(localGetCategories()[0]).toMatchObject({
       rollover_enabled: false,
       rollover_cap: null,
