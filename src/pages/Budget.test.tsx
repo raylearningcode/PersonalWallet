@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { Budget } from './Budget'
 
@@ -62,6 +62,19 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 const renderBudget = () => render(<MemoryRouter><Budget /></MemoryRouter>)
 
 describe('Budget', () => {
+  beforeEach(() => {
+    addCategory.mockClear()
+    updateCategory.mockClear()
+    deleteCategory.mockClear()
+    mockCategories = [
+      { id: 'cat-1', name: 'Food', yearly_allocated: 600000, budget_period: 'monthly' as const, color: '#A9F5C7', spent: 200000, group: 'Living' },
+      { id: 'cat-2', name: 'Transport', yearly_allocated: 300000, budget_period: 'monthly' as const, color: '#93C5FD', spent: 50000, group: 'Transport' },
+    ]
+    mockTransactions = [
+      { id: 'tx-1', amount: 200000, category: 'Food', type: 'expense' as const, date: '2026-06-01', wallet_id: 'w1', description: 'Lunch', needs_review: false, transfer_wallet_id: null, original_amount: 200000, original_currency: 'IDR' },
+    ]
+  })
+
   it('shows existing budget categories', () => {
     renderBudget()
     expect(screen.getAllByText('Food').length).toBeGreaterThan(0)
@@ -117,6 +130,57 @@ describe('Budget', () => {
     expect(dialog).not.toHaveClass('inset-x-0')
   })
 
+  it('hides categories without a budget from the allocation list', () => {
+    mockCategories = [
+      { id: 'cat-1', name: 'Food', yearly_allocated: 600000, budget_period: 'monthly' as const, color: '#A9F5C7', spent: 200000, group: 'Living' },
+      { id: 'cat-3', name: 'Coffee', yearly_allocated: 0, budget_period: 'monthly' as const, color: '#FFD276', spent: 0, group: 'Food' },
+    ]
+
+    renderBudget()
+
+    expect(screen.getByRole('button', { name: /Open Food budget details/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Open Coffee details/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('No budget set')).not.toBeInTheDocument()
+  })
+
+  it('lets an existing category be selected when assigning a new budget', async () => {
+    mockCategories = [
+      { id: 'cat-1', name: 'Food', yearly_allocated: 600000, budget_period: 'monthly' as const, color: '#A9F5C7', spent: 200000, group: 'Living' },
+      { id: 'cat-3', name: 'Coffee', yearly_allocated: 0, budget_period: 'monthly' as const, color: '#FFD276', spent: 0, group: 'Food' },
+    ]
+
+    renderBudget()
+    fireEvent.click(screen.getByRole('button', { name: 'Add budget category' }))
+    fireEvent.change(screen.getByLabelText('Budget category'), { target: { value: 'cat-3' } })
+    fireEvent.change(screen.getByLabelText('Budget amount'), { target: { value: '150000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save budget' }))
+
+    expect(updateCategory).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'cat-3',
+      yearly_allocated: 150000,
+    }))
+  })
+
+  it('saves reset start day and rollover settings from the budget editor', async () => {
+    renderBudget()
+    fireEvent.click(screen.getByRole('button', { name: /Open Food budget details/i }))
+
+    fireEvent.change(screen.getByLabelText('Reset frequency'), { target: { value: 'yearly' } })
+    fireEvent.change(screen.getByLabelText('Reset start day'), { target: { value: '15' } })
+    fireEvent.click(screen.getByLabelText('Enable rollover'))
+    fireEvent.change(screen.getByLabelText('Rollover cap'), { target: { value: '50000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(updateCategory).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'cat-1',
+      reset_frequency: 'yearly',
+      reset_start_day: 15,
+      rollover_enabled: true,
+      rollover_mode: 'custom_cap',
+      rollover_cap: 50000,
+    }))
+  })
+
   it('shows Unassigned spending when a transaction uses an unknown category', () => {
     const now = new Date()
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -130,7 +194,7 @@ describe('Budget', () => {
     expect(screen.getByText(/Unassigned spending/)).toBeInTheDocument()
   })
 
-  it('shows a single Balancing row with combined spent when the category exists', () => {
+  it('hides a zero-budget Balancing category while avoiding duplicate unassigned alerts', () => {
     const now = new Date()
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     mockCategories = [
@@ -141,9 +205,7 @@ describe('Budget', () => {
       { id: 'tx-other', amount: 150000, category: 'Other', type: 'expense' as const, date: `${currentMonth}-01`, wallet_id: 'w1', description: 'Mystery purchase', needs_review: false, transfer_wallet_id: null, original_amount: 150000, original_currency: 'IDR' },
     ]
     renderBudget()
-    expect(screen.getAllByText('Balancing')).toHaveLength(1)
-    expect(screen.getByText('Includes unknown & unallocated')).toBeInTheDocument()
-    expect(screen.getByText('Rp 150,000')).toBeInTheDocument()
+    expect(screen.queryByText('Balancing')).not.toBeInTheDocument()
     expect(screen.queryByText(/Unassigned spending/)).not.toBeInTheDocument()
   })
 })
