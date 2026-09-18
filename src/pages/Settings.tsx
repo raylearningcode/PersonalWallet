@@ -26,6 +26,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { X, Shield, Pencil, Check, User, ChevronRight, ChevronLeft, HardDrive, Tag, Sparkles, Wallet as WalletIcon, Upload, Download, Banknote, Landmark, Smartphone, CreditCard, TrendingUp, Package, AlertTriangle, Cloud, Lock, RefreshCw } from 'lucide-react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { MoneyField } from '@/components/mobile/MoneyField'
+import { EmojiPicker } from '@/components/categories/EmojiPicker'
 import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
 import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
@@ -68,33 +69,6 @@ const WALLET_TYPE_CARDS = [
 const WALLET_NAME_HINTS: Record<string, string> = {
   cash: 'My wallet', bank: 'BCA / Chase', e_wallet: 'GoPay / PayPal',
   card: 'Visa / Mastercard', investment: 'Stocks', other: 'Misc',
-}
-
-const EMOJI_PALETTE = ['💰', '🍔', '🛒', '🚗', '⛽', '🏠', '⚡', '📱', '💻', '🎮', '📚', '💊', '✈️', '🏖️', '🎁', '💼', '🧾', '🎬', '☕', '👕', '💄', '🐾', '🎓', '🏦', '🛡️', '🎵', '🧹', '🍼', '💪', '🎉']
-
-function EmojiPicker({ value, onChange, ariaLabel }: { value: string; onChange: (emoji: string) => void; ariaLabel: string }) {
-  return (
-    <div role="group" aria-label={ariaLabel} className="flex gap-1 overflow-x-auto pb-1">
-      <button
-        type="button"
-        aria-label="Remove icon"
-        onClick={() => onChange('')}
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors ${value === '' ? 'bg-primary/20 ring-1 ring-primary text-primary' : 'bg-secondary text-muted-foreground hover:bg-muted'}`}
-      >
-        ✕
-      </button>
-      {EMOJI_PALETTE.map(emoji => (
-        <button
-          key={emoji}
-          type="button"
-          onClick={() => onChange(emoji)}
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base transition-colors ${value === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'bg-secondary hover:bg-muted'}`}
-        >
-          {emoji}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 export function Settings() {
@@ -1250,6 +1224,7 @@ export function Settings() {
               </div>
               <button
                 type="button"
+                aria-label="Choose category icon"
                 aria-expanded={showIconStrip}
                 onClick={() => setShowIconStrip(v => !v)}
                 className="text-xs font-bold text-muted-foreground hover:text-foreground"

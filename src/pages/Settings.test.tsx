@@ -163,6 +163,20 @@ describe('Settings', () => {
     // The key stays visible (masked) after saving — it is NOT cleared.
     expect(screen.getByLabelText('Gemini API key')).toHaveValue('AIza-test-key')
   })
+
+  it('adds a category with a selected emoji icon', async () => {
+    renderSettings('/settings?section=categories')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category icon' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use emoji 🍔' }))
+    fireEvent.change(screen.getByPlaceholderText('New category'), { target: { value: 'Dining out' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => expect(addCategory).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Dining out',
+      icon: '🍔',
+    })))
+  })
 })
 
 describe('Settings danger zone', () => {
