@@ -311,18 +311,12 @@ export function Dashboard() {
             <>
               <p className="text-sm font-extrabold text-foreground">{fmt(trendTotal)} total</p>
               <p className="mb-2 text-xs text-muted-foreground">{fmt(trendAvg)} avg / day</p>
-              <div className="relative flex h-24 items-end gap-2" role="img" aria-label={`Daily spending for the last 7 days. ${fmt(trendTotal)} total.`}>
+              <div className="relative flex h-28 items-end gap-1.5 pt-6" role="img" aria-label={`Daily spending for the last 7 days. ${fmt(trendTotal)} total.`}>
                 {trendDays.map(d => {
                   const pct = d.total > 0 ? Math.max(8, (d.total / trendMax) * 100) : 0
-                  const isMax = d.total === trendMax
                   return (
                     <div key={d.date} className="relative flex h-full flex-1 items-end justify-center">
-                      <div className="group relative w-full max-w-10" style={{ height: `${pct}%` }}>
-                        {isMax && (
-                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold text-foreground">
-                            {fmt(d.total)}
-                          </span>
-                        )}
+                      <div className="group relative w-full max-w-8" style={{ height: `${pct}%` }}>
                         <div
                           className="h-full w-full rounded-t-md bg-[#FF8388] transition-opacity group-hover:opacity-75"
                           title={`${d.date} · ${fmt(d.total)}`}
@@ -334,15 +328,15 @@ export function Dashboard() {
                 {/* 7-day average marker */}
                 <div
                   className="pointer-events-none absolute inset-x-0 border-t border-dashed border-muted-foreground/40"
-                  style={{ bottom: `${Math.min(100, (trendAvg / trendMax) * 100)}%` }}
+                  style={{ bottom: `${Math.min(92, (trendAvg / trendMax) * 100)}%` }}
                   aria-hidden="true"
                 />
               </div>
-              <div className="mt-1.5 flex gap-2">
+              <div className="mt-1.5 grid grid-cols-7 gap-1">
                 {trendDays.map(d => (
                   <span
                     key={d.date}
-                    className={`flex-1 text-center text-[10px] font-bold ${d.date === todayLocal() ? 'text-foreground' : 'text-muted-foreground'}`}
+                    className={`min-w-0 truncate text-center text-[10px] font-bold ${d.date === todayLocal() ? 'text-foreground' : 'text-muted-foreground'}`}
                   >
                     {d.date === todayLocal() ? 'Today' : d.label}
                   </span>

@@ -84,7 +84,7 @@ describe('Dashboard', () => {
     txState.txs = [...DEFAULT_TXS, { id: 'tx-today', description: 'Coffee', amount: 50000, original_amount: 50000, original_currency: 'IDR', type: 'expense', category: 'Food', date: todayStr, needs_review: false }]
 
     render(<MemoryRouter><Dashboard /></MemoryRouter>)
-    expect(screen.getByRole('img', { name: /Daily spending for the last 7 days/ })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Daily spending for the last 7 days/ })).toHaveClass('pt-6')
     expect(screen.getByText('dashed line = 7-day average')).toBeInTheDocument()
     expect(screen.queryByText('No spending in the last 7 days.')).not.toBeInTheDocument()
   })
