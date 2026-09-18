@@ -40,7 +40,7 @@ export function normalizeBudgetSettings(
   return {
     ...category,
     reset_frequency: category.reset_frequency ?? category.budget_period ?? 'monthly',
-    reset_start_day: category.reset_start_day ?? 1,
+    reset_start_day: clampResetStartDay(category.reset_start_day ?? 1),
     rollover_enabled: category.rollover_enabled ?? false,
     rollover_mode: category.rollover_mode ?? 'all_unused',
     rollover_cap: category.rollover_cap ?? null,
@@ -48,17 +48,18 @@ export function normalizeBudgetSettings(
 }
 
 export function getBudgetResetStartLabel(day: number): string {
-  const mod100 = day % 100
+  const safeDay = clampResetStartDay(day)
+  const mod100 = safeDay % 100
   const suffix = mod100 >= 11 && mod100 <= 13
     ? 'th'
-    : day % 10 === 1
+    : safeDay % 10 === 1
       ? 'st'
-      : day % 10 === 2
+      : safeDay % 10 === 2
         ? 'nd'
-        : day % 10 === 3
+        : safeDay % 10 === 3
           ? 'rd'
           : 'th'
-  return `${day}${suffix} day of the month`
+  return `${safeDay}${suffix} day of the month`
 }
 
 /** Unspent allowance from the month before periodDate that rolls into the
@@ -136,16 +137,21 @@ function getCategorySpendBetween(
   startDate: string,
   endDate: string,
 ): number {
+  const categoryKey = categoryName.toLowerCase()
   return transactions.reduce((sum, t) => {
     if (t.type === 'income' || t.type === 'transfer' || t.is_system_generated) return sum
     if (t.date < startDate || t.date >= endDate) return sum
     if (t.split_portions && t.split_portions.length > 0) {
       return sum + t.split_portions
-        .filter(portion => portion.category === categoryName)
+        .filter(portion => portion.category.toLowerCase() === categoryKey)
         .reduce((portionSum, portion) => portionSum + portion.amount, 0)
     }
-    return t.category === categoryName ? sum + t.amount : sum
+    return t.category.toLowerCase() === categoryKey ? sum + t.amount : sum
   }, 0)
+}
+
+function clampResetStartDay(day: number): number {
+  return Math.min(31, Math.max(1, Math.round(day)))
 }
 
 /** Expense transactions in periodDate's month whose category matches no budget category (case-insensitive). */

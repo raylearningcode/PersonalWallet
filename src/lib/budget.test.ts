@@ -37,6 +37,26 @@ describe('budget setting defaults', () => {
     expect(getBudgetResetStartLabel(21)).toBe('21st day of the month')
     expect(getBudgetResetStartLabel(31)).toBe('31st day of the month')
   })
+
+  it('clamps invalid reset start days into the supported month-day range', () => {
+    expect(normalizeBudgetSettings({
+      id: 'early',
+      name: 'Early',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      reset_start_day: -5,
+      color: '#A9F5C7',
+    }).reset_start_day).toBe(1)
+
+    expect(normalizeBudgetSettings({
+      id: 'late',
+      name: 'Late',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      reset_start_day: 99,
+      color: '#A9F5C7',
+    }).reset_start_day).toBe(31)
+  })
 })
 
 describe('getOverspendRisk', () => {
@@ -275,5 +295,24 @@ describe('getCategoryRollover', () => {
     ]
 
     expect(getCategoryRollover(splitTxs, cat, periodDate)).toBe(500)
+  })
+
+  it('matches split portions case-insensitively when calculating rollover spend', () => {
+    const cat = normalizeBudgetSettings({
+      id: 'food',
+      name: 'Food',
+      yearly_allocated: 1000,
+      budget_period: 'monthly',
+      rollover_enabled: true,
+      color: '#A9F5C7',
+    })
+    const splitTxs = [
+      tx({ id: 'split-food', category: 'Split', amount: 400, date: '2026-08-11', split_portions: [
+        { category: 'food', amount: 300 },
+        { category: 'Fun', amount: 100 },
+      ] }),
+    ]
+
+    expect(getCategoryRollover(splitTxs, cat, periodDate)).toBe(700)
   })
 })
