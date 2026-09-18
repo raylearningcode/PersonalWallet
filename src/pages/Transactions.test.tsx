@@ -127,6 +127,9 @@ describe('Transactions', () => {
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Lunch' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '120000' } })
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-10' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
     fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add expense' }))
 
@@ -172,10 +175,12 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
     expect(screen.queryByText('Merchant name')).not.toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Move to card' } })
+    fireEvent.change(screen.getByLabelText('Transfer note'), { target: { value: 'Move to card' } })
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '300' } })
-    fireEvent.change(screen.getByLabelText('From wallet'), { target: { value: 'cash' } })
-    fireEvent.change(screen.getByLabelText('To wallet'), { target: { value: 'card' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Choose from wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose to wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Debit card' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add transfer' }))
 
     expect(addTransaction).toHaveBeenCalledWith(expect.objectContaining({
@@ -224,6 +229,7 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.click(screen.getByRole('button', { name: 'Income' }))
 
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
     expect(screen.getByRole('button', { name: 'Wage' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Food' })).not.toBeInTheDocument()
   })

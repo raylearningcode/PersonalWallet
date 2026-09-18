@@ -101,7 +101,10 @@ describe('QuickAddSheet validation', () => {
   it('blocks saving when split is enabled but portion amounts are empty', () => {
     renderSheet()
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced details' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Split across categories' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Add expense' }))
@@ -113,7 +116,10 @@ describe('QuickAddSheet validation', () => {
   it('blocks saving when split portions sum short of the total', () => {
     renderSheet()
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced details' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Split across categories' }))
     fireEvent.change(screen.getByLabelText('Portion 1 amount'), { target: { value: '30' } })
     fireEvent.change(screen.getByLabelText('Portion 2 amount'), { target: { value: '40' } })
@@ -126,7 +132,10 @@ describe('QuickAddSheet validation', () => {
 
   it('blocks cash-mode saving when no tendered amount is given', () => {
     renderSheet()
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose category' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Enable cash change tracking' }))
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
 
