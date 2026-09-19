@@ -282,7 +282,12 @@ describe('Transactions', () => {
     const controls = screen.getByTestId('transactions-desktop-controls')
     expect(controls).toHaveClass('lg:sticky')
     expect(controls).toHaveClass('lg:top-3')
-    expect(controls).toHaveClass('lg:col-span-2')
+    expect(controls).toHaveClass('lg:z-40')
+
+    const stickyButton = screen.getByTestId('transactions-sticky-add')
+    expect(stickyButton).toHaveClass('lg:fixed')
+    expect(stickyButton).toHaveClass('lg:top-4')
+    expect(stickyButton).toHaveClass('lg:right-8')
 
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
 
@@ -292,6 +297,15 @@ describe('Transactions', () => {
     expect(dialog).toHaveClass('lg:left-1/2')
     expect(dialog).toHaveClass('lg:max-w-2xl')
     expect(dialog).toHaveClass('lg:rounded-[1.6rem]')
+  })
+
+  it('keeps the desktop header action interactive after the mobile scroll-hide state is applied', () => {
+    renderTx()
+
+    const controls = screen.getByTestId('transactions-desktop-controls')
+    const fullHeader = controls.querySelector('[data-testid="page-header-full"]')
+    expect(fullHeader).toHaveClass('lg:pointer-events-auto')
+    expect(fullHeader).toHaveClass('lg:translate-y-0')
   })
 
   it('shows category and wallet choices as soft padded option boxes', () => {

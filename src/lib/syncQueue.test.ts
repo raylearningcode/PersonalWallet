@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { enqueue, getQueue, isNetworkError } from './offlineCache'
+import { enqueue, getQueue, isNetworkError, removeFromQueue, SYNC_QUEUE_CHANGE_EVENT } from './offlineCache'
 import { processSyncQueue } from './syncQueue'
 
 const QUEUE_KEY = 'finpath_sync_queue'
@@ -68,6 +68,23 @@ describe('getQueue', () => {
     expect(getQueue()).toEqual([])
     localStorage.setItem(QUEUE_KEY, '"just a string"')
     expect(getQueue()).toEqual([])
+  })
+})
+
+describe('queue change notifications', () => {
+  it('notifies listeners when queued offline changes are added or removed', () => {
+    const handler = vi.fn()
+    window.addEventListener(SYNC_QUEUE_CHANGE_EVENT, handler)
+
+    enqueue({ table: 'transactions', op: 'insert', data: { amount: 100 }, userId: 'u1' })
+    const [queued] = getQueue()
+    removeFromQueue(queued.id)
+
+    expect(handler).toHaveBeenCalledTimes(2)
+    expect(handler.mock.calls[0][0]).toMatchObject({ detail: { count: 1 } })
+    expect(handler.mock.calls[1][0]).toMatchObject({ detail: { count: 0 } })
+
+    window.removeEventListener(SYNC_QUEUE_CHANGE_EVENT, handler)
   })
 })
 

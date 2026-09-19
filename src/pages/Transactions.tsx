@@ -455,21 +455,24 @@ export function Transactions() {
   }
 
   return (
-    <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-2">
-      <div data-testid="transactions-desktop-controls" className="lg:sticky lg:top-3 lg:z-40 lg:col-span-2 lg:-mx-1 lg:rounded-[1.5rem] lg:border lg:border-border/70 lg:bg-background/95 lg:px-3 lg:py-2 lg:shadow-sm lg:backdrop-blur">
+    <div>
+      <div data-testid="transactions-desktop-controls" className="lg:sticky lg:top-3 lg:z-40 lg:-mx-1 lg:rounded-[1.5rem] lg:border lg:border-border/70 lg:bg-background/95 lg:px-3 lg:py-2 lg:shadow-sm lg:backdrop-blur">
         <PageHeader
           title="Transactions"
           subtitle={<><span className="hidden sm:inline">Track every cashflow with clean filters, wallet routing, and category breakdowns.</span><span className="sm:hidden">Track spending and income.</span></>}
           searchValue={searchQuery}
           onSearchChange={q => { setSearchQuery(q); setSelectedCategory(null) }}
-          action={(
-            <Button onClick={openAddForm} className="hidden gap-2 lg:inline-flex">
-              <Plus className="h-4 w-4" />
-              New transaction
-            </Button>
-          )}
         />
       </div>
+      <Button
+        data-testid="transactions-sticky-add"
+        onClick={openAddForm}
+        className="hidden gap-2 lg:fixed lg:right-8 lg:top-4 lg:z-50 lg:inline-flex lg:shadow-lg"
+      >
+        <Plus className="h-4 w-4" />
+        New transaction
+      </Button>
+      <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-2">
       <div className="relative mb-2 lg:col-span-2 lg:hidden">
         <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
           <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-2">
@@ -1485,6 +1488,7 @@ export function Transactions() {
           })()}
         </SheetContent>
       </Sheet>
+      </div>
     </div>
   )
 }

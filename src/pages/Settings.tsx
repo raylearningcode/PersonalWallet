@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   useAppSettings, useSaveAppSettings,
   useBudgetCategories, useAddBudgetCategory, useDeleteBudgetCategory, useRenameBudgetCategory,
@@ -31,7 +32,8 @@ import { toast } from 'sonner'
 import type { CashRole, Wallet } from '@/types'
 import { getFiftyCoinRouting, setFiftyCoinRouting, type FiftyCoinRouting } from '@/lib/cashChange'
 import { parseNumberInput, formatNumberInput } from '@/lib/numberInput'
-import { getQueue } from '@/lib/offlineCache'
+import { getQueue, SYNC_QUEUE_CHANGE_EVENT } from '@/lib/offlineCache'
+import { processSyncQueue } from '@/lib/syncQueue'
 import { getWalletBalances } from '@/lib/financeOs'
 import { safeGet, todayLocal } from '@/lib/utils'
 import { saveGeminiKey, isAiConfigured } from '@/lib/ai'
@@ -73,6 +75,7 @@ const WALLET_NAME_HINTS: Record<string, string> = {
 
 export function Settings() {
   const money = useMoney()
+  const queryClient = useQueryClient()
   const { data: settings } = useAppSettings()
   const { data: session } = useAuthSession()
   const saveSettings = useSaveAppSettings()
@@ -165,6 +168,9 @@ export function Settings() {
   const backupFileRef = useRef<HTMLInputElement>(null)
   const [backupPreview, setBackupPreview] = useState<null | { wallets: number; categories: number; transactions: number; rules: number; parsed: unknown }>(null)
   const [lastExportDate, setLastExportDate] = useState(() => safeGet('finpath_last_export') ?? '')
+  const [queueCount, setQueueCount] = useState(() => getQueue().length)
+  const [online, setOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine)
+  const [syncingOfflineQueue, setSyncingOfflineQueue] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinEnabled, setPinEnabled] = useState(() => Boolean(safeGet(PIN_STORAGE_KEY)))
   const [biometricEnabled, setBiometricEnabled] = useState(() => Boolean(safeGet(BIOMETRIC_CRED_KEY)))
@@ -201,6 +207,42 @@ export function Settings() {
     const rawView = settings?.currency ?? 'IDR'
     setBaseCurrency(rawBase !== 'IDR' ? rawBase : rawView)
   }, [settings, session])
+
+  useEffect(() => {
+    const refreshSyncState = () => {
+      setQueueCount(getQueue().length)
+      setOnline(typeof navigator === 'undefined' ? true : navigator.onLine)
+    }
+    window.addEventListener(SYNC_QUEUE_CHANGE_EVENT, refreshSyncState)
+    window.addEventListener('storage', refreshSyncState)
+    window.addEventListener('online', refreshSyncState)
+    window.addEventListener('offline', refreshSyncState)
+    return () => {
+      window.removeEventListener(SYNC_QUEUE_CHANGE_EVENT, refreshSyncState)
+      window.removeEventListener('storage', refreshSyncState)
+      window.removeEventListener('online', refreshSyncState)
+      window.removeEventListener('offline', refreshSyncState)
+    }
+  }, [])
+
+  const handleSyncNow = async () => {
+    if (!online || queueCount === 0 || syncingOfflineQueue) return
+    setSyncingOfflineQueue(true)
+    try {
+      const count = await processSyncQueue()
+      setQueueCount(getQueue().length)
+      if (count > 0) {
+        queryClient.invalidateQueries()
+        toast.success(`Synced ${count} pending change${count !== 1 ? 's' : ''}`)
+      } else if (getQueue().length === 0) {
+        toast.success('Everything is already synced')
+      }
+    } catch {
+      toast.error('Sync failed — will retry when back online')
+    } finally {
+      setSyncingOfflineQueue(false)
+    }
+  }
 
   const baseSettings = {
     id: settings?.id,
@@ -1405,8 +1447,8 @@ export function Settings() {
                   },
                   {
                     label: 'Cloud sync',
-                    value: session ? (getQueue().length > 0 ? `${getQueue().length} pending` : 'Up to date') : 'Off (guest mode)',
-                    status: session ? (getQueue().length > 0 ? 'warn' : 'ok') : 'info',
+                    value: session ? (queueCount > 0 ? `${queueCount} pending` : 'Up to date') : 'Off (guest mode)',
+                    status: session ? (queueCount > 0 ? 'warn' : 'ok') : 'info',
                     Icon: RefreshCw,
                   },
                 ] as { label: string; value: string; status: string; Icon: ElementType }[]
@@ -1424,6 +1466,27 @@ export function Settings() {
             </div>
             {!lastExportDate && (
               <p className="mt-3 flex items-center gap-1.5 text-xs text-[#FFCF73]"><AlertTriangle className="h-3 w-3 shrink-0" /> No backup created yet. Export your data to keep it safe.</p>
+            )}
+            {session && (
+              <div className={`mt-3 flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${queueCount > 0 ? 'border-[#FFCF73]/30 bg-[#FFCF73]/5' : 'border-border bg-secondary'}`}>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground">Offline sync</p>
+                  <p className="text-xs text-muted-foreground">
+                    {online
+                      ? queueCount > 0 ? `${queueCount} change${queueCount !== 1 ? 's' : ''} waiting to upload.` : 'All local changes are synced.'
+                      : 'You are offline. New changes stay on this device until connection returns.'}
+                  </p>
+                </div>
+                <Button
+                  variant={queueCount > 0 ? 'default' : 'secondary'}
+                  className="gap-2 sm:w-auto"
+                  onClick={handleSyncNow}
+                  disabled={!online || queueCount === 0 || syncingOfflineQueue}
+                >
+                  <RefreshCw className={`h-4 w-4 ${syncingOfflineQueue ? 'animate-spin' : ''}`} />
+                  {syncingOfflineQueue ? 'Syncing' : 'Sync now'}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

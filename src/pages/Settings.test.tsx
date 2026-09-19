@@ -1,12 +1,20 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Settings } from './Settings'
 
 const authSessionState = vi.hoisted(() => ({ value: null as { user: { email: string } } | null }))
+const { processSyncQueue } = vi.hoisted(() => ({ processSyncQueue: vi.fn() }))
 
-const renderSettings = (initialPath = '/settings') =>
-  render(<MemoryRouter initialEntries={[initialPath]}><Settings /></MemoryRouter>)
+const renderSettings = (initialPath = '/settings') => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialPath]}><Settings /></MemoryRouter>
+    </QueryClientProvider>
+  )
+}
 
 const saveSettings = vi.fn()
 const signIn = vi.fn()
@@ -24,6 +32,10 @@ const { saveAiKey } = vi.hoisted(() => ({ saveAiKey: vi.fn() }))
 vi.mock('@/lib/ai', () => ({
   saveGeminiKey: saveAiKey,
   isAiConfigured: () => false,
+}))
+
+vi.mock('@/lib/syncQueue', () => ({
+  processSyncQueue,
 }))
 
 vi.mock('@/lib/queries', () => ({
@@ -177,16 +189,32 @@ describe('Settings', () => {
       icon: '🍔',
     })))
   })
+
+  it('shows live offline sync status and lets signed-in users sync queued changes', async () => {
+    authSessionState.value = { user: { email: 'me@example.com' } }
+    localStorage.setItem('finpath_sync_queue', JSON.stringify([
+      { id: 'q1', table: 'transactions', op: 'insert', userId: 'u1', timestamp: 1 },
+    ]))
+    processSyncQueue.mockImplementationOnce(async () => {
+      localStorage.setItem('finpath_sync_queue', '[]')
+      window.dispatchEvent(new CustomEvent('finpath-sync-queue-change', { detail: { count: 0 } }))
+      return 1
+    })
+
+    renderSettings('/settings?section=backup')
+
+    expect(screen.getByText('1 pending')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Sync now' }))
+
+    await waitFor(() => expect(processSyncQueue).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByText('Up to date')).toBeInTheDocument())
+  })
 })
 
 describe('Settings danger zone', () => {
   it('offers clearing local data in guest mode', () => {
     authSessionState.value = null
-    render(
-      <MemoryRouter initialEntries={['/settings']}>
-        <Settings />
-      </MemoryRouter>
-    )
+    renderSettings()
     fireEvent.click(screen.getByRole('button', { name: 'Profile' }))
     expect(screen.getByText('Danger zone')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Clear all local data' })).toBeInTheDocument()
@@ -194,11 +222,7 @@ describe('Settings danger zone', () => {
 
   it('requires typing DELETE before account deletion is enabled', () => {
     authSessionState.value = { user: { email: 'me@example.com' } }
-    render(
-      <MemoryRouter initialEntries={['/settings']}>
-        <Settings />
-      </MemoryRouter>
-    )
+    renderSettings()
     fireEvent.click(screen.getByRole('button', { name: 'Profile' }))
     const btn = screen.getByRole('button', { name: 'Delete account & all data' })
     expect(btn).toBeDisabled()

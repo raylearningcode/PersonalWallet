@@ -1,5 +1,6 @@
 const CACHE_PFX = 'finpath_cache_'
 const QUEUE_KEY = 'finpath_sync_queue'
+export const SYNC_QUEUE_CHANGE_EVENT = 'finpath-sync-queue-change'
 
 // ─── Read cache (mirrors last-known Supabase data) ────────────────────────────
 
@@ -64,11 +65,17 @@ export function getQueue(): QueuedMutation[] {
   } catch { return [] }
 }
 
+function notifyQueueChange() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(SYNC_QUEUE_CHANGE_EVENT, { detail: { count: getQueue().length } }))
+}
+
 export function enqueue(mutation: Omit<QueuedMutation, 'id' | 'timestamp'>) {
   const queue = getQueue()
   queue.push({ ...mutation, id: crypto.randomUUID(), timestamp: Date.now() })
   try {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
+    notifyQueueChange()
   } catch (err) {
     console.warn('Failed to enqueue mutation:', err instanceof Error ? err.message : 'Unknown error')
   }
@@ -78,6 +85,7 @@ export function removeFromQueue(id: string) {
   const queue = getQueue().filter(item => item.id !== id)
   try {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
+    notifyQueueChange()
   } catch (err) {
     console.warn('Failed to remove from queue:', err instanceof Error ? err.message : 'Unknown error')
   }

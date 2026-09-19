@@ -47,7 +47,8 @@ export function PageHeader({ title, subtitle, action, searchValue, onSearchChang
     <div className="mb-2 lg:mb-2">
       {/* Full header — fades and collapses when scrolling down on mobile */}
       <div
-        className={`flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between lg:gap-2 lg:!opacity-100 lg:!max-h-[500px] lg:!mb-0 transition-all duration-300 ease-out overflow-hidden ${scrolledDown ? 'opacity-0 max-h-0 -translate-y-3 mb-0 pointer-events-none' : 'opacity-100 max-h-[500px] translate-y-0'}`}
+        data-testid="page-header-full"
+        className={`flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between lg:gap-2 lg:!opacity-100 lg:!max-h-[500px] lg:!mb-0 lg:translate-y-0 lg:pointer-events-auto transition-all duration-300 ease-out overflow-hidden ${scrolledDown ? 'opacity-0 max-h-0 -translate-y-3 mb-0 pointer-events-none' : 'opacity-100 max-h-[500px] translate-y-0'}`}
       >
         <div className="min-w-0">
           <h1 className="text-xl font-extrabold leading-tight text-foreground sm:text-xl">{title}</h1>
