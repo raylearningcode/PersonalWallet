@@ -456,7 +456,7 @@ export function Transactions() {
 
   return (
     <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-2">
-      <div className="lg:sticky lg:top-0 lg:z-30 lg:col-span-2 lg:-mx-1 lg:bg-background/95 lg:px-1 lg:pb-2 lg:pt-1 lg:backdrop-blur">
+      <div data-testid="transactions-desktop-controls" className="lg:sticky lg:top-3 lg:z-40 lg:col-span-2 lg:-mx-1 lg:rounded-[1.5rem] lg:border lg:border-border/70 lg:bg-background/95 lg:px-3 lg:py-2 lg:shadow-sm lg:backdrop-blur">
         <PageHeader
           title="Transactions"
           subtitle={<><span className="hidden sm:inline">Track every cashflow with clean filters, wallet routing, and category breakdowns.</span><span className="sm:hidden">Track spending and income.</span></>}
@@ -506,7 +506,7 @@ export function Transactions() {
       </div>
 
             {/* ── Desktop filter rail ── */}
-      <aside className="sticky top-24 hidden max-h-[calc(100dvh-7rem)] self-start overflow-y-auto rounded-[1.4rem] border border-border bg-card p-4 lg:block">
+      <aside className="sticky top-3 hidden max-h-[calc(100dvh-2rem)] self-start overflow-y-auto rounded-[1.4rem] border border-border bg-card p-4 lg:block">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-sm font-extrabold text-foreground">Filters</h2>
           {activeFilterCount > 0 && (
@@ -588,7 +588,7 @@ export function Transactions() {
 
 
             <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full sm:max-w-2xl overflow-y-auto border-border bg-background px-7 pb-safe-10 pt-4' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'lg:inset-auto lg:left-1/2 lg:top-1/2 lg:h-auto lg:max-h-[min(44rem,calc(100dvh-3rem))] lg:w-[min(44rem,calc(100vw-3rem))] lg:max-w-2xl lg:-translate-x-1/2 lg:-translate-y-1/2 lg:overflow-y-auto lg:rounded-[1.6rem] lg:border lg:border-border lg:bg-background lg:px-7 lg:pb-6 lg:pt-5 lg:shadow-2xl sm:max-w-2xl' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
           <TransactionForm
             variant="sheet"
             initialType={(new URLSearchParams(window.location.search).get('action') === 'income' ? 'income' : 'expense') as EntryType}

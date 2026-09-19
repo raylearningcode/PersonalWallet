@@ -275,4 +275,34 @@ describe('Transactions', () => {
     expect(within(select as HTMLElement).getByRole('option', { name: /^Food ·/ })).toBeInTheDocument()
     expect(within(select as HTMLElement).getByRole('option', { name: 'All categories' })).toBeInTheDocument()
   })
+
+  it('uses sticky desktop controls and a centered add transaction dialog', () => {
+    renderTx()
+
+    const controls = screen.getByTestId('transactions-desktop-controls')
+    expect(controls).toHaveClass('lg:sticky')
+    expect(controls).toHaveClass('lg:top-3')
+    expect(controls).toHaveClass('lg:col-span-2')
+
+    fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
+
+    const dialog = screen.getByRole('dialog', { name: /new transaction/i })
+    expect(dialog).toHaveClass('lg:inset-auto')
+    expect(dialog).toHaveClass('lg:top-1/2')
+    expect(dialog).toHaveClass('lg:left-1/2')
+    expect(dialog).toHaveClass('lg:max-w-2xl')
+    expect(dialog).toHaveClass('lg:rounded-[1.6rem]')
+  })
+
+  it('shows category and wallet choices as soft padded option boxes', () => {
+    renderTx()
+
+    fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose wallet' }))
+
+    const cashOption = screen.getByRole('button', { name: 'Cash' })
+    expect(cashOption).toHaveClass('rounded-2xl')
+    expect(cashOption).toHaveClass('bg-secondary/70')
+    expect(cashOption).toHaveClass('p-4')
+  })
 })

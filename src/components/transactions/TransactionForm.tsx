@@ -391,26 +391,29 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     )
 
     return (
-      <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/60 p-0 lg:items-center lg:p-6" onClick={() => setPicker(null)}>
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/60 p-0 backdrop-blur-sm lg:items-center lg:p-6" onClick={() => setPicker(null)}>
         <div
           role="dialog"
           aria-label={title}
-          className="max-h-[calc(100dvh-7.5rem)] w-full rounded-t-3xl border border-border bg-background px-4 pb-safe-6 pt-4 shadow-2xl lg:max-h-[min(42rem,calc(100dvh-4rem))] lg:max-w-xl lg:rounded-3xl lg:px-5 lg:pb-5"
+          className="max-h-[calc(100dvh-7.5rem)] w-full rounded-t-3xl border border-border bg-background px-4 pb-safe-6 pt-4 shadow-2xl lg:max-h-[min(42rem,calc(100dvh-4rem))] lg:max-w-xl lg:rounded-[1.6rem] lg:bg-card lg:p-5"
           onClick={e => e.stopPropagation()}
         >
           <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-muted lg:hidden" />
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-base font-extrabold text-foreground">{title}</p>
-            <button type="button" className="text-sm font-bold text-muted-foreground" onClick={() => setPicker(null)}>Close</button>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-base font-extrabold text-foreground">{title}</p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Search or pick from your saved {isCategory ? 'categories' : 'wallets'}.</p>
+            </div>
+            <button type="button" className="rounded-full bg-secondary px-4 py-2 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground" onClick={() => setPicker(null)}>Close</button>
           </div>
           <Input
             aria-label={`Search ${isCategory ? 'categories' : 'wallets'}`}
-            className="mb-3 bg-secondary"
+            className="mb-4 h-12 rounded-2xl bg-secondary/80 px-4"
             value={pickerSearch}
             onChange={e => setPickerSearch(e.target.value)}
             placeholder="Search"
           />
-          <div className="max-h-[52dvh] overflow-y-auto pb-2 lg:max-h-[26rem]">
+          <div className="grid max-h-[52dvh] gap-2 overflow-y-auto pb-2 pr-1 lg:max-h-[26rem]">
             {options.map(option => (
               <button
                 key={option.key}
@@ -423,12 +426,17 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
                   if (picker === 'toWallet') setTransferWalletId(option.value)
                   setPicker(null)
                 }}
-                className="flex w-full items-center justify-between gap-3 border-b border-border/60 px-1 py-3 text-left"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/70 bg-secondary/70 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
               >
-                <span className="font-bold text-foreground">{option.label}</span>
-                {option.meta && <span className="text-xs capitalize text-muted-foreground">{option.meta}</span>}
+                <span className="min-w-0 truncate font-bold text-foreground">{option.label}</span>
+                {option.meta && <span className="shrink-0 rounded-full bg-background/80 px-2.5 py-1 text-xs font-bold capitalize text-muted-foreground">{option.meta}</span>}
               </button>
             ))}
+            {options.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-border bg-secondary/50 p-4 text-sm font-bold text-muted-foreground">
+                No matches
+              </div>
+            )}
           </div>
         </div>
       </div>
