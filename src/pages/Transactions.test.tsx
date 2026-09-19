@@ -221,11 +221,11 @@ describe('Transactions', () => {
     expect(screen.getAllByText('Price').length).toBeGreaterThan(0)
   })
 
-  it('uses income categories when adding income and hides recurring and needs review filters', () => {
+  it('uses income categories when adding income and keeps review out of filters', () => {
     renderTx()
 
     expect(screen.queryByRole('tab', { name: /recurring/i })).not.toBeInTheDocument()
-    // Needs review tab is now always visible in the filter bar
+    expect(screen.queryByRole('tab', { name: /needs review/i })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
     fireEvent.click(screen.getByRole('button', { name: 'Income' }))
 

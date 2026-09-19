@@ -1,12 +1,15 @@
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { TransactionForm, type EntryType } from '@/components/transactions/TransactionForm'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 export function QuickAddSheet({ open, onClose, initialType, initialCash }: { open: boolean; onClose: () => void; initialType?: EntryType; initialCash?: boolean }) {
+  const isDesktop = useIsDesktop()
+
   return (
     <Sheet open={open} onOpenChange={v => { if (!v) onClose() }}>
       <SheetContent
-        side="bottom"
-        className="max-h-[92vh] overflow-y-auto rounded-t-3xl border-border bg-background px-5 pb-safe-10"
+        side={isDesktop ? 'right' : 'bottom'}
+        className={isDesktop ? 'w-full sm:max-w-2xl overflow-y-auto border-border bg-background px-7 pb-safe-10 pt-4' : 'max-h-[92vh] overflow-y-auto rounded-t-3xl border-border bg-background px-5 pb-safe-10'}
       >
         {/* Mounted only while open, so state resets between opens */}
         <TransactionForm

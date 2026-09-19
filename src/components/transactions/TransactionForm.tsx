@@ -391,14 +391,14 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     )
 
     return (
-      <div className="fixed inset-0 z-50 flex items-end bg-background/60" onClick={() => setPicker(null)}>
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/60 p-0 lg:items-center lg:p-6" onClick={() => setPicker(null)}>
         <div
           role="dialog"
           aria-label={title}
-          className="max-h-[calc(100dvh-7.5rem)] w-full rounded-t-3xl border border-border bg-background px-4 pb-safe-6 pt-4 shadow-2xl"
+          className="max-h-[calc(100dvh-7.5rem)] w-full rounded-t-3xl border border-border bg-background px-4 pb-safe-6 pt-4 shadow-2xl lg:max-h-[min(42rem,calc(100dvh-4rem))] lg:max-w-xl lg:rounded-3xl lg:px-5 lg:pb-5"
           onClick={e => e.stopPropagation()}
         >
-          <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-muted" />
+          <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-muted lg:hidden" />
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-base font-extrabold text-foreground">{title}</p>
             <button type="button" className="text-sm font-bold text-muted-foreground" onClick={() => setPicker(null)}>Close</button>
@@ -410,7 +410,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
             onChange={e => setPickerSearch(e.target.value)}
             placeholder="Search"
           />
-          <div className="max-h-[52dvh] overflow-y-auto pb-2">
+          <div className="max-h-[52dvh] overflow-y-auto pb-2 lg:max-h-[26rem]">
             {options.map(option => (
               <button
                 key={option.key}

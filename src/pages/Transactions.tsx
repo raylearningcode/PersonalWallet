@@ -34,7 +34,7 @@ import type { RecurringFrequency, RecurringRule, Transaction } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 
-type Filter = 'all' | 'income' | 'expense' | 'transfer' | 'needs_review'
+type Filter = 'all' | 'income' | 'expense' | 'transfer'
 type EntryType = 'income' | 'expense' | 'transfer'
 
 function getMonthStart() {
@@ -51,7 +51,7 @@ export function Transactions() {
   const [searchParams] = useSearchParams()
   const [filter, setFilter] = useState<Filter>(() => {
     const param = new URLSearchParams(window.location.search).get('filter')
-    if (param === 'needs_review' || param === 'income' || param === 'expense' || param === 'transfer') return param
+    if (param === 'income' || param === 'expense' || param === 'transfer') return param
     return 'all'
   })
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '')
@@ -322,14 +322,6 @@ export function Transactions() {
     setSelectedIds(new Set())
   }
 
-  const bulkMarkReviewed = async () => {
-    const toReview = sortedTransactions.filter(tx => selectedIds.has(tx.id) && tx.needs_review)
-    for (const tx of toReview) markReviewed.mutate(tx.id)
-    if (toReview.length > 0) toast.success(`${toReview.length} marked as reviewed`)
-    setSelectMode(false)
-    setSelectedIds(new Set())
-  }
-
   const bulkExportCSV = () => {
     const selected = sortedTransactions.filter(tx => selectedIds.has(tx.id))
     if (selected.length === 0) return
@@ -464,7 +456,7 @@ export function Transactions() {
 
   return (
     <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-2">
-      <div className="lg:col-span-2">
+      <div className="lg:sticky lg:top-0 lg:z-30 lg:col-span-2 lg:-mx-1 lg:bg-background/95 lg:px-1 lg:pb-2 lg:pt-1 lg:backdrop-blur">
         <PageHeader
           title="Transactions"
           subtitle={<><span className="hidden sm:inline">Track every cashflow with clean filters, wallet routing, and category breakdowns.</span><span className="sm:hidden">Track spending and income.</span></>}
@@ -481,7 +473,7 @@ export function Transactions() {
       <div className="relative mb-2 lg:col-span-2 lg:hidden">
         <Tabs value={filter} onValueChange={v => { setFilter(v as Filter); setSelectedCategory(null); setSearchQuery(''); const d = new Date(); setDateFrom(getMonthStart()); setDateTo(getLastDay(d.getFullYear(), d.getMonth() + 1)) }} className="overflow-x-auto rounded-[1.4rem] border border-border bg-card p-4 sm:p-7">
           <TabsList className="min-w-max gap-3 bg-transparent p-0 sm:gap-2">
-            {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => (
+            {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => (
               <TabsTrigger
                 key={f}
                 value={f}
@@ -514,7 +506,7 @@ export function Transactions() {
       </div>
 
             {/* ── Desktop filter rail ── */}
-      <aside className="sticky top-6 hidden self-start rounded-[1.4rem] border border-border bg-card p-4 lg:block">
+      <aside className="sticky top-24 hidden max-h-[calc(100dvh-7rem)] self-start overflow-y-auto rounded-[1.4rem] border border-border bg-card p-4 lg:block">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-sm font-extrabold text-foreground">Filters</h2>
           {activeFilterCount > 0 && (
@@ -524,12 +516,10 @@ export function Transactions() {
 
         {/* Type list with live counts */}
         <div className="space-y-0.5">
-          {(['all', 'income', 'expense', 'transfer', 'needs_review'] as Filter[]).map(f => {
+          {(['all', 'income', 'expense', 'transfer'] as Filter[]).map(f => {
             const count = f === 'all'
               ? transactions.filter(t => !t.is_system_generated).length
-              : f === 'needs_review'
-                ? transactions.filter(t => t.needs_review).length
-                : transactions.filter(t => t.type === f && !t.is_system_generated).length
+              : transactions.filter(t => t.type === f && !t.is_system_generated).length
             return (
               <button
                 key={f}
@@ -598,7 +588,7 @@ export function Transactions() {
 
 
             <Sheet open={isFormOpen} onOpenChange={v => { setIsFormOpen(v) }}>
-        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full max-w-md overflow-y-auto border-border bg-background px-6 pb-safe-10 pt-3' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
+        <SheetContent side={isDesktop ? 'right' : 'bottom'} className={isDesktop ? 'w-full sm:max-w-2xl overflow-y-auto border-border bg-background px-7 pb-safe-10 pt-4' : 'rounded-t-3xl border-border bg-background px-5 pb-safe-10'}>
           <TransactionForm
             variant="sheet"
             initialType={(new URLSearchParams(window.location.search).get('action') === 'income' ? 'income' : 'expense') as EntryType}
@@ -1200,15 +1190,6 @@ export function Transactions() {
               >
                 <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
                 Retime
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={bulkMarkReviewed}
-                disabled={!sortedTransactions.some(tx => selectedIds.has(tx.id) && tx.needs_review)}
-              >
-                <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                Reviewed
               </Button>
               <Button
                 size="sm"

@@ -13,8 +13,7 @@ import { isInBudgetPeriod } from '@/lib/budget'
 import { getWalletBalances } from '@/lib/financeOs'
 import { safeGet, todayLocal, toLocalDateStr } from '@/lib/utils'
 import { getAiInsights, isAiConfigured, type InsightInput, type InsightResult } from '@/lib/ai'
-import { computeStreak } from '@/lib/streak'
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, Flame, X, ChevronRight } from 'lucide-react'
+import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb, Bell, X, ChevronRight } from 'lucide-react'
 
 const DIGEST_KEY = 'finpath_ai_digest'
 const DIGEST_MAX_AGE_MS = 7 * 86_400_000
@@ -121,8 +120,6 @@ export function Dashboard() {
   const annualSpent = yearTx.filter(t => t.type !== 'income').reduce((s, t) => s + t.amount, 0)
   const savingsRate = calculateSavingsRate(annualIncome, annualSpent)
   const netWorth = [...walletBalances.values()].reduce((a, b) => a + b, 0) + (investConfig?.current_value ?? 0)
-  const reviewCount = transactions.filter(t => t.needs_review).length
-  const streak = useMemo(() => computeStreak(transactions.map(t => t.date)), [transactions])
   const daysLeft = new Date(year, now.getMonth() + 1, 0).getDate() - now.getDate() + 1
   const safeToSpend = daysLeft > 0 ? (() => {
     // Yearly budgets count as a monthly share (/12); spending in unbudgeted
@@ -271,7 +268,7 @@ export function Dashboard() {
 
   return (
     <div>
-      <PageHeader title={`${greeting}${name ? `, ${name}` : ''}`} subtitle={`${fmt(netWorth)} net worth · ${savingsRate}% savings rate · ${reviewCount > 0 ? `${reviewCount} to review` : 'all reviewed'}`} />
+      <PageHeader title={`${greeting}${name ? `, ${name}` : ''}`} subtitle={`${fmt(netWorth)} net worth · ${savingsRate}% savings rate`} />
 
       {/* Hero stat cards */}
       <div className="mb-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -280,22 +277,6 @@ export function Dashboard() {
         <StatCard label="Safe to spend" value={fmt(safeToSpend)} sub={`${daysLeft} days left`} />
         <StatCard label="Savings rate" value={`${savingsRate}%`} sub={savingsRate >= 20 ? 'On track' : savingsRate >= 10 ? 'Could improve' : 'Needs attention'} badgeVariant={savingsRate >= 20 ? 'success' : savingsRate >= 10 ? 'warning' : 'danger'} />
       </div>
-
-      {/* Review queue */}
-      {reviewCount > 0 && (
-        <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl border border-[#FFCF73]/30 bg-[#FFCF73]/5 px-5 py-3">
-          <p className="text-sm"><span className="font-extrabold text-[#FFCF73]">{reviewCount} transaction{reviewCount !== 1 ? 's' : ''} need{reviewCount === 1 ? 's' : ''} review</span></p>
-          <Button asChild size="sm" variant="secondary"><Link to="/transactions?filter=needs_review">Review</Link></Button>
-        </div>
-      )}
-
-      {/* Streak */}
-      {streak.current >= 3 && (
-        <div className="mb-2 flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3">
-          <Flame className="h-5 w-5 text-[#FFCF73]" />
-          <p className="text-sm"><span className="font-extrabold text-foreground">{streak.current}-day</span> <span className="text-muted-foreground">logging streak</span>{streak.longest > streak.current && <span className="text-muted-foreground"> · best: {streak.longest} days</span>}</p>
-        </div>
-      )}
 
       {/* Spending trend + net worth curve — side by side on desktop */}
       <div className="mb-2 lg:grid lg:grid-cols-2 lg:gap-2">
