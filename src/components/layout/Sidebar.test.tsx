@@ -26,4 +26,18 @@ describe('Sidebar', () => {
     expect(screen.getByText('No goal set')).toBeInTheDocument()
     expect(screen.getByText('0% completed')).toBeInTheDocument()
   })
+
+  it('uses a compact anchored account panel on desktop instead of a side sheet', () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Sidebar profileOpen={true} onProfileOpenChange={() => {}} />
+      </MemoryRouter>
+    )
+
+    const panel = screen.getByTestId('desktop-account-panel')
+    expect(panel).toHaveClass('lg:fixed')
+    expect(panel).toHaveClass('lg:left-[248px]')
+    expect(panel).toHaveClass('lg:w-[340px]')
+    expect(screen.getByRole('heading', { name: 'Account' })).toBeInTheDocument()
+  })
 })

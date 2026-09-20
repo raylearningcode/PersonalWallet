@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { BarChart3, Calculator, CalendarDays, CreditCard, HardDrive, LayoutDashboard, PieChart, RefreshCw, Settings, Shield, Target, TrendingUp, User, Coins } from 'lucide-react'
+import { BarChart3, Calculator, CalendarDays, CreditCard, HardDrive, LayoutDashboard, PieChart, RefreshCw, Settings, Shield, Target, TrendingUp, User, Coins, X } from 'lucide-react'
 import { useGoals, useAuthSession, useSignIn, useSignUp, useSignOut, useAppSettings } from '@/lib/queries'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
@@ -98,7 +98,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
     <>
       <aside className="relative z-10 mx-4 mt-2 hidden w-[calc(100%-2rem)] flex-col rounded-[1.7rem] border border-border bg-background/78 px-5 py-3 lg:fixed lg:left-5 lg:top-5 lg:m-0 lg:flex lg:w-[210px] lg:overflow-y-auto lg:px-4 lg:py-3" style={{ maxHeight: 'calc(100vh - 2.5rem)' }}>
         {/* Logo */}
-        <div className="mb-2 flex items-center gap-3 px-1">
+        <NavLink to="/" className="mb-2 flex items-center gap-3 rounded-xl px-1 py-1 transition-colors hover:bg-secondary/60" aria-label="FinPath home">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary">
             <div className="h-3.5 w-3.5 rounded-md bg-background" />
           </div>
@@ -106,7 +106,7 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
             <h1 className="text-xl font-extrabold leading-none text-foreground">FinPath</h1>
             <p className="mt-0.5 text-[10px] text-muted-foreground">Personal finance OS</p>
           </div>
-        </div>
+        </NavLink>
 
         {/* Nav */}
         <nav className="space-y-0.5">
@@ -167,8 +167,122 @@ export function Sidebar({ profileOpen, onProfileOpenChange }: {
         </div>
       </aside>
 
+      {profileOpen && isDesktop && (
+        <>
+          <button
+            type="button"
+            aria-label="Close account panel"
+            className="fixed inset-0 z-40 hidden cursor-default bg-transparent lg:block"
+            onClick={() => handleProfileOpenChange(false)}
+          />
+          <div
+            data-testid="desktop-account-panel"
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby="desktop-account-title"
+            className="hidden border border-border bg-background/95 p-4 shadow-2xl shadow-black/20 backdrop-blur lg:fixed lg:left-[248px] lg:top-5 lg:z-50 lg:block lg:max-h-[calc(100vh-2.5rem)] lg:w-[340px] lg:overflow-y-auto lg:rounded-[1.5rem]"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h2 id="desktop-account-title" className="text-lg font-extrabold text-foreground">Account</h2>
+                <p className="text-xs text-muted-foreground">Profile, sync, and safety tools</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close account panel"
+                onClick={() => handleProfileOpenChange(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mb-3 flex items-center gap-3 rounded-2xl border border-border bg-secondary/80 p-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">
+                {userInitial ?? <User className="h-4 w-4" />}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-foreground">{session?.user?.email ?? 'Guest mode'}</p>
+                <p className={`text-xs ${session ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {session ? 'Synced to cloud' : 'Saved on this device'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-3 grid gap-1">
+              {[
+                { icon: Coins, label: 'Currency & wallets', href: '/settings?section=wallets' },
+                { icon: Shield, label: 'Security & PIN', href: '/settings?section=security' },
+                { icon: HardDrive, label: 'Backup & export', href: '/settings?section=backup' },
+                { icon: Settings, label: 'All settings', href: '/settings' },
+              ].map(({ icon: Icon, label, href }) => (
+                <button
+                  key={href}
+                  type="button"
+                  onClick={() => { navigate(href); handleProfileOpenChange(false) }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                  </span>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {settings?.currency && (
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-secondary/60 px-3 py-2">
+                <span className="text-xs text-muted-foreground">Display currency</span>
+                <span className="text-xs font-extrabold text-foreground">{settings.currency}</span>
+              </div>
+            )}
+
+            <div className="border-t border-border pt-4">
+              {session ? (
+                <Button variant="secondary" className="w-full" onClick={handleSignOut} disabled={signOut.isPending}>
+                  Log out
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Sign in to sync your data across devices.</p>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <Input
+                      className="mt-1.5 bg-secondary"
+                      type="email"
+                      value={authEmail}
+                      onChange={e => setAuthEmail(e.target.value)}
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Password</Label>
+                    <Input
+                      className="mt-1.5 bg-secondary"
+                      type="password"
+                      value={authPassword}
+                      onChange={e => setAuthPassword(e.target.value)}
+                      placeholder="Password"
+                      onKeyDown={e => e.key === 'Enter' && handleSignIn()}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button className="w-full" onClick={handleSignIn} disabled={signIn.isPending}>
+                      {signIn.isPending ? 'Signing in…' : 'Sign in'}
+                    </Button>
+                    <Button variant="secondary" className="w-full" onClick={handleSignUp} disabled={signUp.isPending}>
+                      {signUp.isPending ? 'Creating account…' : 'Create account'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Auth/Profile sheet */}
-      <Sheet open={profileOpen} onOpenChange={handleProfileOpenChange}>
+      <Sheet open={!isDesktop && profileOpen} onOpenChange={handleProfileOpenChange}>
         <SheetContent side="left" className="w-80 border-border bg-background p-4">
           <SheetHeader className="mb-2">
             <SheetTitle>Account</SheetTitle>

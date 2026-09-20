@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { Transactions } from './Transactions'
@@ -120,7 +120,7 @@ describe('Transactions', () => {
     runDueRecurringRules.mockClear()
   })
 
-  it('adds a transaction from the input form', () => {
+  it('adds a transaction from the input form', async () => {
     renderTx()
 
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
@@ -133,7 +133,7 @@ describe('Transactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Food' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add expense' }))
 
-    expect(addTransaction).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addTransaction).toHaveBeenCalledWith(expect.objectContaining({
       description: 'Lunch',
       amount: 66000000,
       original_amount: 120000,
@@ -144,7 +144,7 @@ describe('Transactions', () => {
       date: '2026-05-10',
       type: 'expense',
       needs_review: false,
-    }))
+    })))
   })
 
   it('edits an existing transaction from history', () => {
@@ -284,10 +284,9 @@ describe('Transactions', () => {
     expect(controls).toHaveClass('lg:top-3')
     expect(controls).toHaveClass('lg:z-40')
 
-    const stickyButton = screen.getByTestId('transactions-sticky-add')
-    expect(stickyButton).toHaveClass('lg:fixed')
-    expect(stickyButton).toHaveClass('lg:top-4')
-    expect(stickyButton).toHaveClass('lg:right-8')
+    const headerButton = screen.getByTestId('transactions-header-add')
+    expect(headerButton).toHaveClass('lg:inline-flex')
+    expect(headerButton).not.toHaveClass('lg:fixed')
 
     fireEvent.click(screen.getByRole('button', { name: 'New transaction' }))
 
