@@ -200,8 +200,8 @@ export async function saveTransactionEntry(o: SaveEntryOptions): Promise<boolean
       }
     }
 
-    // Recreate the transfer fee row on edit
-    if (o.editId && o.type === 'transfer' && o.transferFeeEnabled && parseNumberInput(o.transferFeeAmount ?? '') > 0) {
+    // Create or recreate the transfer fee row.
+    if (savedTxId && o.type === 'transfer' && o.transferFeeEnabled && parseNumberInput(o.transferFeeAmount ?? '') > 0) {
       const parsedFee = parseNumberInput(o.transferFeeAmount!)
       await o.addTransaction({
         description: `Transfer fee${safeDescription !== 'Transfer' ? ` — ${safeDescription}` : ''}`,
@@ -217,7 +217,7 @@ export async function saveTransactionEntry(o: SaveEntryOptions): Promise<boolean
         date: o.date,
         needs_review: false,
         is_system_generated: true,
-        linked_transaction_id: o.editId,
+        linked_transaction_id: savedTxId,
         cash_tendered: null,
       })
     }

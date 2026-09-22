@@ -6,6 +6,7 @@ import { AddTransaction } from './AddTransaction'
 const mockWallets = [
   { id: 'cash', name: 'Cash', type: 'cash' as const, balance: 0, currency: 'IDR' },
   { id: 'card', name: 'Debit card', type: 'card' as const, balance: 0, currency: 'IDR' },
+  { id: 'bank', name: 'Bank account', type: 'bank' as const, balance: 0, currency: 'IDR' },
 ]
 
 const { mockAddTransactionMutate, mockToastError, mockToastSuccess } = vi.hoisted(() => ({
@@ -180,5 +181,42 @@ describe('AddTransaction validation', () => {
       is_system_generated: true,
     })
     expect(mockToastSuccess.mock.calls[0][0]).toBe('Cash payment saved · change routed')
+  })
+
+  it('lets a new transfer include a transfer fee', async () => {
+    render(
+      <MemoryRouter initialEntries={['/?type=transfer']}>
+        <AddTransaction />
+      </MemoryRouter>
+    )
+    fireEvent.change(screen.getByLabelText('Input currency'), { target: { value: 'IDR' } })
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Choose from wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bank account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose to wallet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cash' }))
+
+    expect(screen.getByRole('switch', { name: 'Add transfer fee' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('switch', { name: 'Add transfer fee' }))
+    fireEvent.change(screen.getByLabelText('Transfer fee amount'), { target: { value: '2500' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save transaction' }))
+
+    await waitFor(() => expect(mockAddTransactionMutate).toHaveBeenCalledTimes(2))
+    expect(mockAddTransactionMutate.mock.calls[0][0]).toMatchObject({
+      type: 'transfer',
+      category: 'Transfer',
+      wallet_id: 'bank',
+      transfer_wallet_id: 'cash',
+      amount: 100000,
+    })
+    expect(mockAddTransactionMutate.mock.calls[1][0]).toMatchObject({
+      description: 'Transfer fee',
+      type: 'expense',
+      category: 'Transfer Fee',
+      wallet_id: 'bank',
+      amount: 2500,
+      linked_transaction_id: 'tx1',
+      is_system_generated: true,
+    })
   })
 })

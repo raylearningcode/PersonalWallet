@@ -87,7 +87,7 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
   // Multi-wallet payment
   const [multiWalletEnabled, setMultiWalletEnabled] = useState(false)
   const [walletSplits, setWalletSplits] = useState<{ wallet_id: string; amount: string }[]>([])
-  // Transfer fee (edit mode, transfer type)
+  // Transfer fee (transfer type)
   const [transferFeeEnabled, setTransferFeeEnabled] = useState(false)
   const [transferFeeAmount, setTransferFeeAmount] = useState('')
   // Propagate edits to the parent recurring rule
@@ -176,7 +176,11 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
   )
 
   const selectedWallet = wallets.find(w => w.id === walletId) ?? null
+  const selectedTransferWallet = wallets.find(w => w.id === transferWalletId) ?? null
   const showCashAssistant = type === 'expense' && selectedWallet?.type === 'cash'
+  const showTransferFee =
+    type === 'transfer' &&
+    (Boolean(editTransaction) || selectedWallet?.type === 'bank' || selectedTransferWallet?.type === 'bank')
 
   const cannotSaveTransfer =
     type === 'transfer' &&
@@ -304,6 +308,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     setCashTendered('')
     setSplitEnabled(false)
     setMultiWalletEnabled(false)
+    setTransferFeeEnabled(false)
+    setTransferFeeAmount('')
   }
 
   const changeWallet = (id: string) => {
@@ -312,6 +318,24 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     setCashTendered('')
     setSplitEnabled(false)
     setMultiWalletEnabled(false)
+    if (type === 'transfer') {
+      const nextFrom = wallets.find(w => w.id === id)
+      if (nextFrom?.type !== 'bank' && selectedTransferWallet?.type !== 'bank') {
+        setTransferFeeEnabled(false)
+        setTransferFeeAmount('')
+      }
+    }
+  }
+
+  const changeTransferWallet = (id: string, direction: 'from' | 'to') => {
+    if (direction === 'from') setWalletId(id)
+    else setTransferWalletId(id)
+    const nextFrom = direction === 'from' ? wallets.find(w => w.id === id) : selectedWallet
+    const nextTo = direction === 'to' ? wallets.find(w => w.id === id) : selectedTransferWallet
+    if (nextFrom?.type !== 'bank' && nextTo?.type !== 'bank' && !editTransaction) {
+      setTransferFeeEnabled(false)
+      setTransferFeeAmount('')
+    }
   }
 
   const title = editTransaction
@@ -422,8 +446,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
                 onClick={() => {
                   if (picker === 'category') setCategory(option.value)
                   if (picker === 'wallet') changeWallet(option.value)
-                  if (picker === 'fromWallet') setWalletId(option.value)
-                  if (picker === 'toWallet') setTransferWalletId(option.value)
+                  if (picker === 'fromWallet') changeTransferWallet(option.value, 'from')
+                  if (picker === 'toWallet') changeTransferWallet(option.value, 'to')
                   setPicker(null)
                 }}
                 className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/70 bg-secondary/70 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
@@ -1030,8 +1054,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
         </div>
       )}
 
-      {/* —— Transfer fee (transfer edits only) —— */}
-      {type === 'transfer' && editTransaction && (
+      {/* —— Transfer fee —— */}
+      {showTransferFee && (
         <div className="rounded-[1.4rem] border border-border bg-card p-4">
           <div className="flex items-center justify-between gap-2">
             <span>
