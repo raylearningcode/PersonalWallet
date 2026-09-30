@@ -17,7 +17,7 @@ import {
 } from '@/lib/queries'
 import { CURRENCIES, useMoney } from '@/lib/currency'
 import { formatNumberInput, parseNumberInput } from '@/lib/numberInput'
-import { getMerchantSuggestion } from '@/lib/financeOs'
+import { getMerchantSuggestion, getWalletBalances } from '@/lib/financeOs'
 import { pickQuickAddWallet } from '@/lib/quickAdd'
 import { scanReceipt, isAiConfigured } from '@/lib/ai'
 import { takePhotoWithCamera, isNativeCameraAvailable } from '@/lib/camera'
@@ -174,6 +174,19 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
     () => type === 'transfer' ? null : getMerchantSuggestion(description, transactions),
     [description, transactions, type]
   )
+  const liveWalletBalances = useMemo(() => getWalletBalances(wallets, transactions), [transactions, wallets])
+  const previousCashTransactions = useMemo(() => {
+    if (!editTransaction) return []
+    return [
+      editTransaction,
+      ...transactions.filter(tx =>
+        tx.linked_transaction_id === editTransaction.id &&
+        tx.is_system_generated &&
+        tx.type === 'transfer' &&
+        tx.category === 'Transfer'
+      ),
+    ]
+  }, [editTransaction, transactions])
 
   const selectedWallet = wallets.find(w => w.id === walletId) ?? null
   const selectedTransferWallet = wallets.find(w => w.id === transferWalletId) ?? null
@@ -1137,6 +1150,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
             changeBillsWalletId={changeBillsWalletId}
             changeCoinsWalletId={changeCoinsWalletId}
             wallets={wallets}
+            walletBalances={liveWalletBalances}
+            previousTransactions={previousCashTransactions}
             setCashEnabled={setCashEnabled}
             setCashTendered={setCashTendered}
             setChangeBillsWalletId={setChangeBillsWalletId}
@@ -1171,6 +1186,8 @@ export function TransactionForm({ initialType = 'expense', initialCash = false, 
             changeBillsWalletId={changeBillsWalletId}
             changeCoinsWalletId={changeCoinsWalletId}
             wallets={wallets}
+            walletBalances={liveWalletBalances}
+            previousTransactions={previousCashTransactions}
             setCashEnabled={setCashEnabled}
             setCashTendered={setCashTendered}
             setChangeBillsWalletId={setChangeBillsWalletId}
