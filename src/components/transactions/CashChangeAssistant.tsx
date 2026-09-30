@@ -64,6 +64,24 @@ export function CashChangeAssistant({
   const hasBills = billsChange > 0
   const hasCoins = coinsChange > 0
   const showChips = isTWD
+  const routedChangeByWallet = useMemo(() => {
+    const rows = new Map<string, number>()
+    const addRoutedChange = (destinationId: string, value: number) => {
+      if (!destinationId || destinationId === walletId || value <= 0) return
+      rows.set(destinationId, (rows.get(destinationId) ?? 0) + value)
+    }
+
+    if (isTWD) {
+      addRoutedChange(changeBillsWalletId, billsChange)
+      addRoutedChange(changeCoinsWalletId, coinsChange)
+    } else {
+      addRoutedChange(changeCoinsWalletId, changeAmount)
+    }
+
+    return rows
+  }, [billsChange, changeAmount, changeBillsWalletId, changeCoinsWalletId, coinsChange, isTWD, walletId])
+  const routedChangeAmount = Array.from(routedChangeByWallet.values()).reduce((sum, value) => sum + value, 0)
+  const selectedWalletPreviewBalance = walletCurrentBal - money.toBase(parsedExpense + routedChangeAmount, inputCurrency)
 
   return (
     <div className="rounded-[1.4rem] border border-primary/20 bg-primary/5 p-4">
@@ -252,33 +270,20 @@ export function CashChangeAssistant({
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">{selectedWallet?.name}</span>
                   <span className="font-extrabold text-foreground">
-                    {money.formatDisplay(walletCurrentBal)} → {money.formatDisplay(walletCurrentBal - money.toBase(parsedTenderedVal, inputCurrency))}
+                    {money.formatDisplay(walletCurrentBal)} → {money.formatDisplay(selectedWalletPreviewBalance)}
                   </span>
                 </div>
-                {hasBills && changeBillsWalletId && changeBillsWalletId !== walletId && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeBillsWalletId)?.name}</span>
-                    <span className="font-extrabold text-foreground">
-                      {money.formatDisplay(walletBalances.get(changeBillsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeBillsWalletId) ?? 0) + money.toBase(billsChange, inputCurrency))}
-                    </span>
-                  </div>
-                )}
-                {hasCoins && changeCoinsWalletId && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeCoinsWalletId)?.name}</span>
-                    <span className="font-extrabold text-foreground">
-                      {money.formatDisplay(walletBalances.get(changeCoinsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeCoinsWalletId) ?? 0) + money.toBase(coinsChange, inputCurrency))}
-                    </span>
-                  </div>
-                )}
-                {!isTWD && changeAmount > 0 && changeCoinsWalletId && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{wallets.find(w => w.id === changeCoinsWalletId)?.name}</span>
-                    <span className="font-extrabold text-foreground">
-                      {money.formatDisplay(walletBalances.get(changeCoinsWalletId) ?? 0)} → {money.formatDisplay((walletBalances.get(changeCoinsWalletId) ?? 0) + money.toBase(changeAmount, inputCurrency))}
-                    </span>
-                  </div>
-                )}
+                {Array.from(routedChangeByWallet.entries()).map(([destinationWalletId, routedAmount]) => {
+                  const currentBalance = walletBalances.get(destinationWalletId) ?? 0
+                  return (
+                    <div key={destinationWalletId} className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">{wallets.find(w => w.id === destinationWalletId)?.name}</span>
+                      <span className="font-extrabold text-foreground">
+                        {money.formatDisplay(currentBalance)} → {money.formatDisplay(currentBalance + money.toBase(routedAmount, inputCurrency))}
+                      </span>
+                    </div>
+                  )
+                })}
                 <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
                   <span className="text-muted-foreground">{category ?? 'Expense'} recorded</span>
                   <span className="font-extrabold text-primary">{money.format(parsedExpense, inputCurrency)}</span>
